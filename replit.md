@@ -49,6 +49,13 @@ Preferred communication style: Simple, everyday language.
 - **Push Command**: `npm run db:push` to sync schema to database
 - **Note**: The database schema is minimal and not yet integrated with the app's transaction/wallet data model. The app currently stores all financial data in AsyncStorage on the client side.
 
+## Recent Changes
+
+- **Multi-Currency Support**: Added support for EGP (Egyptian Pound), KWD (Kuwaiti Dinar), and USD (US Dollar). Currency symbols display dynamically based on selected wallet.
+- **Wallet Management**: Users can create multiple wallets, each with its own currency, icon, and color. Wallet selection on the home screen filters transactions per wallet. Long-press to delete a wallet. Default wallet auto-created on first launch.
+- **Improved Stats Charts**: Added daily bar chart showing income vs expenses over time. Added income/expense ratio bar. Overview cards with totals. Donut chart for category breakdown with dynamic currency display.
+- **Transaction-Wallet Binding**: Each transaction is now linked to a wallet via `walletId`. Adding a transaction automatically uses the currently selected wallet's currency.
+
 ### Build & Deployment
 
 - **Development**: Two concurrent processes — `expo:dev` for Metro bundler and `server:dev` for Express
