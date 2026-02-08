@@ -18,6 +18,8 @@ import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { expenseCategories, incomeCategories } from '@/lib/categories';
+import { useLanguage } from '@/lib/LanguageContext';
+import { getCategoryName } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
 
 type TransactionType = 'expense' | 'income';
@@ -25,6 +27,7 @@ type TransactionType = 'expense' | 'income';
 export default function AddTransactionScreen() {
   const insets = useSafeAreaInsets();
   const { addTransaction, selectedWallet, currencySymbol } = useTransactions();
+  const { t, language } = useLanguage();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -42,15 +45,15 @@ export default function AddTransactionScreen() {
 
   const handleSave = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('خطأ', 'أدخل المبلغ');
+      Alert.alert(t.error, t.enterAmount);
       return;
     }
     if (!selectedCategory) {
-      Alert.alert('خطأ', 'اختر الفئة');
+      Alert.alert(t.error, t.selectCategory);
       return;
     }
     if (!selectedWallet) {
-      Alert.alert('خطأ', 'لا توجد محفظة محددة');
+      Alert.alert(t.error, t.noWalletSelected);
       return;
     }
 
@@ -81,7 +84,7 @@ export default function AddTransactionScreen() {
     >
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <Text style={styles.sheetTitle}>معاملة جديدة</Text>
+          <Text style={styles.sheetTitle}>{t.newTransaction}</Text>
           <Pressable onPress={() => router.back()} hitSlop={12}>
             <Ionicons name="close" size={24} color={Colors.textSecondary} />
           </Pressable>
@@ -107,20 +110,26 @@ export default function AddTransactionScreen() {
               style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
             >
               <Ionicons name="arrow-up" size={18} color={type === 'expense' ? '#fff' : Colors.expense} />
-              <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>مصروف</Text>
+              <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>{t.expense}</Text>
             </Pressable>
             <Pressable
               onPress={() => handleTypeSwitch('income')}
               style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
             >
               <Ionicons name="arrow-down" size={18} color={type === 'income' ? '#fff' : Colors.income} />
-              <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>دخل</Text>
+              <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>{t.incomeType}</Text>
             </Pressable>
           </View>
 
           <View style={styles.amountSection}>
-            <Text style={styles.label}>المبلغ</Text>
+            <Text style={styles.label}>{t.amount}</Text>
             <View style={styles.amountInputWrap}>
+              <View style={styles.currencyTag}>
+                <Text style={[styles.currencyTagCode, { color: selectedWallet?.color || Colors.primary }]}>
+                  {selectedWallet?.currency || 'EGP'}
+                </Text>
+                <Text style={styles.currencyTagSymbol}>{currencySymbol}</Text>
+              </View>
               <TextInput
                 style={styles.amountInput}
                 placeholder="0.00"
@@ -128,14 +137,13 @@ export default function AddTransactionScreen() {
                 keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={setAmount}
-                textAlign="center"
+                textAlign="right"
               />
-              <Text style={styles.amountCurrency}>{currencySymbol}</Text>
             </View>
           </View>
 
           <View style={styles.categorySection}>
-            <Text style={styles.label}>الفئة</Text>
+            <Text style={styles.label}>{t.category}</Text>
             <View style={styles.categoryGrid}>
               {categories.map((cat) => (
                 <Pressable
@@ -154,9 +162,9 @@ export default function AddTransactionScreen() {
                   </View>
                   <Text style={[
                     styles.categoryName,
-                    selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' },
+                    selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
                   ]}>
-                    {cat.nameAr}
+                    {getCategoryName(cat.id, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -164,17 +172,16 @@ export default function AddTransactionScreen() {
           </View>
 
           <View style={styles.descSection}>
-            <Text style={styles.label}>ملاحظة (اختياري)</Text>
+            <Text style={styles.label}>{t.noteOptional}</Text>
             <TextInput
               style={styles.descInput}
-              placeholder="وصف المعاملة..."
+              placeholder={t.notePlaceholder}
               placeholderTextColor={Colors.textTertiary}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={2}
               textAlignVertical="top"
-              textAlign="right"
             />
           </View>
 
@@ -191,7 +198,7 @@ export default function AddTransactionScreen() {
             ]}
           >
             <Ionicons name="checkmark" size={22} color="#fff" />
-            <Text style={styles.saveText}>حفظ</Text>
+            <Text style={styles.saveText}>{t.save}</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -281,21 +288,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surfaceAlt,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 64,
-    gap: 8,
+    borderRadius: 16,
+    paddingRight: 16,
+    paddingLeft: 4,
+    height: 72,
+    gap: 12,
+  },
+  currencyTag: {
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 0,
+  },
+  currencyTagCode: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+  },
+  currencyTagSymbol: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: -2,
   },
   amountInput: {
     flex: 1,
     fontFamily: 'Cairo_700Bold',
-    fontSize: 28,
+    fontSize: 32,
     color: Colors.text,
-  },
-  amountCurrency: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 18,
-    color: Colors.textSecondary,
   },
   categorySection: {
     marginBottom: 20,

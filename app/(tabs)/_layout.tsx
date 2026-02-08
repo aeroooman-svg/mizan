@@ -6,21 +6,23 @@ import { Platform, StyleSheet, useColorScheme, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import Colors from "@/constants/colors";
+import { useLanguage } from "@/lib/LanguageContext";
 
 function NativeTabLayout() {
+  const { t } = useLanguage();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>الرئيسية</Label>
+        <Label>{t.home}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="transactions">
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
-        <Label>المعاملات</Label>
+        <Label>{t.transactions}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="stats">
         <Icon sf={{ default: "chart.pie", selected: "chart.pie.fill" }} />
-        <Label>إحصائيات</Label>
+        <Label>{t.stats}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -31,6 +33,7 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isWeb = Platform.OS === "web";
   const isIOS = Platform.OS === "ios";
+  const { t } = useLanguage();
 
   return (
     <Tabs
@@ -65,7 +68,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "الرئيسية",
+          title: t.home,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -74,7 +77,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="transactions"
         options={{
-          title: "المعاملات",
+          title: t.transactions,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
@@ -83,7 +86,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: "إحصائيات",
+          title: t.stats,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pie-chart" size={size} color={color} />
           ),

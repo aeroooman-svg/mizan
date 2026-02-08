@@ -16,10 +16,13 @@ import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { WALLET_ICONS, WALLET_COLORS } from '@/lib/categories';
 import { CURRENCIES, CurrencyCode } from '@/lib/storage';
+import { useLanguage } from '@/lib/LanguageContext';
+import { getWalletIconLabel, getCurrencyName } from '@/lib/i18n';
 
 export default function AddWalletScreen() {
   const insets = useSafeAreaInsets();
   const { addWallet } = useTransactions();
+  const { t, language } = useLanguage();
 
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('EGP');
@@ -29,7 +32,7 @@ export default function AddWalletScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('خطأ', 'أدخل اسم المحفظة');
+      Alert.alert(t.error, t.enterWalletName);
       return;
     }
     setIsSaving(true);
@@ -42,7 +45,7 @@ export default function AddWalletScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sheetTitle}>محفظة جديدة</Text>
+        <Text style={styles.sheetTitle}>{t.newWallet}</Text>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="close" size={24} color={Colors.textSecondary} />
         </Pressable>
@@ -57,26 +60,25 @@ export default function AddWalletScreen() {
           <View style={[styles.previewIcon, { backgroundColor: selectedColor + '20' }]}>
             <MaterialIcons name={selectedIcon as any} size={32} color={selectedColor} />
           </View>
-          <Text style={styles.previewName}>{name || 'اسم المحفظة'}</Text>
+          <Text style={styles.previewName}>{name || t.walletName}</Text>
           <Text style={styles.previewCurrency}>
-            {CURRENCIES.find(c => c.code === currency)?.nameAr}
+            {getCurrencyName(currency, language)}
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>اسم المحفظة</Text>
+          <Text style={styles.label}>{t.walletName}</Text>
           <TextInput
             style={styles.input}
-            placeholder="مثال: محفظة العمل"
+            placeholder={t.walletNamePlaceholder}
             placeholderTextColor={Colors.textTertiary}
             value={name}
             onChangeText={setName}
-            textAlign="right"
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>العملة</Text>
+          <Text style={styles.label}>{t.currency}</Text>
           <View style={styles.currencyRow}>
             {CURRENCIES.map(cur => (
               <Pressable
@@ -100,7 +102,7 @@ export default function AddWalletScreen() {
                   styles.currencyName,
                   currency === cur.code && { color: '#fff' },
                 ]}>
-                  {cur.nameAr}
+                  {getCurrencyName(cur.code, language)}
                 </Text>
               </Pressable>
             ))}
@@ -108,7 +110,7 @@ export default function AddWalletScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>الأيقونة</Text>
+          <Text style={styles.label}>{t.icon}</Text>
           <View style={styles.iconRow}>
             {WALLET_ICONS.map(item => (
               <Pressable
@@ -123,14 +125,16 @@ export default function AddWalletScreen() {
                 ]}
               >
                 <MaterialIcons name={item.icon as any} size={24} color={selectedIcon === item.icon ? selectedColor : Colors.textSecondary} />
-                <Text style={[styles.iconLabel, selectedIcon === item.icon && { color: selectedColor }]}>{item.label}</Text>
+                <Text style={[styles.iconLabel, selectedIcon === item.icon && { color: selectedColor }]}>
+                  {getWalletIconLabel(item.icon, language)}
+                </Text>
               </Pressable>
             ))}
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>اللون</Text>
+          <Text style={styles.label}>{t.color}</Text>
           <View style={styles.colorRow}>
             {WALLET_COLORS.map(color => (
               <Pressable
@@ -166,7 +170,7 @@ export default function AddWalletScreen() {
           ]}
         >
           <Ionicons name="checkmark" size={22} color="#fff" />
-          <Text style={styles.saveText}>إنشاء المحفظة</Text>
+          <Text style={styles.saveText}>{t.createWallet}</Text>
         </Pressable>
       </ScrollView>
     </View>

@@ -13,7 +13,9 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { formatCurrency, getCategoryById, expenseCategories, incomeCategories, Category } from '@/lib/categories';
+import { formatCurrency, expenseCategories, incomeCategories, Category } from '@/lib/categories';
+import { useLanguage } from '@/lib/LanguageContext';
+import { getCategoryName } from '@/lib/i18n';
 import Svg, { Circle, Rect, Text as SvgText } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -41,12 +43,12 @@ export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const { walletTransactions, totalIncome, totalExpense, currencySymbol, selectedWallet } = useTransactions();
+  const { t, language } = useLanguage();
   const [viewType, setViewType] = useState<'expense' | 'income'>('expense');
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
   const monthlyTransactions = useMemo(() => {
     return walletTransactions.filter(t => {
@@ -124,8 +126,8 @@ export default function StatsScreen() {
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.headerTitle}>إحصائيات</Text>
-              <Text style={styles.headerSubtitle}>{months[currentMonth]} {currentYear}</Text>
+              <Text style={styles.headerTitle}>{t.stats}</Text>
+              <Text style={styles.headerSubtitle}>{t.months[currentMonth]} {currentYear}</Text>
             </View>
             {selectedWallet && (
               <View style={[styles.walletBadge, { backgroundColor: selectedWallet.color + '15' }]}>
@@ -140,7 +142,7 @@ export default function StatsScreen() {
           <View style={styles.overviewCard}>
             <View style={styles.overviewRow}>
               <View style={[styles.overviewDot, { backgroundColor: Colors.income }]} />
-              <Text style={styles.overviewLabel}>الدخل</Text>
+              <Text style={styles.overviewLabel}>{t.income}</Text>
             </View>
             <Text style={[styles.overviewValue, { color: Colors.income }]}>
               {formatCurrency(totalIncome)}
@@ -150,7 +152,7 @@ export default function StatsScreen() {
           <View style={styles.overviewCard}>
             <View style={styles.overviewRow}>
               <View style={[styles.overviewDot, { backgroundColor: Colors.expense }]} />
-              <Text style={styles.overviewLabel}>المصاريف</Text>
+              <Text style={styles.overviewLabel}>{t.expenses}</Text>
             </View>
             <Text style={[styles.overviewValue, { color: Colors.expense }]}>
               {formatCurrency(totalExpense)}
@@ -168,15 +170,15 @@ export default function StatsScreen() {
 
         {dailyData.length > 0 && monthlyTransactions.length > 0 && (
           <View style={styles.barChartSection}>
-            <Text style={styles.sectionTitle}>الإنفاق اليومي</Text>
+            <Text style={styles.sectionTitle}>{t.dailySpending}</Text>
             <View style={styles.barChartLegend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: Colors.income }]} />
-                <Text style={styles.legendText}>دخل</Text>
+                <Text style={styles.legendText}>{t.incomeType}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: Colors.expense }]} />
-                <Text style={styles.legendText}>مصاريف</Text>
+                <Text style={styles.legendText}>{t.expenses}</Text>
               </View>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -231,7 +233,7 @@ export default function StatsScreen() {
             style={[styles.toggleBtn, viewType === 'expense' && styles.toggleBtnActiveExpense]}
           >
             <Text style={[styles.toggleText, viewType === 'expense' && styles.toggleTextActive]}>
-              المصاريف
+              {t.expenses}
             </Text>
           </Pressable>
           <Pressable
@@ -242,7 +244,7 @@ export default function StatsScreen() {
             style={[styles.toggleBtn, viewType === 'income' && styles.toggleBtnActiveIncome]}
           >
             <Text style={[styles.toggleText, viewType === 'income' && styles.toggleTextActive]}>
-              الدخل
+              {t.income}
             </Text>
           </Pressable>
         </View>
@@ -250,8 +252,8 @@ export default function StatsScreen() {
         {categoryStats.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="analytics-outline" size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyTitle}>لا توجد بيانات</Text>
-            <Text style={styles.emptySubtitle}>أضف معاملات لتظهر الإحصائيات</Text>
+            <Text style={styles.emptyTitle}>{t.noData}</Text>
+            <Text style={styles.emptySubtitle}>{t.addTransactionsForStats}</Text>
           </View>
         ) : (
           <>
@@ -295,7 +297,7 @@ export default function StatsScreen() {
             </View>
 
             <View style={styles.categoriesSection}>
-              <Text style={styles.sectionTitle}>التفاصيل</Text>
+              <Text style={styles.sectionTitle}>{t.details}</Text>
               {categoryStats.map((stat) => (
                 <View key={stat.category.id} style={styles.categoryRow}>
                   <View style={[styles.catIcon, { backgroundColor: stat.category.color + '18' }]}>
@@ -303,7 +305,7 @@ export default function StatsScreen() {
                   </View>
                   <View style={styles.categoryInfo}>
                     <View style={styles.categoryHeader}>
-                      <Text style={styles.categoryName}>{stat.category.nameAr}</Text>
+                      <Text style={styles.categoryName}>{getCategoryName(stat.category.id, language)}</Text>
                       <Text style={styles.categoryAmount}>{formatCurrency(stat.total)} {currencySymbol}</Text>
                     </View>
                     <View style={styles.categoryBarBg}>

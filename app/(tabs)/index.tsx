@@ -16,7 +16,9 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { formatCurrency, getCategoryById, formatDate } from '@/lib/categories';
+import { formatCurrency, getCategoryById } from '@/lib/categories';
+import { useLanguage } from '@/lib/LanguageContext';
+import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -33,6 +35,7 @@ export default function HomeScreen() {
     removeWallet,
     currencySymbol,
   } = useTransactions();
+  const { t, language } = useLanguage();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
   const recentTransactions = walletTransactions.slice(0, 5);
@@ -49,23 +52,22 @@ export default function HomeScreen() {
 
   const handleDeleteWallet = (id: string, name: string) => {
     if (wallets.length <= 1) {
-      Alert.alert('تنبيه', 'لا يمكن حذف المحفظة الأخيرة');
+      Alert.alert(t.warning, t.cantDeleteLast);
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
-      'حذف المحفظة',
-      `هل تريد حذف "${name}"؟ سيتم حذف كل المعاملات المرتبطة بها.`,
+      t.deleteWallet,
+      t.deleteWalletConfirm.replace('{name}', name),
       [
-        { text: 'إلغاء', style: 'cancel' },
-        { text: 'حذف', style: 'destructive', onPress: () => removeWallet(id) },
+        { text: t.cancel, style: 'cancel' },
+        { text: t.delete, style: 'destructive', onPress: () => removeWallet(id) },
       ],
     );
   };
 
-  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
   const now = new Date();
-  const currentMonth = months[now.getMonth()];
+  const currentMonth = t.months[now.getMonth()];
   const currentYear = now.getFullYear();
 
   return (
@@ -87,14 +89,22 @@ export default function HomeScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greeting}>{currentMonth} {currentYear}</Text>
-              <Text style={styles.headerTitle}>الرصيد الحالي</Text>
+              <Text style={styles.headerTitle}>{t.currentBalance}</Text>
             </View>
-            <Pressable
-              onPress={handleAddPress}
-              style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
-            >
-              <Ionicons name="add" size={28} color={selectedWallet?.color || Colors.primary} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => router.push('/settings')}
+                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="language" size={20} color="rgba(255,255,255,0.85)" />
+              </Pressable>
+              <Pressable
+                onPress={handleAddPress}
+                style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
+              >
+                <Ionicons name="add" size={28} color={selectedWallet?.color || Colors.primary} />
+              </Pressable>
+            </View>
           </View>
 
           <Text style={styles.balanceAmount}>
@@ -107,7 +117,7 @@ export default function HomeScreen() {
                 <Ionicons name="arrow-down" size={16} color="#4ADE80" />
               </View>
               <View>
-                <Text style={styles.summaryLabel}>الدخل</Text>
+                <Text style={styles.summaryLabel}>{t.income}</Text>
                 <Text style={styles.summaryValue}>{formatCurrency(totalIncome)}</Text>
               </View>
             </View>
@@ -119,7 +129,7 @@ export default function HomeScreen() {
                 <Ionicons name="arrow-up" size={16} color="#F87171" />
               </View>
               <View>
-                <Text style={styles.summaryLabel}>المصاريف</Text>
+                <Text style={styles.summaryLabel}>{t.expenses}</Text>
                 <Text style={styles.summaryValue}>{formatCurrency(totalExpense)}</Text>
               </View>
             </View>
@@ -128,7 +138,7 @@ export default function HomeScreen() {
 
         <View style={styles.walletsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>المحافظ</Text>
+            <Text style={styles.sectionTitle}>{t.wallets}</Text>
             <Pressable onPress={handleAddWallet} hitSlop={8}>
               <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
             </Pressable>
@@ -164,10 +174,26 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
+        <Pressable
+          onPress={() => router.push('/financial-plan')}
+          style={({ pressed }) => [styles.planButton, { opacity: pressed ? 0.9 : 1 }]}
+        >
+          <LinearGradient
+            colors={[Colors.accent, Colors.accentLight]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.planButtonGradient}
+          >
+            <MaterialIcons name="flag" size={22} color="#fff" />
+            <Text style={styles.planButtonText}>{t.financialPlan}</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+          </LinearGradient>
+        </Pressable>
+
         {totalIncome > 0 && (
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
-              <Text style={styles.sectionTitle}>نسبة الإنفاق</Text>
+              <Text style={styles.sectionTitle}>{t.spendingRatio}</Text>
               <Text style={styles.progressPercent}>
                 {totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0}%
               </Text>
@@ -184,19 +210,17 @@ export default function HomeScreen() {
               />
             </View>
             <Text style={styles.progressNote}>
-              {totalExpense / totalIncome > 0.8
-                ? 'تنبيه: الإنفاق يقترب من الحد الأقصى'
-                : 'الميزانية في وضع جيد'}
+              {totalExpense / totalIncome > 0.8 ? t.budgetWarning : t.budgetGood}
             </Text>
           </View>
         )}
 
         <View style={styles.recentSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>آخر المعاملات</Text>
+            <Text style={styles.sectionTitle}>{t.recentTransactions}</Text>
             {walletTransactions.length > 5 && (
               <Pressable onPress={() => router.push('/(tabs)/transactions')}>
-                <Text style={styles.seeAll}>عرض الكل</Text>
+                <Text style={styles.seeAll}>{t.viewAll}</Text>
               </Pressable>
             )}
           </View>
@@ -204,8 +228,8 @@ export default function HomeScreen() {
           {recentTransactions.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="receipt-outline" size={48} color={Colors.textTertiary} />
-              <Text style={styles.emptyTitle}>لا توجد معاملات بعد</Text>
-              <Text style={styles.emptySubtitle}>اضغط + لإضافة أول معاملة</Text>
+              <Text style={styles.emptyTitle}>{t.noTransactions}</Text>
+              <Text style={styles.emptySubtitle}>{t.tapToAdd}</Text>
             </View>
           ) : (
             recentTransactions.map((item) => {
@@ -219,7 +243,7 @@ export default function HomeScreen() {
                     <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || '#999'} />
                   </View>
                   <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionCat}>{cat?.nameAr || item.category}</Text>
+                    <Text style={styles.transactionCat}>{getCategoryName(item.category, language)}</Text>
                     {item.description ? (
                       <Text style={styles.transactionDesc} numberOfLines={1}>{item.description}</Text>
                     ) : null}
@@ -228,7 +252,7 @@ export default function HomeScreen() {
                     <Text style={[styles.transactionAmount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
                       {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
                     </Text>
-                    <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
+                    <Text style={styles.transactionDate}>{formatDateLocalized(item.date, language)}</Text>
                   </View>
                 </Pressable>
               );
@@ -287,6 +311,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'left',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  settingsBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButton: {
     width: 44,
@@ -381,6 +418,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
     color: Colors.textTertiary,
+  },
+  planButton: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  planButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  planButtonText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: '#fff',
+    flex: 1,
   },
   progressSection: {
     marginHorizontal: 20,

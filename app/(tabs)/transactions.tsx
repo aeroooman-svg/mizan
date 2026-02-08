@@ -14,7 +14,9 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { formatCurrency, getCategoryById, formatDate } from '@/lib/categories';
+import { formatCurrency, getCategoryById } from '@/lib/categories';
+import { useLanguage } from '@/lib/LanguageContext';
+import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
 
 type FilterType = 'all' | 'income' | 'expense';
@@ -23,6 +25,7 @@ export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const { walletTransactions, removeTransaction, currencySymbol, selectedWallet } = useTransactions();
+  const { t, language } = useLanguage();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,27 +37,30 @@ export default function TransactionsScreen() {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(t => {
-        const cat = getCategoryById(t.category);
+        const catName = getCategoryName(t.category, language);
         return (
-          (cat?.nameAr || '').toLowerCase().includes(q) ||
+          catName.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q) ||
           t.amount.toString().includes(q)
         );
       });
     }
     return result;
-  }, [walletTransactions, filter, searchQuery]);
+  }, [walletTransactions, filter, searchQuery, language]);
 
   const handleDelete = (item: Transaction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    const cat = getCategoryById(item.category);
+    const catName = getCategoryName(item.category, language);
     Alert.alert(
-      'حذف المعاملة',
-      `هل تريد حذف "${cat?.nameAr || item.category}" بمبلغ ${formatCurrency(item.amount)} ${currencySymbol}؟`,
+      t.deleteTransaction,
+      t.deleteTransactionConfirm
+        .replace('{category}', catName)
+        .replace('{amount}', formatCurrency(item.amount))
+        .replace('{currency}', currencySymbol),
       [
-        { text: 'إلغاء', style: 'cancel' },
+        { text: t.cancel, style: 'cancel' },
         {
-          text: 'حذف',
+          text: t.delete,
           style: 'destructive',
           onPress: () => removeTransaction(item.id),
         },
@@ -73,7 +79,7 @@ export default function TransactionsScreen() {
           <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || '#999'} />
         </View>
         <View style={styles.transactionInfo}>
-          <Text style={styles.transactionCat}>{cat?.nameAr || item.category}</Text>
+          <Text style={styles.transactionCat}>{getCategoryName(item.category, language)}</Text>
           {item.description ? (
             <Text style={styles.transactionDesc} numberOfLines={1}>{item.description}</Text>
           ) : null}
@@ -82,7 +88,7 @@ export default function TransactionsScreen() {
           <Text style={[styles.transactionAmount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
             {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
           </Text>
-          <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
+          <Text style={styles.transactionDate}>{formatDateLocalized(item.date, language)}</Text>
         </View>
       </Pressable>
     );
@@ -92,7 +98,7 @@ export default function TransactionsScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>المعاملات</Text>
+          <Text style={styles.headerTitle}>{t.transactions}</Text>
           {selectedWallet && (
             <View style={[styles.walletBadge, { backgroundColor: selectedWallet.color + '15' }]}>
               <MaterialIcons name={selectedWallet.icon as any} size={14} color={selectedWallet.color} />
@@ -105,7 +111,7 @@ export default function TransactionsScreen() {
           <Ionicons name="search" size={18} color={Colors.textTertiary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="بحث..."
+            placeholder={t.search}
             placeholderTextColor={Colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -119,9 +125,9 @@ export default function TransactionsScreen() {
 
         <View style={styles.filterRow}>
           {([
-            { key: 'all' as FilterType, label: 'الكل' },
-            { key: 'income' as FilterType, label: 'دخل' },
-            { key: 'expense' as FilterType, label: 'مصاريف' },
+            { key: 'all' as FilterType, label: t.all },
+            { key: 'income' as FilterType, label: t.incomeType },
+            { key: 'expense' as FilterType, label: t.expenses },
           ]).map(f => (
             <Pressable
               key={f.key}
@@ -150,9 +156,9 @@ export default function TransactionsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search" size={48} color={Colors.textTertiary} />
-            <Text style={styles.emptyTitle}>لا توجد معاملات</Text>
+            <Text style={styles.emptyTitle}>{t.noTransactions}</Text>
             <Text style={styles.emptySubtitle}>
-              {searchQuery ? 'جرب البحث بكلمة أخرى' : 'أضف معاملة جديدة من الشاشة الرئيسية'}
+              {searchQuery ? t.tryAnotherSearch : t.addFromHome}
             </Text>
           </View>
         }
@@ -211,7 +217,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_400Regular',
     fontSize: 15,
     color: Colors.text,
-    textAlign: 'right',
   },
   filterRow: {
     flexDirection: 'row',

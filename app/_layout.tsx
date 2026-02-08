@@ -7,6 +7,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { TransactionProvider } from "@/lib/TransactionContext";
+import { LanguageProvider } from "@/lib/LanguageContext";
 import { useFonts, Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold } from "@expo-google-fonts/cairo";
 
 SplashScreen.preventAutoHideAsync();
@@ -35,6 +36,26 @@ function RootLayoutNav() {
           contentStyle: { backgroundColor: "transparent" },
         }}
       />
+      <Stack.Screen
+        name="financial-plan"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.9],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.5],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
     </Stack>
   );
 }
@@ -57,13 +78,15 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TransactionProvider>
-          <GestureHandlerRootView>
-            <KeyboardProvider>
-              <RootLayoutNav />
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </TransactionProvider>
+        <LanguageProvider>
+          <TransactionProvider>
+            <GestureHandlerRootView>
+              <KeyboardProvider>
+                <RootLayoutNav />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </TransactionProvider>
+        </LanguageProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
