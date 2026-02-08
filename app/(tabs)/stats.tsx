@@ -14,13 +14,16 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById, expenseCategories, incomeCategories, Category } from '@/lib/categories';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Rect, Text as SvgText } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_SIZE = 180;
-const STROKE_WIDTH = 24;
+const STROKE_WIDTH = 26;
 const RADIUS = (CHART_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+const BAR_CHART_HEIGHT = 160;
+const BAR_CHART_WIDTH = SCREEN_WIDTH - 64;
 
 interface CategoryStat {
   category: Category;
@@ -28,10 +31,16 @@ interface CategoryStat {
   percentage: number;
 }
 
+interface DailyData {
+  day: number;
+  income: number;
+  expense: number;
+}
+
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
-  const { transactions, totalIncome, totalExpense } = useTransactions();
+  const { walletTransactions, totalIncome, totalExpense, currencySymbol, selectedWallet } = useTransactions();
   const [viewType, setViewType] = useState<'expense' | 'income'>('expense');
 
   const now = new Date();
@@ -40,11 +49,11 @@ export default function StatsScreen() {
   const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
   const monthlyTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    return walletTransactions.filter(t => {
       const d = new Date(t.date);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
-  }, [transactions, currentMonth, currentYear]);
+  }, [walletTransactions, currentMonth, currentYear]);
 
   const categoryStats = useMemo((): CategoryStat[] => {
     const filtered = monthlyTransactions.filter(t => t.type === viewType);
@@ -73,9 +82,37 @@ export default function StatsScreen() {
     return stats;
   }, [monthlyTransactions, viewType]);
 
+  const dailyData = useMemo((): DailyData[] => {
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const displayDays = Math.min(daysInMonth, now.getDate());
+    const lastDays = Math.min(displayDays, 14);
+    const startDay = displayDays - lastDays + 1;
+
+    const data: DailyData[] = [];
+    for (let d = startDay; d <= displayDays; d++) {
+      const dayTxns = monthlyTransactions.filter(t => {
+        const date = new Date(t.date);
+        return date.getDate() === d;
+      });
+      data.push({
+        day: d,
+        income: dayTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        expense: dayTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+      });
+    }
+    return data;
+  }, [monthlyTransactions, currentMonth, currentYear, now]);
+
+  const maxDailyValue = useMemo(() => {
+    return Math.max(...dailyData.map(d => Math.max(d.income, d.expense)), 1);
+  }, [dailyData]);
+
   const totalAmount = viewType === 'expense' ? totalExpense : totalIncome;
+  const totalAll = totalIncome + totalExpense;
 
   let accumulatedOffset = 0;
+
+  const barWidth = dailyData.length > 0 ? Math.max((BAR_CHART_WIDTH - dailyData.length * 4) / (dailyData.length * 2), 6) : 10;
 
   return (
     <View style={styles.container}>
@@ -85,9 +122,105 @@ export default function StatsScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
-          <Text style={styles.headerTitle}>إحصائيات</Text>
-          <Text style={styles.headerSubtitle}>{months[currentMonth]} {currentYear}</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>إحصائيات</Text>
+              <Text style={styles.headerSubtitle}>{months[currentMonth]} {currentYear}</Text>
+            </View>
+            {selectedWallet && (
+              <View style={[styles.walletBadge, { backgroundColor: selectedWallet.color + '15' }]}>
+                <MaterialIcons name={selectedWallet.icon as any} size={14} color={selectedWallet.color} />
+                <Text style={[styles.walletBadgeText, { color: selectedWallet.color }]}>{selectedWallet.name}</Text>
+              </View>
+            )}
+          </View>
         </View>
+
+        <View style={styles.overviewCards}>
+          <View style={styles.overviewCard}>
+            <View style={styles.overviewRow}>
+              <View style={[styles.overviewDot, { backgroundColor: Colors.income }]} />
+              <Text style={styles.overviewLabel}>الدخل</Text>
+            </View>
+            <Text style={[styles.overviewValue, { color: Colors.income }]}>
+              {formatCurrency(totalIncome)}
+            </Text>
+            <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
+          </View>
+          <View style={styles.overviewCard}>
+            <View style={styles.overviewRow}>
+              <View style={[styles.overviewDot, { backgroundColor: Colors.expense }]} />
+              <Text style={styles.overviewLabel}>المصاريف</Text>
+            </View>
+            <Text style={[styles.overviewValue, { color: Colors.expense }]}>
+              {formatCurrency(totalExpense)}
+            </Text>
+            <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
+          </View>
+        </View>
+
+        {totalAll > 0 && (
+          <View style={styles.ratioBar}>
+            <View style={[styles.ratioIncome, { flex: totalIncome || 0.01 }]} />
+            <View style={[styles.ratioExpense, { flex: totalExpense || 0.01 }]} />
+          </View>
+        )}
+
+        {dailyData.length > 0 && monthlyTransactions.length > 0 && (
+          <View style={styles.barChartSection}>
+            <Text style={styles.sectionTitle}>الإنفاق اليومي</Text>
+            <View style={styles.barChartLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: Colors.income }]} />
+                <Text style={styles.legendText}>دخل</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: Colors.expense }]} />
+                <Text style={styles.legendText}>مصاريف</Text>
+              </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <Svg width={Math.max(BAR_CHART_WIDTH, dailyData.length * (barWidth * 2 + 8) + 20)} height={BAR_CHART_HEIGHT + 30}>
+                {dailyData.map((d, i) => {
+                  const x = i * (barWidth * 2 + 8) + 10;
+                  const incomeH = (d.income / maxDailyValue) * BAR_CHART_HEIGHT;
+                  const expenseH = (d.expense / maxDailyValue) * BAR_CHART_HEIGHT;
+                  return (
+                    <React.Fragment key={d.day}>
+                      <Rect
+                        x={x}
+                        y={BAR_CHART_HEIGHT - incomeH}
+                        width={barWidth}
+                        height={Math.max(incomeH, 2)}
+                        rx={3}
+                        fill={Colors.income}
+                        opacity={0.8}
+                      />
+                      <Rect
+                        x={x + barWidth + 2}
+                        y={BAR_CHART_HEIGHT - expenseH}
+                        width={barWidth}
+                        height={Math.max(expenseH, 2)}
+                        rx={3}
+                        fill={Colors.expense}
+                        opacity={0.8}
+                      />
+                      <SvgText
+                        x={x + barWidth}
+                        y={BAR_CHART_HEIGHT + 18}
+                        fontSize={10}
+                        fill={Colors.textTertiary}
+                        textAnchor="middle"
+                      >
+                        {d.day}
+                      </SvgText>
+                    </React.Fragment>
+                  );
+                })}
+              </Svg>
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.toggleRow}>
           <Pressable
@@ -133,7 +266,7 @@ export default function StatsScreen() {
                     stroke={Colors.borderLight}
                     strokeWidth={STROKE_WIDTH}
                   />
-                  {categoryStats.map((stat, index) => {
+                  {categoryStats.map((stat) => {
                     const segmentLength = (stat.percentage / 100) * CIRCUMFERENCE;
                     const offset = accumulatedOffset;
                     accumulatedOffset += segmentLength;
@@ -156,7 +289,7 @@ export default function StatsScreen() {
                 </Svg>
                 <View style={styles.chartCenter}>
                   <Text style={styles.chartTotal}>{formatCurrency(totalAmount)}</Text>
-                  <Text style={styles.chartLabel}>ج.م</Text>
+                  <Text style={styles.chartLabel}>{currencySymbol}</Text>
                 </View>
               </View>
             </View>
@@ -171,7 +304,7 @@ export default function StatsScreen() {
                   <View style={styles.categoryInfo}>
                     <View style={styles.categoryHeader}>
                       <Text style={styles.categoryName}>{stat.category.nameAr}</Text>
-                      <Text style={styles.categoryAmount}>{formatCurrency(stat.total)} ج.م</Text>
+                      <Text style={styles.categoryAmount}>{formatCurrency(stat.total)} {currencySymbol}</Text>
                     </View>
                     <View style={styles.categoryBarBg}>
                       <View
@@ -188,27 +321,6 @@ export default function StatsScreen() {
             </View>
           </>
         )}
-
-        <View style={styles.summaryCards}>
-          <View style={[styles.summaryCard, { borderLeftColor: Colors.income }]}>
-            <Text style={styles.summaryCardLabel}>إجمالي الدخل</Text>
-            <Text style={[styles.summaryCardValue, { color: Colors.income }]}>
-              {formatCurrency(totalIncome)} ج.م
-            </Text>
-            <Text style={styles.summaryCardCount}>
-              {monthlyTransactions.filter(t => t.type === 'income').length} معاملة
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, { borderLeftColor: Colors.expense }]}>
-            <Text style={styles.summaryCardLabel}>إجمالي المصاريف</Text>
-            <Text style={[styles.summaryCardValue, { color: Colors.expense }]}>
-              {formatCurrency(totalExpense)} ج.م
-            </Text>
-            <Text style={styles.summaryCardCount}>
-              {monthlyTransactions.filter(t => t.type === 'expense').length} معاملة
-            </Text>
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
@@ -223,6 +335,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 24,
@@ -233,10 +350,105 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
   },
-  toggleRow: {
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  walletBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  overviewCards: {
     flexDirection: 'row',
     marginHorizontal: 20,
     marginTop: 12,
+    gap: 12,
+  },
+  overviewCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  overviewDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  overviewLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  overviewValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 20,
+  },
+  overviewCurrency: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: Colors.textTertiary,
+  },
+  ratioBar: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 12,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: Colors.surfaceAlt,
+  },
+  ratioIncome: {
+    backgroundColor: Colors.income,
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 4,
+  },
+  ratioExpense: {
+    backgroundColor: Colors.expense,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  barChartSection: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+  },
+  barChartLegend: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 20,
     backgroundColor: Colors.surfaceAlt,
     borderRadius: 12,
     padding: 4,
@@ -280,7 +492,7 @@ const styles = StyleSheet.create({
   },
   chartSection: {
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 20,
     marginBottom: 8,
   },
   chartContainer: {
@@ -363,33 +575,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'right',
-  },
-  summaryCards: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 20,
-    gap: 12,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderLeftWidth: 4,
-    gap: 4,
-  },
-  summaryCardLabel: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
-  summaryCardValue: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-  },
-  summaryCardCount: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: Colors.textTertiary,
   },
 });

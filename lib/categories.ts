@@ -46,3 +46,17 @@ export function formatDate(dateStr: string): string {
   const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
+
+export const WALLET_ICONS = [
+  { icon: 'account-balance-wallet', label: 'محفظة' },
+  { icon: 'account-balance', label: 'بنك' },
+  { icon: 'savings', label: 'ادخار' },
+  { icon: 'credit-card', label: 'بطاقة' },
+  { icon: 'attach-money', label: 'نقد' },
+  { icon: 'business-center', label: 'عمل' },
+];
+
+export const WALLET_COLORS = [
+  '#0D7C66', '#2196F3', '#FF6B6B', '#FF9800', '#7C4DFF',
+  '#E91E63', '#4ECDC4', '#8D6E63', '#4CAF50', '#45B7D1',
+];

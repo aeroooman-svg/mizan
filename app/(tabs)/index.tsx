@@ -7,7 +7,7 @@ import {
   Pressable,
   Platform,
   RefreshControl,
-  Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -18,18 +18,49 @@ import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById, formatDate } from '@/lib/categories';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { transactions, totalIncome, totalExpense, balance, isLoading, refresh } = useTransactions();
+  const {
+    walletTransactions,
+    totalIncome,
+    totalExpense,
+    balance,
+    isLoading,
+    refresh,
+    wallets,
+    selectedWallet,
+    selectWallet,
+    removeWallet,
+    currencySymbol,
+  } = useTransactions();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
-  const recentTransactions = transactions.slice(0, 5);
+  const recentTransactions = walletTransactions.slice(0, 5);
 
   const handleAddPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/add-transaction');
+  };
+
+  const handleAddWallet = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/add-wallet');
+  };
+
+  const handleDeleteWallet = (id: string, name: string) => {
+    if (wallets.length <= 1) {
+      Alert.alert('تنبيه', 'لا يمكن حذف المحفظة الأخيرة');
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      'حذف المحفظة',
+      `هل تريد حذف "${name}"؟ سيتم حذف كل المعاملات المرتبطة بها.`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'حذف', style: 'destructive', onPress: () => removeWallet(id) },
+      ],
+    );
   };
 
   const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -48,10 +79,10 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         <LinearGradient
-          colors={[Colors.primary, Colors.primaryLight]}
+          colors={[selectedWallet?.color || Colors.primary, Colors.primaryLight]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 20 }]}
+          style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 16 }]}
         >
           <View style={styles.headerTop}>
             <View>
@@ -62,12 +93,12 @@ export default function HomeScreen() {
               onPress={handleAddPress}
               style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
             >
-              <Ionicons name="add" size={28} color={Colors.primary} />
+              <Ionicons name="add" size={28} color={selectedWallet?.color || Colors.primary} />
             </Pressable>
           </View>
 
           <Text style={styles.balanceAmount}>
-            {balance >= 0 ? '' : '-'}{formatCurrency(Math.abs(balance))} <Text style={styles.currency}>ج.م</Text>
+            {balance >= 0 ? '' : '-'}{formatCurrency(Math.abs(balance))} <Text style={styles.currency}>{currencySymbol}</Text>
           </Text>
 
           <View style={styles.summaryRow}>
@@ -94,6 +125,44 @@ export default function HomeScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        <View style={styles.walletsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>المحافظ</Text>
+            <Pressable onPress={handleAddWallet} hitSlop={8}>
+              <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
+            </Pressable>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletsScroll}>
+            {wallets.map(wallet => {
+              const isSelected = selectedWallet?.id === wallet.id;
+              return (
+                <Pressable
+                  key={wallet.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    selectWallet(wallet.id);
+                  }}
+                  onLongPress={() => handleDeleteWallet(wallet.id, wallet.name)}
+                  style={[
+                    styles.walletCard,
+                    isSelected && { borderColor: wallet.color, borderWidth: 2 },
+                  ]}
+                >
+                  <View style={[styles.walletIcon, { backgroundColor: wallet.color + '18' }]}>
+                    <MaterialIcons name={wallet.icon as any} size={22} color={wallet.color} />
+                  </View>
+                  <Text style={[styles.walletName, isSelected && { color: wallet.color, fontFamily: 'Cairo_700Bold' as const }]} numberOfLines={1}>
+                    {wallet.name}
+                  </Text>
+                  <Text style={styles.walletCurrency}>
+                    {wallet.currency}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {totalIncome > 0 && (
           <View style={styles.progressSection}>
@@ -125,7 +194,7 @@ export default function HomeScreen() {
         <View style={styles.recentSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>آخر المعاملات</Text>
-            {transactions.length > 5 && (
+            {walletTransactions.length > 5 && (
               <Pressable onPress={() => router.push('/(tabs)/transactions')}>
                 <Text style={styles.seeAll}>عرض الكل</Text>
               </Pressable>
@@ -157,7 +226,7 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.transactionRight}>
                     <Text style={[styles.transactionAmount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
-                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
                     </Text>
                     <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
                   </View>
@@ -180,7 +249,7 @@ export default function HomeScreen() {
         ]}
       >
         <LinearGradient
-          colors={[Colors.primary, Colors.primaryDark]}
+          colors={[selectedWallet?.color || Colors.primary, Colors.primaryDark]}
           style={styles.fabGradient}
         >
           <Ionicons name="add" size={30} color="#fff" />
@@ -205,7 +274,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   greeting: {
     fontFamily: 'Cairo_400Regular',
@@ -229,13 +298,13 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 36,
+    fontSize: 34,
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   currency: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Cairo_400Regular',
   },
   summaryRow: {
@@ -275,9 +344,47 @@ const styles = StyleSheet.create({
     height: 36,
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
+  walletsSection: {
+    marginTop: 16,
+    paddingLeft: 20,
+  },
+  walletsScroll: {
+    paddingRight: 20,
+    gap: 10,
+    paddingVertical: 4,
+  },
+  walletCard: {
+    width: 110,
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletName: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  walletCurrency: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
   progressSection: {
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
     backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
@@ -312,7 +419,7 @@ const styles = StyleSheet.create({
   },
   recentSection: {
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -384,7 +491,7 @@ const styles = StyleSheet.create({
   },
   transactionAmount: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 14,
   },
   transactionDate: {
     fontFamily: 'Cairo_400Regular',

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -17,14 +17,14 @@ import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { expenseCategories, incomeCategories, Category } from '@/lib/categories';
+import { expenseCategories, incomeCategories } from '@/lib/categories';
 import { Transaction } from '@/lib/storage';
 
 type TransactionType = 'expense' | 'income';
 
 export default function AddTransactionScreen() {
   const insets = useSafeAreaInsets();
-  const { addTransaction } = useTransactions();
+  const { addTransaction, selectedWallet, currencySymbol } = useTransactions();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -49,6 +49,10 @@ export default function AddTransactionScreen() {
       Alert.alert('خطأ', 'اختر الفئة');
       return;
     }
+    if (!selectedWallet) {
+      Alert.alert('خطأ', 'لا توجد محفظة محددة');
+      return;
+    }
 
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -61,6 +65,7 @@ export default function AddTransactionScreen() {
       description: description.trim(),
       date: new Date().toISOString(),
       createdAt: new Date().toISOString(),
+      walletId: selectedWallet.id,
     };
 
     await addTransaction(transaction);
@@ -81,6 +86,15 @@ export default function AddTransactionScreen() {
             <Ionicons name="close" size={24} color={Colors.textSecondary} />
           </Pressable>
         </View>
+
+        {selectedWallet && (
+          <View style={styles.walletBadge}>
+            <MaterialIcons name={selectedWallet.icon as any} size={16} color={selectedWallet.color} />
+            <Text style={[styles.walletBadgeText, { color: selectedWallet.color }]}>
+              {selectedWallet.name} ({currencySymbol})
+            </Text>
+          </View>
+        )}
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -116,7 +130,7 @@ export default function AddTransactionScreen() {
                 onChangeText={setAmount}
                 textAlign="center"
               />
-              <Text style={styles.amountCurrency}>ج.م</Text>
+              <Text style={styles.amountCurrency}>{currencySymbol}</Text>
             </View>
           </View>
 
@@ -196,12 +210,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   sheetTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 20,
     color: Colors.text,
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 4,
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    gap: 6,
+  },
+  walletBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
   },
   scrollContent: {
     paddingHorizontal: 20,

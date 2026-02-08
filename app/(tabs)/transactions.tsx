@@ -22,12 +22,12 @@ type FilterType = 'all' | 'income' | 'expense';
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
-  const { transactions, removeTransaction } = useTransactions();
+  const { walletTransactions, removeTransaction, currencySymbol, selectedWallet } = useTransactions();
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredTransactions = useMemo(() => {
-    let result = transactions;
+    let result = walletTransactions;
     if (filter !== 'all') {
       result = result.filter(t => t.type === filter);
     }
@@ -43,14 +43,14 @@ export default function TransactionsScreen() {
       });
     }
     return result;
-  }, [transactions, filter, searchQuery]);
+  }, [walletTransactions, filter, searchQuery]);
 
   const handleDelete = (item: Transaction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const cat = getCategoryById(item.category);
     Alert.alert(
       'حذف المعاملة',
-      `هل تريد حذف "${cat?.nameAr || item.category}" بمبلغ ${formatCurrency(item.amount)} ج.م؟`,
+      `هل تريد حذف "${cat?.nameAr || item.category}" بمبلغ ${formatCurrency(item.amount)} ${currencySymbol}؟`,
       [
         { text: 'إلغاء', style: 'cancel' },
         {
@@ -61,22 +61,6 @@ export default function TransactionsScreen() {
       ],
     );
   };
-
-  const groupedByDate = useMemo(() => {
-    const groups: { title: string; data: Transaction[] }[] = [];
-    const map = new Map<string, Transaction[]>();
-    filteredTransactions.forEach(t => {
-      const key = formatDate(t.date);
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-      map.get(key)!.push(t);
-    });
-    map.forEach((data, title) => {
-      groups.push({ title, data });
-    });
-    return groups;
-  }, [filteredTransactions]);
 
   const renderItem = ({ item }: { item: Transaction }) => {
     const cat = getCategoryById(item.category);
@@ -96,7 +80,7 @@ export default function TransactionsScreen() {
         </View>
         <View style={styles.transactionRight}>
           <Text style={[styles.transactionAmount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
-            {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+            {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
           </Text>
           <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
         </View>
@@ -107,7 +91,15 @@ export default function TransactionsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
-        <Text style={styles.headerTitle}>المعاملات</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>المعاملات</Text>
+          {selectedWallet && (
+            <View style={[styles.walletBadge, { backgroundColor: selectedWallet.color + '15' }]}>
+              <MaterialIcons name={selectedWallet.icon as any} size={14} color={selectedWallet.color} />
+              <Text style={[styles.walletBadgeText, { color: selectedWallet.color }]}>{selectedWallet.name}</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={18} color={Colors.textTertiary} />
@@ -181,11 +173,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 24,
     color: Colors.text,
-    marginBottom: 12,
+  },
+  walletBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  walletBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -264,7 +273,7 @@ const styles = StyleSheet.create({
   },
   transactionAmount: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 14,
   },
   transactionDate: {
     fontFamily: 'Cairo_400Regular',
