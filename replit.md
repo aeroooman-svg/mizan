@@ -51,6 +51,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **Bilingual Support (Feb 2026)**: Full Arabic/English i18n system via `lib/i18n.ts` and `lib/LanguageContext.tsx`. Language switching available in settings modal (accessible from language icon in home header). All screens, categories, currency names, wallet icons, and dates are fully translated. Language preference persisted in AsyncStorage.
+- **Financial Planning (Feb 2026)**: Multi-year financial planning feature (`app/financial-plan.tsx`, `lib/planStorage.ts`). Supports 1-5 year plans with monthly income/expense tracking, savings goals, progress visualization with donut chart, and monthly timeline breakdown. Plans stored in AsyncStorage.
+- **Enhanced Currency Display (Feb 2026)**: Amount input fields now show a prominent currency tag with both the currency code (e.g., "EGP") and symbol (e.g., "ج.م") for clarity.
+- **Settings Screen (Feb 2026)**: New settings modal (`app/settings.tsx`) for language switching, accessible from home screen header via language/globe icon.
 - **Multi-Currency Support**: Added support for EGP (Egyptian Pound), KWD (Kuwaiti Dinar), and USD (US Dollar). Currency symbols display dynamically based on selected wallet.
 - **Wallet Management**: Users can create multiple wallets, each with its own currency, icon, and color. Wallet selection on the home screen filters transactions per wallet. Long-press to delete a wallet. Default wallet auto-created on first launch.
 - **Improved Stats Charts**: Added daily bar chart showing income vs expenses over time. Added income/expense ratio bar. Overview cards with totals. Donut chart for category breakdown with dynamic currency display.
