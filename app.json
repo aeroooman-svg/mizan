@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Masarif",
-    "slug": "masarif",
+    "name": "Financier",
+    "slug": "financier",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "financier",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.myapp"
+      "bundleIdentifier": "com.financier.app"
     },
     "android": {
-      "package": "com.myapp",
+      "package": "com.financier.app",
       "adaptiveIcon": {
         "backgroundColor": "#1a1a2e",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
