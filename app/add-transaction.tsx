@@ -35,6 +35,11 @@ export default function AddTransactionScreen() {
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const now = new Date();
+  const [selectedHour, setSelectedHour] = useState(now.getHours() % 12 || 12);
+  const [selectedMinute, setSelectedMinute] = useState(now.getMinutes());
+  const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>(now.getHours() >= 12 ? 'PM' : 'AM');
+
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
 
   const handleTypeSwitch = (newType: TransactionType) => {
@@ -60,13 +65,19 @@ export default function AddTransactionScreen() {
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    const transactionDate = new Date();
+    let hours24 = selectedHour % 12;
+    if (selectedPeriod === 'PM') hours24 += 12;
+    if (selectedPeriod === 'AM' && selectedHour === 12) hours24 = 0;
+    transactionDate.setHours(hours24, selectedMinute, 0, 0);
+
     const transaction: Transaction = {
       id: Crypto.randomUUID(),
       type,
       amount: parseFloat(amount),
       category: selectedCategory,
       description: description.trim(),
-      date: new Date().toISOString(),
+      date: transactionDate.toISOString(),
       createdAt: new Date().toISOString(),
       walletId: selectedWallet.id,
     };
@@ -183,6 +194,57 @@ export default function AddTransactionScreen() {
               numberOfLines={2}
               textAlignVertical="top"
             />
+          </View>
+
+          <View style={styles.timeSection}>
+            <Text style={styles.label}>{t.time}</Text>
+            <View style={styles.timeRow}>
+              <View style={styles.timePicker}>
+                <Pressable
+                  onPress={() => setSelectedHour(h => h >= 12 ? 1 : h + 1)}
+                  style={styles.timeArrow}
+                >
+                  <Ionicons name="chevron-up" size={18} color={Colors.textSecondary} />
+                </Pressable>
+                <Text style={styles.timeValue}>{selectedHour}</Text>
+                <Pressable
+                  onPress={() => setSelectedHour(h => h <= 1 ? 12 : h - 1)}
+                  style={styles.timeArrow}
+                >
+                  <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
+                </Pressable>
+              </View>
+
+              <Text style={styles.timeSeparator}>:</Text>
+
+              <View style={styles.timePicker}>
+                <Pressable
+                  onPress={() => setSelectedMinute(m => m >= 59 ? 0 : m + 1)}
+                  style={styles.timeArrow}
+                >
+                  <Ionicons name="chevron-up" size={18} color={Colors.textSecondary} />
+                </Pressable>
+                <Text style={styles.timeValue}>{selectedMinute.toString().padStart(2, '0')}</Text>
+                <Pressable
+                  onPress={() => setSelectedMinute(m => m <= 0 ? 59 : m - 1)}
+                  style={styles.timeArrow}
+                >
+                  <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setSelectedPeriod(p => p === 'AM' ? 'PM' : 'AM');
+                }}
+                style={styles.periodToggle}
+              >
+                <Text style={styles.periodText}>
+                  {language === 'ar' ? (selectedPeriod === 'AM' ? 'ص' : 'م') : selectedPeriod}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <Pressable
@@ -354,7 +416,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   descSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   descInput: {
     backgroundColor: Colors.surfaceAlt,
@@ -364,6 +426,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
     minHeight: 60,
+  },
+  timeSection: {
+    marginBottom: 24,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  timePicker: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  timeArrow: {
+    padding: 4,
+  },
+  timeValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 28,
+    color: Colors.text,
+    minWidth: 44,
+    textAlign: 'center',
+  },
+  timeSeparator: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 28,
+    color: Colors.textSecondary,
+    marginTop: -4,
+  },
+  periodToggle: {
+    backgroundColor: Colors.primary + '18',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginLeft: 4,
+  },
+  periodText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: Colors.primary,
   },
   saveButton: {
     flexDirection: 'row',

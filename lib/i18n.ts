@@ -52,6 +52,7 @@ const translations = {
     details: 'التفاصيل',
     tryAnotherSearch: 'جرب البحث بكلمة أخرى',
     addFromHome: 'أضف معاملة جديدة من الشاشة الرئيسية',
+    time: 'الوقت',
     financialPlan: 'الخطة المالية',
     planDuration: 'مدة الخطة',
     years: 'سنوات',
@@ -157,6 +158,7 @@ const translations = {
     details: 'Details',
     tryAnotherSearch: 'Try a different search',
     addFromHome: 'Add a new transaction from the home screen',
+    time: 'Time',
     financialPlan: 'Financial Plan',
     planDuration: 'Plan Duration',
     years: 'years',
@@ -272,5 +274,10 @@ export function getCurrencyName(code: string, lang: Language): string {
 export function formatDateLocalized(dateStr: string, lang: Language): string {
   const date = new Date(dateStr);
   const t = translations[lang];
-  return `${date.getDate()} ${t.months[date.getMonth()]} ${date.getFullYear()}`;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const period = lang === 'ar' ? (hours >= 12 ? 'م' : 'ص') : (hours >= 12 ? 'PM' : 'AM');
+  const h12 = hours % 12 || 12;
+  const mm = minutes.toString().padStart(2, '0');
+  return `${date.getDate()} ${t.months[date.getMonth()]} ${date.getFullYear()} · ${h12}:${mm} ${period}`;
 }
