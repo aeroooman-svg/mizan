@@ -67,6 +67,8 @@ export default function HomeScreen() {
   };
 
   const now = new Date();
+  const dayName = t.days[now.getDay()];
+  const currentDay = now.getDate();
   const currentMonth = t.months[now.getMonth()];
   const currentYear = now.getFullYear();
 
@@ -88,7 +90,7 @@ export default function HomeScreen() {
         >
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>{currentMonth} {currentYear}</Text>
+              <Text style={styles.greeting}>{dayName}، {currentDay} {currentMonth} {currentYear}</Text>
               <Text style={styles.headerTitle}>{t.currentBalance}</Text>
             </View>
             <View style={styles.headerActions}>
@@ -139,9 +141,6 @@ export default function HomeScreen() {
         <View style={styles.walletsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t.wallets}</Text>
-            <Pressable onPress={handleAddWallet} hitSlop={8}>
-              <Ionicons name="add-circle-outline" size={22} color={Colors.primary} />
-            </Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletsScroll}>
             {wallets.map(wallet => {
@@ -171,24 +170,17 @@ export default function HomeScreen() {
                 </Pressable>
               );
             })}
+            <Pressable
+              onPress={handleAddWallet}
+              style={styles.addWalletCard}
+            >
+              <View style={styles.addWalletIconWrap}>
+                <Ionicons name="add" size={28} color={Colors.primary} />
+              </View>
+              <Text style={styles.addWalletText}>{t.newWallet}</Text>
+            </Pressable>
           </ScrollView>
         </View>
-
-        <Pressable
-          onPress={() => router.push('/financial-plan')}
-          style={({ pressed }) => [styles.planButton, { opacity: pressed ? 0.9 : 1 }]}
-        >
-          <LinearGradient
-            colors={[Colors.accent, Colors.accentLight]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.planButtonGradient}
-          >
-            <MaterialIcons name="flag" size={22} color="#fff" />
-            <Text style={styles.planButtonText}>{t.financialPlan}</Text>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
-          </LinearGradient>
-        </Pressable>
 
         {totalIncome > 0 && (
           <View style={styles.progressSection}>
@@ -419,24 +411,32 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textTertiary,
   },
-  planButton: {
-    marginHorizontal: 20,
-    marginTop: 14,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  planButtonGradient: {
-    flexDirection: 'row',
+  addWalletCard: {
+    width: 110,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
     paddingVertical: 14,
-    gap: 8,
+    paddingHorizontal: 8,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: Colors.primary + '30',
+    borderStyle: 'dashed',
   },
-  planButtonText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: '#fff',
-    flex: 1,
+  addWalletIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addWalletText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: Colors.primary,
+    textAlign: 'center',
   },
   progressSection: {
     marginHorizontal: 20,

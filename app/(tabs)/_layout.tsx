@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, useColorScheme, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import Colors from "@/constants/colors";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -23,6 +23,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="stats">
         <Icon sf={{ default: "chart.pie", selected: "chart.pie.fill" }} />
         <Label>{t.stats}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="financial-plan">
+        <Icon sf={{ default: "flag", selected: "flag.fill" }} />
+        <Label>{t.financialPlan}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -89,6 +93,15 @@ function ClassicTabLayout() {
           title: t.stats,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pie-chart" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="financial-plan"
+        options={{
+          title: t.financialPlan,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="flag" size={size} color={color} />
           ),
         }}
       />

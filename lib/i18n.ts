@@ -104,6 +104,7 @@ const translations = {
     kwd: 'دينار كويتي',
     usd: 'دولار أمريكي',
     months: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+    days: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
   },
   en: {
     home: 'Home',
@@ -208,6 +209,7 @@ const translations = {
     kwd: 'Kuwaiti Dinar',
     usd: 'US Dollar',
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   },
 } as const;
 

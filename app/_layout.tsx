@@ -37,16 +37,6 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
-        name="financial-plan"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.9],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen
         name="settings"
         options={{
           presentation: "formSheet",

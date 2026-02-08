@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
@@ -437,11 +436,8 @@ export default function FinancialPlanScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 67 : 0)) + 16 }]}>
           <Text style={styles.sheetTitle}>{t.financialPlan}</Text>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Ionicons name="close" size={24} color={Colors.textSecondary} />
-          </Pressable>
         </View>
 
         {showForm ? renderForm() : renderPlanView()}
