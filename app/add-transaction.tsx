@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -21,6 +21,7 @@ import { expenseCategories, incomeCategories } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
 import { getCategoryName } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
+import { loadSounds, playExpenseSound, playIncomeSound } from '@/lib/sounds';
 
 type TransactionType = 'expense' | 'income';
 
@@ -39,6 +40,10 @@ export default function AddTransactionScreen() {
   const [selectedHour, setSelectedHour] = useState(now.getHours() % 12 || 12);
   const [selectedMinute, setSelectedMinute] = useState(now.getMinutes());
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>(now.getHours() >= 12 ? 'PM' : 'AM');
+
+  useEffect(() => {
+    loadSounds();
+  }, []);
 
   const categories = type === 'expense' ? expenseCategories : incomeCategories;
 
@@ -64,6 +69,12 @@ export default function AddTransactionScreen() {
 
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    if (type === 'expense') {
+      playExpenseSound();
+    } else {
+      playIncomeSound();
+    }
 
     const transactionDate = new Date();
     let hours24 = selectedHour % 12;
