@@ -22,6 +22,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { getCategoryName } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
 import { loadSounds, playExpenseSound, playIncomeSound } from '@/lib/sounds';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
 
 type TransactionType = 'expense' | 'income';
 
@@ -158,7 +159,7 @@ export default function AddTransactionScreen() {
                 placeholderTextColor={Colors.textTertiary}
                 keyboardType="decimal-pad"
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(text) => setAmount(normalizeAmountInput(text))}
                 textAlign="right"
               />
             </View>

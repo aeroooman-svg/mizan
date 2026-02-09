@@ -18,6 +18,7 @@ import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { formatCurrency } from '@/lib/categories';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import { FinancialPlan, getFinancialPlan, saveFinancialPlan, deleteFinancialPlan } from '@/lib/planStorage';
 import Svg, { Circle, Rect } from 'react-native-svg';
 
@@ -168,7 +169,7 @@ export default function FinancialPlanScreen() {
               placeholderTextColor={Colors.textTertiary}
               keyboardType="decimal-pad"
               value={monthlyIncome}
-              onChangeText={setMonthlyIncome}
+              onChangeText={(text) => setMonthlyIncome(normalizeAmountInput(text))}
               textAlign="right"
             />
           </View>
@@ -186,7 +187,7 @@ export default function FinancialPlanScreen() {
               placeholderTextColor={Colors.textTertiary}
               keyboardType="decimal-pad"
               value={monthlyExpense}
-              onChangeText={setMonthlyExpense}
+              onChangeText={(text) => setMonthlyExpense(normalizeAmountInput(text))}
               textAlign="right"
             />
           </View>
@@ -204,7 +205,7 @@ export default function FinancialPlanScreen() {
               placeholderTextColor={Colors.textTertiary}
               keyboardType="decimal-pad"
               value={savingsGoal}
-              onChangeText={setSavingsGoal}
+              onChangeText={(text) => setSavingsGoal(normalizeAmountInput(text))}
               textAlign="right"
             />
           </View>
