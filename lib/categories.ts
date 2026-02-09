@@ -34,8 +34,9 @@ export function getCategoryById(id: string): Category | undefined {
   return [...expenseCategories, ...incomeCategories].find(c => c.id === id);
 }
 
-export function formatCurrency(amount: number): string {
-  return amount.toLocaleString('ar-EG', {
+export function formatCurrency(amount: number | null | undefined): string {
+  const val = amount ?? 0;
+  return val.toLocaleString('ar-EG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });

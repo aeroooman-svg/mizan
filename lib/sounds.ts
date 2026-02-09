@@ -1,39 +1,29 @@
-import { Audio } from 'expo-av';
-import { Sound } from 'expo-av/build/Audio';
+import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 
-let expenseSound: Sound | null = null;
-let incomeSound: Sound | null = null;
-let loaded = false;
+const expenseSource = require('@/assets/sounds/expense.wav');
+const incomeSource = require('@/assets/sounds/income.wav');
 
-export async function loadSounds(): Promise<void> {
-  if (loaded) return;
+let expensePlayer: AudioPlayer | null = null;
+let incomePlayer: AudioPlayer | null = null;
+
+export function loadSounds(): void {
   try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: true,
-    });
-
-    const { sound: es } = await Audio.Sound.createAsync(
-      require('@/assets/sounds/expense.wav')
-    );
-    expenseSound = es;
-
-    const { sound: is } = await Audio.Sound.createAsync(
-      require('@/assets/sounds/income.wav')
-    );
-    incomeSound = is;
-
-    loaded = true;
+    if (!expensePlayer) {
+      expensePlayer = createAudioPlayer(expenseSource);
+    }
+    if (!incomePlayer) {
+      incomePlayer = createAudioPlayer(incomeSource);
+    }
   } catch (e) {
   }
 }
 
 export async function playExpenseSound(): Promise<void> {
   try {
-    if (!expenseSound) await loadSounds();
-    if (expenseSound) {
-      await expenseSound.setPositionAsync(0);
-      await expenseSound.playAsync();
+    if (!expensePlayer) loadSounds();
+    if (expensePlayer) {
+      expensePlayer.seekTo(0);
+      expensePlayer.play();
     }
   } catch (e) {
   }
@@ -41,26 +31,25 @@ export async function playExpenseSound(): Promise<void> {
 
 export async function playIncomeSound(): Promise<void> {
   try {
-    if (!incomeSound) await loadSounds();
-    if (incomeSound) {
-      await incomeSound.setPositionAsync(0);
-      await incomeSound.playAsync();
+    if (!incomePlayer) loadSounds();
+    if (incomePlayer) {
+      incomePlayer.seekTo(0);
+      incomePlayer.play();
     }
   } catch (e) {
   }
 }
 
-export async function unloadSounds(): Promise<void> {
+export function unloadSounds(): void {
   try {
-    if (expenseSound) {
-      await expenseSound.unloadAsync();
-      expenseSound = null;
+    if (expensePlayer) {
+      expensePlayer.release();
+      expensePlayer = null;
     }
-    if (incomeSound) {
-      await incomeSound.unloadAsync();
-      incomeSound = null;
+    if (incomePlayer) {
+      incomePlayer.release();
+      incomePlayer = null;
     }
-    loaded = false;
   } catch (e) {
   }
 }
