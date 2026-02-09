@@ -9,7 +9,6 @@ function createWavBuffer(samples, sampleRate = 44100) {
   const dataSize = samples.length * (bitsPerSample / 8);
   const headerSize = 44;
   const buffer = Buffer.alloc(headerSize + dataSize);
-
   buffer.write('RIFF', 0);
   buffer.writeUInt32LE(36 + dataSize, 4);
   buffer.write('WAVE', 8);
@@ -23,7 +22,6 @@ function createWavBuffer(samples, sampleRate = 44100) {
   buffer.writeUInt16LE(bitsPerSample, 34);
   buffer.write('data', 36);
   buffer.writeUInt32LE(dataSize, 40);
-
   for (let i = 0; i < samples.length; i++) {
     const val = Math.max(-1, Math.min(1, samples[i]));
     buffer.writeInt16LE(Math.round(val * 32767), headerSize + i * 2);
@@ -31,64 +29,77 @@ function createWavBuffer(samples, sampleRate = 44100) {
   return buffer;
 }
 
+function noise() {
+  return Math.random() * 2 - 1;
+}
+
 function generateIncomeSound(sampleRate = 44100) {
-  const duration = 0.75;
+  const duration = 0.65;
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float64Array(totalSamples);
-
-  const coins = [
-    { start: 0.0, freq: 2637, dur: 0.12, vol: 0.25 },
-    { start: 0.03, freq: 3520, dur: 0.10, vol: 0.15 },
-    { start: 0.06, freq: 4186, dur: 0.08, vol: 0.10 },
-  ];
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
     let s = 0;
 
-    for (const c of coins) {
-      if (t >= c.start && t < c.start + c.dur) {
-        const ct = t - c.start;
-        const env = Math.exp(-ct * 35) * c.vol;
-        s += Math.sin(2 * Math.PI * c.freq * ct) * env;
-        s += Math.sin(2 * Math.PI * c.freq * 1.5 * ct) * env * 0.3;
-      }
+    // Part 1: Mechanical click/lever (0 - 0.04s)
+    if (t < 0.04) {
+      const clickEnv = Math.exp(-t * 150);
+      s += noise() * clickEnv * 0.4;
+      s += Math.sin(2 * Math.PI * 1800 * t) * clickEnv * 0.3;
     }
 
-    const chimeNotes = [
-      { freq: 1319, start: 0.10, dur: 0.18 },
-      { freq: 1568, start: 0.18, dur: 0.18 },
-      { freq: 1976, start: 0.26, dur: 0.20 },
-      { freq: 2637, start: 0.34, dur: 0.35 },
-    ];
-
-    for (const note of chimeNotes) {
-      if (t >= note.start && t < note.start + note.dur) {
-        const nt = t - note.start;
-        const attack = Math.min(nt / 0.008, 1);
-        const sustain = Math.exp(-nt * 5);
-        const env = attack * sustain * 0.35;
-        s += Math.sin(2 * Math.PI * note.freq * nt) * env;
-        s += Math.sin(2 * Math.PI * note.freq * 2 * nt) * env * 0.15;
-        s += Math.sin(2 * Math.PI * note.freq * 3 * nt) * env * 0.05;
-      }
+    // Part 2: Drawer slide noise burst (0.03 - 0.12s)
+    if (t >= 0.03 && t < 0.12) {
+      const dt = t - 0.03;
+      const slideEnv = Math.sin(Math.PI * dt / 0.09) * 0.2;
+      const filtered = noise() * slideEnv;
+      s += filtered * 0.5;
+      s += Math.sin(2 * Math.PI * 400 * dt) * slideEnv * 0.3;
     }
 
-    const sparkleFreqs = [5274, 6645, 7902];
-    for (let si = 0; si < sparkleFreqs.length; si++) {
-      const sStart = 0.35 + si * 0.04;
-      if (t >= sStart && t < sStart + 0.08) {
-        const st = t - sStart;
-        const env = Math.exp(-st * 50) * 0.06;
-        s += Math.sin(2 * Math.PI * sparkleFreqs[si] * st) * env;
-      }
+    // Part 3: Metal bell ring — the iconic "ching" (0.08 - 0.60s)
+    if (t >= 0.08) {
+      const bt = t - 0.08;
+      const bellAttack = Math.min(bt / 0.003, 1);
+      const bellDecay = Math.exp(-bt * 6);
+      const bellEnv = bellAttack * bellDecay * 0.55;
+
+      // Main bell tone with inharmonic partials (like a real bell)
+      s += Math.sin(2 * Math.PI * 2093 * bt) * bellEnv;                    // C7
+      s += Math.sin(2 * Math.PI * 2093 * 2.76 * bt) * bellEnv * 0.28;      // inharmonic partial
+      s += Math.sin(2 * Math.PI * 2093 * 5.4 * bt) * bellEnv * 0.12;       // high partial
+      s += Math.sin(2 * Math.PI * 2093 * 0.5 * bt) * bellEnv * 0.2;        // sub partial
+
+      // Slight vibrato on the bell for realism
+      const vibrato = Math.sin(2 * Math.PI * 6 * bt) * 0.002;
+      s += Math.sin(2 * Math.PI * 2093 * (1 + vibrato) * bt) * bellEnv * 0.15;
     }
 
-    if (t >= 0.34 && t < 0.70) {
-      const rt = t - 0.34;
-      const rEnv = Math.exp(-rt * 4) * 0.08;
-      s += Math.sin(2 * Math.PI * 2637 * rt + Math.sin(2 * Math.PI * 5 * rt) * 0.3) * rEnv;
+    // Part 4: Second bell strike "ka-CHING" (0.14 - 0.60s)
+    if (t >= 0.14) {
+      const bt2 = t - 0.14;
+      const bell2Attack = Math.min(bt2 / 0.002, 1);
+      const bell2Decay = Math.exp(-bt2 * 4.5);
+      const bell2Env = bell2Attack * bell2Decay * 0.6;
+
+      s += Math.sin(2 * Math.PI * 3136 * bt2) * bell2Env;                   // G7
+      s += Math.sin(2 * Math.PI * 3136 * 2.76 * bt2) * bell2Env * 0.22;
+      s += Math.sin(2 * Math.PI * 3136 * 5.4 * bt2) * bell2Env * 0.08;
+      s += Math.sin(2 * Math.PI * 3136 * 0.5 * bt2) * bell2Env * 0.15;
     }
+
+    // Part 5: Metallic shimmer tail (0.18 - 0.55s)
+    if (t >= 0.18 && t < 0.55) {
+      const st = t - 0.18;
+      const shimmerEnv = Math.exp(-st * 8) * 0.06;
+      s += Math.sin(2 * Math.PI * 5274 * st + Math.sin(2 * Math.PI * 11 * st) * 2) * shimmerEnv;
+      s += Math.sin(2 * Math.PI * 6645 * st) * shimmerEnv * 0.5;
+    }
+
+    // Soft limiter
+    if (s > 0.85) s = 0.85 + (s - 0.85) * 0.3;
+    if (s < -0.85) s = -0.85 + (s + 0.85) * 0.3;
 
     samples[i] = s;
   }
@@ -99,9 +110,7 @@ function generateIncomeSound(sampleRate = 44100) {
 const sampleRate = 44100;
 const incomeSamples = generateIncomeSound(sampleRate);
 const incomeBuffer = createWavBuffer(Array.from(incomeSamples), sampleRate);
-
 const outDir = path.join(__dirname, '..', 'assets', 'sounds');
 fs.writeFileSync(path.join(outDir, 'income.wav'), incomeBuffer);
-
 console.log('Income sound regenerated!');
 console.log(`  income.wav: ${incomeBuffer.length} bytes`);
