@@ -31,76 +31,77 @@ function createWavBuffer(samples, sampleRate = 44100) {
   return buffer;
 }
 
-function generateExpenseSound(sampleRate = 44100) {
-  const duration = 0.35;
-  const totalSamples = Math.floor(sampleRate * duration);
-  const samples = new Float64Array(totalSamples);
-
-  for (let i = 0; i < totalSamples; i++) {
-    const t = i / sampleRate;
-    const envelope = Math.exp(-t * 12) * 0.7;
-    const freq1 = 800 - t * 1200;
-    const freq2 = 600 - t * 800;
-    const s = Math.sin(2 * Math.PI * freq1 * t) * 0.5 +
-              Math.sin(2 * Math.PI * freq2 * t) * 0.3 +
-              Math.sin(2 * Math.PI * 200 * t) * 0.2;
-    samples[i] = s * envelope;
-  }
-
-  const clickSamples = Math.floor(sampleRate * 0.008);
-  for (let i = 0; i < clickSamples && i < totalSamples; i++) {
-    const t = i / sampleRate;
-    samples[i] += Math.sin(2 * Math.PI * 3000 * t) * Math.exp(-t * 500) * 0.3;
-  }
-
-  return samples;
-}
-
 function generateIncomeSound(sampleRate = 44100) {
-  const duration = 0.5;
+  const duration = 0.75;
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float64Array(totalSamples);
 
-  const notes = [
-    { freq: 1047, start: 0, dur: 0.15 },
-    { freq: 1319, start: 0.08, dur: 0.15 },
-    { freq: 1568, start: 0.16, dur: 0.25 },
+  const coins = [
+    { start: 0.0, freq: 2637, dur: 0.12, vol: 0.25 },
+    { start: 0.03, freq: 3520, dur: 0.10, vol: 0.15 },
+    { start: 0.06, freq: 4186, dur: 0.08, vol: 0.10 },
   ];
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
     let s = 0;
 
-    for (const note of notes) {
-      if (t >= note.start && t < note.start + note.dur) {
-        const nt = t - note.start;
-        const attack = Math.min(nt / 0.01, 1);
-        const decay = Math.exp(-(nt - 0.01) * 8);
-        const env = attack * decay * 0.5;
-        s += Math.sin(2 * Math.PI * note.freq * nt) * env * 0.6;
-        s += Math.sin(2 * Math.PI * note.freq * 2 * nt) * env * 0.2;
-        s += Math.sin(2 * Math.PI * note.freq * 3 * nt) * env * 0.1;
+    for (const c of coins) {
+      if (t >= c.start && t < c.start + c.dur) {
+        const ct = t - c.start;
+        const env = Math.exp(-ct * 35) * c.vol;
+        s += Math.sin(2 * Math.PI * c.freq * ct) * env;
+        s += Math.sin(2 * Math.PI * c.freq * 1.5 * ct) * env * 0.3;
       }
     }
 
-    const shimmer = Math.sin(2 * Math.PI * 4000 * t) * Math.exp(-t * 20) * 0.08;
-    samples[i] = s + shimmer;
+    const chimeNotes = [
+      { freq: 1319, start: 0.10, dur: 0.18 },
+      { freq: 1568, start: 0.18, dur: 0.18 },
+      { freq: 1976, start: 0.26, dur: 0.20 },
+      { freq: 2637, start: 0.34, dur: 0.35 },
+    ];
+
+    for (const note of chimeNotes) {
+      if (t >= note.start && t < note.start + note.dur) {
+        const nt = t - note.start;
+        const attack = Math.min(nt / 0.008, 1);
+        const sustain = Math.exp(-nt * 5);
+        const env = attack * sustain * 0.35;
+        s += Math.sin(2 * Math.PI * note.freq * nt) * env;
+        s += Math.sin(2 * Math.PI * note.freq * 2 * nt) * env * 0.15;
+        s += Math.sin(2 * Math.PI * note.freq * 3 * nt) * env * 0.05;
+      }
+    }
+
+    const sparkleFreqs = [5274, 6645, 7902];
+    for (let si = 0; si < sparkleFreqs.length; si++) {
+      const sStart = 0.35 + si * 0.04;
+      if (t >= sStart && t < sStart + 0.08) {
+        const st = t - sStart;
+        const env = Math.exp(-st * 50) * 0.06;
+        s += Math.sin(2 * Math.PI * sparkleFreqs[si] * st) * env;
+      }
+    }
+
+    if (t >= 0.34 && t < 0.70) {
+      const rt = t - 0.34;
+      const rEnv = Math.exp(-rt * 4) * 0.08;
+      s += Math.sin(2 * Math.PI * 2637 * rt + Math.sin(2 * Math.PI * 5 * rt) * 0.3) * rEnv;
+    }
+
+    samples[i] = s;
   }
 
   return samples;
 }
 
 const sampleRate = 44100;
-const expenseSamples = generateExpenseSound(sampleRate);
 const incomeSamples = generateIncomeSound(sampleRate);
-
-const expenseBuffer = createWavBuffer(Array.from(expenseSamples), sampleRate);
 const incomeBuffer = createWavBuffer(Array.from(incomeSamples), sampleRate);
 
 const outDir = path.join(__dirname, '..', 'assets', 'sounds');
-fs.writeFileSync(path.join(outDir, 'expense.wav'), expenseBuffer);
 fs.writeFileSync(path.join(outDir, 'income.wav'), incomeBuffer);
 
-console.log('Sound files generated successfully!');
-console.log(`  expense.wav: ${expenseBuffer.length} bytes`);
+console.log('Income sound regenerated!');
 console.log(`  income.wav: ${incomeBuffer.length} bytes`);
