@@ -35,11 +35,18 @@ export function getCategoryById(id: string): Category | undefined {
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
-  const val = Number(amount) || 0;
-  return val.toLocaleString('ar-EG', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  try {
+    const val = Number(amount);
+    if (isNaN(val) || val === null || val === undefined) {
+      return '٠٫٠٠';
+    }
+    return val.toLocaleString('ar-EG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return '٠٫٠٠';
+  }
 }
 
 export function formatDate(dateStr: string): string {
