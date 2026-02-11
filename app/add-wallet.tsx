@@ -12,12 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { WALLET_ICONS, WALLET_COLORS } from '@/lib/categories';
-import { CURRENCIES, CurrencyCode } from '@/lib/storage';
+import { CURRENCIES, CurrencyCode, getCurrencyInfo } from '@/lib/storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { getWalletIconLabel, getCurrencyName } from '@/lib/i18n';
+import { FinancialPlan, saveFinancialPlan } from '@/lib/planStorage';
 
 export default function AddWalletScreen() {
   const insets = useSafeAreaInsets();
@@ -37,7 +39,24 @@ export default function AddWalletScreen() {
     }
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await addWallet(name.trim(), currency, selectedIcon, selectedColor);
+    const wallet = await addWallet(name.trim(), currency, selectedIcon, selectedColor);
+
+    const currInfo = getCurrencyInfo(currency);
+    const defaultPlan: FinancialPlan = {
+      id: Crypto.randomUUID(),
+      goalName: language === 'ar' ? 'خطة ادخار' : 'Savings Plan',
+      durationMonths: 12,
+      monthlyIncome: 0,
+      monthlyExpense: 0,
+      monthlySaving: 0,
+      savingsGoal: 0,
+      currency: currency,
+      currencySymbol: currInfo.symbol,
+      createdAt: new Date().toISOString(),
+      walletId: wallet.id,
+    };
+    await saveFinancialPlan(defaultPlan);
+
     setIsSaving(false);
     router.back();
   };

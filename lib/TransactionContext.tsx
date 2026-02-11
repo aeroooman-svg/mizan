@@ -14,6 +14,7 @@ import {
   getCurrencyInfo,
 } from './storage';
 import * as Crypto from 'expo-crypto';
+import { deleteFinancialPlan } from './planStorage';
 
 interface TransactionContextValue {
   transactions: Transaction[];
@@ -130,6 +131,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const removeWallet = useCallback(async (id: string) => {
     await deleteWalletFromStorage(id);
+    await deleteFinancialPlan(id);
     setWallets(prev => prev.filter(w => w.id !== id));
     setTransactions(prev => prev.filter(t => t.walletId !== id));
     if (selectedWalletId === id) {
@@ -137,6 +139,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       if (remaining.length > 0) {
         setSelectedWalletIdState(remaining[0].id);
         await setSelectedWalletIdStorage(remaining[0].id);
+      } else {
+        setSelectedWalletIdState(null);
       }
     }
   }, [selectedWalletId, wallets]);

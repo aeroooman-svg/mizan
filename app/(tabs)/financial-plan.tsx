@@ -37,14 +37,19 @@ export default function FinancialPlanScreen() {
   const [monthlyExpense, setMonthlyExpense] = useState('');
   const [savingsGoal, setSavingsGoal] = useState('');
 
+  const walletId = selectedWallet?.id;
+
   useEffect(() => {
     loadPlan();
-  }, []);
+  }, [walletId]);
 
   const loadPlan = async () => {
-    const saved = await getFinancialPlan();
+    setLoading(true);
+    const saved = await getFinancialPlan(walletId || undefined);
     if (saved) {
       setPlan(saved);
+    } else {
+      setPlan(null);
     }
     setLoading(false);
   };
@@ -90,7 +95,7 @@ export default function FinancialPlanScreen() {
           text: t.delete,
           style: 'destructive',
           onPress: async () => {
-            await deleteFinancialPlan();
+            await deleteFinancialPlan(walletId || '');
             setPlan(null);
             setIsEditing(false);
             setGoalName('');
