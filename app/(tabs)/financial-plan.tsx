@@ -384,6 +384,12 @@ export default function FinancialPlanScreen() {
             <Text style={[styles.summaryValue, { color: Colors.primary }]}>
               {formatCurrency(expectedTotalSavings)} {sym}
             </Text>
+            <View style={styles.actualRow}>
+              <Text style={styles.actualLabel}>{t.actualTotalSavings}</Text>
+              <Text style={[styles.actualValue, { color: actualSavings >= 0 ? Colors.income : Colors.expense }]}>
+                {formatCurrency(actualSavings)} {sym}
+              </Text>
+            </View>
           </View>
         </View>
 
