@@ -336,12 +336,24 @@ export default function FinancialPlanScreen() {
             <Text style={[styles.summaryValue, { color: Colors.income }]}>
               {formatCurrency(plan.monthlyIncome)} {sym}
             </Text>
+            <View style={styles.actualRow}>
+              <Text style={styles.actualLabel}>{t.actualIncome}</Text>
+              <Text style={[styles.actualValue, { color: Colors.income }]}>
+                {formatCurrency(totalIncome)} {sym}
+              </Text>
+            </View>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{t.monthlyExpense}</Text>
             <Text style={[styles.summaryValue, { color: Colors.expense }]}>
               {formatCurrency(plan.monthlyExpense)} {sym}
             </Text>
+            <View style={styles.actualRow}>
+              <Text style={styles.actualLabel}>{t.actualExpense}</Text>
+              <Text style={[styles.actualValue, { color: Colors.expense }]}>
+                {formatCurrency(totalExpense)} {sym}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -351,6 +363,12 @@ export default function FinancialPlanScreen() {
             <Text style={[styles.summaryValue, { color: plan.monthlySaving >= 0 ? Colors.income : Colors.expense }]}>
               {formatCurrency(plan.monthlySaving)} {sym}
             </Text>
+            <View style={styles.actualRow}>
+              <Text style={styles.actualLabel}>{t.actualSaving}</Text>
+              <Text style={[styles.actualValue, { color: actualSavings >= 0 ? Colors.income : Colors.expense }]}>
+                {formatCurrency(actualSavings)} {sym}
+              </Text>
+            </View>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{t.totalSavings}</Text>
@@ -668,6 +686,24 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 16,
+  },
+  actualRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  actualLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  actualValue: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
   },
   goalProgressSection: {
     backgroundColor: Colors.surfaceAlt,
