@@ -51,10 +51,6 @@ export default function HomeScreen() {
   };
 
   const handleDeleteWallet = (id: string, name: string) => {
-    if (wallets.length <= 1) {
-      Alert.alert(t.warning, t.cantDeleteLast);
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       t.deleteWallet,
@@ -71,6 +67,46 @@ export default function HomeScreen() {
   const currentDay = now.getDate();
   const currentMonth = t.months[now.getMonth()];
   const currentYear = now.getFullYear();
+
+  if (!isLoading && wallets.length === 0) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[Colors.primary, Colors.primaryLight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 16 }]}
+        >
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.greeting}>{dayName}، {currentDay} {currentMonth} {currentYear}</Text>
+            </View>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Ionicons name="language" size={20} color="rgba(255,255,255,0.85)" />
+            </Pressable>
+          </View>
+        </LinearGradient>
+        <View style={styles.welcomeEmpty}>
+          <MaterialIcons name="account-balance-wallet" size={64} color={Colors.primary} />
+          <Text style={styles.welcomeTitle}>{t.welcomeTitle || (language === 'ar' ? 'مرحباً بك في مصاريف' : 'Welcome to Masarif')}</Text>
+          <Text style={styles.welcomeSubtitle}>{t.welcomeSubtitle || (language === 'ar' ? 'ابدأ بإضافة محفظتك الأولى لتتبع مصاريفك' : 'Start by adding your first wallet to track expenses')}</Text>
+          <Pressable
+            onPress={handleAddWallet}
+            style={({ pressed }) => [
+              styles.welcomeButton,
+              { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
+            ]}
+          >
+            <Ionicons name="add" size={22} color="#fff" />
+            <Text style={styles.welcomeButtonText}>{t.newWallet}</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -570,5 +606,42 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+  },
+  welcomeEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  welcomeTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    color: Colors.text,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  welcomeSubtitle: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 15,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  welcomeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    gap: 8,
+    marginTop: 12,
+  },
+  welcomeButtonText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: '#fff',
   },
 });

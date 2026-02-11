@@ -37,10 +37,6 @@ interface TransactionContextValue {
 
 const TransactionContext = createContext<TransactionContextValue | null>(null);
 
-const DEFAULT_WALLETS: Omit<Wallet, 'id' | 'createdAt'>[] = [
-  { name: 'المحفظة الرئيسية', currency: 'EGP', icon: 'account-balance-wallet', color: '#0D7C66' },
-];
-
 export function TransactionProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -55,23 +51,12 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       getSelectedWalletId(),
     ]);
 
-    let finalWallets = wlts;
-    if (wlts.length === 0) {
-      const defaultWallet: Wallet = {
-        ...DEFAULT_WALLETS[0],
-        id: Crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-      };
-      await saveWalletToStorage(defaultWallet);
-      finalWallets = [defaultWallet];
-      await setSelectedWalletIdStorage(defaultWallet.id);
-      setSelectedWalletIdState(defaultWallet.id);
-    } else {
+    if (wlts.length > 0) {
       setSelectedWalletIdState(selId || wlts[0].id);
     }
 
     setTransactions(txns);
-    setWallets(finalWallets);
+    setWallets(wlts);
     setIsLoading(false);
   }, []);
 
