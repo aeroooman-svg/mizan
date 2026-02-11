@@ -35,7 +35,7 @@ export function getCategoryById(id: string): Category | undefined {
 }
 
 export function formatCurrency(amount: number | null | undefined): string {
-  const val = amount ?? 0;
+  const val = Number(amount) || 0;
   return val.toLocaleString('ar-EG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
