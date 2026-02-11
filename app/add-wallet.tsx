@@ -23,7 +23,7 @@ import { FinancialPlan, saveFinancialPlan } from '@/lib/planStorage';
 
 export default function AddWalletScreen() {
   const insets = useSafeAreaInsets();
-  const { addWallet } = useTransactions();
+  const { addWallet, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
 
   const [name, setName] = useState('');
@@ -56,6 +56,7 @@ export default function AddWalletScreen() {
       walletId: wallet.id,
     };
     await saveFinancialPlan(defaultPlan);
+    await selectWallet(wallet.id);
 
     setIsSaving(false);
     router.back();

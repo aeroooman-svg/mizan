@@ -48,6 +48,10 @@ export default function FinancialPlanScreen() {
     const saved = await getFinancialPlan(walletId || undefined);
     if (saved) {
       setPlan(saved);
+      if (saved.monthlyIncome === 0 && saved.monthlyExpense === 0 && saved.savingsGoal === 0) {
+        setGoalName(saved.goalName);
+        setDurationYears(Math.round(saved.durationMonths / 12));
+      }
     } else {
       setPlan(null);
     }
@@ -451,7 +455,8 @@ export default function FinancialPlanScreen() {
     );
   };
 
-  const showForm = !plan || isEditing;
+  const isPlanEmpty = plan && plan.monthlyIncome === 0 && plan.monthlyExpense === 0 && plan.savingsGoal === 0;
+  const showForm = !plan || isEditing || isPlanEmpty;
 
   return (
     <KeyboardAvoidingView
