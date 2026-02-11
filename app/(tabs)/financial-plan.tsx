@@ -24,7 +24,7 @@ import Svg, { Circle, Rect } from 'react-native-svg';
 
 export default function FinancialPlanScreen() {
   const insets = useSafeAreaInsets();
-  const { selectedWallet, currencySymbol, currencyCode, totalIncome, totalExpense } = useTransactions();
+  const { selectedWallet, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense } = useTransactions();
   const { t, language } = useLanguage();
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
@@ -263,7 +263,7 @@ export default function FinancialPlanScreen() {
 
     const expectedTotalSavings = plan.monthlySaving * totalMonths;
     const currentSavings = plan.monthlySaving * monthsElapsed;
-    const actualSavings = (totalIncome - totalExpense);
+    const actualSavings = (allTimeIncome - allTimeExpense);
 
     const progressPercent = plan.savingsGoal > 0
       ? Math.min(100, Math.max(0, (actualSavings / plan.savingsGoal) * 100))

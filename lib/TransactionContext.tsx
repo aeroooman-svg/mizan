@@ -24,6 +24,8 @@ interface TransactionContextValue {
   totalIncome: number;
   totalExpense: number;
   balance: number;
+  allTimeIncome: number;
+  allTimeExpense: number;
   currencySymbol: string;
   currencyCode: CurrencyCode;
   addTransaction: (transaction: Transaction) => Promise<void>;
@@ -95,6 +97,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const balance = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
 
+  const allTimeIncome = useMemo(() => {
+    return walletTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  }, [walletTransactions]);
+
+  const allTimeExpense = useMemo(() => {
+    return walletTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  }, [walletTransactions]);
+
   const currencySymbol = useMemo(() => {
     if (!selectedWallet) return 'ج.م';
     return getCurrencyInfo(selectedWallet.currency).symbol;
@@ -165,6 +175,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     totalIncome,
     totalExpense,
     balance,
+    allTimeIncome,
+    allTimeExpense,
     currencySymbol,
     currencyCode,
     addTransaction,
@@ -175,7 +187,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     refresh: loadData,
     getMonthlyTransactions,
     walletTransactions,
-  }), [transactions, wallets, selectedWallet, isLoading, totalIncome, totalExpense, balance, currencySymbol, currencyCode, addTransaction, removeTransaction, addWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions]);
+  }), [transactions, wallets, selectedWallet, isLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, addWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions]);
 
   return (
     <TransactionContext.Provider value={value}>
