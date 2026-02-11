@@ -24,7 +24,7 @@ import Svg, { Circle, Rect } from 'react-native-svg';
 
 export default function FinancialPlanScreen() {
   const insets = useSafeAreaInsets();
-  const { selectedWallet, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense } = useTransactions();
+  const { selectedWallet, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense, walletTransactions } = useTransactions();
   const { t, language } = useLanguage();
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
@@ -423,10 +423,20 @@ export default function FinancialPlanScreen() {
           {Array.from({ length: Math.min(12, totalMonths) }, (_, i) => {
             const monthDate = new Date(created);
             monthDate.setMonth(created.getMonth() + i);
-            const monthName = t.months[monthDate.getMonth()];
-            const year = monthDate.getFullYear();
+            const m = monthDate.getMonth();
+            const y = monthDate.getFullYear();
+            const monthName = t.months[m];
             const isPast = i < monthsElapsed;
             const isCurrent = i === monthsElapsed;
+
+            const monthTx = walletTransactions.filter(tx => {
+              const d = new Date(tx.date);
+              return d.getMonth() === m && d.getFullYear() === y;
+            });
+            const actualMonthIncome = monthTx.filter(tx => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0);
+            const actualMonthExpense = monthTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
+            const actualMonthSaving = actualMonthIncome - actualMonthExpense;
+            const hasActualData = monthTx.length > 0;
 
             return (
               <View key={i} style={[styles.timelineRow, isCurrent && styles.timelineRowCurrent]}>
@@ -437,11 +447,16 @@ export default function FinancialPlanScreen() {
                 </View>
                 <View style={styles.timelineContent}>
                   <Text style={[styles.timelineMonth, isCurrent && { color: Colors.primary, fontFamily: 'Cairo_700Bold' as const }]}>
-                    {monthName} {year}
+                    {monthName} {y}
                   </Text>
                   <Text style={styles.timelineAmount}>
                     +{formatCurrency(plan.monthlySaving)} {sym}
                   </Text>
+                  {(isPast || isCurrent) && hasActualData && (
+                    <Text style={[styles.timelineActual, { color: actualMonthSaving >= 0 ? Colors.income : Colors.expense }]}>
+                      {t.actualSaving}: {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
+                    </Text>
+                  )}
                 </View>
                 <Text style={styles.timelineTotal}>
                   {formatCurrency(plan.monthlySaving * (i + 1))} {sym}
@@ -810,6 +825,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_400Regular',
     fontSize: 12,
     color: Colors.income,
+  },
+  timelineActual: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    marginTop: 2,
   },
   timelineTotal: {
     fontFamily: 'Cairo_700Bold',
