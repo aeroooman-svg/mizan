@@ -2,9 +2,9 @@
 
 ## Overview
 
-Masarif is a bilingual (Arabic-primary) personal finance tracking mobile application built with Expo/React Native. It allows users to manage multiple wallets with different currencies (EGP, KWD, USD), track income and expense transactions across categories, and view spending statistics with visual charts. The app uses a file-based routing system via Expo Router with tab navigation (Home, Transactions, Stats) and modal sheets for adding transactions and wallets. Data is currently stored locally using AsyncStorage.
+Masarif is a bilingual (Arabic-primary) personal finance tracking mobile application built with Expo/React Native. It allows users to manage multiple wallets with different currencies (EGP, KWD, USD), track income and expense transactions across categories, and view spending statistics with visual charts. The app uses a file-based routing system via Expo Router with tab navigation (Home, Transactions, Stats) and modal sheets for adding transactions and wallets.
 
-The project includes an Express backend server, though the current app functionality is primarily client-side. The backend has scaffolding for PostgreSQL via Drizzle ORM with a basic users schema, suggesting future plans for server-side data persistence and authentication.
+Data is persisted server-side in PostgreSQL via the Express backend API, with AsyncStorage as a local cache/fallback. The storage layer (`lib/storage.ts`) tries the server first and falls back to AsyncStorage if the server is unreachable.
 
 ## User Preferences
 
@@ -42,12 +42,14 @@ Preferred communication style: Simple, everyday language.
 
 ### Database (Drizzle + PostgreSQL)
 
-- **ORM**: Drizzle ORM with PostgreSQL dialect
-- **Schema Location**: `shared/schema.ts` — currently contains only a `users` table (id, username, password)
-- **Schema Validation**: drizzle-zod for generating Zod schemas from Drizzle table definitions
-- **Migration Config**: `drizzle.config.ts` outputs to `./migrations` directory
+- **ORM**: Drizzle ORM with PostgreSQL dialect via `server/db.ts`
+- **Schema Location**: `shared/schema.ts` — contains `users`, `wallets`, and `transactions` tables
+- **Tables**:
+  - `wallets`: id (varchar PK), name, currency, icon, color, createdAt
+  - `transactions`: id (varchar PK), type, amount, category, description, date, createdAt, walletId
+- **API Routes**: `server/routes.ts` — CRUD endpoints for `/api/wallets` and `/api/transactions`
+- **Storage Layer**: `lib/storage.ts` — tries server API first, falls back to AsyncStorage cache
 - **Push Command**: `npm run db:push` to sync schema to database
-- **Note**: The database schema is minimal and not yet integrated with the app's transaction/wallet data model. The app currently stores all financial data in AsyncStorage on the client side.
 
 ## Recent Changes
 
