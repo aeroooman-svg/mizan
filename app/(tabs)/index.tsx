@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,25 +8,63 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  Modal,
+  TextInput,
+  Image,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
+import { useTheme } from '@/lib/ThemeContext';
+import { checkClipboardForBankSMS, markSmsAsProcessed } from '@/lib/autoSmsListener';
+import { ParsedBankSMS } from '@/lib/smsParser';
+import SmartSmsModal from '@/components/SmartSmsModal';
+
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
+import { getBudgetsForWallet } from '@/lib/budgetStorage';
+import { predictCashflow, calculateHealthScore } from '@/lib/financialEngine';
+import { SavingsGoal } from '@/lib/goalStorage';
+import { Debt } from '@/lib/debtStorage';
+import { FinancialPlan } from '@/lib/planStorage';
+import { RecurringTransaction } from '@/lib/recurringStorage';
+import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import FinancialHealthScore from '@/components/FinancialHealthScore';
+import CashflowForecastWidget from '@/components/CashflowForecastWidget';
+import QuickGlanceWidget from '@/components/QuickGlanceWidget';
+import FinancialGoalWidget from '@/components/FinancialGoalWidget';
+import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+import { getWidgetData } from '@/lib/widgetDataProvider';
+import { subscribeSyncStatus, SyncState } from '@/lib/syncService';
+import WalletCarousel from '@/components/home/WalletCarousel';
+import ConsolidatedBalanceCard from '@/components/home/ConsolidatedBalanceCard';
+import HealthForecastRow from '@/components/home/HealthForecastRow';
+import PendingRecurringSection from '@/components/home/PendingRecurringSection';
+import ActivePlanSection from '@/components/home/ActivePlanSection';
+import GoalsDebtsSections from '@/components/home/GoalsDebtsSections';
+import UndoSnackbar from '@/components/UndoSnackbar';
+import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 
 export default function HomeScreen() {
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const {
+    transactions,
     walletTransactions,
     totalIncome,
     totalExpense,
     balance,
+    allTimeIncome,
+    allTimeExpense,
     isLoading,
     refresh,
     wallets,
@@ -34,16 +72,283 @@ export default function HomeScreen() {
     selectWallet,
     removeWallet,
     currencySymbol,
+    pendingRecurring,
+    approveRecurringTransaction,
+    addTransaction,
   } = useTransactions();
   const { t, language } = useLanguage();
-  const webTopInset = Platform.OS === 'web' ? 67 : 0;
+  const [syncState, setSyncState] = useState<SyncState>('synced');
+
+  // Bank SMS Auto-Detection State
+  const [detectedSms, setDetectedSms] = useState<ParsedBankSMS | null>(null);
+
+  const checkForSms = useCallback(async () => {
+    if (!selectedWallet) return;
+    const res = await checkClipboardForBankSMS(addTransaction, selectedWallet.id);
+    if (res.detected) {
+      if (res.autoSaved) {
+        await refresh();
+      } else if (res.parsed) {
+        setDetectedSms(res.parsed);
+      }
+    }
+  }, [selectedWallet, addTransaction, refresh]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkForSms();
+    }, [checkForSms])
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkForSms();
+      }
+    });
+    return () => subscription.remove();
+  }, [checkForSms]);
+
+  const handleSaveDetectedSms = async () => {
+    if (!detectedSms || !selectedWallet) return;
+    const now = new Date().toISOString();
+    const newTx = {
+      id: Crypto.randomUUID(),
+      walletId: selectedWallet.id,
+      type: detectedSms.type,
+      amount: detectedSms.amount || 0,
+      category: detectedSms.category || 'other',
+      description: `${detectedSms.merchant} (${detectedSms.bankName})`,
+      date: now,
+      createdAt: now,
+      note: `📱 أتمتة رسائل البنك تلقائياً\n${detectedSms.rawText}`,
+    };
+    await addTransaction(newTx);
+    await markSmsAsProcessed(detectedSms.rawText);
+    setDetectedSms(null);
+    await refresh();
+  };
+
+  const handleEditDetectedSms = async () => {
+    if (!detectedSms) return;
+    await markSmsAsProcessed(detectedSms.rawText);
+    const sms = detectedSms;
+    setDetectedSms(null);
+    router.push({
+      pathname: '/add-transaction',
+      params: {
+        prefillAmount: sms.amount?.toString(),
+        prefillType: sms.type,
+        prefillCategory: sms.category,
+        prefillDesc: `${sms.merchant} (${sms.bankName})`,
+      },
+    } as any);
+  };
+
+  const handleDismissDetectedSms = async () => {
+    if (!detectedSms) return;
+    await markSmsAsProcessed(detectedSms.rawText);
+    setDetectedSms(null);
+  };
+
+  useEffect(() => {
+    const unsub = subscribeSyncStatus((state) => {
+      setSyncState(state);
+    });
+    return () => unsub();
+  }, []);
+
+  const [adjustingItem, setAdjustingItem] = useState<RecurringTransaction | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState('');
+
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    async function loadRates() {
+      const liveRates = await getExchangeRates();
+      setRates(liveRates);
+    }
+    loadRates();
+  }, []);
+
+  const getWalletBalance = (walletId: string) => {
+    const walletTxns = transactions.filter(t => 
+      t.walletId === walletId || 
+      (t.type === 'transfer' && t.toWalletId === walletId)
+    );
+    const income = walletTxns
+      .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === walletId))
+      .reduce((sum, t) => sum + t.amount, 0);
+    const expense = walletTxns
+      .filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === walletId))
+      .reduce((sum, t) => sum + t.amount, 0);
+    return income - expense;
+  };
+
+  const walletPending = useMemo(() => {
+    if (!selectedWallet) return [];
+    return pendingRecurring.filter(p => p.walletId === selectedWallet.id);
+  }, [pendingRecurring, selectedWallet]);
+
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
+  const [isForecastExpanded, setIsForecastExpanded] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [undoState, setUndoState] = useState<{ visible: boolean; message: string; action: () => void } | null>(null);
+
+  const [plan, setPlan] = useState<FinancialPlan | null>(null);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id: string; username: string } | null>(null);
+
+  useEffect(() => {
+    async function checkUser() {
+      try {
+        const { getLoggedInUser } = await import('@/lib/syncService');
+        const user = await getLoggedInUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error('Error fetching logged in user:', err);
+      }
+    }
+    checkUser();
+  }, []);
+
+  const loadExtraData = async () => {
+    try {
+      const [goalsData, debtsData, planData] = await Promise.all([
+        import('@/lib/goalStorage').then(m => m.getGoals()),
+        import('@/lib/debtStorage').then(m => m.getDebts()),
+        import('@/lib/planStorage').then(m => m.getFinancialPlan(selectedWallet?.id))
+      ]);
+      
+      if (selectedWallet) {
+        setGoals(goalsData.filter((g: SavingsGoal) => g.walletId === selectedWallet.id));
+        setDebts(debtsData.filter((d: Debt) => d.walletId === selectedWallet.id));
+        setPlan(planData);
+      } else {
+        setGoals(goalsData);
+        setDebts(debtsData);
+        setPlan(planData);
+      }
+    } catch (err) {
+      console.error('Error loading extra homepage data:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadExtraData();
+  }, [selectedWallet, walletTransactions]);
+
+  useEffect(() => {
+    async function loadData() {
+      if (selectedWallet) {
+        const budgetData = await getBudgetsForWallet(selectedWallet.id);
+        setBudgets(budgetData || {});
+      } else {
+        setBudgets({});
+      }
+    }
+    loadData();
+  }, [selectedWallet]);
+  const getSmartTip = () => {
+    const tipsAr = [
+      "💡 حصالة الفكة مفعلة: كل عملية شراء تقوم بها يتم تقريبها للـ 10 جنيهات التالية وإيداع الفارق تلقائياً في أهدافك الادخارية!",
+      "💡 راقب الميزانية: إذا تجاوزت ميزانية أحد الفئات، سيتم اقتطاع عقوبة مالية تذهب مباشرة لحصالة التوفير لمساعدتك على الانضباط.",
+      "💡 نصيحة الادخار: ينصح دائماً بادخار 20% من دخلك الشهري قبل البدء في الصرف (قاعدة 50/30/20).",
+      "💡 توقعات السيولة: تشير التوقعات الحالية إلى استقرار محفظتك، حاول الحفاظ على معدل الصرف الحالي لتفادي أي عجز مالي.",
+      "💡 سداد الديون: البدء بسداد الديون الصغيرة أولاً (طريقة كرة الثلج) يمنحك حافزاً معنوياً كبيراً لإتمام سداد كافة التزاماتك."
+    ];
+    const tipsEn = [
+      "💡 Round-up activated: Every purchase is rounded up to the next 10 and the difference goes directly into your savings jars!",
+      "💡 Budget Warning: Exceeding a category budget will trigger a penalty that goes straight to your savings to enforce discipline.",
+      "💡 Savings Tip: Always save 20% of your monthly income before spending (50/30/20 rule).",
+      "💡 Cashflow Insight: Your wallet health is stable. Maintain current spending rates to avoid potential deficits.",
+      "💡 Debt Tip: Settling small debts first (Snowball method) builds mental momentum to clear all your liabilities."
+    ];
+    const score = healthScore || 70;
+    const idx = Math.min(tipsAr.length - 1, Math.floor((100 - score) / 20));
+    return language === 'ar' ? tipsAr[idx] : tipsEn[idx];
+  };
+  const challengesCompletedCount = useMemo(() => {
+    let count = 0;
+    
+    // 1. Coffee Saver Challenge: No shopping or entertainment in last 5 days
+    const nonEssentialCategories = ['shopping', 'entertainment'];
+    const now = new Date();
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(now.getDate() - 5);
+    const nonEssentialTx = walletTransactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return tx.type === 'expense' && 
+             nonEssentialCategories.includes(tx.category) && 
+             txDate >= fiveDaysAgo;
+    });
+    if (nonEssentialTx.length === 0 && walletTransactions.length > 0) count++;
+
+    // 2. 50% Savings Challenge: save >= 50% of income
+    if (totalIncome > 0) {
+      const savings = totalIncome - totalExpense;
+      if (savings / totalIncome >= 0.5) count++;
+    }
+
+    // 3. No-Spend Week: non-essential expenses < 15 in last 7 days
+    const essentialCategories = ['rent', 'bills', 'health', 'education', 'salary', 'freelance', 'investment', 'gift', 'bonus'];
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const nonEssentialTotal = walletTransactions
+      .filter(tx => {
+        const txDate = new Date(tx.date);
+        return tx.type === 'expense' && 
+               !essentialCategories.includes(tx.category) && 
+               txDate >= sevenDaysAgo;
+      })
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    const limit = 15;
+    if (nonEssentialTotal < limit && walletTransactions.length > 0) count++;
+
+    return count;
+  }, [walletTransactions, totalIncome, totalExpense]);
+
+  const selectedWalletBalance = useMemo(() => {
+    return allTimeIncome - allTimeExpense;
+  }, [allTimeIncome, allTimeExpense]);
+
+  const totalConsolidatedBalance = useMemo(() => {
+    if (!selectedWallet) return 0;
+    if (Object.keys(rates).length === 0) return selectedWalletBalance;
+    
+    let total = 0;
+    wallets.forEach(w => {
+      const bal = getWalletBalance(w.id);
+      const converted = convertAmount(bal, w.currency, selectedWallet.currency, rates);
+      total += converted;
+    });
+    return total;
+  }, [wallets, selectedWallet, transactions, rates, selectedWalletBalance]);
+
+  const forecast = useMemo(() => {
+    if (!selectedWallet) return null;
+    return predictCashflow(walletTransactions, selectedWalletBalance, currencySymbol);
+  }, [walletTransactions, selectedWallet, selectedWalletBalance, currencySymbol]);
+
+  const healthScore = useMemo(() => {
+    if (!selectedWallet) return 100;
+    const status = forecast ? forecast.status : 'safe';
+    return calculateHealthScore(
+      walletTransactions,
+      budgets,
+      totalIncome,
+      totalExpense,
+      status,
+      challengesCompletedCount
+    );
+  }, [walletTransactions, budgets, totalIncome, totalExpense, forecast, challengesCompletedCount, selectedWallet]);
+
+  const webTopInset = Platform.OS === 'web' ? 10 : 0;
 
   const recentTransactions = walletTransactions.slice(0, 5);
 
-  const handleAddPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/add-transaction');
-  };
 
   const handleAddWallet = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -59,6 +364,59 @@ export default function HomeScreen() {
         { text: t.cancel, style: 'cancel' },
         { text: t.delete, style: 'destructive', onPress: () => removeWallet(id) },
       ],
+    );
+  };
+
+  const handleApproveConfirm = (item: RecurringTransaction) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      language === 'ar' ? 'تأكيد المعاملة' : 'Confirm Transaction',
+      language === 'ar' 
+        ? `هل تريد تسجيل معاملة بقيمة ${item.amount} ${currencySymbol} لصالح ${getCategoryName(item.category, language)}؟`
+        : `Do you want to log a transaction of ${item.amount} ${currencySymbol} for ${getCategoryName(item.category, language)}?`,
+      [
+        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        { 
+          text: language === 'ar' ? 'تأكيد' : 'Confirm', 
+          onPress: () => approveRecurringTransaction(item) 
+        }
+      ]
+    );
+  };
+
+  const handleApproveAdjust = (item: RecurringTransaction) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAdjustingItem(item);
+    setAdjustAmount(item.amount.toString());
+  };
+
+  const handleSaveAdjustedAmount = () => {
+    const amt = parseFloat(adjustAmount);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'الرجاء إدخال مبلغ صحيح' : 'Please enter a valid amount');
+      return;
+    }
+    if (adjustingItem) {
+      approveRecurringTransaction(adjustingItem, amt);
+    }
+    setAdjustingItem(null);
+  };
+
+  const handleApproveSkip = (item: RecurringTransaction) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      language === 'ar' ? 'تخطي المعاملة' : 'Skip Transaction',
+      language === 'ar' 
+        ? `هل تريد تخطي معاملة ${getCategoryName(item.category, language)} لهذا الشهر؟`
+        : `Do you want to skip ${getCategoryName(item.category, language)} for this period?`,
+      [
+        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        { 
+          text: language === 'ar' ? 'تخطي' : 'Skip', 
+          style: 'destructive',
+          onPress: () => approveRecurringTransaction(item, undefined, true) 
+        }
+      ]
     );
   };
 
@@ -85,13 +443,13 @@ export default function HomeScreen() {
               onPress={() => router.push('/settings')}
               style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
             >
-              <Ionicons name="language" size={20} color="rgba(255,255,255,0.85)" />
+              <Ionicons name="settings-sharp" size={20} color="rgba(255,255,255,0.85)" />
             </Pressable>
           </View>
         </LinearGradient>
         <View style={styles.welcomeEmpty}>
           <MaterialIcons name="account-balance-wallet" size={64} color={Colors.primary} />
-          <Text style={styles.welcomeTitle}>{t.welcomeTitle || (language === 'ar' ? 'مرحباً بك في مصاريف' : 'Welcome to Masarif')}</Text>
+          <Text style={styles.welcomeTitle}>{t.welcomeTitle || (language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN')}</Text>
           <Text style={styles.welcomeSubtitle}>{t.welcomeSubtitle || (language === 'ar' ? 'ابدأ بإضافة محفظتك الأولى لتتبع مصاريفك' : 'Start by adding your first wallet to track expenses')}</Text>
           <Pressable
             onPress={handleAddWallet}
@@ -109,212 +467,430 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={theme === 'dark' ? ['#070B14', '#0D1424', '#05070B'] : ['#F8FAFC', '#F1F5F9', '#E2E8F0']}
+      style={styles.container}
+      start={{ x: 0.1, y: 0.1 }}
+      end={{ x: 0.9, y: 0.9 }}
+    >
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Colors.primary} />
         }
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
       >
-        <LinearGradient
-          colors={[selectedWallet?.color || Colors.primary, Colors.primaryLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 16 }]}
-        >
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greeting}>{dayName}، {currentDay} {currentMonth} {currentYear}</Text>
-              <Text style={styles.headerTitle}>{t.currentBalance}</Text>
-            </View>
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={() => router.push('/settings')}
-                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
-              >
-                <Ionicons name="language" size={20} color="rgba(255,255,255,0.85)" />
-              </Pressable>
-              <Pressable
-                onPress={handleAddPress}
-                style={({ pressed }) => [styles.addButton, { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
-              >
-                <Ionicons name="add" size={28} color={selectedWallet?.color || Colors.primary} />
-              </Pressable>
-            </View>
-          </View>
-
-          <Text style={styles.balanceAmount}>
-            {balance >= 0 ? '' : '-'}{formatCurrency(Math.abs(balance))} <Text style={styles.currency}>{currencySymbol}</Text>
-          </Text>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <View style={styles.summaryIconWrap}>
-                <Ionicons name="arrow-down" size={16} color="#4ADE80" />
-              </View>
-              <View>
-                <Text style={styles.summaryLabel}>{t.income}</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(totalIncome)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.summaryDivider} />
-
-            <View style={styles.summaryItem}>
-              <View style={styles.summaryIconWrap}>
-                <Ionicons name="arrow-up" size={16} color="#F87171" />
-              </View>
-              <View>
-                <Text style={styles.summaryLabel}>{t.expenses}</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(totalExpense)}</Text>
-              </View>
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.walletsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t.wallets}</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletsScroll}>
-            {wallets.map(wallet => {
-              const isSelected = selectedWallet?.id === wallet.id;
-              return (
-                <Pressable
-                  key={wallet.id}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    selectWallet(wallet.id);
-                  }}
-                  onLongPress={() => handleDeleteWallet(wallet.id, wallet.name)}
-                  style={[
-                    styles.walletCard,
-                    isSelected && { borderColor: wallet.color, borderWidth: 2 },
-                  ]}
-                >
-                  <View style={[styles.walletIcon, { backgroundColor: wallet.color + '18' }]}>
-                    <MaterialIcons name={wallet.icon as any} size={22} color={wallet.color} />
-                  </View>
-                  <Text style={[styles.walletName, isSelected && { color: wallet.color, fontFamily: 'Cairo_700Bold' as const }]} numberOfLines={1}>
-                    {wallet.name}
-                  </Text>
-                  <Text style={styles.walletCurrency}>
-                    {wallet.currency}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              onPress={handleAddWallet}
-              style={styles.addWalletCard}
-            >
-              <View style={styles.addWalletIconWrap}>
-                <Ionicons name="add" size={28} color={Colors.primary} />
-              </View>
-              <Text style={styles.addWalletText}>{t.newWallet}</Text>
-            </Pressable>
-          </ScrollView>
-        </View>
-
-        {totalIncome > 0 && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.sectionTitle}>{t.spendingRatio}</Text>
-              <Text style={styles.progressPercent}>
-                {totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0}%
+        {/* Top Header Bar with Menu and Settings */}
+        <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsMenuOpen(true);
+            }}
+            style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="menu-outline" size={24} color="#FFF" />
+          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.topBarTitle}>MIZAN</Text>
+            <View style={[
+              styles.syncStatusBadge,
+              { backgroundColor: syncState === 'synced' ? 'rgba(16, 185, 129, 0.2)' : syncState === 'syncing' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)' }
+            ]}>
+              <View style={[
+                styles.syncStatusDot,
+                { backgroundColor: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#3B82F6' : '#F59E0B' }
+              ]} />
+              <Text style={[
+                styles.syncStatusText,
+                { color: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#60A5FA' : '#FBBF24' }
+              ]}>
+                {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') :
+                 syncState === 'syncing' ? (language === 'ar' ? 'جاري المزامنة...' : 'Syncing...') :
+                 (language === 'ar' ? 'محلي' : 'Local')}
               </Text>
             </View>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    width: `${Math.min((totalExpense / totalIncome) * 100, 100)}%`,
-                    backgroundColor: (totalExpense / totalIncome) > 0.8 ? Colors.expense : Colors.primary,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressNote}>
-              {totalExpense / totalIncome > 0.8 ? t.budgetWarning : t.budgetGood}
-            </Text>
           </View>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/settings');
+            }}
+            style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="settings-outline" size={24} color="#FFF" />
+          </Pressable>
+        </View>
+
+        {/* Quick Glance Widget */}
+        <QuickGlanceWidget
+          data={getWidgetData(
+            transactions,
+            wallets,
+            selectedWallet,
+            healthScore,
+            budgets,
+            currencySymbol,
+          )}
+          language={language as 'ar' | 'en'}
+          onAddPress={() => router.push('/add-transaction')}
+        />
+
+        {/* Dynamic Financial Goal Focus Widget */}
+        <FinancialGoalWidget />
+
+        {/* Consolidated wealth card */}
+        {wallets.length > 1 && (
+          <ConsolidatedBalanceCard
+            totalConsolidatedBalance={totalConsolidatedBalance}
+            currencySymbol={currencySymbol}
+            language={language as 'ar' | 'en'}
+            colors={colors}
+          />
         )}
 
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t.recentTransactions}</Text>
-            {walletTransactions.length > 5 && (
-              <Pressable onPress={() => router.push('/(tabs)/transactions')}>
-                <Text style={styles.seeAll}>{t.viewAll}</Text>
-              </Pressable>
-            )}
-          </View>
+        {/* 3D Bank Credit Cards Carousel */}
+        <WalletCarousel
+          wallets={wallets}
+          selectedWallet={selectedWallet}
+          transactions={transactions}
+          currentUser={currentUser}
+          language={language as 'ar' | 'en'}
+          colors={colors}
+          onSelectWallet={selectWallet}
+          onDeleteWallet={handleDeleteWallet}
+          onAddWallet={handleAddWallet}
+        />
 
-          {recentTransactions.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={48} color={Colors.textTertiary} />
-              <Text style={styles.emptyTitle}>{t.noTransactions}</Text>
-              <Text style={styles.emptySubtitle}>{t.tapToAdd}</Text>
+        {/* Two Column Health & Forecast Dashboard */}
+        {selectedWallet && (
+          <HealthForecastRow
+            healthScore={healthScore}
+            selectedWalletBalance={selectedWalletBalance}
+            currencySymbol={currencySymbol}
+            balance={balance}
+            forecast={forecast}
+            language={language as 'ar' | 'en'}
+            colors={colors}
+          />
+        )}
+
+        {/* Pending Recurring Bills Confirmation Widget */}
+        <PendingRecurringSection
+          walletPending={walletPending}
+          currencySymbol={currencySymbol}
+          language={language as 'ar' | 'en'}
+          colors={colors}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveSkip={handleApproveSkip}
+          onSaveAdjustedAmount={(item, amt) => approveRecurringTransaction(item, amt)}
+        />
+
+        {/* Active Plan & Savings & Debts Section */}
+        {selectedWallet && (
+          <View style={{ marginHorizontal: 20, marginTop: 16, gap: 20 }}>
+            {/* Widget 0: Smart Financial Plan Widget */}
+            <ActivePlanSection
+              plan={plan}
+              goals={goals}
+              debts={debts}
+              walletTransactions={walletTransactions}
+              selectedWalletId={selectedWallet?.id}
+              currencySymbol={currencySymbol}
+              language={language as 'ar' | 'en'}
+              colors={colors}
+            />
+
+            {/* Widget 1 & 2 & 3: Goals, Debts and Picture */}
+            <GoalsDebtsSections
+              goals={goals}
+              debts={debts}
+              plan={plan}
+              walletTransactions={walletTransactions}
+              selectedWalletId={selectedWallet?.id}
+              currencySymbol={currencySymbol}
+              language={language as 'ar' | 'en'}
+              colors={colors}
+            />
+
+            {/* Widget 4: AI Smart Financial Tip of the Day */}
+            <View
+              style={{
+                backgroundColor: Colors.primary + '0a',
+                borderWidth: 1,
+                borderColor: Colors.primary + '20',
+                borderRadius: 20,
+                padding: 16,
+                gap: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 20,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: Colors.primary + '18',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="bulb-outline" size={22} color={Colors.primary} />
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: 'Cairo_600SemiBold',
+                  fontSize: 12,
+                  color: Colors.text,
+                  lineHeight: 18,
+                  textAlign: 'left',
+                  marginLeft: 10,
+                }}
+              >
+                {getSmartTip()}
+              </Text>
             </View>
-          ) : (
-            recentTransactions.map((item) => {
-              const cat = getCategoryById(item.category);
-              return (
-                <Pressable
-                  key={item.id}
-                  style={({ pressed }) => [styles.transactionItem, { opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <View style={[styles.catIcon, { backgroundColor: (cat?.color || '#999') + '18' }]}>
-                    <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || '#999'} />
-                  </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionCat}>{getCategoryName(item.category, language)}</Text>
-                    {item.description ? (
-                      <Text style={styles.transactionDesc} numberOfLines={1}>{item.description}</Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.transactionRight}>
-                    <Text style={[styles.transactionAmount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
-                      {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
-                    </Text>
-                    <Text style={styles.transactionDate}>{formatDateLocalized(item.date, language)}</Text>
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
-        </View>
+          </View>
+        )}
       </ScrollView>
 
-      <Pressable
-        onPress={handleAddPress}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            bottom: 90 + (Platform.OS === 'web' ? 34 : 0),
-            opacity: pressed ? 0.9 : 1,
-            transform: [{ scale: pressed ? 0.92 : 1 }],
-          },
-        ]}
+
+      {/* Premium Hamburger Menu Drawer Modal */}
+      <Modal
+        visible={isMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMenuOpen(false)}
       >
-        <LinearGradient
-          colors={[selectedWallet?.color || Colors.primary, Colors.primaryDark]}
-          style={styles.fabGradient}
-        >
-          <Ionicons name="add" size={30} color="#fff" />
-        </LinearGradient>
-      </Pressable>
-    </View>
+        <View style={[styles.drawerOverlay, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
+          <Pressable 
+            style={styles.drawerBackdrop} 
+            onPress={() => setIsMenuOpen(false)} 
+          />
+          <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
+            <View style={styles.drawerHeader}>
+              <Image 
+                source={require('../../assets/images/icon.png')} 
+                style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }} 
+                resizeMode="contain"
+              />
+              <Text style={styles.drawerAppName}>MIZAN</Text>
+              <Text style={[styles.drawerVersion, { color: '#14B8A6', fontFamily: 'Cairo_600SemiBold' }]}>مِيزان</Text>
+              <Text style={styles.drawerVersion}>v1.0.0</Text>
+            </View>
+
+            <View style={styles.drawerDivider} />
+
+            <ScrollView 
+              style={{ flex: 1, marginVertical: 8 }} 
+              contentContainerStyle={{ gap: 8 }} 
+              showsVerticalScrollIndicator={false}
+            >
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/challenges');
+                }}
+              >
+                <Ionicons name="trophy-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/recurring-list');
+                }}
+              >
+                <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'المصاريف والفواتير المتكررة' : 'Recurring Subscriptions'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/(tabs)/financial-plan');
+                }}
+              >
+                <Ionicons name="flag-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'الخطة المالية الذكية' : 'Smart Financial Plan'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/debts');
+                }}
+              >
+                <Ionicons name="people-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'الديون والسلف الشخصية' : 'Personal Debts & Loans'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/savings-goals');
+                }}
+              >
+                <Ionicons name="heart-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'أهداف الادخار وحصالات العمليات' : 'Smart Savings Goals'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/ai-advisor' as any);
+                }}
+              >
+                <Ionicons name="sparkles-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'مستشار الذكاء الاصطناعي' : 'AI Financial Advisor'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/zakat-calculator' as any);
+                }}
+              >
+                <Ionicons name="calculator-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'حساب الزكاة والصدقات' : 'Zakat & Charity Calculator'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/(tabs)/stats');
+                }}
+              >
+                <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'تحليل الميزانية والرسوم' : 'Budget Analytics'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/settings');
+                }}
+              >
+                <Ionicons name="settings-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'إعدادات التطبيق والأمان' : 'Settings & Security'}
+                </Text>
+              </Pressable>
+            </ScrollView>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerCloseBtn, pressed && { opacity: 0.8 }]}
+              onPress={() => setIsMenuOpen(false)}
+            >
+              <Ionicons name="close-circle-outline" size={22} color="#EF4444" />
+              <Text style={styles.drawerCloseText}>
+                {language === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Adjust Amount Modal */}
+      {adjustingItem && (
+        <Modal transparent visible animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.adjustModalContent}>
+              <Text style={styles.adjustModalTitle}>
+                {language === 'ar' ? 'تعديل قيمة الفاتورة' : 'Adjust Bill Amount'}
+              </Text>
+              <Text style={styles.adjustModalSub}>
+                {getCategoryName(adjustingItem.category, language)}
+              </Text>
+              <View style={styles.adjustInputRow}>
+                <TextInput
+                  style={styles.adjustInput}
+                  keyboardType="decimal-pad"
+                  autoFocus
+                  value={adjustAmount}
+                  onChangeText={setAdjustAmount}
+                  textAlign="center"
+                />
+                <Text style={styles.adjustCurrency}>{currencySymbol}</Text>
+              </View>
+              <View style={styles.adjustModalActions}>
+                <Pressable 
+                  style={[styles.adjustBtn, styles.adjustBtnCancel]}
+                  onPress={() => setAdjustingItem(null)}
+                >
+                  <Text style={styles.adjustBtnTextCancel}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Text>
+                </Pressable>
+                <Pressable 
+                  style={[styles.adjustBtn, styles.adjustBtnConfirm]}
+                  onPress={handleSaveAdjustedAmount}
+                >
+                  <Text style={styles.adjustBtnTextConfirm}>{language === 'ar' ? 'حفظ وتسجيل' : 'Save & Log'}</Text>
+                </Pressable>
+              </View>
+
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Smart Bank SMS Modal */}
+      <SmartSmsModal
+        visible={detectedSms !== null}
+        smsData={detectedSms}
+        onSave={handleSaveDetectedSms}
+        onEdit={handleEditDetectedSms}
+        onDismiss={handleDismissDetectedSms}
+      />
+
+      {/* Undo Toast Notification */}
+      {undoState && (
+        <UndoSnackbar
+          visible={undoState.visible}
+          message={undoState.message}
+          onUndo={undoState.action}
+          onDismiss={() => setUndoState(null)}
+        />
+      )}
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
+
+
+const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   headerGradient: {
     paddingHorizontal: 20,
@@ -337,7 +913,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 16,
-    color: '#fff',
+    color: colors.text,
     textAlign: 'left',
   },
   headerActions: {
@@ -357,14 +933,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
+    backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
   balanceAmount: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 34,
-    color: '#fff',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -402,7 +978,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
-    color: '#fff',
+    color: colors.text,
   },
   summaryDivider: {
     width: 1,
@@ -421,7 +997,7 @@ const styles = StyleSheet.create({
   walletCard: {
     width: 110,
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 8,
@@ -439,45 +1015,45 @@ const styles = StyleSheet.create({
   walletName: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    color: Colors.text,
+    color: colors.text,
     textAlign: 'center',
   },
   walletCurrency: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   addWalletCard: {
     width: 110,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 8,
     gap: 6,
     borderWidth: 2,
-    borderColor: Colors.primary + '30',
+    borderColor: colors.primary + '30',
     borderStyle: 'dashed',
   },
   addWalletIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },
   addWalletText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    color: Colors.primary,
+    color: colors.primary,
     textAlign: 'center',
   },
   progressSection: {
     marginHorizontal: 20,
     marginTop: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
   },
@@ -490,11 +1066,11 @@ const styles = StyleSheet.create({
   progressPercent: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -505,7 +1081,7 @@ const styles = StyleSheet.create({
   progressNote: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'left',
   },
@@ -522,35 +1098,35 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 17,
-    color: Colors.text,
+    color: colors.text,
   },
   seeAll: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 14,
-    color: Colors.primary,
+    color: colors.primary,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     gap: 8,
   },
   emptyTitle: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   emptySubtitle: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 14,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
@@ -570,12 +1146,12 @@ const styles = StyleSheet.create({
   transactionCat: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 15,
-    color: Colors.text,
+    color: colors.text,
   },
   transactionDesc: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   transactionRight: {
     alignItems: 'flex-end',
@@ -588,7 +1164,7 @@ const styles = StyleSheet.create({
   transactionDate: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   fab: {
     position: 'absolute',
@@ -596,16 +1172,18 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   fabGradient: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   welcomeEmpty: {
     flex: 1,
@@ -617,14 +1195,14 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 22,
-    color: Colors.text,
+    color: colors.text,
     textAlign: 'center',
     marginTop: 8,
   },
   welcomeSubtitle: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -632,7 +1210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 28,
@@ -642,6 +1220,857 @@ const styles = StyleSheet.create({
   welcomeButtonText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 16,
-    color: '#fff',
+    color: colors.text,
+  },
+  challengesCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#FF9800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  challengesGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  challengesInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  challengesTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  challengesSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'left',
+    lineHeight: 18,
+  },
+  pendingSection: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  pendingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pendingTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+  },
+  pendingScroll: {
+    gap: 12,
+    paddingRight: 20,
+    paddingVertical: 4,
+  },
+  pendingItemCard: {
+    width: 240,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 16,
+    padding: 14,
+    gap: 6,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  pendingItemInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pendingItemName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+  },
+  pendingItemAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.expense,
+  },
+  pendingItemDate: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textTertiary,
+    textAlign: 'left',
+  },
+  pendingItemActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  pendingActionBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnApprove: {
+    backgroundColor: colors.primary,
+  },
+  btnAdjust: {
+    backgroundColor: colors.primary + '10',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  btnSkip: {
+    backgroundColor: colors.expense + '10',
+  },
+  pendingActionText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.text,
+  },
+  pendingActionTextAdjust: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+  },
+  pendingActionTextSkip: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.expense,
+  },
+  
+  // Custom Adjust Modal Styles
+  adjustModalContent: {
+    width: '85%',
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+  },
+  adjustModalTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    color: colors.text,
+  },
+  adjustModalSub: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: -8,
+  },
+  adjustInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    height: 60,
+    width: '100%',
+    gap: 10,
+  },
+  adjustInput: {
+    flex: 1,
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    color: colors.text,
+  },
+  adjustCurrency: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  adjustModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  adjustBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adjustBtnCancel: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  adjustBtnConfirm: {
+    backgroundColor: colors.primary,
+  },
+  adjustBtnTextCancel: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  adjustBtnTextConfirm: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Health Score & Forecast Styles
+  healthCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  healthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  scoreBadge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  healthInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  healthTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  healthStatus: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 16,
+  },
+  forecastContainer: {
+    marginTop: 12,
+    gap: 8,
+  },
+  forecastDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    width: '100%',
+    marginBottom: 4,
+  },
+  forecastHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  forecastHeaderTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  forecastMessage: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 18,
+  },
+  reductionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF980012',
+    borderWidth: 1,
+    borderColor: '#FF980030',
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    marginTop: 4,
+  },
+  reductionText: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#D48000',
+    textAlign: 'left',
+    lineHeight: 16,
+  },
+
+  // 3D Metallic Wallet Cards Styles
+  wallet3DCard: {
+    width: 270,
+    height: 160,
+    borderRadius: 20,
+    elevation: 6,
+    backgroundColor: colors.surface,
+  },
+  wallet3DCardSelected: {
+    borderWidth: 2,
+    borderColor: colors.text,
+    elevation: 10,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+  },
+  cardGradient: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'space-between',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardWalletName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  cardWalletType: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'left',
+  },
+  chipContainer: {
+    marginTop: 0,
+  },
+  simChip: {
+    width: 28,
+    height: 20,
+    borderRadius: 5,
+    opacity: 0.85,
+  },
+  cardNumber: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 2,
+    marginVertical: 2,
+    textAlign: 'left',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  cardBalanceLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 8,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textTransform: 'uppercase',
+    textAlign: 'left',
+    lineHeight: 12,
+  },
+  cardBalanceText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 17,
+    color: colors.text,
+    textAlign: 'left',
+    lineHeight: 22,
+  },
+  cardExpiry: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.text,
+    textAlign: 'right',
+  },
+  addWallet3DCard: {
+    width: 140,
+    height: 160,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt + '40',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+  },
+  addWalletIcon3DWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addWallet3DText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.primary,
+    textAlign: 'center',
+  },
+
+  // Mockup Overhaul Styles
+  topHeaderBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E293B40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    letterSpacing: 2,
+    color: colors.text,
+  },
+  paginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+    gap: 6,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 16,
+    backgroundColor: colors.primary,
+  },
+  dotInactive: {
+    width: 6,
+    backgroundColor: colors.border,
+  },
+  twoColumnSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 16,
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  healthCard2Col: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 160,
+  },
+  forecastCard2Col: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 16,
+    justifyContent: 'space-between',
+    height: 160,
+  },
+  cardHeaderTitle2Col: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    alignSelf: 'stretch',
+    textAlign: 'left',
+  },
+  healthCircleContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  healthScoreCenterText: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthScoreNumber: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 20,
+    color: colors.text,
+  },
+  healthBadge2Col: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthBadgeText2Col: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.5,
+  },
+  forecastSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  forecastSubLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 8,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    textAlign: 'left',
+  },
+  forecastValueText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  forecastNetFlowText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  chartContainer: {
+    marginVertical: 6,
+    height: 26,
+    justifyContent: 'center',
+  },
+  chartXAxis: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  xAxisLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 8,
+    color: colors.textTertiary,
+  },
+  forecastDetailCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 16,
+    gap: 8,
+  },
+  forecastDetailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  forecastDetailTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  forecastDetailMessage: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 18,
+  },
+  seeAllActive: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+  },
+  recentListCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  subLabelBox: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceAlt + "99",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 2,
+  },
+  subLabelText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  recentItemSeparator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 4,
+  },
+
+  // Bottom Action Menu Sheet Styles
+  actionMenuSheet: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    position: 'absolute',
+    bottom: 0,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.borderLight,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  actionMenuTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  actionMenuOptions: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 16,
+    padding: 14,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionOptionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  actionOptionName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  actionOptionDesc: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 10,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 14,
+  },
+  actionMenuCloseBtn: {
+    backgroundColor: '#EF444415',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionMenuCloseText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#EF4444',
+  },
+
+  // Hamburger Drawer Menu Styles
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  drawerSheet: {
+    width: 290,
+    height: '100%',
+    backgroundColor: colors.surface,
+    padding: 24,
+    paddingTop: 60,
+    justifyContent: 'space-between',
+    borderRightWidth: 1,
+    borderColor: colors.border,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+  },
+  drawerHeader: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  drawerLogoWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  drawerAppName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    letterSpacing: 2,
+    color: colors.text,
+  },
+  drawerVersion: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 10,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    width: '100%',
+    marginVertical: 20,
+  },
+  drawerLinksContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  drawerLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 12,
+  },
+  drawerLinkText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  drawerCloseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#EF444415',
+    gap: 8,
+    marginBottom: 20,
+  },
+  drawerCloseText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#EF4444',
+  },
+  forecastBadge: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  forecastBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  consolidatedCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 15,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  consolidatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  syncStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 5,
+  },
+  syncStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  syncStatusText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+  },
+  consolidatedLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  consolidatedValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 24,
+    color: colors.text,
   },
 });

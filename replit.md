@@ -1,8 +1,8 @@
-# Masarif - Personal Finance Tracker
+# MIZAN (ميزان) - Personal Finance Tracker
 
 ## Overview
 
-Masarif is a bilingual (Arabic-primary) personal finance tracking mobile application built with Expo/React Native. It allows users to manage multiple wallets with different currencies (EGP, KWD, USD), track income and expense transactions across categories, and view spending statistics with visual charts. The app uses a file-based routing system via Expo Router with tab navigation (Home, Transactions, Stats) and modal sheets for adding transactions and wallets.
+MIZAN (ميزان) is a bilingual (Arabic-primary) personal finance tracking mobile application built with Expo/React Native. It allows users to manage multiple wallets with different currencies (EGP, KWD, USD), track income and expense transactions across categories, and view spending statistics with visual charts. The app uses a file-based routing system via Expo Router with tab navigation (Home, Transactions, Stats) and modal sheets for adding transactions and wallets.
 
 Data is persisted server-side in PostgreSQL via the Express backend API, with AsyncStorage as a local cache/fallback. The storage layer (`lib/storage.ts`) tries the server first and falls back to AsyncStorage if the server is unreachable.
 

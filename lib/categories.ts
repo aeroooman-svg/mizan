@@ -1,3 +1,5 @@
+import { globalAppLanguage } from './LanguageContext';
+
 export interface Category {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export interface Category {
   icon: string;
   iconFamily: 'Ionicons' | 'MaterialIcons' | 'MaterialCommunityIcons' | 'Feather' | 'FontAwesome';
   color: string;
+  keywords?: string[];
 }
 
 export const expenseCategories: Category[] = [
@@ -30,22 +33,41 @@ export const incomeCategories: Category[] = [
   { id: 'other_income', name: 'Other', nameAr: 'أخرى', icon: 'more-horiz', iconFamily: 'MaterialIcons', color: '#78909C' },
 ];
 
-export function getCategoryById(id: string): Category | undefined {
-  return [...expenseCategories, ...incomeCategories].find(c => c.id === id);
+let customCategoriesInMemory: Category[] = [];
+
+export function setCustomCategoriesInMemory(categories: Category[]) {
+  customCategoriesInMemory = categories;
 }
 
-export function formatCurrency(amount: number | null | undefined): string {
+export function getCategoryById(id: string): Category | undefined {
+  return [...expenseCategories, ...incomeCategories, ...customCategoriesInMemory].find(c => c.id === id);
+}
+
+export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 'en'): string {
   try {
     const val = Number(amount);
+    const activeLang = lang || globalAppLanguage;
+    const isEn = activeLang === 'en';
     if (isNaN(val) || val === null || val === undefined) {
-      return '٠٫٠٠';
+      return isEn ? '0.00' : '٠٫٠٠';
+    }
+    if (isEn) {
+      const formatted = val.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      return formatted.replace(/[\u0660-\u0669]/g, ch =>
+        String.fromCharCode(ch.charCodeAt(0) - 0x0660 + 0x0030)
+      );
     }
     return val.toLocaleString('ar-EG', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   } catch {
-    return '٠٫٠٠';
+    const activeLang = lang || globalAppLanguage;
+    const isEn = activeLang === 'en';
+    return isEn ? '0.00' : '٠٫٠٠';
   }
 }
 

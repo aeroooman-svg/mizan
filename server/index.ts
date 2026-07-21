@@ -173,6 +173,14 @@ function configureExpoAndLanding(app: express.Application) {
   log("Serving static Expo files with dynamic manifest routing");
 
   app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === "/privacy-policy") {
+      const privacyPath = path.resolve(process.cwd(), "server", "templates", "privacy-policy.html");
+      if (fs.existsSync(privacyPath)) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.status(200).send(fs.readFileSync(privacyPath, "utf-8"));
+      }
+    }
+
     if (req.path.startsWith("/api")) {
       return next();
     }
@@ -241,7 +249,6 @@ function setupErrorHandler(app: express.Application) {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`express server serving on port ${port}`);

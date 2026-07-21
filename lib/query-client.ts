@@ -12,8 +12,13 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  let url = new URL(`https://${host}`);
+  let urlString = host;
+  if (!/^https?:\/\//i.test(host)) {
+    const protocol = (host.includes("localhost") || host.includes("127.0.0.1")) ? "http://" : "https://";
+    urlString = `${protocol}${host}`;
+  }
 
+  let url = new URL(urlString);
   return url.href;
 }
 
@@ -32,9 +37,23 @@ export async function apiRequest(
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
 
+  let userId = null;
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    userId = await AsyncStorage.getItem('@masarif_user_id');
+  } catch (err) {}
+
+  const headers: Record<string, string> = {};
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (userId) {
+    headers["Authorization"] = `Bearer ${userId}`;
+  }
+
   const res = await fetch(url.toString(), {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });

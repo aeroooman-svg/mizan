@@ -1,5 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export interface KakeiboBudgets {
+  survival: number;
+  wants: number;
+  culture: number;
+  extra: number;
+}
+
+export interface KakeiboReflection {
+  monthKey: string;
+  q1: string;
+  q2: string;
+  q3: string;
+  q4: string;
+  emojiMood?: string; // 😀, 😐, 😓, 🚀
+  quickActions?: string[];
+  completedAt: string;
+}
+
 export interface FinancialPlan {
   id: string;
   goalName: string;
@@ -12,7 +30,11 @@ export interface FinancialPlan {
   currencySymbol: string;
   createdAt: string;
   walletId: string;
+  isKakeiboEnabled?: boolean;
+  kakeiboBudgets?: KakeiboBudgets;
+  kakeiboReflections?: KakeiboReflection[];
 }
+
 
 const PLANS_KEY = '@masarif_financial_plans';
 const LEGACY_KEY = '@masarif_financial_plan';

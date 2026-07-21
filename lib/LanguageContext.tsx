@@ -4,6 +4,8 @@ import { Language, getTranslations } from './i18n';
 
 const LANGUAGE_KEY = '@masarif_language';
 
+export let globalAppLanguage: Language = 'ar';
+
 interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => Promise<void>;
@@ -20,12 +22,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem(LANGUAGE_KEY).then(saved => {
       if (saved === 'ar' || saved === 'en') {
         setLanguageState(saved);
+        globalAppLanguage = saved;
       }
     });
   }, []);
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLanguageState(lang);
+    globalAppLanguage = lang;
     await AsyncStorage.setItem(LANGUAGE_KEY, lang);
   }, []);
 
