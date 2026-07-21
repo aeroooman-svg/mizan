@@ -28,6 +28,16 @@
       يرجى تفعيل الجافاسكريبت لتشغيل تطبيق ميزان.
     </noscript>
     <div id="root"></div>
+    <script>
+      (function() {
+        try {
+          if (window.location.pathname.endsWith('app.html')) {
+            var basePath = window.location.pathname.replace(/app\.html$/, '');
+            window.history.replaceState(null, '', basePath || '/');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <script src="./_expo/static/js/web/entry-cab37c271f592298d71fe0be748ad57e.js" defer></script>
   </body>
 </html>
