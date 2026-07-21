@@ -1,211 +1,34 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>تطبيق ميزان MIZAN - إدارة المصاريف والميزانية الشخصية الذكية</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-      * { box-sizing: border-box; }
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>MIZAN ميزان</title>
+    <style id="expo-reset">
+      html,
       body {
-        font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        height: 100%;
         margin: 0;
         padding: 0;
         background: #090E17;
-        color: #E2E8F0;
-        line-height: 1.7;
       }
-      header {
-        border-bottom: 1px solid #1F293D;
-        padding: 20px 40px;
+      body {
+        overflow: hidden;
+      }
+      #root {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #111A2E;
-      }
-      .logo {
-        font-size: 26px;
-        font-weight: 800;
-        color: #10B981;
-        letter-spacing: 1px;
-      }
-      nav a {
-        color: #9CA3AF;
-        text-decoration: none;
-        margin-left: 20px;
-        font-weight: 600;
-        font-size: 14px;
-        transition: color 0.2s;
-      }
-      nav a:hover { color: #10B981; }
-      .hero {
-        text-align: center;
-        padding: 80px 20px 60px;
-        max-width: 900px;
-        margin: 0 auto;
-      }
-      .badge {
-        display: inline-block;
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #10B981;
-        padding: 6px 18px;
-        border-radius: 30px;
-        font-size: 14px;
-        font-weight: 700;
-        margin-bottom: 20px;
-      }
-      h1 {
-        font-size: 42px;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin: 0 0 16px;
-        line-height: 1.3;
-      }
-      p.sub {
-        font-size: 18px;
-        color: #9CA3AF;
-        max-width: 700px;
-        margin: 0 auto 36px;
-      }
-      .btn-group {
-        display: flex;
-        justify-content: center;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      .btn {
-        padding: 14px 28px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 16px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .btn-primary {
-        background: #10B981;
-        color: #FFFFFF;
-        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-      }
-      .btn-secondary {
-        background: #1B253B;
-        color: #E2E8F0;
-        border: 1px solid #1F293D;
-      }
-      .features {
-        max-width: 1100px;
-        margin: 40px auto 80px;
-        padding: 0 20px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 24px;
-      }
-      .feature-card {
-        background: #111A2E;
-        border: 1px solid #1F293D;
-        border-radius: 20px;
-        padding: 28px;
-        transition: transform 0.2s, border-color 0.2s;
-      }
-      .feature-card:hover {
-        transform: translateY(-4px);
-        border-color: #10B981;
-      }
-      .icon {
-        font-size: 36px;
-        margin-bottom: 12px;
-      }
-      .feature-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #FFFFFF;
-        margin-bottom: 8px;
-      }
-      .feature-desc {
-        font-size: 14px;
-        color: #9CA3AF;
-        margin: 0;
-      }
-      footer {
-        border-top: 1px solid #1F293D;
-        padding: 40px 20px;
-        text-align: center;
-        color: #6B7280;
-        font-size: 14px;
-        background: #090E17;
-      }
-      footer a {
-        color: #10B981;
-        text-decoration: none;
+        height: 100%;
+        flex: 1;
       }
     </style>
+    <link rel="icon" href="./favicon.ico" />
   </head>
   <body>
-    <header>
-      <div class="logo">ميزان MIZAN</div>
-      <nav>
-        <a href="app.html">🚀 فتح التطبيق</a>
-        <a href="#features">المميزات</a>
-        <a href="privacy-policy.html">سياسة الخصوصية</a>
-      </nav>
-    </header>
-
-    <section class="hero">
-      <div class="badge">✨ التطبيق المالي الذكي العربي الأول</div>
-      <h1>إدارة مصاريفك وميزانيتك وأقساطك في مكان واحد</h1>
-      <p class="sub">تحكم كامل بمصاريفك الشخصية، خطط الادخار، حاسبة الزكاة الشرعية المباشرة، وقراءة كشوفات البنوك بالذكاء الاصطناعي مع الحفاظ التام على خصوصيتك.</p>
-      
-      <div class="btn-group">
-        <a href="app.html" class="btn btn-primary">🚀 فتح وتجربة التطبيق أونلاين</a>
-        <a href="privacy-policy.html" class="btn btn-secondary">📄 سياسة الخصوصية</a>
-      </div>
-    </section>
-
-    <section class="features" id="features">
-      <div class="feature-card">
-        <div class="icon">🕌</div>
-        <div class="feature-title">حاسبة الزكاة الشرعية اللحظية</div>
-        <p class="feature-desc">ربط مباشر لأسعار الذهب والفضة والعملات عالمياً لحساب نصاب الزكاة بدقة شرعية فائقة.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">💳</div>
-        <div class="feature-title">تتبع الأقساط والبطاقات الائتمانية</div>
-        <p class="feature-desc">إدارة مشتريات فاليو، تابي، تمارا وبطاقات البنوك ومتابعة الالتزامات الشهرية والتنبيهات.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">📑</div>
-        <div class="feature-title">استيراد كشوف الحسابات البنكية</div>
-        <p class="feature-desc">استيراد ملفات CSV ونصوص البنوك وتصنيف المصاريف والدخل تلقائياً بضغطة زر.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">✉️</div>
-        <div class="feature-title">نظام الظروف المالية (Envelope Budget)</div>
-        <p class="feature-desc">توزيع الدخل على مظاريف مخصصة (أكل، مواصلات، ادخار) لمنع الإسراف وتحقيق الأهداف.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">🤖</div>
-        <div class="feature-title">المستشار المالي الذكي (Gemini AI)</div>
-        <p class="feature-desc">تحليل سلوكك المالي وتقديم نصائح مخصصة وتفسير الأوامر الصوتية والنصية.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="icon">🔒</div>
-        <div class="feature-title">خصوصية وأمان 100%</div>
-        <p class="feature-desc">بياناتك تحفظ محلياً على جهازك مع دعم البصمة و FaceID وتشفير النسخ الاحتياطية.</p>
-      </div>
-    </section>
-
-    <footer>
-      <p>&copy; 2026 تطبيق ميزان MIZAN. جميع الحقوق محفوظة.</p>
-      <p><a href="privacy-policy.html">سياسة الخصوصية وحماية البيانات</a> | الدعم الفني: <a href="mailto:support@mizan-app.com">support@mizan-app.com</a></p>
-    </footer>
+    <noscript>
+      يرجى تفعيل الجافاسكريبت لتشغيل تطبيق ميزان.
+    </noscript>
+    <div id="root"></div>
+    <script src="./_expo/static/js/web/entry-cab37c271f592298d71fe0be748ad57e.js" defer></script>
   </body>
 </html>
