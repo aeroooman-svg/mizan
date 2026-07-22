@@ -23,7 +23,16 @@
         flex: 1;
       }
     </style>
-  <link rel="icon" href="/mizan/favicon.ico" /></head>
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error('App Load Error:', e);
+      var errDiv = document.createElement('div');
+      errDiv.style.cssText = 'color:#EF4444;background:#090E17;padding:30px;font-family:sans-serif;direction:ltr;text-align:left;';
+      errDiv.innerHTML = '<h2>Application Load Error</h2><p>' + (e.message || 'Unknown Error') + '</p><pre>' + (e.error ? e.error.stack : '') + '</pre>';
+      document.body.appendChild(errDiv);
+    });
+  </script>
+  <link rel="icon" href="./favicon.ico" /></head>
 
   <body>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
@@ -32,6 +41,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/mizan/_expo/static/js/web/entry-6e9c3ef86ffec749be101723c81e2ecf.js" defer></script>
+  <script src="./_expo/static/js/web/entry-6e9c3ef86ffec749be101723c81e2ecf.js" defer></script>
 </body>
 </html>
