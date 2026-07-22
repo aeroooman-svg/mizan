@@ -41,6 +41,17 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
+    <script>
+      (function() {
+        try {
+          var p = window.location.pathname;
+          if (p === '/mizan' || p === '/mizan/' || p.indexOf('/mizan/') === 0) {
+            var newPath = p.replace(/^\/mizan/, '') || '/';
+            window.history.replaceState(null, '', newPath + window.location.search + window.location.hash);
+          }
+        } catch(e) {}
+      })();
+    </script>
   <script src="./_expo/static/js/web/entry-6e9c3ef86ffec749be101723c81e2ecf.js" defer></script>
 </body>
 </html>
