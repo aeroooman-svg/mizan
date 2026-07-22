@@ -78,7 +78,11 @@ export default function AddWalletScreen() {
     await selectWallet(wallet.id);
 
     setIsSaving(false);
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   return (
