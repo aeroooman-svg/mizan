@@ -78,15 +78,30 @@ export default function AddTransactionScreen() {
   const now = new Date();
   const initialDate = existingTxn ? new Date(existingTxn.date) : now;
 
-  const [type, setType] = useState<TransactionType>(
-    existingTxn?.type || params.prefillType || params.type || 'expense'
-  );
+  const getInitialType = useCallback((): TransactionType => {
+    if (existingTxn?.type) return existingTxn.type;
+    const pType = params.prefillType || params.type;
+    if (pType === 'income' || pType === 'expense' || pType === 'transfer') return pType;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlType = searchParams.get('type') || searchParams.get('prefillType');
+        if (urlType === 'income' || urlType === 'expense' || urlType === 'transfer') {
+          return urlType as TransactionType;
+        }
+      } catch (e) {}
+    }
+    return 'expense';
+  }, [existingTxn, params.prefillType, params.type]);
+
+  const [type, setType] = useState<TransactionType>(getInitialType());
 
   useEffect(() => {
-    if (!existingTxn && (params.prefillType || params.type)) {
-      setType(params.prefillType || params.type || 'expense');
+    if (!existingTxn) {
+      const resolved = getInitialType();
+      setType(resolved);
     }
-  }, [params.prefillType, params.type, existingTxn]);
+  }, [getInitialType, existingTxn]);
   const [amount, setAmount] = useState(existingTxn ? existingTxn.amount.toString() : '');
   const [selectedCategory, setSelectedCategory] = useState<string>(existingTxn?.category || '');
   const [description, setDescription] = useState(existingTxn?.description || '');
