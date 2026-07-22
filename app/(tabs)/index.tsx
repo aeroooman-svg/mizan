@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
@@ -78,6 +79,7 @@ export default function HomeScreen() {
   } = useTransactions();
   const { t, language } = useLanguage();
   const [syncState, setSyncState] = useState<SyncState>('synced');
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   // Bank SMS Auto-Detection State
   const [detectedSms, setDetectedSms] = useState<ParsedBankSMS | null>(null);
@@ -157,6 +159,35 @@ export default function HomeScreen() {
     });
     return () => unsub();
   }, []);
+
+  // Calculate unread notification count
+  const computeUnreadCount = useCallback(async () => {
+    try {
+      const readIdsStr = await AsyncStorage.getItem('@mizan_notifications_read');
+      const readIds = readIdsStr ? new Set(JSON.parse(readIdsStr)) : new Set();
+      // Generate notification IDs to check against read
+      const now = new Date();
+      const notifIds: string[] = ['welcome'];
+      if (totalIncome > 0 && totalExpense / totalIncome > 0.8) notifIds.push('budget_warning_' + now.getMonth());
+      if (totalIncome > 0 && (totalIncome - totalExpense) / totalIncome > 0.3) notifIds.push('savings_achievement_' + now.getMonth());
+      if (pendingRecurring.length > 0) notifIds.push('recurring_due_' + now.toISOString().slice(0, 10));
+      if (wallets.length > 1) notifIds.push('multi_wallet_tip');
+      const todayStr = now.toISOString().slice(0, 10);
+      const todayTxns = transactions.filter(t => t.date.slice(0, 10) === todayStr);
+      if (todayTxns.length === 0 && transactions.length > 0) notifIds.push('no_txn_today_' + todayStr);
+      if (balance < 0) notifIds.push('negative_balance_' + now.getMonth());
+      const unread = notifIds.filter(id => !readIds.has(id)).length;
+      setUnreadNotifCount(unread);
+    } catch (e) {
+      setUnreadNotifCount(0);
+    }
+  }, [totalIncome, totalExpense, pendingRecurring, wallets, transactions, balance]);
+
+  useFocusEffect(
+    useCallback(() => {
+      computeUnreadCount();
+    }, [computeUnreadCount])
+  );
 
   const [adjustingItem, setAdjustingItem] = useState<RecurringTransaction | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
@@ -439,12 +470,28 @@ export default function HomeScreen() {
             <View>
               <Text style={styles.greeting}>{dayName}، {currentDay} {currentMonth} {currentYear}</Text>
             </View>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
-            >
-              <Ionicons name="settings-sharp" size={20} color="rgba(255,255,255,0.85)" />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/notifications');
+                }}
+                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.85)" />
+                {unreadNotifCount > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/settings')}
+                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="settings-sharp" size={20} color="rgba(255,255,255,0.85)" />
+              </Pressable>
+            </View>
           </View>
         </LinearGradient>
         <View style={styles.welcomeEmpty}>
@@ -512,15 +559,31 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <Pressable 
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/settings');
-            }}
-            style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
-          >
-            <Ionicons name="settings-outline" size={24} color="#FFF" />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/notifications');
+              }}
+              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#FFF" />
+              {unreadNotifCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings');
+              }}
+              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="settings-outline" size={24} color="#FFF" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Quick Glance Widget */}
@@ -2062,6 +2125,26 @@ const getStyles = (colors: any) => StyleSheet.create({
   syncStatusText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 10,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  notifBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 9,
+    color: '#FFF',
+    lineHeight: 12,
   },
   consolidatedLabel: {
     fontFamily: 'Cairo_600SemiBold',
