@@ -53,8 +53,18 @@ export default function AddTransactionScreen() {
   const insets = useSafeAreaInsets();
   const { addTransaction, updateTransaction, selectedWallet, currencySymbol, walletTransactions, customCategories, addCustomCategory, wallets, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
-  const params = useLocalSearchParams<{ editId?: string; prefillAmount?: string; prefillType?: TransactionType; prefillCategory?: string; prefillDesc?: string; type?: TransactionType }>();
+  const params = useLocalSearchParams<{ 
+    editId?: string; 
+    prefillAmount?: string; 
+    prefillType?: TransactionType; 
+    prefillCategory?: string; 
+    prefillDesc?: string; 
+    type?: TransactionType;
+    isQuick?: string;
+    quickMode?: string;
+  }>();
   const isEditMode = !!params.editId;
+  const isQuick = params.isQuick === 'true' || params.quickMode === 'true' || (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search.includes('isQuick=true'));
 
   // Find existing transaction if in edit mode
   const existingTxn = isEditMode
@@ -608,11 +618,13 @@ export default function AddTransactionScreen() {
           <Text style={styles.sheetTitle}>
             {isEditMode 
               ? t.editTransaction 
-              : type === 'income' 
-                ? (language === 'ar' ? 'إضافة دخل جديد 🟢' : 'Add New Income')
-                : type === 'transfer'
-                  ? (language === 'ar' ? 'تحويل بين المحافظ 🔄' : 'Transfer Funds')
-                  : (language === 'ar' ? 'إضافة مصروف جديد 🔴' : 'Add New Expense')}
+              : isQuick
+                ? (type === 'income' ? (language === 'ar' ? 'إضافة دخل جديد 🟢' : 'Add Income') : (language === 'ar' ? 'إضافة مصروف جديد 🔴' : 'Add Expense'))
+                : type === 'income' 
+                  ? (language === 'ar' ? 'إضافة دخل جديد 🟢' : 'Add New Income')
+                  : type === 'transfer'
+                    ? (language === 'ar' ? 'تحويل بين المحافظ 🔄' : 'Transfer Funds')
+                    : (language === 'ar' ? 'إضافة مصروف جديد 🔴' : 'Add New Expense')}
           </Text>
           <Pressable 
             onPress={() => {
@@ -640,7 +652,7 @@ export default function AddTransactionScreen() {
             </View>
           )}
 
-          {!isEditMode && (
+          {!isEditMode && !isQuick && (
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
@@ -708,31 +720,33 @@ export default function AddTransactionScreen() {
             ) : null}
           </View>
 
-          <View style={styles.typeToggle}>
-            <Pressable
-              onPress={() => handleTypeSwitch('expense')}
-              style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
-            >
-              <Ionicons name="arrow-up" size={18} color={type === 'expense' ? '#fff' : Colors.expense} />
-              <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>{t.expense}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => handleTypeSwitch('income')}
-              style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
-            >
-              <Ionicons name="arrow-down" size={18} color={type === 'income' ? '#fff' : Colors.income} />
-              <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>{t.incomeType}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => handleTypeSwitch('transfer')}
-              style={[styles.typeBtn, type === 'transfer' && styles.typeBtnActiveTransfer]}
-            >
-              <Ionicons name="swap-horizontal" size={18} color={type === 'transfer' ? '#fff' : Colors.textSecondary} />
-              <Text style={[styles.typeText, type === 'transfer' && styles.typeTextActive]}>
-                {language === 'ar' ? 'تحويل' : 'Transfer'}
-              </Text>
-            </Pressable>
-          </View>
+          {!isQuick && (
+            <View style={styles.typeToggle}>
+              <Pressable
+                onPress={() => handleTypeSwitch('expense')}
+                style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
+              >
+                <Ionicons name="arrow-up" size={18} color={type === 'expense' ? '#fff' : Colors.expense} />
+                <Text style={[styles.typeText, type === 'expense' && styles.typeTextActive]}>{t.expense}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleTypeSwitch('income')}
+                style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
+              >
+                <Ionicons name="arrow-down" size={18} color={type === 'income' ? '#fff' : Colors.income} />
+                <Text style={[styles.typeText, type === 'income' && styles.typeTextActive]}>{t.incomeType}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleTypeSwitch('transfer')}
+                style={[styles.typeBtn, type === 'transfer' && styles.typeBtnActiveTransfer]}
+              >
+                <Ionicons name="swap-horizontal" size={18} color={type === 'transfer' ? '#fff' : Colors.textSecondary} />
+                <Text style={[styles.typeText, type === 'transfer' && styles.typeTextActive]}>
+                  {language === 'ar' ? 'تحويل' : 'Transfer'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
 
           <View style={styles.amountSection}>
             <Text style={styles.label}>{t.amount}</Text>

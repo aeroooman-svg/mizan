@@ -175,7 +175,7 @@ export default function QuickGlanceWidget({ data, language, onAddPress }: QuickG
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/add-transaction?type=income&prefillType=income');
+                router.push('/add-transaction?type=income&prefillType=income&isQuick=true');
               }}
               style={({ pressed }) => [
                 styles.primaryActionBtn,
@@ -191,7 +191,7 @@ export default function QuickGlanceWidget({ data, language, onAddPress }: QuickG
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/add-transaction?type=expense&prefillType=expense');
+                router.push('/add-transaction?type=expense&prefillType=expense&isQuick=true');
               }}
               style={({ pressed }) => [
                 styles.primaryActionBtn,
