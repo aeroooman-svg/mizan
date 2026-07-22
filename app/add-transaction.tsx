@@ -53,7 +53,7 @@ export default function AddTransactionScreen() {
   const insets = useSafeAreaInsets();
   const { addTransaction, updateTransaction, selectedWallet, currencySymbol, walletTransactions, customCategories, addCustomCategory, wallets, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
-  const params = useLocalSearchParams<{ editId?: string }>();
+  const params = useLocalSearchParams<{ editId?: string; prefillAmount?: string; prefillType?: TransactionType; prefillCategory?: string; prefillDesc?: string; type?: TransactionType }>();
   const isEditMode = !!params.editId;
 
   // Find existing transaction if in edit mode
@@ -78,7 +78,15 @@ export default function AddTransactionScreen() {
   const now = new Date();
   const initialDate = existingTxn ? new Date(existingTxn.date) : now;
 
-  const [type, setType] = useState<TransactionType>(existingTxn?.type || 'expense');
+  const [type, setType] = useState<TransactionType>(
+    existingTxn?.type || params.prefillType || params.type || 'expense'
+  );
+
+  useEffect(() => {
+    if (!existingTxn && (params.prefillType || params.type)) {
+      setType(params.prefillType || params.type || 'expense');
+    }
+  }, [params.prefillType, params.type, existingTxn]);
   const [amount, setAmount] = useState(existingTxn ? existingTxn.amount.toString() : '');
   const [selectedCategory, setSelectedCategory] = useState<string>(existingTxn?.category || '');
   const [description, setDescription] = useState(existingTxn?.description || '');

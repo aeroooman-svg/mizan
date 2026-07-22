@@ -168,72 +168,93 @@ export default function QuickGlanceWidget({ data, language, onAddPress }: QuickG
             </View>
           )}
 
-        {/* Quick Actions Bar */}
-        <View style={styles.quickActionsRow}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (onAddPress) onAddPress();
-              else router.push('/add-transaction');
-            }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              { backgroundColor: pressed ? colors.primaryDark : colors.primary },
-            ]}
-          >
-            <Ionicons name="add-circle" size={18} color="#FFF" />
-            <Text style={styles.actionBtnText}>
-              {isAr ? 'إضافة سريعة' : 'Quick Add'}
-            </Text>
-          </Pressable>
+        {/* Quick Actions Section */}
+        <View style={styles.quickActionsContainer}>
+          {/* Row 1: Primary Income & Expense Buttons */}
+          <View style={styles.primaryActionsRow}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/add-transaction', params: { type: 'income', prefillType: 'income' } } as any);
+              }}
+              style={({ pressed }) => [
+                styles.primaryActionBtn,
+                { backgroundColor: pressed ? '#059669' : '#10B981' },
+              ]}
+            >
+              <Ionicons name="add-circle" size={20} color="#FFF" />
+              <Text style={styles.primaryActionText}>
+                {isAr ? 'إضافة دخل' : 'Add Income'}
+              </Text>
+            </Pressable>
 
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/installments' as any);
-            }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="card-outline" size={17} color={colors.text} />
-            <Text style={[styles.actionBtnText, { color: colors.text }]}>
-              {isAr ? 'الأقساط' : 'Installments'}
-            </Text>
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({ pathname: '/add-transaction', params: { type: 'expense', prefillType: 'expense' } } as any);
+              }}
+              style={({ pressed }) => [
+                styles.primaryActionBtn,
+                { backgroundColor: pressed ? '#DC2626' : '#EF4444' },
+              ]}
+            >
+              <Ionicons name="remove-circle" size={20} color="#FFF" />
+              <Text style={styles.primaryActionText}>
+                {isAr ? 'إضافة مصروف' : 'Add Expense'}
+              </Text>
+            </Pressable>
+          </View>
 
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/import-statement' as any);
-            }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="document-text-outline" size={17} color={colors.text} />
-            <Text style={[styles.actionBtnText, { color: colors.text }]}>
-              {isAr ? 'كشف بنكي' : 'Statement'}
-            </Text>
-          </Pressable>
+          {/* Row 2: Secondary Tools (Installments, Statement, Receipt) */}
+          <View style={styles.secondaryActionsRow}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/installments' as any);
+              }}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="card-outline" size={16} color={colors.text} />
+              <Text style={[styles.secondaryActionText, { color: colors.text }]} numberOfLines={1}>
+                {isAr ? 'الأقساط' : 'Installments'}
+              </Text>
+            </Pressable>
 
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/scan-receipt');
-            }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="receipt-outline" size={17} color={colors.text} />
-            <Text style={[styles.actionBtnText, { color: colors.text }]}>
-              {isAr ? 'فاتورة' : 'Receipt'}
-            </Text>
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/import-statement' as any);
+              }}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="document-text-outline" size={16} color={colors.text} />
+              <Text style={[styles.secondaryActionText, { color: colors.text }]} numberOfLines={1}>
+                {isAr ? 'كشف بنكي' : 'Statement'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/scan-receipt');
+              }}
+              style={({ pressed }) => [
+                styles.secondaryActionBtn,
+                { backgroundColor: pressed ? colors.cardBorder : colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="receipt-outline" size={16} color={colors.text} />
+              <Text style={[styles.secondaryActionText, { color: colors.text }]} numberOfLines={1}>
+                {isAr ? 'فاتورة' : 'Receipt'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
         </View>
 
@@ -379,13 +400,40 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
   },
-  quickActionsRow: {
+  quickActionsContainer: {
+    gap: 8,
+    marginTop: 6,
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  primaryActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 14,
+    paddingVertical: 11,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  primaryActionText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#FFF',
+  },
+  secondaryActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 4,
   },
-  actionBtn: {
+  secondaryActionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -393,11 +441,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 4,
     borderRadius: 12,
     paddingVertical: 9,
+    paddingHorizontal: 4,
   },
-  actionBtnText: {
-    fontFamily: 'Cairo_700Bold',
+  secondaryActionText: {
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: '#FFF',
   },
   savingsBar: {
     flexDirection: 'row',

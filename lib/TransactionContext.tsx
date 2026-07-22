@@ -533,8 +533,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
         amount: finalAmount,
         category: rec.category,
         description: rec.description || '',
-        date: nextDue.toISOString(),
-        createdAt: new Date().toISOString(),
+        date: now.toISOString(),
+        createdAt: now.toISOString(),
       };
       
       await saveTransaction(newTx);
@@ -565,8 +565,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       return filtered;
     });
     
+    triggerLiveSync();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, []);
+  }, [triggerLiveSync]);
 
   const value = useMemo(() => ({
     transactions,

@@ -58,14 +58,17 @@ export async function payInstallmentMonth(
   if (plan.remainingMonths <= 0) return { success: false, completed: true };
 
   const currentMonthKey = new Date().toISOString().substring(0, 7);
+  const now = new Date().toISOString();
 
   // Add expense transaction to the target wallet
   await addTransactionFn({
+    id: `inst_tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     amount: plan.monthlyAmount,
     type: 'expense',
     category: plan.category || 'other',
     description: `قسط: ${plan.title} (${plan.totalMonths - plan.remainingMonths + 1}/${plan.totalMonths})`,
-    date: new Date().toISOString().split('T')[0],
+    date: now,
+    createdAt: now,
     walletId: plan.walletId,
   });
 
