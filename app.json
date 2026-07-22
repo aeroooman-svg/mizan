@@ -54,7 +54,6 @@
       "expo-secure-store"
     ],
     "experiments": {
-      "baseUrl": "/mizan",
       "typedRoutes": true,
       "reactCompiler": true
     }
