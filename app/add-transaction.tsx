@@ -606,16 +606,18 @@ export default function AddTransactionScreen() {
       <View style={styles.container}>
         <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, zIndex: 10, elevation: 10 }]}>
           <Text style={styles.sheetTitle}>
-            {isEditMode ? t.editTransaction : t.newTransaction}
+            {isEditMode 
+              ? t.editTransaction 
+              : type === 'income' 
+                ? (language === 'ar' ? 'إضافة دخل جديد 🟢' : 'Add New Income')
+                : type === 'transfer'
+                  ? (language === 'ar' ? 'تحويل بين المحافظ 🔄' : 'Transfer Funds')
+                  : (language === 'ar' ? 'إضافة مصروف جديد 🔴' : 'Add New Expense')}
           </Text>
           <Pressable 
             onPress={() => {
               Haptics.selectionAsync();
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/');
-              }
+              router.replace('/');
             }} 
             hitSlop={20}
           >

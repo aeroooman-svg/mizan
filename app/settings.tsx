@@ -382,11 +382,7 @@ export default function SettingsScreen() {
 
   const handleClose = () => {
     safeHaptic.selection();
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)' as any);
-    }
+    router.replace('/');
   };
 
   return (

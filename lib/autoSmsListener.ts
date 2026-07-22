@@ -119,6 +119,11 @@ export async function checkClipboardForBankSMS(
   addTransactionFn?: (tx: Transaction) => Promise<void>,
   walletId?: string
 ): Promise<CheckClipboardResult> {
+  // Disable automatic background clipboard reading on web to prevent OS/Browser system 'Paste' popups
+  if (Platform.OS === 'web') {
+    return { detected: false, parsed: null, autoSaved: false };
+  }
+
   const settings = await getAutoSmsSettings();
   if (!settings.enabled) {
     return { detected: false, parsed: null, autoSaved: false };
