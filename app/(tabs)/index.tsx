@@ -586,6 +586,20 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* 3D Bank Credit Cards Carousel */}
+        <WalletCarousel
+          wallets={wallets}
+          selectedWallet={selectedWallet}
+          transactions={transactions}
+          currentUser={currentUser}
+          language={language as 'ar' | 'en'}
+          colors={colors}
+          onSelectWallet={selectWallet}
+          onEditWallet={handleEditWallet}
+          onDeleteWallet={handleDeleteWallet}
+          onAddWallet={handleAddWallet}
+        />
+
         {/* Quick Glance Widget */}
         <QuickGlanceWidget
           data={getWidgetData(
@@ -612,20 +626,6 @@ export default function HomeScreen() {
             colors={colors}
           />
         )}
-
-        {/* 3D Bank Credit Cards Carousel */}
-        <WalletCarousel
-          wallets={wallets}
-          selectedWallet={selectedWallet}
-          transactions={transactions}
-          currentUser={currentUser}
-          language={language as 'ar' | 'en'}
-          colors={colors}
-          onSelectWallet={selectWallet}
-          onEditWallet={handleEditWallet}
-          onDeleteWallet={handleDeleteWallet}
-          onAddWallet={handleAddWallet}
-        />
 
         {/* Two Column Health & Forecast Dashboard */}
         {selectedWallet && (

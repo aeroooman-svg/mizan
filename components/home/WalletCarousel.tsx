@@ -154,32 +154,36 @@ export default function WalletCarousel({
                     style={{
                       flexDirection: 'row',
                       justifyContent: 'space-between',
-                      alignItems: 'center',
+                      alignItems: 'flex-start',
                     }}
                   >
                     <View style={{ flex: 1, marginRight: 8 }}>
                       <Text
                         style={{
                           fontFamily: 'Cairo_700Bold',
-                          fontSize: 16,
+                          fontSize: 22,
                           color: textColor,
                           textAlign: 'left',
+                          lineHeight: 28,
                         }}
                         numberOfLines={1}
                       >
                         {wallet.name.toUpperCase()}
                       </Text>
-                      <Text
-                        style={{
-                          fontFamily: 'Cairo_600SemiBold',
-                          fontSize: 9,
-                          color: textSecondaryColor,
-                          letterSpacing: 0.5,
-                          textAlign: 'left',
-                        }}
-                      >
-                        MIZAN PLATINUM
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <View style={{ backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text
+                            style={{
+                              fontFamily: 'Cairo_700Bold',
+                              fontSize: 9,
+                              color: textSecondaryColor,
+                              letterSpacing: 0.8,
+                            }}
+                          >
+                            MIZAN PLATINUM
+                          </Text>
+                        </View>
+                      </View>
                       {wallet.sharedWith && (
                         <Pressable
                           onPress={() => {
@@ -190,19 +194,19 @@ export default function WalletCarousel({
                             flexDirection: 'row',
                             alignItems: 'center',
                             gap: 4,
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
                             borderRadius: 6,
                             alignSelf: 'flex-start',
-                            marginTop: 4,
+                            marginTop: 6,
                           }}
                         >
-                          <Ionicons name="people" size={10} color="#10B981" />
+                          <Ionicons name="people" size={12} color="#10B981" />
                           <Text
                             style={{
-                              fontFamily: 'Cairo_600SemiBold',
-                              fontSize: 8,
+                              fontFamily: 'Cairo_700Bold',
+                              fontSize: 9,
                               color: '#10B981',
                             }}
                           >
@@ -232,30 +236,32 @@ export default function WalletCarousel({
                         }}
                         hitSlop={10}
                         style={{
-                          padding: 4,
-                          backgroundColor: 'rgba(255,255,255,0.15)',
-                          borderRadius: 8,
+                          padding: 6,
+                          backgroundColor: 'rgba(255,255,255,0.18)',
+                          borderRadius: 10,
                         }}
                       >
                         <Ionicons name="ellipsis-vertical" size={16} color={textColor} />
                       </Pressable>
                       <MaterialIcons
                         name={(wallet.icon as any) || 'account-balance-wallet'}
-                        size={24}
+                        size={26}
                         color={textColor}
                       />
                     </View>
                   </View>
 
-                  {/* Middle Balance Row */}
-                  <View style={{ marginVertical: 2 }}>
+                  {/* Middle Balance Row - Label & amount strictly aligned on the same side */}
+                  <View style={{ marginVertical: 4, alignItems: 'flex-start' }}>
                     <Text
                       style={{
-                        fontFamily: 'Cairo_400Regular',
-                        fontSize: 8,
+                        fontFamily: 'Cairo_600SemiBold',
+                        fontSize: 10,
                         color: textSecondaryColor,
                         textTransform: 'uppercase',
-                        letterSpacing: 1,
+                        letterSpacing: 0.5,
+                        textAlign: 'left',
+                        marginBottom: 2,
                       }}
                     >
                       {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
@@ -265,13 +271,14 @@ export default function WalletCarousel({
                         fontFamily: 'Cairo_700Bold',
                         fontSize: 26,
                         color: textColor,
-                        lineHeight: 32,
+                        lineHeight: 34,
+                        textAlign: 'left',
                       }}
                       numberOfLines={1}
                     >
                       {walletBalance >= 0 ? '' : '-'}
                       {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                      <Text style={{ fontSize: 13, fontFamily: 'Cairo_600SemiBold' }}>
+                      <Text style={{ fontSize: 14, fontFamily: 'Cairo_600SemiBold' }}>
                         {wallet.currency}
                       </Text>
                     </Text>
@@ -560,18 +567,18 @@ export default function WalletCarousel({
 const getStyles = (colors: any) =>
   StyleSheet.create({
     walletsSection: {
-      marginTop: 16,
+      marginTop: 12,
       paddingLeft: 20,
     },
     walletsScroll: {
       paddingRight: 20,
-      gap: 10,
-      paddingVertical: 4,
+      gap: 12,
+      paddingVertical: 6,
     },
     wallet3DCard: {
-      width: 270,
-      height: 160,
-      borderRadius: 20,
+      width: 280,
+      height: 175,
+      borderRadius: 22,
       elevation: 6,
       backgroundColor: colors.surface,
     },
@@ -590,8 +597,8 @@ const getStyles = (colors: any) =>
     },
     addWallet3DCard: {
       width: 140,
-      height: 160,
-      borderRadius: 20,
+      height: 175,
+      borderRadius: 22,
       borderWidth: 2,
       borderStyle: 'dashed',
       borderColor: colors.border,
