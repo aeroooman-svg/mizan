@@ -36,10 +36,18 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
 
   const handleRestart = async () => {
     try {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.href = window.location.origin + window.location.pathname;
+        return;
+      }
       await reloadAppAsync();
     } catch (restartError) {
       console.error("Failed to restart app:", restartError);
-      resetError();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      } else {
+        resetError();
+      }
     }
   };
 
