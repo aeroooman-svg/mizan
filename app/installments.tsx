@@ -62,12 +62,36 @@ export default function InstallmentsScreen() {
   const totalRemainingDebt = activePlans.reduce((sum, p) => sum + p.remainingMonths * p.monthlyAmount, 0);
   const totalMonthlyCommitment = activePlans.reduce((sum, p) => sum + p.monthlyAmount, 0);
 
+  const confirmAction = (titleText: string, messageText: string, onConfirm: () => Promise<void>) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm(`${titleText}\n\n${messageText}`)) {
+        onConfirm();
+      }
+    } else {
+      Alert.alert(
+        titleText,
+        messageText,
+        [
+          { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+          {
+            text: language === 'ar' ? 'تأكيد' : 'Confirm',
+            onPress: () => {
+              onConfirm();
+            },
+          },
+        ]
+      );
+    }
+  };
+
   const handleAddPlan = async () => {
     if (!title.trim() || !totalAmount || !totalMonths) {
-      Alert.alert(
-        language === 'ar' ? 'تنبيه' : 'Warning',
-        language === 'ar' ? 'يرجى إدخال اسم القسط، المبلغ الإجمالي، وعدد الأشهر' : 'Please fill all required fields'
-      );
+      const msg = language === 'ar' ? 'يرجى إدخال اسم القسط، المبلغ الإجمالي، وعدد الأشهر' : 'Please fill all required fields';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(msg);
+      } else {
+        Alert.alert(language === 'ar' ? 'تنبيه' : 'Warning', msg);
+      }
       return;
     }
 
@@ -76,10 +100,12 @@ export default function InstallmentsScreen() {
     const numDueDay = parseInt(dueDay, 10) || 5;
 
     if (isNaN(numTotal) || numTotal <= 0 || isNaN(numMonths) || numMonths <= 0) {
-      Alert.alert(
-        language === 'ar' ? 'خطأ' : 'Error',
-        language === 'ar' ? 'المبلغ وعدد الأشهر يجب أن تكون أرقاماً موجبة' : 'Invalid total amount or months'
-      );
+      const msg = language === 'ar' ? 'المبلغ وعدد الأشهر يجب أن تكون أرقاماً موجبة' : 'Invalid total amount or months';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(msg);
+      } else {
+        Alert.alert(language === 'ar' ? 'خطأ' : 'Error', msg);
+      }
       return;
     }
 
@@ -103,51 +129,39 @@ export default function InstallmentsScreen() {
     setTitle('');
     setTotalAmount('');
     setTotalMonths('6');
+    setDueDay('5');
     setModalVisible(false);
     await loadPlans();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handlePayMonth = async (plan: InstallmentPlan) => {
-    Alert.alert(
+  const handlePayMonth = (plan: InstallmentPlan) => {
+    confirmAction(
       language === 'ar' ? 'تأكيد سداد القسط' : 'Confirm Payment',
       language === 'ar'
-        ? `هل تريد تسجيل سداد قسط هذا الشهر بمبلغ ${formatCurrency(plan.monthlyAmount)} ${selectedWallet?.currency}؟`
-        : `Pay monthly installment of ${formatCurrency(plan.monthlyAmount)} ${selectedWallet?.currency}?`,
-      [
-        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: language === 'ar' ? 'تأكيد السداد' : 'Pay Now',
-          onPress: async () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            const res = await payInstallmentMonth(plan.id, addTransaction);
-            if (res.success) {
-              await refresh();
-              await loadPlans();
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-          },
-        },
-      ]
+        ? `هل تريد تسجيل سداد قسط هذا الشهر لمصروف ${plan.title} بمبلغ ${formatCurrency(plan.monthlyAmount)} ${selectedWallet?.currency}؟`
+        : `Pay monthly installment for ${plan.title} of ${formatCurrency(plan.monthlyAmount)} ${selectedWallet?.currency}?`,
+      async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        const res = await payInstallmentMonth(plan.id, addTransaction);
+        if (res.success) {
+          await refresh();
+          await loadPlans();
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
     );
   };
 
   const handleDeletePlan = (id: string) => {
-    Alert.alert(
+    confirmAction(
       language === 'ar' ? 'حذف القسط' : 'Delete Plan',
       language === 'ar' ? 'هل أنت تأكد من حذف خطة التقسيط هذه؟' : 'Are you sure you want to delete this installment plan?',
-      [
-        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: language === 'ar' ? 'حذف' : 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            await deleteInstallmentPlan(id);
-            await loadPlans();
-          },
-        },
-      ]
+      async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        await deleteInstallmentPlan(id);
+        await loadPlans();
+      }
     );
   };
 
@@ -171,6 +185,42 @@ export default function InstallmentsScreen() {
     }
   };
 
+  const getDueStatus = (plan: InstallmentPlan) => {
+    const currentMonthKey = new Date().toISOString().substring(0, 7);
+    const isPaidThisMonth = plan.lastPaidMonth === currentMonthKey;
+    if (isPaidThisMonth) {
+      return {
+        text: language === 'ar' ? '✅ تم سداد قسط هذا الشهر' : '✅ Paid for this month',
+        color: colors.primary,
+        bgColor: colors.primary + '18',
+        isPaid: true,
+        isOverdue: false,
+      };
+    }
+
+    const todayDay = new Date().getDate();
+    const dueDayNum = plan.dueDay || 5;
+
+    if (todayDay > dueDayNum) {
+      return {
+        text: language === 'ar' ? `⚠️ قسط مستحق السداد (كان يوم ${dueDayNum} بالشهر)` : `⚠️ Overdue since day ${dueDayNum}`,
+        color: '#EF4444',
+        bgColor: '#EF444418',
+        isPaid: false,
+        isOverdue: true,
+      };
+    } else {
+      const daysLeft = dueDayNum - todayDay;
+      return {
+        text: language === 'ar' ? `🔔 مستحق السداد خلال ${daysLeft === 0 ? 'اليوم' : `${daysLeft} أيام`} (يوم ${dueDayNum})` : `🔔 Due in ${daysLeft} days (day ${dueDayNum})`,
+        color: '#F59E0B',
+        bgColor: '#F59E0B18',
+        isPaid: false,
+        isOverdue: false,
+      };
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -179,7 +229,7 @@ export default function InstallmentsScreen() {
           <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
-          {language === 'ar' ? '💳 الأقساط والبطاقات الائتمانية' : '💳 Installments & Cards'}
+          {language === 'ar' ? '💳 الأقساط والبطاقات الائتمانية' : '💳 Installments & Credit Cards'}
         </Text>
         <Pressable onPress={() => setModalVisible(true)} style={styles.addBtn}>
           <Ionicons name="add" size={24} color="#FFF" />
@@ -187,7 +237,7 @@ export default function InstallmentsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Overview Header Cards */}
+        {/* Summary Metric Cards */}
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
             <Ionicons name="trending-down" size={22} color={colors.expense} />
@@ -210,7 +260,24 @@ export default function InstallmentsScreen() {
           </View>
         </View>
 
-        {/* Active Plans */}
+        {/* Savings Impact Banner */}
+        {totalMonthlyCommitment > 0 && (
+          <View style={styles.savingsImpactCard}>
+            <View style={styles.savingsImpactHeader}>
+              <Ionicons name="sparkles" size={18} color={colors.primary} />
+              <Text style={styles.savingsImpactTitle}>
+                {language === 'ar' ? 'تأثير الأقساط على خطة التوفير والادخار' : 'Installments Impact on Savings Plan'}
+              </Text>
+            </View>
+            <Text style={styles.savingsImpactSub}>
+              {language === 'ar'
+                ? `تستقطع الأقساط ${formatCurrency(totalMonthlyCommitment)} ${selectedWallet?.currency} شهرياً من رصيدك المتاح. عند الانتهاء منها ستتمكن من تحويل هذا المبلغ مباشرة لأهداف الادخار وحصالات التوفير!`
+                : `Your monthly obligation of ${formatCurrency(totalMonthlyCommitment)} ${selectedWallet?.currency} consumes part of your savings capacity. Once paid off, this amount can go directly to your Savings Goals!`}
+            </Text>
+          </View>
+        )}
+
+        {/* Active Plans Section */}
         <Text style={styles.sectionTitle}>
           {language === 'ar' ? `الأقساط النشطة (${activePlans.length})` : `Active Installments (${activePlans.length})`}
         </Text>
@@ -229,8 +296,7 @@ export default function InstallmentsScreen() {
           </View>
         ) : (
           activePlans.map(plan => {
-            const currentMonthKey = new Date().toISOString().substring(0, 7);
-            const isPaidThisMonth = plan.lastPaidMonth === currentMonthKey;
+            const status = getDueStatus(plan);
             const progress = (plan.totalMonths - plan.remainingMonths) / plan.totalMonths;
 
             return (
@@ -241,8 +307,8 @@ export default function InstallmentsScreen() {
                     <Text style={styles.providerText}>{getProviderName(plan.provider)}</Text>
                   </View>
 
-                  <Pressable onPress={() => handleDeletePlan(plan.id)} hitSlop={10}>
-                    <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+                  <Pressable onPress={() => handleDeletePlan(plan.id)} hitSlop={15} style={styles.deleteBtn}>
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
                   </Pressable>
                 </View>
 
@@ -260,7 +326,14 @@ export default function InstallmentsScreen() {
                       : `${plan.remainingMonths} of ${plan.totalMonths} months left`}
                   </Text>
                   <Text style={styles.planDueText}>
-                    {language === 'ar' ? `استحقاق يوم ${plan.dueDay} شهرياً` : `Due day: ${plan.dueDay}`}
+                    {language === 'ar' ? `استحقاق يوم ${plan.dueDay || 5} شهرياً` : `Due day: ${plan.dueDay || 5}`}
+                  </Text>
+                </View>
+
+                {/* Due Status Reminder Badge */}
+                <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
+                  <Text style={[styles.statusBadgeText, { color: status.color }]}>
+                    {status.text}
                   </Text>
                 </View>
 
@@ -278,21 +351,21 @@ export default function InstallmentsScreen() {
 
                   <Pressable
                     onPress={() => handlePayMonth(plan)}
-                    disabled={isPaidThisMonth}
+                    disabled={status.isPaid}
                     style={[
                       styles.payBtn,
-                      isPaidThisMonth && { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+                      status.isPaid && { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
                     ]}
                   >
                     <Ionicons
-                      name={isPaidThisMonth ? 'checkmark' : 'wallet-outline'}
+                      name={status.isPaid ? 'checkmark-circle' : 'wallet-outline'}
                       size={16}
-                      color={isPaidThisMonth ? colors.primary : '#FFF'}
+                      color={status.isPaid ? colors.primary : '#FFF'}
                     />
-                    <Text style={[styles.payBtnText, isPaidThisMonth && { color: colors.primary }]}>
-                      {isPaidThisMonth
-                        ? (language === 'ar' ? 'تم سداد الشهر' : 'Paid This Month')
-                        : (language === 'ar' ? 'سداد قسط الشهر' : 'Pay This Month')}
+                    <Text style={[styles.payBtnText, status.isPaid && { color: colors.primary }]}>
+                      {status.isPaid
+                        ? (language === 'ar' ? 'تم سداد قسط الشهر' : 'Paid This Month')
+                        : (language === 'ar' ? 'تأكيد سداد قسط هذا الشهر' : 'Confirm Payment')}
                     </Text>
                   </Pressable>
                 </View>
@@ -304,11 +377,11 @@ export default function InstallmentsScreen() {
         {/* Completed Plans */}
         {completedPlans.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
               {language === 'ar' ? `الأقساط المكتملة (${completedPlans.length})` : `Completed (${completedPlans.length})`}
             </Text>
             {completedPlans.map(plan => (
-              <View key={plan.id} style={[styles.planCard, { opacity: 0.6 }]}>
+              <View key={plan.id} style={[styles.planCard, { opacity: 0.65 }]}>
                 <View style={styles.planHeader}>
                   <Text style={styles.planTitle}>{plan.title}</Text>
                   <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
@@ -325,7 +398,7 @@ export default function InstallmentsScreen() {
       </ScrollView>
 
       {/* Add Plan Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
@@ -335,13 +408,13 @@ export default function InstallmentsScreen() {
               <Text style={styles.modalTitle}>
                 {language === 'ar' ? 'إضافة قسط / التزام جديد' : 'Add Installment Plan'}
               </Text>
-              <Pressable onPress={() => setModalVisible(false)}>
+              <Pressable onPress={() => setModalVisible(false)} hitSlop={15}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </Pressable>
             </View>
 
-            <ScrollView 
-              showsVerticalScrollIndicator={false} 
+            <ScrollView
+              showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ gap: 14, paddingBottom: Platform.OS === 'ios' ? 30 : 15 }}
               style={{ maxHeight: Dimensions.get('window').height * 0.75 }}
@@ -382,6 +455,18 @@ export default function InstallmentsScreen() {
                     onChangeText={setTotalMonths}
                   />
                 </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{language === 'ar' ? 'يوم الاستحقاق الشهري (1 - 31)' : 'Monthly Due Day (1 - 31)'}</Text>
+                <TextInput
+                  style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
+                  placeholder="5"
+                  keyboardType="number-pad"
+                  placeholderTextColor={colors.textTertiary}
+                  value={dueDay}
+                  onChangeText={setDueDay}
+                />
               </View>
 
               <View style={styles.formGroup}>
@@ -456,17 +541,17 @@ const getStyles = (colors: any) => StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
-    gap: 16,
   },
   summaryRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 16,
   },
   summaryCard: {
     flex: 1,
     backgroundColor: colors.surface,
+    borderRadius: 16,
     padding: 14,
-    borderRadius: 18,
     borderWidth: 1,
     gap: 4,
   },
@@ -477,18 +562,43 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   summaryValue: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 16,
+  },
+  savingsImpactCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    marginBottom: 20,
+    gap: 6,
+  },
+  savingsImpactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  savingsImpactTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  savingsImpactSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 17,
   },
   sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
-    color: '#FFF',
-    textAlign: 'left',
+    color: colors.text,
+    marginBottom: 12,
   },
   emptyCard: {
     backgroundColor: colors.surface,
-    padding: 24,
-    borderRadius: 20,
+    borderRadius: 16,
+    padding: 30,
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
@@ -497,53 +607,58 @@ const getStyles = (colors: any) => StyleSheet.create({
   emptyTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
-    color: '#FFF',
+    color: colors.text,
   },
   emptySub: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 18,
   },
   planCard: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 10,
-    marginBottom: 8,
   },
   planHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   providerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.primary + '15',
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   providerText: {
-    fontFamily: 'Cairo_700Bold',
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
-    color: colors.primary,
+    color: colors.text,
+  },
+  deleteBtn: {
+    padding: 4,
   },
   planTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: '#FFF',
-    textAlign: 'left',
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: 10,
   },
   progressTrack: {
     height: 6,
     backgroundColor: colors.surfaceAlt,
     borderRadius: 3,
     overflow: 'hidden',
+    marginBottom: 10,
   },
   progressBar: {
     height: '100%',
@@ -553,6 +668,8 @@ const getStyles = (colors: any) => StyleSheet.create({
   planMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   planMetaText: {
     fontFamily: 'Cairo_400Regular',
@@ -561,12 +678,24 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   planDueText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: colors.accent,
+    fontSize: 11,
+    color: colors.primary,
+  },
+  statusBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
   },
   divider: {
     height: 1,
     backgroundColor: colors.border,
+    marginVertical: 8,
   },
   planFooter: {
     flexDirection: 'row',
@@ -576,12 +705,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   monthlyLabel: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: colors.textSecondary,
+    color: colors.textTertiary,
   },
   monthlyValue: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: '#FFF',
+    fontSize: 15,
+    color: colors.text,
   },
   payBtn: {
     flexDirection: 'row',
