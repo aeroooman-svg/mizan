@@ -398,21 +398,14 @@ export default function HomeScreen() {
     );
   };
 
-  const handleApproveConfirm = (item: RecurringTransaction) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      language === 'ar' ? 'تأكيد المعاملة' : 'Confirm Transaction',
-      language === 'ar' 
-        ? `هل تريد تسجيل معاملة بقيمة ${item.amount} ${currencySymbol} لصالح ${getCategoryName(item.category, language)}؟`
-        : `Do you want to log a transaction of ${item.amount} ${currencySymbol} for ${getCategoryName(item.category, language)}?`,
-      [
-        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        { 
-          text: language === 'ar' ? 'تأكيد' : 'Confirm', 
-          onPress: () => approveRecurringTransaction(item) 
-        }
-      ]
-    );
+  const handleApproveConfirm = async (item: RecurringTransaction) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await approveRecurringTransaction(item);
+    setUndoState({
+      visible: true,
+      message: language === 'ar' ? `تم تأكيد مصروف ${getCategoryName(item.category, language)} بنجاح` : 'Transaction confirmed successfully',
+      action: () => {},
+    });
   };
 
   const handleApproveAdjust = (item: RecurringTransaction) => {
@@ -421,34 +414,31 @@ export default function HomeScreen() {
     setAdjustAmount(item.amount.toString());
   };
 
-  const handleSaveAdjustedAmount = () => {
+  const handleSaveAdjustedAmount = async () => {
     const amt = parseFloat(adjustAmount);
     if (isNaN(amt) || amt <= 0) {
       Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'الرجاء إدخال مبلغ صحيح' : 'Please enter a valid amount');
       return;
     }
     if (adjustingItem) {
-      approveRecurringTransaction(adjustingItem, amt);
+      await approveRecurringTransaction(adjustingItem, amt);
+      setUndoState({
+        visible: true,
+        message: language === 'ar' ? 'تم تعديل وتأكيد الفاتورة بنجاح' : 'Adjusted bill confirmed',
+        action: () => {},
+      });
     }
     setAdjustingItem(null);
   };
 
-  const handleApproveSkip = (item: RecurringTransaction) => {
+  const handleApproveSkip = async (item: RecurringTransaction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      language === 'ar' ? 'تخطي المعاملة' : 'Skip Transaction',
-      language === 'ar' 
-        ? `هل تريد تخطي معاملة ${getCategoryName(item.category, language)} لهذا الشهر؟`
-        : `Do you want to skip ${getCategoryName(item.category, language)} for this period?`,
-      [
-        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        { 
-          text: language === 'ar' ? 'تخطي' : 'Skip', 
-          style: 'destructive',
-          onPress: () => approveRecurringTransaction(item, undefined, true) 
-        }
-      ]
-    );
+    await approveRecurringTransaction(item, undefined, true);
+    setUndoState({
+      visible: true,
+      message: language === 'ar' ? `تم تخطي مصروف ${getCategoryName(item.category, language)}` : 'Transaction skipped',
+      action: () => {},
+    });
   };
 
   const now = new Date();
