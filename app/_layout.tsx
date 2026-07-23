@@ -61,6 +61,8 @@ function RootLayoutNav() {
     scheduleDailyReminder(21, 0); // 9:00 PM daily
   }, []);
 
+  const isLoading = isSecurityLoading || isTransactionsLoading || !minTimeElapsed || !isOnboardingChecked;
+
   if (isLoading) {
     return <SplashLoadingScreen />;
   }
