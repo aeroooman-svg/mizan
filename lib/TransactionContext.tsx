@@ -10,6 +10,7 @@ import {
   getWallets,
   saveWallet as saveWalletToStorage,
   deleteWallet as deleteWalletFromStorage,
+  updateWallet as updateWalletInStorage,
   getSelectedWalletId,
   setSelectedWalletId as setSelectedWalletIdStorage,
   getCurrencyInfo,
@@ -17,6 +18,9 @@ import {
 import * as Crypto from 'expo-crypto';
 import { Alert } from 'react-native';
 import { deleteFinancialPlan } from './planStorage';
+import { deleteBudgetsForWallet } from './budgetStorage';
+import { deleteEnvelopesForWallet } from './envelopeBudgetStorage';
+import { deleteInstallmentsForWallet } from './installmentStorage';
 import { getCustomCategories, saveCustomCategory, deleteCustomCategory as deleteCustomCatFromStorage, CustomCategory } from './customCategories';
 import { getRecurringTransactions, updateRecurringTransaction, deleteRecurringTransaction, RecurringTransaction } from './recurringStorage';
 import { getGoals, deleteGoal, getRules, deleteRule } from './goalStorage';
@@ -44,6 +48,7 @@ interface TransactionContextValue {
   removeTransaction: (id: string) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   addWallet: (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string) => Promise<Wallet>;
+  updateWallet: (updatedWallet: Wallet) => Promise<void>;
   removeWallet: (id: string) => Promise<void>;
   selectWallet: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -421,9 +426,18 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     return wallet;
   }, [triggerLiveSync]);
 
+  const updateWallet = useCallback(async (updatedWallet: Wallet) => {
+    await updateWalletInStorage(updatedWallet);
+    setWallets(prev => prev.map(w => w.id === updatedWallet.id ? updatedWallet : w));
+    triggerLiveSync();
+  }, [triggerLiveSync]);
+
   const removeWallet = useCallback(async (id: string) => {
     await deleteWalletFromStorage(id);
     await deleteFinancialPlan(id);
+    await deleteBudgetsForWallet(id);
+    await deleteEnvelopesForWallet(id);
+    await deleteInstallmentsForWallet(id);
 
     // Clean up Goals & Rules associated with this wallet
     try {
@@ -586,6 +600,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     removeTransaction,
     updateTransaction,
     addWallet,
+    updateWallet,
     removeWallet,
     selectWallet,
     refresh: loadData,
@@ -596,7 +611,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     removeCustomCategory,
     pendingRecurring,
     approveRecurringTransaction,
-  }), [transactions, wallets, selectedWallet, isLoading, isInitialLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, updateTransaction, addWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions, customCategories, addCustomCategory, removeCustomCategory, pendingRecurring, approveRecurringTransaction]);
+  }), [transactions, wallets, selectedWallet, isLoading, isInitialLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, updateTransaction, addWallet, updateWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions, customCategories, addCustomCategory, removeCustomCategory, pendingRecurring, approveRecurringTransaction]);
 
   return (
     <TransactionContext.Provider value={value}>

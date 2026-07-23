@@ -5,6 +5,7 @@ import {
   getWallets,
   saveWallet as saveWalletToStorage,
   deleteWallet as deleteWalletFromStorage,
+  updateWallet as updateWalletInStorage,
   getSelectedWalletId,
   setSelectedWalletId as setSelectedWalletIdStorage,
 } from './storage';
@@ -23,6 +24,7 @@ interface WalletContextValue {
     cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal',
     sharedWith?: string
   ) => Promise<Wallet>;
+  updateWallet: (updatedWallet: Wallet) => Promise<void>;
   removeWallet: (id: string) => Promise<void>;
   selectWallet: (id: string) => Promise<void>;
   refreshWallets: () => Promise<void>;
@@ -88,6 +90,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return newWallet;
   };
 
+  const updateWallet = async (updatedWallet: Wallet): Promise<void> => {
+    await updateWalletInStorage(updatedWallet);
+    await loadWallets();
+  };
+
   const removeWallet = async (id: string) => {
     await deleteWalletFromStorage(id);
     await loadWallets();
@@ -103,6 +110,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         selectedWalletId,
         isLoading,
         addWallet,
+        updateWallet,
         removeWallet,
         selectWallet,
         refreshWallets: loadWallets,
@@ -111,6 +119,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       {children}
     </WalletContext.Provider>
   );
+
 }
 
 export function useWallets() {

@@ -46,6 +46,13 @@ export async function deleteInstallmentPlan(id: string): Promise<void> {
   await AsyncStorage.setItem(INSTALLMENTS_KEY, JSON.stringify(filtered));
 }
 
+export async function deleteInstallmentsForWallet(walletId: string): Promise<void> {
+  const plans = await getInstallmentPlans();
+  const filtered = plans.filter(p => p.walletId !== walletId);
+  await AsyncStorage.setItem(INSTALLMENTS_KEY, JSON.stringify(filtered));
+}
+
+
 export async function payInstallmentMonth(
   id: string,
   addTransactionFn: (tx: any) => Promise<any>

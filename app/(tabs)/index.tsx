@@ -386,11 +386,21 @@ export default function HomeScreen() {
     router.push('/add-wallet');
   };
 
+  const handleEditWallet = (wallet: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({
+      pathname: '/add-wallet',
+      params: { walletId: wallet.id },
+    } as any);
+  };
+
   const handleDeleteWallet = (id: string, name: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
-      t.deleteWallet,
-      t.deleteWalletConfirm.replace('{name}', name),
+      language === 'ar' ? 'حذف المحفظة' : t.deleteWallet,
+      language === 'ar'
+        ? `هل أنت متاكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
+        : `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`,
       [
         { text: t.cancel, style: 'cancel' },
         { text: t.delete, style: 'destructive', onPress: () => removeWallet(id) },
@@ -612,6 +622,7 @@ export default function HomeScreen() {
           language={language as 'ar' | 'en'}
           colors={colors}
           onSelectWallet={selectWallet}
+          onEditWallet={handleEditWallet}
           onDeleteWallet={handleDeleteWallet}
           onAddWallet={handleAddWallet}
         />

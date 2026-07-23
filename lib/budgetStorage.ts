@@ -36,3 +36,12 @@ export async function removeCategoryBudget(walletId: string, categoryId: string)
     await AsyncStorage.setItem(BUDGETS_KEY, JSON.stringify(all));
   }
 }
+
+export async function deleteBudgetsForWallet(walletId: string): Promise<void> {
+  const all = await getAllBudgets();
+  if (all[walletId]) {
+    delete all[walletId];
+    await AsyncStorage.setItem(BUDGETS_KEY, JSON.stringify(all));
+  }
+}
+

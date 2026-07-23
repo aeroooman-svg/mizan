@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
@@ -23,7 +23,7 @@ import { CURRENCIES, CurrencyCode, getCurrencyInfo } from '@/lib/storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getWalletIconLabel, getCurrencyName } from '@/lib/i18n';
-import { FinancialPlan, saveFinancialPlan } from '@/lib/planStorage';
+import { FinancialPlan, saveFinancialPlan, getFinancialPlan } from '@/lib/planStorage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
@@ -31,8 +31,12 @@ export default function AddWalletScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const { addWallet, selectWallet } = useTransactions();
+  const { walletId } = useLocalSearchParams<{ walletId?: string }>();
+  const { addWallet, updateWallet, selectWallet, wallets } = useTransactions();
   const { t, language } = useLanguage();
+
+  const existingWallet = useMemo(() => wallets.find((w) => w.id === walletId), [wallets, walletId]);
+  const isEditing = Boolean(existingWallet);
 
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('EGP');
@@ -44,6 +48,20 @@ export default function AddWalletScreen() {
   const [isShared, setIsShared] = useState(false);
   const [shareWithUser, setShareWithUser] = useState('');
 
+  useEffect(() => {
+    if (existingWallet) {
+      setName(existingWallet.name || '');
+      setCurrency(existingWallet.currency || 'EGP');
+      setSelectedIcon(existingWallet.icon || 'account-balance-wallet');
+      setSelectedColor(existingWallet.color || '#0D7C66');
+      setCardStyle(existingWallet.cardStyle || 'classic');
+      if (existingWallet.sharedWith) {
+        setIsShared(true);
+        setShareWithUser(existingWallet.sharedWith);
+      }
+    }
+  }, [existingWallet]);
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert(t.error, t.enterWalletName);
@@ -51,6 +69,41 @@ export default function AddWalletScreen() {
     }
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    if (isEditing && existingWallet) {
+      const updated = {
+        ...existingWallet,
+        name: name.trim(),
+        currency,
+        icon: selectedIcon,
+        color: selectedColor,
+        cardStyle,
+        sharedWith: isShared ? shareWithUser.trim() : undefined,
+      };
+      await updateWallet(updated);
+
+      // Also sync financial plan currency if changed
+      try {
+        const plan = await getFinancialPlan(existingWallet.id);
+        if (plan && plan.currency !== currency) {
+          const currInfo = getCurrencyInfo(currency);
+          await saveFinancialPlan({
+            ...plan,
+            currency: currency,
+            currencySymbol: currInfo.symbol,
+          });
+        }
+      } catch (e) {}
+
+      setIsSaving(false);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+      return;
+    }
+
     const wallet = await addWallet(
       name.trim(),
       currency,
@@ -93,7 +146,9 @@ export default function AddWalletScreen() {
     >
       <View style={styles.container}>
         <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, zIndex: 10, elevation: 10 }]}>
-          <Text style={styles.sheetTitle}>{t.newWallet}</Text>
+          <Text style={styles.sheetTitle}>
+            {isEditing ? (language === 'ar' ? 'تعديل المحفظة' : 'Edit Wallet') : t.newWallet}
+          </Text>
           <Pressable 
             onPress={() => {
               Haptics.selectionAsync();
@@ -391,7 +446,9 @@ export default function AddWalletScreen() {
             ]}
           >
             <Ionicons name="checkmark" size={22} color="#fff" />
-            <Text style={styles.saveText}>{t.createWallet}</Text>
+            <Text style={styles.saveText}>
+              {isEditing ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : t.createWallet}
+            </Text>
           </Pressable>
         </ScrollView>
       </View>

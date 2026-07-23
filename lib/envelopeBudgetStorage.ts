@@ -72,6 +72,15 @@ export async function deleteEnvelope(walletId: string, id: string): Promise<void
   await AsyncStorage.setItem(`${ENVELOPES_KEY}_${walletId}`, JSON.stringify(filtered));
 }
 
+export async function deleteEnvelopesForWallet(walletId: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(`${ENVELOPES_KEY}_${walletId}`);
+  } catch (e) {
+    console.error('Error removing envelopes for wallet:', e);
+  }
+}
+
+
 export function calculateEnvelopeSpentFromTransactions(
   envelopes: Envelope[],
   transactions: { walletId: string; category: string; amount: number; type: string }[]

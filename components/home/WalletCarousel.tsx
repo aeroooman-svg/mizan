@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -26,6 +27,7 @@ interface WalletCarouselProps {
   onSelectWallet: (id: string) => void;
   onDeleteWallet: (id: string, name: string) => void;
   onAddWallet: () => void;
+  onEditWallet?: (wallet: Wallet) => void;
 }
 
 export default function WalletCarousel({
@@ -38,8 +40,10 @@ export default function WalletCarousel({
   onSelectWallet,
   onDeleteWallet,
   onAddWallet,
+  onEditWallet,
 }: WalletCarouselProps) {
   const styles = getStyles(colors);
+  const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
 
   return (
     <View style={styles.walletsSection}>
@@ -103,7 +107,10 @@ export default function WalletCarousel({
                 Haptics.selectionAsync();
                 onSelectWallet(wallet.id);
               }}
-              onLongPress={() => onDeleteWallet(wallet.id, wallet.name)}
+              onLongPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setActionWallet(wallet);
+              }}
               style={({ pressed }) => [
                 styles.wallet3DCard,
                 isSelected && styles.wallet3DCardSelected,
@@ -218,17 +225,20 @@ export default function WalletCarousel({
                       )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      {currentUser && wallet.userId === currentUser.id && (
-                        <Pressable
-                          onPress={() => {
-                            Haptics.selectionAsync();
-                            router.push(`/share-wallet?walletId=${wallet.id}` as any);
-                          }}
-                          hitSlop={10}
-                        >
-                          <Ionicons name="share-social-outline" size={20} color={textColor} />
-                        </Pressable>
-                      )}
+                      <Pressable
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setActionWallet(wallet);
+                        }}
+                        hitSlop={10}
+                        style={{
+                          padding: 4,
+                          backgroundColor: 'rgba(255,255,255,0.15)',
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Ionicons name="ellipsis-vertical" size={16} color={textColor} />
+                      </Pressable>
                       <MaterialIcons
                         name={(wallet.icon as any) || 'account-balance-wallet'}
                         size={24}
@@ -325,6 +335,224 @@ export default function WalletCarousel({
           })}
         </View>
       )}
+
+      {/* Wallet Actions Modal */}
+      <Modal
+        visible={Boolean(actionWallet)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionWallet(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            justifyContent: 'flex-end',
+          }}
+          onPress={() => setActionWallet(null)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {actionWallet && (
+              <>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
+                    paddingBottom: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        backgroundColor: actionWallet.color + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <MaterialIcons
+                        name={(actionWallet.icon as any) || 'account-balance-wallet'}
+                        size={22}
+                        color={actionWallet.color}
+                      />
+                    </View>
+                    <View>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_700Bold',
+                          fontSize: 16,
+                          color: colors.text,
+                        }}
+                      >
+                        {actionWallet.name}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_400Regular',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {actionWallet.currency}
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setActionWallet(null)}>
+                    <Ionicons name="close" size={22} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+
+                {/* Option 1: Edit Wallet */}
+                <Pressable
+                  onPress={() => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    if (onEditWallet) {
+                      onEditWallet(w);
+                    } else {
+                      router.push({
+                        pathname: '/add-wallet',
+                        params: { walletId: w.id },
+                      } as any);
+                    }
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceAlt + '60',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: colors.text,
+                    }}
+                  >
+                    {language === 'ar' ? 'تعديل المحفظة' : 'Edit Wallet'}
+                  </Text>
+                </Pressable>
+
+                {/* Option 2: Set Active Wallet */}
+                {selectedWallet?.id !== actionWallet.id && (
+                  <Pressable
+                    onPress={() => {
+                      onSelectWallet(actionWallet.id);
+                      setActionWallet(null);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      backgroundColor: colors.surfaceAlt + '60',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#10B981" />
+                    <Text
+                      style={{
+                        fontFamily: 'Cairo_700Bold',
+                        fontSize: 14,
+                        color: colors.text,
+                      }}
+                    >
+                      {language === 'ar' ? 'تعيين كمحفظة نشطة' : 'Set as Active Wallet'}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* Option 3: Share Wallet */}
+                <Pressable
+                  onPress={() => {
+                    const wId = actionWallet.id;
+                    setActionWallet(null);
+                    router.push(`/share-wallet?walletId=${wId}` as any);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceAlt + '60',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Ionicons name="share-social-outline" size={20} color="#3B82F6" />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: colors.text,
+                    }}
+                  >
+                    {language === 'ar' ? 'مشاركة المحفظة' : 'Share Wallet'}
+                  </Text>
+                </Pressable>
+
+                {/* Option 4: Delete Wallet */}
+                <Pressable
+                  onPress={() => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    onDeleteWallet(w.id, w.name);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    marginTop: 4,
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: '#EF4444',
+                    }}
+                  >
+                    {language === 'ar'
+                      ? 'حذف المحفظة وكافة بياناتها'
+                      : 'Delete Wallet & All Data'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
