@@ -25,6 +25,9 @@ function RootLayoutNav() {
   const { isPinEnabled, isUnlocked, isLoading: isSecurityLoading } = useSecurity();
   const { isInitialLoading: isTransactionsLoading } = useTransactions();
   const [showSplash, setShowSplash] = useState(true);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [isOnboardingChecked, setIsOnboardingChecked] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     async function checkOnboarding() {
