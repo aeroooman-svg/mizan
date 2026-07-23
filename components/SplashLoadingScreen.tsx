@@ -5,7 +5,12 @@ import { useTheme } from '@/lib/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function SplashLoadingScreen() {
+interface SplashLoadingScreenProps {
+  isDone?: boolean;
+  onFinish?: () => void;
+}
+
+export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   // Animation values
@@ -21,6 +26,30 @@ export default function SplashLoadingScreen() {
   const textSlide = useRef(new Animated.Value(20)).current;
   
   const progressAnim = useRef(new Animated.Value(0)).current;
+  
+  const exitOpacity = useRef(new Animated.Value(1)).current;
+  const exitScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isDone) {
+      Animated.parallel([
+        Animated.timing(exitOpacity, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(exitScale, {
+          toValue: 1.08,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        if (onFinish) onFinish();
+      });
+    }
+  }, [isDone, onFinish]);
 
   useEffect(() => {
     // 1. Initial entrance animation for logo and text
@@ -139,7 +168,7 @@ export default function SplashLoadingScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: exitOpacity, transform: [{ scale: exitScale }] }]}>
       {/* Background Gradient */}
       <LinearGradient
         colors={['#070B14', '#0D1424', '#05070B']}
@@ -220,7 +249,7 @@ export default function SplashLoadingScreen() {
         </View>
         <Text style={styles.loadingText}>جاري تحميل البيانات...</Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

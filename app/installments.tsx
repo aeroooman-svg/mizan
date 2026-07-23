@@ -339,69 +339,76 @@ export default function InstallmentsScreen() {
               </Pressable>
             </View>
 
-            {/* Form */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>{language === 'ar' ? 'اسم القسط / المنتج' : 'Title / Item Name'}</Text>
-              <TextInput
-                style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
-                placeholder={language === 'ar' ? 'مثال: هاتف فاليو، قسط تابي، لاب توب' : 'e.g. iPhone Valu, Tabby Purchase'}
-                placeholderTextColor={colors.textTertiary}
-                value={title}
-                onChangeText={setTitle}
-              />
-            </View>
-
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>{language === 'ar' ? 'المبلغ الإجمالي' : 'Total Amount'}</Text>
+            <ScrollView 
+              showsVerticalScrollIndicator={false} 
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ gap: 14, paddingBottom: Platform.OS === 'ios' ? 30 : 15 }}
+              style={{ maxHeight: Dimensions.get('window').height * 0.75 }}
+            >
+              {/* Form */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{language === 'ar' ? 'اسم القسط / المنتج' : 'Title / Item Name'}</Text>
                 <TextInput
                   style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
-                  placeholder="0.00"
-                  keyboardType="decimal-pad"
+                  placeholder={language === 'ar' ? 'مثال: هاتف فاليو، قسط تابي، لاب توب' : 'e.g. iPhone Valu, Tabby Purchase'}
                   placeholderTextColor={colors.textTertiary}
-                  value={totalAmount}
-                  onChangeText={setTotalAmount}
+                  value={title}
+                  onChangeText={setTitle}
                 />
               </View>
 
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.label}>{language === 'ar' ? 'عدد الأشهر' : 'Total Months'}</Text>
-                <TextInput
-                  style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
-                  placeholder="6"
-                  keyboardType="number-pad"
-                  placeholderTextColor={colors.textTertiary}
-                  value={totalMonths}
-                  onChangeText={setTotalMonths}
-                />
-              </View>
-            </View>
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>{language === 'ar' ? 'المبلغ الإجمالي' : 'Total Amount'}</Text>
+                  <TextInput
+                    style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={colors.textTertiary}
+                    value={totalAmount}
+                    onChangeText={setTotalAmount}
+                  />
+                </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>{language === 'ar' ? 'الجهة / موفر الخدمة' : 'Provider'}</Text>
-              <View style={styles.providerOptions}>
-                {(['valu', 'tabby', 'tamara', 'bank_card', 'other'] as const).map(p => (
-                  <Pressable
-                    key={p}
-                    onPress={() => setProvider(p)}
-                    style={[
-                      styles.providerOption,
-                      provider === p && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-                    ]}
-                  >
-                    <Text style={[styles.providerOptionText, provider === p && { color: colors.primary }]}>
-                      {getProviderName(p)}
-                    </Text>
-                  </Pressable>
-                ))}
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>{language === 'ar' ? 'عدد الأشهر' : 'Total Months'}</Text>
+                  <TextInput
+                    style={[styles.input, language === 'ar' ? styles.inputAr : styles.inputEn]}
+                    placeholder="6"
+                    keyboardType="number-pad"
+                    placeholderTextColor={colors.textTertiary}
+                    value={totalMonths}
+                    onChangeText={setTotalMonths}
+                  />
+                </View>
               </View>
-            </View>
 
-            <Pressable onPress={handleAddPlan} style={styles.submitBtn}>
-              <Text style={styles.submitBtnText}>
-                {language === 'ar' ? 'حفظ وتفعيل القسط' : 'Save & Activate'}
-              </Text>
-            </Pressable>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{language === 'ar' ? 'الجهة / موفر الخدمة' : 'Provider'}</Text>
+                <View style={styles.providerOptions}>
+                  {(['valu', 'tabby', 'tamara', 'bank_card', 'other'] as const).map(p => (
+                    <Pressable
+                      key={p}
+                      onPress={() => setProvider(p)}
+                      style={[
+                        styles.providerOption,
+                        provider === p && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+                      ]}
+                    >
+                      <Text style={[styles.providerOptionText, provider === p && { color: colors.primary }]}>
+                        {getProviderName(p)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <Pressable onPress={handleAddPlan} style={styles.submitBtn}>
+                <Text style={styles.submitBtnText}>
+                  {language === 'ar' ? 'حفظ وتفعيل القسط' : 'Save & Activate'}
+                </Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>

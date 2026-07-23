@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -23,9 +24,7 @@ function RootLayoutNav() {
   const { colors } = useTheme();
   const { isPinEnabled, isUnlocked, isLoading: isSecurityLoading } = useSecurity();
   const { isInitialLoading: isTransactionsLoading } = useTransactions();
-  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-  const [isOnboardingChecked, setIsOnboardingChecked] = useState(false);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     async function checkOnboarding() {
@@ -61,81 +60,90 @@ function RootLayoutNav() {
 
   const isLoading = isSecurityLoading || isTransactionsLoading || !minTimeElapsed || !isOnboardingChecked;
 
-  if (isLoading) return <SplashLoadingScreen />;
-
-  if (isPinEnabled && !isUnlocked) {
-    return <PasscodeOverlay />;
-  }
-
   return (
-    <Stack screenOptions={{ headerShown: false, headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-      <Stack.Screen
-        name="add-transaction"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      />
-      <Stack.Screen
-        name="share-wallet"
-        options={{
-          presentation: "card",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="join-wallet"
-        options={{
-          presentation: "card",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="add-wallet"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.7],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      />
-      <Stack.Screen
-        name="recurring-list"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      />
-      <Stack.Screen
-        name="add-recurring"
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.85],
-          sheetGrabberVisible: true,
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      />
-    </Stack>
+    <View style={{ flex: 1 }}>
+      {isPinEnabled && !isUnlocked ? (
+        <PasscodeOverlay />
+      ) : (
+        <Stack screenOptions={{ headerShown: false, headerBackTitle: "Back" }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen
+            name="add-transaction"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetGrabberVisible: true,
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
+            name="share-wallet"
+            options={{
+              presentation: "card",
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="join-wallet"
+            options={{
+              presentation: "card",
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="add-wallet"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.7],
+              sheetGrabberVisible: true,
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
+            name="settings"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetGrabberVisible: true,
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
+            name="recurring-list"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetGrabberVisible: true,
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+          <Stack.Screen
+            name="add-recurring"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.85],
+              sheetGrabberVisible: true,
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          />
+        </Stack>
+      )}
+
+      {showSplash && (
+        <View style={StyleSheet.absoluteFill} pointerEvents={isLoading ? "auto" : "none"}>
+          <SplashLoadingScreen
+            isDone={!isLoading}
+            onFinish={() => setShowSplash(false)}
+          />
+        </View>
+      )}
+    </View>
   );
 }
 
