@@ -61,92 +61,83 @@ function RootLayoutNav() {
     scheduleDailyReminder(21, 0); // 9:00 PM daily
   }, []);
 
-  const isLoading = isSecurityLoading || isTransactionsLoading || !minTimeElapsed || !isOnboardingChecked;
+  if (isLoading) {
+    return <SplashLoadingScreen />;
+  }
+
+  if (isPinEnabled && !isUnlocked) {
+    return <PasscodeOverlay />;
+  }
 
   return (
-    <View style={{ flex: 1 }}>
-      {isPinEnabled && !isUnlocked ? (
-        <PasscodeOverlay />
-      ) : (
-        <Stack screenOptions={{ headerShown: false, headerBackTitle: "Back" }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen
-            name="add-transaction"
-            options={{
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.85],
-              sheetGrabberVisible: true,
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="share-wallet"
-            options={{
-              presentation: "card",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="join-wallet"
-            options={{
-              presentation: "card",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="add-wallet"
-            options={{
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.7],
-              sheetGrabberVisible: true,
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="settings"
-            options={{
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.85],
-              sheetGrabberVisible: true,
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="recurring-list"
-            options={{
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.85],
-              sheetGrabberVisible: true,
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="add-recurring"
-            options={{
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.85],
-              sheetGrabberVisible: true,
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          />
-        </Stack>
-      )}
-
-      {showSplash && (
-        <View style={StyleSheet.absoluteFill} pointerEvents={isLoading ? "auto" : "none"}>
-          <SplashLoadingScreen
-            isDone={!isLoading}
-            onFinish={() => setShowSplash(false)}
-          />
-        </View>
-      )}
-    </View>
+    <Stack screenOptions={{ headerShown: false, headerBackTitle: "Back" }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+      <Stack.Screen
+        name="add-transaction"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.85],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="share-wallet"
+        options={{
+          presentation: "card",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="join-wallet"
+        options={{
+          presentation: "card",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="add-wallet"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.7],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.85],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="recurring-list"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.85],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="add-recurring"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.85],
+          sheetGrabberVisible: true,
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+    </Stack>
   );
 }
 
