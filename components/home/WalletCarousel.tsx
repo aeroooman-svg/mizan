@@ -241,23 +241,33 @@ export default function WalletCarousel({
                       )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {/* Enlarged Financial Health Badge on Card */}
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 6,
-                          backgroundColor: 'rgba(16, 185, 129, 0.25)',
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: 'rgba(16, 185, 129, 0.4)',
-                        }}
-                      >
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#10B981' }}>
-                          {healthScore} {language === 'ar' ? 'ممتاز' : 'Good'}
+                      {/* Circular Financial Health Gauge Badge */}
+                      <View style={{ alignItems: 'center', gap: 2 }}>
+                        <View
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            borderWidth: 2.5,
+                            borderColor: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444',
+                            backgroundColor: 'rgba(0, 0, 0, 0.28)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: healthScore >= 80 ? '#10B981' : '#F59E0B',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.4,
+                            shadowRadius: 6,
+                          }}
+                        >
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFFFFF', lineHeight: 17 }}>
+                            {healthScore}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 8, color: 'rgba(255, 255, 255, 0.75)', marginTop: -3 }}>
+                            %
+                          </Text>
+                        </View>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444' }}>
+                          {language === 'ar' ? (healthScore >= 80 ? 'ممتاز' : 'جيد') : (healthScore >= 80 ? 'Excellent' : 'Good')}
                         </Text>
                       </View>
 

@@ -209,13 +209,9 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Secondary Quick Action Shortcuts */}
+        {/* Row 4: Smart Full Tools Bar (Complete, Distinctive & Intelligent Grid Bar) */}
         <View style={styles.bottomRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.secondaryScroll}
-          >
+          <View style={styles.toolsGridBar}>
             {/* Installments */}
             <Pressable
               onPress={() => {
@@ -223,12 +219,14 @@ export default function QuickGlanceWidget({
                 router.push('/installments' as any);
               }}
               style={({ pressed }) => [
-                styles.secondaryPill,
+                styles.gridToolItem,
                 pressed && { opacity: 0.7 },
               ]}
             >
               <Ionicons name="card-outline" size={14} color={colors.text} />
-              <Text style={styles.secondaryPillText}>{isAr ? 'الأقساط' : 'Installments'}</Text>
+              <Text style={styles.gridToolText} numberOfLines={1}>
+                {isAr ? 'الأقساط' : 'Installments'}
+              </Text>
             </Pressable>
 
             {/* Recurring Expenses Button (مصاريف متكررة) */}
@@ -238,14 +236,14 @@ export default function QuickGlanceWidget({
                 router.push('/recurring-list' as any);
               }}
               style={({ pressed }) => [
-                styles.secondaryPill,
-                styles.recurringHighlightPill,
+                styles.gridToolItem,
+                styles.recurringHighlightItem,
                 pressed && { opacity: 0.7 },
               ]}
             >
               <Ionicons name="sync-outline" size={14} color={colors.primary} />
-              <Text style={[styles.secondaryPillText, { color: colors.primary }]}>
-                {isAr ? 'مصاريف متكررة' : 'Recurring Expenses'}
+              <Text style={[styles.gridToolText, { color: colors.primary }]} numberOfLines={1}>
+                {isAr ? 'مصاريف متكررة' : 'Recurring'}
               </Text>
             </Pressable>
 
@@ -256,12 +254,14 @@ export default function QuickGlanceWidget({
                 router.push('/import-statement' as any);
               }}
               style={({ pressed }) => [
-                styles.secondaryPill,
+                styles.gridToolItem,
                 pressed && { opacity: 0.7 },
               ]}
             >
               <Ionicons name="document-text-outline" size={14} color={colors.text} />
-              <Text style={styles.secondaryPillText}>{isAr ? 'كشف بنكي' : 'Statement'}</Text>
+              <Text style={styles.gridToolText} numberOfLines={1}>
+                {isAr ? 'كشف بنكي' : 'Statement'}
+              </Text>
             </Pressable>
 
             {/* Receipt Scanner */}
@@ -271,14 +271,16 @@ export default function QuickGlanceWidget({
                 router.push('/scan-receipt');
               }}
               style={({ pressed }) => [
-                styles.secondaryPill,
+                styles.gridToolItem,
                 pressed && { opacity: 0.7 },
               ]}
             >
               <Ionicons name="receipt-outline" size={14} color={colors.text} />
-              <Text style={styles.secondaryPillText}>{isAr ? 'فاتورة' : 'Receipt'}</Text>
+              <Text style={styles.gridToolText} numberOfLines={1}>
+                {isAr ? 'فاتورة' : 'Receipt'}
+              </Text>
             </Pressable>
-          </ScrollView>
+          </View>
         </View>
 
         {/* Row 5: Integrated "الصورة الكاملة للوضع المالي" (Complete Financial Picture) */}
@@ -425,6 +427,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   balanceContainer: {
     alignItems: 'flex-start',
     marginVertical: 2,
+    width: '100%',
   },
   balanceLabelRow: {
     flexDirection: 'row',
@@ -434,7 +437,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   balanceLabelText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'left',
   },
@@ -443,8 +446,8 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   balanceAmountText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 36,
-    lineHeight: 44,
+    fontSize: 38,
+    lineHeight: 46,
     textAlign: 'left',
   },
   currencySymbolText: {
@@ -491,45 +494,35 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   bottomRow: {
     gap: 10,
+    width: '100%',
   },
-  todayPill: {
+  toolsGridBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 6,
-    backgroundColor: colors.surfaceAlt + '80',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    width: '100%',
   },
-  todayText: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  secondaryScroll: {
+  gridToolItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  secondaryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: colors.surfaceAlt + '60',
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
     borderRadius: 12,
   },
-  recurringHighlightPill: {
+  recurringHighlightItem: {
     backgroundColor: colors.primary + '18',
     borderColor: colors.primary + '40',
   },
-  secondaryPillText: {
+  gridToolText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+    fontSize: 11,
     color: colors.text,
   },
   fullPictureToggle: {
