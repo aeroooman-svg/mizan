@@ -566,20 +566,6 @@ export default function SettingsScreen() {
               </Text>
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
             </Pressable>
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/zakat-calculator' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="sparkles-outline" size={20} color="#FFD700" />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'حاسبة الزكاة الشرعية (أسعار مباشرة)' : 'Zakat Calculator (Live Rates)'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
           </View>
 
           {/* Bank SMS Automation Section */}

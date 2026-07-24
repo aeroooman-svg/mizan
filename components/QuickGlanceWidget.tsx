@@ -168,23 +168,54 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Smart Full Tools Bar (Complete, Distinctive & Intelligent Grid Bar) */}
+        {/* Row 4: Smart Full Tools Bar (Complete, Distinctive & Intelligent Bar) */}
         <View style={styles.bottomRow}>
-          <View style={styles.toolsGridBar}>
-            {/* Installments */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.toolsGridBar}
+          >
+            {/* Receipt Scanner */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/installments' as any);
+                router.push('/scan-receipt');
               }}
               style={({ pressed }) => [
                 styles.gridToolItem,
-                pressed && { opacity: 0.7 },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
               ]}
             >
-              <Ionicons name="card-outline" size={14} color={colors.text} />
-              <Text style={styles.gridToolText} numberOfLines={1}>
-                {isAr ? 'الأقساط' : 'Installments'}
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                style={styles.toolIconBadge3D}
+              >
+                <Ionicons name="receipt" size={14} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.gridToolText}>
+                {isAr ? 'فاتورة' : 'Receipt'}
+              </Text>
+            </Pressable>
+
+            {/* Bank Statement */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/import-statement' as any);
+              }}
+              style={({ pressed }) => [
+                styles.gridToolItem,
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+              ]}
+            >
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                style={styles.toolIconBadge3D}
+              >
+                <Ionicons name="document-text" size={14} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.gridToolText}>
+                {isAr ? 'كشف حساب' : 'Statement'}
               </Text>
             </Pressable>
 
@@ -197,49 +228,42 @@ export default function QuickGlanceWidget({
               style={({ pressed }) => [
                 styles.gridToolItem,
                 styles.recurringHighlightItem,
-                pressed && { opacity: 0.7 },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
               ]}
             >
-              <Ionicons name="sync-outline" size={14} color={colors.primary} />
-              <Text style={[styles.gridToolText, { color: colors.primary }]} numberOfLines={1}>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.toolIconBadge3D}
+              >
+                <Ionicons name="sync" size={14} color="#FFF" />
+              </LinearGradient>
+              <Text style={[styles.gridToolText, { color: colors.primary }]}>
                 {isAr ? 'مصاريف متكررة' : 'Recurring'}
               </Text>
             </Pressable>
 
-            {/* Bank Statement */}
+            {/* Installments */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/import-statement' as any);
+                router.push('/installments' as any);
               }}
               style={({ pressed }) => [
                 styles.gridToolItem,
-                pressed && { opacity: 0.7 },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
               ]}
             >
-              <Ionicons name="document-text-outline" size={14} color={colors.text} />
-              <Text style={styles.gridToolText} numberOfLines={1}>
-                {isAr ? 'كشف بنكي' : 'Statement'}
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                style={styles.toolIconBadge3D}
+              >
+                <Ionicons name="card" size={14} color="#FFF" />
+              </LinearGradient>
+              <Text style={styles.gridToolText}>
+                {isAr ? 'الأقساط' : 'Installments'}
               </Text>
             </Pressable>
-
-            {/* Receipt Scanner */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/scan-receipt');
-              }}
-              style={({ pressed }) => [
-                styles.gridToolItem,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="receipt-outline" size={14} color={colors.text} />
-              <Text style={styles.gridToolText} numberOfLines={1}>
-                {isAr ? 'فاتورة' : 'Receipt'}
-              </Text>
-            </Pressable>
-          </View>
+          </ScrollView>
         </View>
 
         {/* Row 5: Integrated "الصورة الكاملة للوضع المالي" (Complete Financial Picture) */}
@@ -482,22 +506,31 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   toolsGridBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-    width: '100%',
+    gap: 8,
+    paddingVertical: 2,
   },
   gridToolItem: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    backgroundColor: colors.surfaceAlt + '60',
+    gap: 6,
+    backgroundColor: colors.surfaceAlt + '80',
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 14,
+  },
+  toolIconBadge3D: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   recurringHighlightItem: {
     backgroundColor: colors.primary + '18',
