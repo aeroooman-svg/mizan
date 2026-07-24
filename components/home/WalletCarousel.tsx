@@ -45,7 +45,8 @@ export default function WalletCarousel({
 }: WalletCarouselProps) {
   const { width: windowWidth } = useWindowDimensions();
   const cardWidth = Math.min(440, Math.max(280, windowWidth - 32));
-  const styles = getStyles(colors, cardWidth);
+  const cardGap = 24;
+  const styles = getStyles(colors, cardWidth, cardGap);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -53,10 +54,10 @@ export default function WalletCarousel({
     if (selectedWallet && scrollRef.current) {
       const index = wallets.findIndex((w) => w.id === selectedWallet.id);
       if (index !== -1) {
-        scrollRef.current.scrollTo({ x: index * (cardWidth + 12), animated: true });
+        scrollRef.current.scrollTo({ x: index * (cardWidth + cardGap), animated: true });
       }
     }
-  }, [selectedWallet?.id, cardWidth, wallets]);
+  }, [selectedWallet?.id, cardWidth, cardGap, wallets]);
 
   return (
     <View style={styles.walletsSection}>
@@ -65,9 +66,17 @@ export default function WalletCarousel({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.walletsScroll}
-        snapToInterval={cardWidth + 12}
+        snapToInterval={cardWidth + cardGap}
         snapToAlignment="center"
         decelerationRate="fast"
+        onMomentumScrollEnd={(event) => {
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const index = Math.round(offsetX / (cardWidth + cardGap));
+          if (wallets[index] && wallets[index].id !== selectedWallet?.id) {
+            Haptics.selectionAsync();
+            onSelectWallet(wallets[index].id);
+          }
+        }}
       >
         {wallets.map((wallet) => {
           const isSelected = selectedWallet?.id === wallet.id;
@@ -349,10 +358,22 @@ export default function WalletCarousel({
           {wallets.map((w) => {
             const isActive = selectedWallet?.id === w.id;
             return (
-              <View
+              <Pressable
                 key={w.id}
-                style={[styles.dot, isActive ? styles.dotActive : styles.dotInactive]}
-              />
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  onSelectWallet(w.id);
+                }}
+                hitSlop={12}
+                style={({ pressed }) => [
+                  styles.dotPressable,
+                  pressed && { opacity: 0.6, transform: [{ scale: 1.1 }] },
+                ]}
+              >
+                <View
+                  style={[styles.dot, isActive ? styles.dotActive : styles.dotInactive]}
+                />
+              </Pressable>
             );
           })}
         </View>
@@ -579,7 +600,7 @@ export default function WalletCarousel({
   );
 }
 
-const getStyles = (colors: any, cardWidth: number) =>
+const getStyles = (colors: any, cardWidth: number, cardGap: number) =>
   StyleSheet.create({
     walletsSection: {
       marginTop: 12,
@@ -587,7 +608,7 @@ const getStyles = (colors: any, cardWidth: number) =>
     },
     walletsScroll: {
       paddingHorizontal: 16,
-      gap: 12,
+      gap: cardGap,
       paddingVertical: 6,
     },
     wallet3DCard: {
@@ -644,18 +665,21 @@ const getStyles = (colors: any, cardWidth: number) =>
       alignItems: 'center',
       marginTop: 12,
       marginBottom: 16,
-      gap: 6,
+      gap: 8,
+    },
+    dotPressable: {
+      padding: 4,
     },
     dot: {
-      height: 6,
-      borderRadius: 3,
+      height: 7,
+      borderRadius: 4,
     },
     dotActive: {
-      width: 16,
+      width: 22,
       backgroundColor: colors.primary,
     },
     dotInactive: {
-      width: 6,
+      width: 7,
       backgroundColor: colors.border,
     },
   });
