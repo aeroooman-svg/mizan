@@ -241,36 +241,6 @@ export default function WalletCarousel({
                       )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {/* Circular Financial Health Gauge Badge */}
-                      <View style={{ alignItems: 'center', gap: 2 }}>
-                        <View
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 22,
-                            borderWidth: 2.5,
-                            borderColor: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444',
-                            backgroundColor: 'rgba(0, 0, 0, 0.28)',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            shadowColor: healthScore >= 80 ? '#10B981' : '#F59E0B',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.4,
-                            shadowRadius: 6,
-                          }}
-                        >
-                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFFFFF', lineHeight: 17 }}>
-                            {healthScore}
-                          </Text>
-                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 8, color: 'rgba(255, 255, 255, 0.75)', marginTop: -3 }}>
-                            %
-                          </Text>
-                        </View>
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444' }}>
-                          {language === 'ar' ? (healthScore >= 80 ? 'ممتاز' : 'جيد') : (healthScore >= 80 ? 'Excellent' : 'Good')}
-                        </Text>
-                      </View>
-
                       <Pressable
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -293,37 +263,77 @@ export default function WalletCarousel({
                     </View>
                   </View>
 
-                  {/* Middle Balance Row - Label & amount strictly aligned on the same side */}
-                  <View style={{ marginTop: 12, alignItems: 'flex-start' }}>
-                    <Text
-                      style={{
-                        fontFamily: 'Cairo_600SemiBold',
-                        fontSize: 11,
-                        color: textSecondaryColor,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
-                        textAlign: 'left',
-                        marginBottom: 4,
-                      }}
-                    >
-                      {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: 'Cairo_700Bold',
-                        fontSize: 28,
-                        color: textColor,
-                        lineHeight: 36,
-                        textAlign: 'left',
-                      }}
-                      numberOfLines={1}
-                    >
-                      {walletBalance >= 0 ? '' : '-'}
-                      {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                      <Text style={{ fontSize: 15, fontFamily: 'Cairo_600SemiBold' }}>
-                        {wallet.currency}
+                  {/* Middle Card Row: Available Balance on Left + Larger Health Score Ring on Right */}
+                  <View
+                    style={{
+                      marginTop: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    {/* Available Balance */}
+                    <View style={{ flex: 1, alignItems: 'flex-start', marginRight: 12 }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_600SemiBold',
+                          fontSize: 11,
+                          color: textSecondaryColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          textAlign: 'left',
+                          marginBottom: 2,
+                        }}
+                      >
+                        {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
                       </Text>
-                    </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_700Bold',
+                          fontSize: 28,
+                          color: textColor,
+                          lineHeight: 36,
+                          textAlign: 'left',
+                        }}
+                        numberOfLines={1}
+                      >
+                        {walletBalance >= 0 ? '' : '-'}
+                        {formatCurrency(Math.abs(walletBalance), language)}{' '}
+                        <Text style={{ fontSize: 15, fontFamily: 'Cairo_600SemiBold' }}>
+                          {wallet.currency}
+                        </Text>
+                      </Text>
+                    </View>
+
+                    {/* Circular Financial Health Gauge Badge (Repositioned to right side of card body) */}
+                    <View style={{ alignItems: 'center', gap: 2 }}>
+                      <View
+                        style={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: 27,
+                          borderWidth: 3,
+                          borderColor: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444',
+                          backgroundColor: 'rgba(0, 0, 0, 0.32)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          shadowColor: healthScore >= 80 ? '#10B981' : '#F59E0B',
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.5,
+                          shadowRadius: 8,
+                        }}
+                      >
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFFFFF', lineHeight: 20 }}>
+                          {healthScore}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: 'rgba(255, 255, 255, 0.8)', marginTop: -3 }}>
+                          %
+                        </Text>
+                      </View>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444' }}>
+                        {language === 'ar' ? (healthScore >= 80 ? 'ممتاز' : 'جيد') : (healthScore >= 80 ? 'Excellent' : 'Good')}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
