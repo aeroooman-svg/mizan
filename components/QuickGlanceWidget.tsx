@@ -1,9 +1,9 @@
 /**
- * QuickGlanceWidget — ويدجت اللمحة السريعة المبتكرة
+ * QuickGlanceWidget — ويدجت اللمحة السريعة المبتكرة المتكاملة
  * 
  * A state-of-the-art glassmorphic widget displayed on the home screen
  * featuring aligned balance, prominent wallet badge, side-by-side large action buttons,
- * and health score insights.
+ * and the integrated Complete Financial Picture (الصورة الكاملة للوضع المالي).
  */
 
 import React, { useState, useMemo } from 'react';
@@ -23,22 +23,43 @@ import { router } from 'expo-router';
 import { WidgetData } from '@/lib/widgetDataProvider';
 import { formatCurrency } from '@/lib/categories';
 import { useTheme } from '@/lib/ThemeContext';
+import { SavingsGoal } from '@/lib/goalStorage';
+import { Debt } from '@/lib/debtStorage';
 
 interface QuickGlanceWidgetProps {
   data: WidgetData;
   language: 'ar' | 'en';
+  goals?: SavingsGoal[];
+  debts?: Debt[];
+  totalConsolidatedBalance?: number;
   onAddPress?: () => void;
 }
 
-export default function QuickGlanceWidget({ data, language }: QuickGlanceWidgetProps) {
+export default function QuickGlanceWidget({
+  data,
+  language,
+  goals = [],
+  debts = [],
+  totalConsolidatedBalance,
+}: QuickGlanceWidgetProps) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const [showBalance, setShowBalance] = useState(true);
+  const [showFullPicture, setShowFullPicture] = useState(false);
 
   const isAr = language === 'ar';
-  const typeIcon = data.lastTransaction?.type === 'income' ? 'arrow-down-circle' : 'arrow-up-circle';
-  const typeColor = data.lastTransaction?.type === 'income' ? colors.income : colors.expense;
   const walletAccent = data.walletColor || colors.primary;
+
+  const totalSavedInGoals = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
+  const totalOwed = debts
+    .filter((d) => d.type === 'debt_to_others' && d.status !== 'paid')
+    .reduce((s, d) => s + (d.amount - (d.paidAmount || 0)), 0);
+  const totalCollect = debts
+    .filter((d) => d.type === 'debt_to_me' && d.status !== 'paid')
+    .reduce((s, d) => s + (d.amount - (d.paidAmount || 0)), 0);
+
+  const baseWalletBalance = totalConsolidatedBalance !== undefined ? totalConsolidatedBalance : data.balance;
+  const totalNetSavings = baseWalletBalance + totalSavedInGoals - totalOwed + totalCollect;
 
   return (
     <View style={[
@@ -85,24 +106,13 @@ export default function QuickGlanceWidget({ data, language }: QuickGlanceWidgetP
       {/* Main Content */}
       <View style={styles.widgetContent}>
         
-        {/* Row 1: Wallet Name Badge & Health Score */}
+        {/* Row 1: Wallet Name Badge */}
         <View style={styles.headerRow}>
           {/* Wallet Name Badge - Prominent & Distinctive */}
           <View style={[styles.walletBadge, { backgroundColor: walletAccent + '18', borderColor: walletAccent + '40' }]}>
             <Ionicons name="wallet" size={16} color={walletAccent} />
             <Text style={[styles.walletBadgeText, { color: walletAccent }]} numberOfLines={1}>
               {data.walletName || (isAr ? 'المحفظة الرئيسية' : 'Main Wallet')}
-            </Text>
-          </View>
-
-          {/* Health Score Badge */}
-          <View style={[
-            styles.healthBadge,
-            { backgroundColor: data.healthColor + '18', borderColor: data.healthColor + '35' }
-          ]}>
-            <View style={[styles.healthDot, { backgroundColor: data.healthColor }]} />
-            <Text style={[styles.healthBadgeText, { color: data.healthColor }]}>
-              {data.healthScore} {isAr ? data.healthLabel.ar : data.healthLabel.en}
             </Text>
           </View>
         </View>
@@ -262,6 +272,108 @@ export default function QuickGlanceWidget({ data, language }: QuickGlanceWidgetP
           </ScrollView>
         </View>
 
+        {/* Row 5: Integrated "الصورة الكاملة للوضع المالي" (Complete Financial Picture) */}
+        <View style={{ marginTop: 4 }}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowFullPicture(!showFullPicture);
+            }}
+            style={({ pressed }) => [
+              styles.fullPictureToggle,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="stats-chart-outline" size={16} color={colors.primary} />
+              <Text style={styles.fullPictureTitle}>
+                {isAr ? 'الصورة الكاملة للوضع المالي' : 'Complete Financial Picture'}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.fullPictureSummaryText, { color: totalNetSavings >= 0 ? colors.income : colors.expense }]}>
+                {formatCurrency(totalNetSavings, language)} {data.currencySymbol}
+              </Text>
+              <Ionicons name={showFullPicture ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
+            </View>
+          </Pressable>
+
+          {showFullPicture && (
+            <View style={styles.fullPictureCard}>
+              {/* Wallet Balance */}
+              <View style={styles.pictureRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="wallet-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.pictureLabel}>{isAr ? 'إجمالي رصيد المحافظ:' : 'Total Wallet Balance:'}</Text>
+                </View>
+                <Text style={[styles.pictureValue, { color: baseWalletBalance >= 0 ? colors.income : colors.expense }]}>
+                  {baseWalletBalance >= 0 ? '+' : ''}{formatCurrency(baseWalletBalance, language)} {data.currencySymbol}
+                </Text>
+              </View>
+
+              {/* Savings Jars */}
+              {totalSavedInGoals > 0 && (
+                <Pressable
+                  onPress={() => router.push('/savings-goals')}
+                  style={styles.pictureRow}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="gift-outline" size={14} color={colors.primary} />
+                    <Text style={[styles.pictureLabel, { color: colors.primary }]}>
+                      {isAr ? `الحصالات الادخارية (${goals.length}):` : `Savings Jars (${goals.length}):`}
+                    </Text>
+                  </View>
+                  <Text style={[styles.pictureValue, { color: colors.primary }]}>
+                    +{formatCurrency(totalSavedInGoals, language)} {data.currencySymbol}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Debts I owe */}
+              {totalOwed > 0 && (
+                <Pressable
+                  onPress={() => router.push('/debts')}
+                  style={styles.pictureRow}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="arrow-down-circle-outline" size={14} color={colors.expense} />
+                    <Text style={[styles.pictureLabel, { color: colors.expense }]}>{isAr ? 'ديون مستحقة عليّ:' : 'Debts I Owe:'}</Text>
+                  </View>
+                  <Text style={[styles.pictureValue, { color: colors.expense }]}>
+                    -{formatCurrency(totalOwed, language)} {data.currencySymbol}
+                  </Text>
+                </Pressable>
+              )}
+
+              {/* Loans owed to me */}
+              {totalCollect > 0 && (
+                <Pressable
+                  onPress={() => router.push('/debts')}
+                  style={styles.pictureRow}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="arrow-up-circle-outline" size={14} color={colors.income} />
+                    <Text style={[styles.pictureLabel, { color: colors.income }]}>{isAr ? 'أموال لي بالخارج:' : 'Loans Owed to Me:'}</Text>
+                  </View>
+                  <Text style={[styles.pictureValue, { color: colors.income }]}>
+                    +{formatCurrency(totalCollect, language)} {data.currencySymbol}
+                  </Text>
+                </Pressable>
+              )}
+
+              <View style={styles.pictureDivider} />
+
+              {/* Total Net Savings */}
+              <View style={styles.pictureRow}>
+                <Text style={styles.netSavingsTitle}>{isAr ? 'الصافي الادخاري الكلي:' : 'Total Net Savings:'}</Text>
+                <Text style={[styles.netSavingsTotalValue, { color: totalNetSavings >= 0 ? colors.income : colors.expense }]}>
+                  {formatCurrency(totalNetSavings, language)} {data.currencySymbol}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
       </View>
     </View>
   );
@@ -295,29 +407,11 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     borderWidth: 1,
-    maxWidth: '65%',
+    maxWidth: '85%',
   },
   walletBadgeText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
-  },
-  healthBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  healthDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  healthBadgeText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
   },
   balanceContainer: {
     alignItems: 'flex-start',
@@ -424,5 +518,62 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
     color: colors.text,
+  },
+  fullPictureToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceAlt + '50',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '25',
+  },
+  fullPictureTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.text,
+  },
+  fullPictureSummaryText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  fullPictureCard: {
+    backgroundColor: colors.surfaceAlt + '40',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pictureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pictureLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  pictureValue: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  pictureDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 2,
+  },
+  netSavingsTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.text,
+  },
+  netSavingsTotalValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
   },
 });

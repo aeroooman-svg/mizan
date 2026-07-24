@@ -594,6 +594,7 @@ export default function HomeScreen() {
           currentUser={currentUser}
           language={language as 'ar' | 'en'}
           colors={colors}
+          healthScore={healthScore}
           onSelectWallet={selectWallet}
           onEditWallet={handleEditWallet}
           onDeleteWallet={handleDeleteWallet}
@@ -610,22 +611,15 @@ export default function HomeScreen() {
             budgets,
             currencySymbol,
           )}
+          goals={goals}
+          debts={debts}
+          totalConsolidatedBalance={totalConsolidatedBalance}
           language={language as 'ar' | 'en'}
           onAddPress={() => router.push('/add-transaction')}
         />
 
         {/* Dynamic Financial Goal Focus Widget */}
         <FinancialGoalWidget />
-
-        {/* Consolidated wealth card */}
-        {wallets.length > 1 && (
-          <ConsolidatedBalanceCard
-            totalConsolidatedBalance={totalConsolidatedBalance}
-            currencySymbol={currencySymbol}
-            language={language as 'ar' | 'en'}
-            colors={colors}
-          />
-        )}
 
         {/* Two Column Health & Forecast Dashboard */}
         {selectedWallet && (

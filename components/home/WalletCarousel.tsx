@@ -25,6 +25,7 @@ interface WalletCarouselProps {
   currentUser: { id: string; username: string } | null;
   language: 'ar' | 'en';
   colors: any;
+  healthScore?: number;
   onSelectWallet: (id: string) => void;
   onDeleteWallet: (id: string, name: string) => void;
   onAddWallet: () => void;
@@ -38,6 +39,7 @@ export default function WalletCarousel({
   currentUser,
   language,
   colors,
+  healthScore = 80,
   onSelectWallet,
   onDeleteWallet,
   onAddWallet,
@@ -252,7 +254,27 @@ export default function WalletCarousel({
                         </Pressable>
                       )}
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      {/* Financial Health Badge on Card */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          backgroundColor: 'rgba(16, 185, 129, 0.25)',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: 'rgba(16, 185, 129, 0.4)',
+                        }}
+                      >
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
+                          {healthScore} {language === 'ar' ? 'ممتاز' : 'Good'}
+                        </Text>
+                      </View>
+
                       <Pressable
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -269,7 +291,7 @@ export default function WalletCarousel({
                       </Pressable>
                       <MaterialIcons
                         name={(wallet.icon as any) || 'account-balance-wallet'}
-                        size={26}
+                        size={24}
                         color={textColor}
                       />
                     </View>
