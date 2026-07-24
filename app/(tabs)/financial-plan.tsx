@@ -540,6 +540,40 @@ export default function FinancialPlanScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Active Wallet Banner Indicator */}
+        {selectedWallet && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: (selectedWallet.color || colors.primary) + '12',
+            borderWidth: 1,
+            borderColor: (selectedWallet.color || colors.primary) + '35',
+            borderRadius: 16,
+            padding: 14,
+            marginBottom: 16,
+          }}>
+            <View style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              backgroundColor: (selectedWallet.color || colors.primary) + '22',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name="wallet" size={20} color={selectedWallet.color || colors.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 2, alignItems: 'flex-start' }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
+                {language === 'ar' ? `الخطة المخصصة لـ: ${selectedWallet.name}` : `Plan configured for: ${selectedWallet.name}`}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary, textAlign: 'left' }}>
+                {language === 'ar' ? `رصيد المحفظة المتاح: ${formatCurrency(allTimeIncome - allTimeExpense)} ${currencySymbol}` : `Current Available Balance: ${formatCurrency(allTimeIncome - allTimeExpense)} ${currencySymbol}`}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Creation 3D Methodology Choice */}
         <Methodology3DSelector
           isKakeiboMode={isKakeiboEnabledForm}
@@ -1743,8 +1777,19 @@ export default function FinancialPlanScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 16 }]}>
-          <Text style={styles.sheetTitle}>{t.financialPlan}</Text>
+        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={styles.sheetTitle}>{t.financialPlan}</Text>
+            {selectedWallet && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedWallet.color || colors.primary }} />
+                <Ionicons name="wallet" size={14} color={selectedWallet.color || colors.primary} />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                  {language === 'ar' ? `المحفظة الخاصة بالخطة: ${selectedWallet.name}` : `Plan Wallet: ${selectedWallet.name}`}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {showForm ? renderForm() : renderPlanView()}
