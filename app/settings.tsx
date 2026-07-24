@@ -490,68 +490,12 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Financial Tools & Importers Section */}
+          {/* App Customization & Widgets Section */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionLabelRow}>
-              <Ionicons name="apps-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'الأدوات والخدمات المالية' : 'Financial Tools & Imports'}</Text>
+              <Ionicons name="options-outline" size={18} color={colors.primary} />
+              <Text style={styles.sectionLabel}>{isAr ? 'التخصيص ومظهر التطبيق' : 'App Customization & Widgets'}</Text>
             </View>
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/installments' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="card-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'الأقساط والبطاقات الائتمانية (Valu/Tabby)' : 'Installments & Credit Cards'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/import-statement' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'استيراد كشف حساب بنكي (CSV/نص)' : 'Import Bank Statement (CSV)'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/envelope-budget' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="mail-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'ميزانية الظروف المالية (Envelope Budget)' : 'Envelope Budgeting System'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/wallet-collaboration' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="people-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'مشاركة وتظافر المحفظة والصلاحيات' : 'Shared Wallet & Member Permissions'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
 
             <Pressable
               onPress={() => {
