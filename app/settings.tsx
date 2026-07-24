@@ -490,6 +490,28 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Wallet Collaboration & Permissions Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionLabelRow}>
+              <Ionicons name="people-outline" size={18} color={colors.primary} />
+              <Text style={styles.sectionLabel}>{isAr ? 'إدارة المشاركة والصلاحيات' : 'Wallet Sharing & Permissions'}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/wallet-collaboration' as any);
+              }}
+              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
+              <Text style={styles.menuButtonText}>
+                {isAr ? 'مشاركة وتظافر المحفظة والصلاحيات' : 'Shared Wallet & Member Permissions'}
+              </Text>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+
           {/* App Customization & Widgets Section */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionLabelRow}>
