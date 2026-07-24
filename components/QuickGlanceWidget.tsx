@@ -44,7 +44,7 @@ export default function QuickGlanceWidget({
 }: QuickGlanceWidgetProps) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
-  const [showFullPicture, setShowFullPicture] = useState(true);
+  const [showFullPicture, setShowFullPicture] = useState(false);
 
   const isAr = language === 'ar';
   const walletAccent = data.walletColor || colors.primary;
