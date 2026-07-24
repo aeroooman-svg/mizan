@@ -183,10 +183,27 @@ export default function HomeScreen() {
     }
   }, [totalIncome, totalExpense, pendingRecurring, wallets, transactions, balance]);
 
+  const [widgetConfig, setWidgetConfig] = useState({
+    showQuickGlance: true,
+    showGoalWidget: true,
+    showForecastWidget: true,
+    showHealthWidget: true,
+  });
+
+  const loadWidgetConfig = useCallback(async () => {
+    try {
+      const str = await AsyncStorage.getItem('@mizan_widget_config');
+      if (str) {
+        setWidgetConfig(JSON.parse(str));
+      }
+    } catch (e) {}
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       computeUnreadCount();
-    }, [computeUnreadCount])
+      loadWidgetConfig();
+    }, [computeUnreadCount, loadWidgetConfig])
   );
 
   const [adjustingItem, setAdjustingItem] = useState<RecurringTransaction | null>(null);
@@ -602,24 +619,28 @@ export default function HomeScreen() {
         />
 
         {/* Quick Glance Widget */}
-        <QuickGlanceWidget
-          data={getWidgetData(
-            transactions,
-            wallets,
-            selectedWallet,
-            healthScore,
-            budgets,
-            currencySymbol,
-          )}
-          goals={goals}
-          debts={debts}
-          totalConsolidatedBalance={totalConsolidatedBalance}
-          language={language as 'ar' | 'en'}
-          onAddPress={() => router.push('/add-transaction')}
-        />
+        {widgetConfig.showQuickGlance !== false && (
+          <QuickGlanceWidget
+            data={getWidgetData(
+              transactions,
+              wallets,
+              selectedWallet,
+              healthScore,
+              budgets,
+              currencySymbol,
+            )}
+            goals={goals}
+            debts={debts}
+            totalConsolidatedBalance={totalConsolidatedBalance}
+            language={language as 'ar' | 'en'}
+            onAddPress={() => router.push('/add-transaction')}
+          />
+        )}
 
         {/* Dynamic Financial Goal Focus Widget */}
-        <FinancialGoalWidget />
+        {widgetConfig.showGoalWidget !== false && (
+          <FinancialGoalWidget />
+        )}
 
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection

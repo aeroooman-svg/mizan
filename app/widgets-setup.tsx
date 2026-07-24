@@ -103,13 +103,23 @@ export default function WidgetsSetupScreen() {
   const payload = exportWidgetNativePayload(widgetData);
 
   const copyPayload = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const updated = {
+      showQuickGlance,
+      showGoalWidget,
+      showForecastWidget,
+      showHealthWidget,
+      selectedWidgetType,
+      selectedWidgetSize,
+      lastSynced: new Date().toISOString(),
+    };
+    await AsyncStorage.setItem('@mizan_widget_config', JSON.stringify(updated));
     await Clipboard.setStringAsync(payload);
     Alert.alert(
-      isAr ? 'تم حفظ التزامن بنجاح 🟢' : 'Widget Synced Successfully',
+      isAr ? 'تمت المزامنة والحفظ الفوري 🟢' : 'Widget Synced & Saved Successfully',
       isAr
-        ? 'تمت مزامنة بيانات الويدجت التفاعلية بنجاح مع الشاشة الرئيسية وهاتفك!'
-        : 'Live widget JSON payload synced & copied to clipboard'
+        ? 'تمت مزامنة وتطبيق إعدادات جميع الويدجت المحددة تفاعلياً وفوراً على الصفحة الرئيسية وهاتفك!'
+        : 'Live widget settings synced & saved successfully to home screen!'
     );
   };
 
@@ -260,14 +270,26 @@ export default function WidgetsSetupScreen() {
               )}
 
               <View style={styles.previewActionRow}>
-                <View style={[styles.previewBtn, { backgroundColor: colors.expense }]}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    router.push('/add-transaction?type=expense&prefillType=expense&isQuick=true');
+                  }}
+                  style={({ pressed }) => [styles.previewBtn, { backgroundColor: colors.expense }, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+                >
                   <Ionicons name="remove-circle" size={14} color="#FFF" />
                   <Text style={styles.previewBtnText}>{isAr ? 'صرف' : 'Expense'}</Text>
-                </View>
-                <View style={[styles.previewBtn, { backgroundColor: colors.income }]}>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    router.push('/add-transaction?type=income&prefillType=income&isQuick=true');
+                  }}
+                  style={({ pressed }) => [styles.previewBtn, { backgroundColor: colors.income }, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+                >
                   <Ionicons name="add-circle" size={14} color="#FFF" />
                   <Text style={styles.previewBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
-                </View>
+                </Pressable>
               </View>
             </View>
           )}
