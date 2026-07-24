@@ -123,13 +123,13 @@ export default function WalletCarousel({
                 pressed && { transform: [{ scale: 0.97 }] },
               ]}
             >
-              <View style={[cardDesignStyle, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+              <View style={[cardDesignStyle, { paddingHorizontal: 0, paddingVertical: 0, borderRadius: 22, overflow: 'hidden' }]}>
                 {cardStyle === 'classic' && (
                   <LinearGradient
                     colors={[wallet.color, '#060B18']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={[StyleSheet.absoluteFillObject, { borderRadius: 18 }]}
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
                   />
                 )}
                 {cardStyle === 'glass' &&
@@ -137,13 +137,13 @@ export default function WalletCarousel({
                     <BlurView
                       intensity={35}
                       tint="dark"
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 18 }]}
+                      style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
                     />
                   ) : (
                     <View
                       style={[
                         StyleSheet.absoluteFillObject,
-                        { backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 18 },
+                        { backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 22 },
                       ]}
                     />
                   ))}
@@ -579,15 +579,16 @@ const getStyles = (colors: any) =>
       width: 280,
       height: 175,
       borderRadius: 22,
+      overflow: 'hidden',
       elevation: 6,
-      backgroundColor: colors.surface,
+      backgroundColor: 'transparent',
     },
     wallet3DCardSelected: {
-      borderWidth: 2,
+      borderWidth: 2.5,
       borderColor: colors.text,
-      elevation: 10,
+      elevation: 12,
       shadowColor: colors.primary,
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.4,
     },
     cardGradient: {
       flex: 1,

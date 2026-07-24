@@ -108,10 +108,7 @@ export default function ActivePlanSection({
       </View>
 
       <View>
-        <Pressable
-          style={styles.recentListCard}
-          onPress={() => router.push('/(tabs)/financial-plan')}
-        >
+        <View style={styles.recentListCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flex: 1, gap: 4 }}>
               <Text
@@ -212,7 +209,7 @@ export default function ActivePlanSection({
               </View>
             </View>
           </View>
-        </Pressable>
+        </View>
 
         {!isCompleted && avgSaving > 0 && (() => {
           const target =
