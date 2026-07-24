@@ -149,7 +149,7 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
     // 5. Loading progress bar
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 2500,
+      duration: 3800,
       easing: Easing.out(Easing.ease),
       useNativeDriver: false,
     }).start();
@@ -240,6 +240,24 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
         <Text style={styles.titleAr}>مِـيـزَان</Text>
         <Text style={styles.titleEn}>MIZAN</Text>
         <Text style={styles.tagline}>إدارة مالية ذكية بلمسة واحدة</Text>
+      </Animated.View>
+
+      {/* Quranic Verse Box - Moderation & Financial Wisdom */}
+      <Animated.View 
+        style={[
+          styles.quranVerseBox, 
+          { 
+            opacity: textOpacity,
+            transform: [{ translateY: textSlide }]
+          }
+        ]}
+      >
+        <View style={styles.quranFrame}>
+          <Text style={styles.quranVerseText}>
+            ﴿ وَالَّذِينَ إِذَا أَنْفَقُوا لَمْ يُسْرِفُوا وَلَمْ يَقْتُرُوا وَكَانَ بَيْنَ ذَٰلِكَ قَوَامًا ﴾
+          </Text>
+          <Text style={styles.quranSurahText}>— سورة الفرقان (٦٧)</Text>
+        </View>
       </Animated.View>
 
       {/* Loading Progress Bar */}
@@ -340,6 +358,43 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     marginTop: 15,
     textAlign: 'center',
+  },
+  quranVerseBox: {
+    marginTop: 22,
+    paddingHorizontal: 24,
+    maxWidth: 380,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  quranFrame: {
+    backgroundColor: 'rgba(16, 185, 129, 0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+  },
+  quranVerseText: {
+    fontFamily: 'Amiri_700Bold',
+    fontSize: 18,
+    lineHeight: 32,
+    color: '#F8FAFC',
+    textAlign: 'center',
+    textShadowColor: 'rgba(16, 185, 129, 0.35)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  quranSurahText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#10B981',
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
   loaderWrapper: {
     position: 'absolute',

@@ -14,6 +14,7 @@ import { SecurityProvider, useSecurity } from "@/lib/SecurityContext";
 import PasscodeOverlay from "@/components/PasscodeOverlay";
 import SplashLoadingScreen from "@/components/SplashLoadingScreen";
 import { useFonts, Cairo_400Regular, Cairo_600SemiBold, Cairo_700Bold } from "@expo-google-fonts/cairo";
+import { Amiri_400Regular, Amiri_700Bold } from "@expo-google-fonts/amiri";
 import { scheduleDailyReminder } from "@/lib/NotificationService";
 import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -45,7 +46,7 @@ function RootLayoutNav() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setMinTimeElapsed(true);
-    }, 2200); // Minimum 2.2 seconds to show off the splash loading animation
+    }, 4000); // 4.0 seconds for comfortably reading the Quranic verse
     return () => clearTimeout(timer);
   }, []);
 
@@ -165,6 +166,8 @@ export default function RootLayout() {
     Cairo_400Regular,
     Cairo_600SemiBold,
     Cairo_700Bold,
+    Amiri_400Regular,
+    Amiri_700Bold,
   });
 
   useEffect(() => {
