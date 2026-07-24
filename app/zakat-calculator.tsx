@@ -50,17 +50,23 @@ export default function ZakatCalculatorScreen() {
 
   const NISAB_GOLD_GRAMS = 85.0;
 
-  useEffect(() => {
-    let isMounted = true;
-    getLocalMetalPrices(currency).then((data) => {
-      if (isMounted) {
-        setLivePrices(data);
-        setLoadingPrices(false);
+  const refreshPrices = async (force = false) => {
+    setLoadingPrices(true);
+    try {
+      const data = await getLocalMetalPrices(currency, force);
+      setLivePrices(data);
+      if (force) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    }).catch(() => {
-      if (isMounted) setLoadingPrices(false);
-    });
-    return () => { isMounted = false; };
+    } catch (e) {
+      console.warn('Error refreshing metal prices:', e);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshPrices(false);
   }, [currency]);
 
   const handleCalculate = async () => {
@@ -163,17 +169,44 @@ export default function ZakatCalculatorScreen() {
             borderRadius: 14,
             padding: 12,
             gap: 10,
+            marginBottom: 16,
           }}>
             <Ionicons name="sparkles" size={20} color="#FFD700" />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#FFD700' }}>
-                {language === 'ar' ? 'سعر الذهب الحالي المباشر (عيار 24):' : 'Live 24K Gold Rate:'}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
-                {formatCurrency(livePrices.gold24kLocal)} {currency} / {language === 'ar' ? 'جرام' : 'gram'}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#FFD700' }}>
+                  {language === 'ar' ? 'سعر الذهب المباشر:' : 'Live Gold Rate:'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: livePrices.isLive ? '#22c55e' : colors.textTertiary }}>
+                  {livePrices.isLive ? (language === 'ar' ? '🟢 متزامن حي' : '🟢 Live Synced') : (language === 'ar' ? '⚪ مخزن' : '⚪ Cached')}
+                </Text>
+              </View>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                {language === 'ar' ? `عيار 24: ${formatCurrency(livePrices.gold24kLocal)} ${currency} / جرام` : `24K: ${formatCurrency(livePrices.gold24kLocal)} ${currency}/g`}
               </Text>
             </View>
-            <Ionicons name="pulse" size={18} color={livePrices.isLive ? colors.primary : colors.textTertiary} />
+            <Pressable
+              onPress={() => refreshPrices(true)}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary }}>
+                {language === 'ar' ? 'تحديث' : 'Refresh'}
+              </Text>
+            </Pressable>
           </View>
         )}
 

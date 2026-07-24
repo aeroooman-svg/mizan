@@ -242,8 +242,8 @@ export default function AddTransactionScreen() {
       Haptics.selectionAsync();
       setSmartMessage(
         language === 'ar' 
-          ? '🎙️ اضغط على زر المايك في لوحة المفاتيح لإملاء المعاملة مباشرة!'
-          : '🎙️ Tap the microphone button on your keyboard to dictate the transaction!'
+          ? '🎙️ اضغط على زر المايك في لوحة مفاتيح هاتفك لإملاء المعاملة بصوتك، أو اكتب النص مباشرة!'
+          : '🎙️ Tap the microphone icon on your soft keyboard to dictate using your voice!'
       );
       smartInputRef.current?.focus();
       return;
@@ -254,8 +254,8 @@ export default function AddTransactionScreen() {
       Alert.alert(
         language === 'ar' ? 'غير مدعوم' : 'Not Supported',
         language === 'ar' 
-          ? 'البحث الصوتي غير مدعوم في هذا متصفح. جرب متصفح جوجل كروم.'
-          : 'Speech recognition is not supported in this browser. Try Google Chrome.'
+          ? 'التعرف على الصوت غير مدعوم مباشرة في هذا المتصفح. يمكنك إملاء المعاملة بصوتك باستخدام مايك لوحة المفاتيح.'
+          : 'Speech recognition is not supported in this browser. Try Google Chrome or keyboard mic.'
       );
       return;
     }
@@ -269,13 +269,13 @@ export default function AddTransactionScreen() {
 
       recognition.onstart = () => {
         setIsRecording(true);
-        setSmartMessage(language === 'ar' ? 'جاري الاستماع...' : 'Listening...');
+        setSmartMessage(language === 'ar' ? '🎙️ جاري الاستماع... تحدث الآن (مثال: صرفت 50 جنيه قهوة من الكاش)' : '🎙️ Listening... Speak now (e.g. Spent 50 EGP coffee from Cash)');
       };
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error', event);
         setIsRecording(false);
-        setSmartMessage(language === 'ar' ? 'حدث خطأ في التعرف على الصوت' : 'Speech recognition error');
+        setSmartMessage(language === 'ar' ? 'حدث خطأ أو لم يتم التقاط الصوت. حاول مرة أخرى أو استخدم مايك الكيبورد.' : 'Speech recognition error. Try again or use keyboard mic.');
       };
 
       recognition.onend = () => {
@@ -342,16 +342,30 @@ export default function AddTransactionScreen() {
         selectWallet(parsed.walletId);
       }
 
+      if (parsed.toWalletId) {
+        setToWalletId(parsed.toWalletId);
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      const categoryObj = displayedCategories.find(c => c.id === parsed.category) || 
-                          [...expenseCategories, ...incomeCategories].find(c => c.id === parsed.category);
-      const catName = categoryObj ? getCategoryName(categoryObj.id, language) : (language === 'ar' ? 'غير معروف' : 'Unknown');
-      
-      if (language === 'ar') {
-        setSmartMessage(`✅ تم الاستخراج: ${parsed.amount || 0} ج.م - قسم: ${catName}`);
+      if (parsed.type === 'transfer') {
+        const toWalletObj = wallets.find(w => w.id === parsed.toWalletId);
+        const toName = toWalletObj ? toWalletObj.name : '';
+        if (language === 'ar') {
+          setSmartMessage(`🔄 تم استخراج عملية تحويل: ${parsed.amount || 0} ${currencySymbol} ${toName ? 'إلى ' + toName : ''}`);
+        } else {
+          setSmartMessage(`🔄 Parsed Transfer: ${parsed.amount || 0} ${currencySymbol} ${toName ? 'to ' + toName : ''}`);
+        }
       } else {
-        setSmartMessage(`✅ Parsed: ${parsed.amount || 0} - Category: ${catName}`);
+        const categoryObj = displayedCategories.find(c => c.id === parsed.category) || 
+                            [...expenseCategories, ...incomeCategories].find(c => c.id === parsed.category);
+        const catName = categoryObj ? getCategoryName(categoryObj.id, language) : (language === 'ar' ? 'غير معروف' : 'Unknown');
+        
+        if (language === 'ar') {
+          setSmartMessage(`✅ تم الاستخراج: ${parsed.amount || 0} ${currencySymbol} - قسم: ${catName}`);
+        } else {
+          setSmartMessage(`✅ Parsed: ${parsed.amount || 0} ${currencySymbol} - Category: ${catName}`);
+        }
       }
     } catch (err) {
       console.error('Error parsing smart input:', err);
@@ -363,15 +377,24 @@ export default function AddTransactionScreen() {
     try {
       Haptics.selectionAsync();
       const text = await Clipboard.getStringAsync();
-      if (!text.trim()) {
+      if (!text || !text.trim()) {
         Alert.alert(
-          language === 'ar' ? 'تنبيه' : 'Alert',
-          language === 'ar' ? 'الحافظة فارغة!' : 'Clipboard is empty!'
+          language === 'ar' ? 'تنبيه الحافظة' : 'Clipboard Alert',
+          language === 'ar' 
+            ? 'لا يوجد نص منسوخ في الحافظة! قم بنسخ نص المعاملة أو رسالة البنك أولاً.' 
+            : 'Clipboard is empty! Copy transaction text or bank SMS first.'
         );
         return;
       }
       setSmartInputText(text);
       handleSmartParse(text);
+      if (!smartMessage) {
+        setSmartMessage(
+          language === 'ar' 
+            ? '📋 تم لصق النص المنسوخ من الحافظة وتحليله بنجاح' 
+            : '📋 Pasted text from clipboard successfully'
+        );
+      }
     } catch (e) {
       console.error('Failed to read clipboard:', e);
       Alert.alert(
@@ -673,7 +696,7 @@ export default function AddTransactionScreen() {
           {/* Smart AI Voice/Text Input Card */}
           <View style={styles.smartInputCard}>
             <Text style={styles.label}>
-              {language === 'ar' ? '💡 إدخال ذكي سريع (اكتب أو سجل بصوتك)' : '💡 Smart Quick Input (Type or Voice)'}
+              {language === 'ar' ? '💡 إدخال ذكي سريع (اكتب، لصق 📋، أو سجل بصوتك 🎙️)' : '💡 Smart Quick Input (Type, Paste 📋, or Voice 🎙️)'}
             </Text>
             <View style={styles.smartInputWrapper}>
               <TextInput
@@ -694,6 +717,7 @@ export default function AddTransactionScreen() {
               <Pressable
                 onPress={handlePasteClipboard}
                 style={styles.pasteBtn}
+                accessibilityLabel={language === 'ar' ? 'لصق النص المنسوخ من الحافظة' : 'Paste copied text'}
               >
                 <Ionicons 
                   name="clipboard-outline" 
@@ -707,6 +731,7 @@ export default function AddTransactionScreen() {
                   styles.micBtn,
                   isRecording && styles.micBtnActive
                 ]}
+                accessibilityLabel={language === 'ar' ? 'إملاء بصوتك' : 'Dictate with voice'}
               >
                 <Ionicons 
                   name={isRecording ? "mic" : "mic-outline"} 
@@ -1053,23 +1078,57 @@ export default function AddTransactionScreen() {
             </View>
           </View>
 
-          <Pressable
-            onPress={handleSave}
-            disabled={isSaving || !amount || !selectedCategory}
-            style={({ pressed }) => [
-              styles.saveButton,
-              {
-                backgroundColor: type === 'expense' ? Colors.expense : Colors.income,
-                opacity: (isSaving || !amount || !selectedCategory) ? 0.5 : pressed ? 0.9 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
-            ]}
-          >
-            <Ionicons name="checkmark" size={22} color="#fff" />
-            <Text style={styles.saveText}>
-              {isEditMode ? t.updateTransaction : t.save}
-            </Text>
-          </Pressable>
+          {(() => {
+            const isDisabled = isSaving || !amount || parseFloat(amount) <= 0 || (type === 'transfer' ? !toWalletId : !selectedCategory);
+            const btnColor = type === 'expense'
+              ? Colors.expense
+              : type === 'income'
+                ? Colors.income
+                : '#3b82f6'; // Transfer blue color
+
+            let buttonLabel = '';
+            if (language === 'ar') {
+              if (isEditMode) {
+                if (type === 'expense') buttonLabel = 'تحديث المصروف';
+                else if (type === 'income') buttonLabel = 'تحديث الدخل';
+                else buttonLabel = 'تحديث التحويل';
+              } else {
+                if (type === 'expense') buttonLabel = 'حفظ المصروف';
+                else if (type === 'income') buttonLabel = 'حفظ الدخل';
+                else buttonLabel = 'حفظ التحويل';
+              }
+            } else {
+              if (isEditMode) {
+                if (type === 'expense') buttonLabel = 'Update Expense';
+                else if (type === 'income') buttonLabel = 'Update Income';
+                else buttonLabel = 'Update Transfer';
+              } else {
+                if (type === 'expense') buttonLabel = 'Save Expense';
+                else if (type === 'income') buttonLabel = 'Save Income';
+                else buttonLabel = 'Save Transfer';
+              }
+            }
+
+            return (
+              <Pressable
+                onPress={handleSave}
+                disabled={isDisabled}
+                style={({ pressed }) => [
+                  styles.saveButton,
+                  {
+                    backgroundColor: btnColor,
+                    opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  },
+                ]}
+              >
+                <Ionicons name={type === 'transfer' ? "swap-horizontal" : "checkmark"} size={22} color="#fff" />
+                <Text style={styles.saveText}>
+                  {buttonLabel}
+                </Text>
+              </Pressable>
+            );
+          })()}
         </ScrollView>
       </View>
 

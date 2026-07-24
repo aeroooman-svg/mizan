@@ -7,95 +7,118 @@ const GOLD_CACHE_TIME_KEY = '@masarif_gold_prices_time';
 export interface GoldPrices {
   gold24kUsdPerGram: number;
   gold21kUsdPerGram: number;
+  gold18kUsdPerGram: number;
   silverUsdPerGram: number;
   lastUpdated: string;
   isLive: boolean;
 }
 
-// Fallback rates in USD per gram
+// Modern market fallback rates in USD per gram (~$4050/oz Gold, ~$58/oz Silver)
 export const FALLBACK_GOLD_PRICES: GoldPrices = {
-  gold24kUsdPerGram: 88.5, // ~ $88.5 / gram 24K gold
-  gold21kUsdPerGram: 77.4, // ~ $77.4 / gram 21K gold (87.5% purity)
-  silverUsdPerGram: 1.05,  // ~ $1.05 / gram silver
+  gold24kUsdPerGram: 130.3, // ~ $130.3 / gram 24K gold
+  gold21kUsdPerGram: 114.0, // ~ $114.0 / gram 21K gold
+  gold18kUsdPerGram: 97.7,  // ~ $97.7 / gram 18K gold
+  silverUsdPerGram: 1.87,   // ~ $1.87 / gram silver
   lastUpdated: new Date().toISOString(),
   isLive: false,
 };
 
-export async function getGoldAndSilverPrices(): Promise<GoldPrices> {
+export async function getGoldAndSilverPrices(forceRefresh = false): Promise<GoldPrices> {
   try {
-    // Check local cache
     const cachedTime = await AsyncStorage.getItem(GOLD_CACHE_TIME_KEY);
     const cachedData = await AsyncStorage.getItem(GOLD_CACHE_KEY);
 
-    const sixHours = 6 * 60 * 60 * 1000;
-    if (cachedTime && cachedData && Date.now() - parseInt(cachedTime, 10) < sixHours) {
+    // 1-hour cache by default for precious metals
+    const oneHour = 1 * 60 * 60 * 1000;
+    if (!forceRefresh && cachedTime && cachedData && Date.now() - parseInt(cachedTime, 10) < oneHour) {
       return JSON.parse(cachedData);
     }
 
-    // Try fetching live price from open gold API
-    const res = await fetch('https://api.metals.live/v1/spot');
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0 && data[0].gold) {
-        const goldOunceUsd = parseFloat(data[0].gold);
-        const silverOunceUsd = parseFloat(data[0].silver || '31.0');
+    // Endpoint 1: api.gold-api.com (Real-time spot Gold & Silver)
+    try {
+      const [goldRes, silverRes] = await Promise.all([
+        fetch('https://api.gold-api.com/price/XAU'),
+        fetch('https://api.gold-api.com/price/XAG')
+      ]);
 
-        // 1 troy ounce = 31.1034768 grams
-        const gold24kUsd = goldOunceUsd / 31.1034768;
-        const gold21kUsd = gold24kUsd * (21 / 24);
-        const silverUsd = silverOunceUsd / 31.1034768;
+      if (goldRes.ok) {
+        const goldData = await goldRes.json();
+        const goldOunceUsd = parseFloat(goldData.price);
 
-        const livePrices: GoldPrices = {
-          gold24kUsdPerGram: Math.round(gold24kUsd * 100) / 100,
-          gold21kUsdPerGram: Math.round(gold21kUsd * 100) / 100,
-          silverUsdPerGram: Math.round(silverUsd * 100) / 100,
-          lastUpdated: new Date().toISOString(),
-          isLive: true,
-        };
+        let silverOunceUsd = 58.2;
+        if (silverRes.ok) {
+          const silverData = await silverRes.json();
+          if (silverData.price) silverOunceUsd = parseFloat(silverData.price);
+        }
 
-        await AsyncStorage.setItem(GOLD_CACHE_KEY, JSON.stringify(livePrices));
-        await AsyncStorage.setItem(GOLD_CACHE_TIME_KEY, Date.now().toString());
+        if (goldOunceUsd > 0) {
+          const gold24kUsd = goldOunceUsd / 31.1034768;
+          const gold21kUsd = gold24kUsd * (21 / 24);
+          const gold18kUsd = gold24kUsd * (18 / 24);
+          const silverUsd = silverOunceUsd / 31.1034768;
 
-        return livePrices;
+          const livePrices: GoldPrices = {
+            gold24kUsdPerGram: Math.round(gold24kUsd * 100) / 100,
+            gold21kUsdPerGram: Math.round(gold21kUsd * 100) / 100,
+            gold18kUsdPerGram: Math.round(gold18kUsd * 100) / 100,
+            silverUsdPerGram: Math.round(silverUsd * 100) / 100,
+            lastUpdated: new Date().toISOString(),
+            isLive: true,
+          };
+
+          await AsyncStorage.setItem(GOLD_CACHE_KEY, JSON.stringify(livePrices));
+          await AsyncStorage.setItem(GOLD_CACHE_TIME_KEY, Date.now().toString());
+
+          return livePrices;
+        }
       }
+    } catch (e1) {
+      console.warn('Primary gold API endpoint failed, trying secondary:', e1);
     }
 
-    // Secondary live endpoint attempt
-    const secondaryRes = await fetch('https://data-asg.goldprice.org/dbdata/USD');
-    if (secondaryRes.ok) {
-      const secData = await secondaryRes.json();
-      if (secData && secData.items && secData.items[0] && secData.items[0].xauPrice) {
-        const goldOunceUsd = parseFloat(secData.items[0].xauPrice);
-        const silverOunceUsd = parseFloat(secData.items[0].xagPrice || '31.0');
+    // Endpoint 2: jsdelivr currency-api (contains xau/xag rates)
+    try {
+      const res2 = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2 && data2.usd && data2.usd.xau) {
+          // 1 USD = xau troy ounces => 1 troy ounce = 1 / xau
+          const goldOunceUsd = 1 / parseFloat(data2.usd.xau);
+          const silverOunceUsd = data2.usd.xag ? (1 / parseFloat(data2.usd.xag)) : 58.2;
 
-        const gold24kUsd = goldOunceUsd / 31.1034768;
-        const gold21kUsd = gold24kUsd * (21 / 24);
-        const silverUsd = silverOunceUsd / 31.1034768;
+          const gold24kUsd = goldOunceUsd / 31.1034768;
+          const gold21kUsd = gold24kUsd * (21 / 24);
+          const gold18kUsd = gold24kUsd * (18 / 24);
+          const silverUsd = silverOunceUsd / 31.1034768;
 
-        const livePrices: GoldPrices = {
-          gold24kUsdPerGram: Math.round(gold24kUsd * 100) / 100,
-          gold21kUsdPerGram: Math.round(gold21kUsd * 100) / 100,
-          silverUsdPerGram: Math.round(silverUsd * 100) / 100,
-          lastUpdated: new Date().toISOString(),
-          isLive: true,
-        };
+          const livePrices: GoldPrices = {
+            gold24kUsdPerGram: Math.round(gold24kUsd * 100) / 100,
+            gold21kUsdPerGram: Math.round(gold21kUsd * 100) / 100,
+            gold18kUsdPerGram: Math.round(gold18kUsd * 100) / 100,
+            silverUsdPerGram: Math.round(silverUsd * 100) / 100,
+            lastUpdated: new Date().toISOString(),
+            isLive: true,
+          };
 
-        await AsyncStorage.setItem(GOLD_CACHE_KEY, JSON.stringify(livePrices));
-        await AsyncStorage.setItem(GOLD_CACHE_TIME_KEY, Date.now().toString());
+          await AsyncStorage.setItem(GOLD_CACHE_KEY, JSON.stringify(livePrices));
+          await AsyncStorage.setItem(GOLD_CACHE_TIME_KEY, Date.now().toString());
 
-        return livePrices;
+          return livePrices;
+        }
       }
+    } catch (e2) {
+      console.warn('Secondary gold API failed:', e2);
+    }
+
+    // Return cached if available
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      return { ...parsed, isLive: false };
     }
 
     return FALLBACK_GOLD_PRICES;
   } catch (e) {
     console.warn('Failed to fetch live gold prices, using fallbacks:', e);
-    const cachedData = await AsyncStorage.getItem(GOLD_CACHE_KEY);
-    if (cachedData) {
-      try {
-        return JSON.parse(cachedData);
-      } catch (err) {}
-    }
     return FALLBACK_GOLD_PRICES;
   }
 }
@@ -103,19 +126,22 @@ export async function getGoldAndSilverPrices(): Promise<GoldPrices> {
 /**
  * Calculates local price per gram of gold/silver in target currency
  */
-export async function getLocalMetalPrices(targetCurrency: string) {
-  const metalsUsd = await getGoldAndSilverPrices();
-  const rates = await getExchangeRates();
+export async function getLocalMetalPrices(targetCurrency: string, forceRefresh = false) {
+  const metalsUsd = await getGoldAndSilverPrices(forceRefresh);
+  const rates = await getExchangeRates(forceRefresh);
 
   const gold24kLocal = convertAmount(metalsUsd.gold24kUsdPerGram, 'USD', targetCurrency, rates);
   const gold21kLocal = convertAmount(metalsUsd.gold21kUsdPerGram, 'USD', targetCurrency, rates);
+  const gold18kLocal = convertAmount(metalsUsd.gold18kUsdPerGram, 'USD', targetCurrency, rates);
   const silverLocal = convertAmount(metalsUsd.silverUsdPerGram, 'USD', targetCurrency, rates);
 
   return {
     gold24kLocal: Math.round(gold24kLocal * 10) / 10,
     gold21kLocal: Math.round(gold21kLocal * 10) / 10,
+    gold18kLocal: Math.round(gold18kLocal * 10) / 10,
     silverLocal: Math.round(silverLocal * 10) / 10,
     isLive: metalsUsd.isLive,
     lastUpdated: metalsUsd.lastUpdated,
+    rates,
   };
 }

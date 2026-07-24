@@ -4,10 +4,11 @@ import { Category, expenseCategories, incomeCategories } from './categories';
 
 export interface ParsedTransaction {
   amount: number | null;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
   category: string; // id
   description: string;
   walletId: string | null;
+  toWalletId?: string | null;
 }
 
 // Map of words to Arabic numbers text
@@ -410,42 +411,70 @@ export function parseTransactionText(
   }
 
   // 2. Extract Type
-  let type: 'income' | 'expense' = 'expense';
+  let type: 'income' | 'expense' | 'transfer' = 'expense';
+  const transferIndicators = ['تحويل', 'حول', 'نقل', 'تحويلات', 'transfer', 'move'];
   const incomeIndicators = [
     'قبضت', 'جالي', 'مرتب', 'راتب', 'دخل', 'ربح', 'مكسب', 'هديه', 'هدية', 'بونص', 'مكافاه', 'مكافأة',
     'salary', 'income', 'bonus', 'gift', 'freelance', 'received', 'earned', 'deposit'
   ];
-  const cleanedIndicators = incomeIndicators.map(cleanText);
-  for (const ind of cleanedIndicators) {
-    if (cleaned.includes(ind)) {
-      type = 'income';
-      break;
+  
+  const cleanedTransfer = transferIndicators.map(cleanText);
+  if (cleanedTransfer.some(ind => cleaned.includes(ind))) {
+    type = 'transfer';
+  } else {
+    const cleanedIncome = incomeIndicators.map(cleanText);
+    for (const ind of cleanedIncome) {
+      if (cleaned.includes(ind)) {
+        type = 'income';
+        break;
+      }
     }
   }
 
   // 3. Extract Category
-  const category = matchCategoryFromText(text, type, customCategories);
+  const category = type === 'transfer' ? 'transfer' : matchCategoryFromText(text, type, customCategories);
 
-  // 4. Extract Wallet
+  // 4. Extract Wallet & Target Wallet
   let walletId: string | null = null;
+  let toWalletId: string | null = null;
+
   if (wallets.length > 0) {
-    let bestWalletScore = 0;
-    for (const wallet of wallets) {
-      const walletNameClean = cleanText(wallet.name);
-      if (cleaned.includes(walletNameClean)) {
-        if (walletNameClean.length > bestWalletScore) {
-          walletId = wallet.id;
-          bestWalletScore = walletNameClean.length;
+    if (type === 'transfer') {
+      // Find source wallet (e.g., "من بنك مصر") and target wallet (e.g., "الي الكاش")
+      const matchedWallets: { wallet: Wallet; index: number }[] = [];
+      for (const wallet of wallets) {
+        const walletNameClean = cleanText(wallet.name);
+        const idx = cleaned.indexOf(walletNameClean);
+        if (idx !== -1) {
+          matchedWallets.push({ wallet, index: idx });
         }
       }
-    }
-    if (!walletId) {
-      if (cleaned.includes('كاش') || cleaned.includes('نقدي') || cleaned.includes('كش') || cleaned.includes('cash')) {
-        const cashWallet = wallets.find(w => cleanText(w.name).includes('كاش') || cleanText(w.name).includes('cash') || cleanText(w.name).includes('نقد'));
-        if (cashWallet) walletId = cashWallet.id;
-      } else if (cleaned.includes('بنك') || cleaned.includes('فيزا') || cleaned.includes('حساب') || cleaned.includes('bank') || cleaned.includes('card') || cleaned.includes('visa')) {
-        const bankWallet = wallets.find(w => cleanText(w.name).includes('بنك') || cleanText(w.name).includes('bank') || cleanText(w.name).includes('فيزا') || cleanText(w.name).includes('بطاقة'));
-        if (bankWallet) walletId = bankWallet.id;
+      matchedWallets.sort((a, b) => a.index - b.index);
+      if (matchedWallets.length >= 2) {
+        walletId = matchedWallets[0].wallet.id;
+        toWalletId = matchedWallets[1].wallet.id;
+      } else if (matchedWallets.length === 1) {
+        walletId = matchedWallets[0].wallet.id;
+      }
+    } else {
+      let bestWalletScore = 0;
+      for (const wallet of wallets) {
+        const walletNameClean = cleanText(wallet.name);
+        if (cleaned.includes(walletNameClean)) {
+          if (walletNameClean.length > bestWalletScore) {
+            walletId = wallet.id;
+            bestWalletScore = walletNameClean.length;
+          }
+        }
+      }
+      if (!walletId) {
+        if (cleaned.includes('كاش') || cleaned.includes('نقدي') || cleaned.includes('كش') || cleaned.includes('cash')) {
+          const cashWallet = wallets.find(w => cleanText(w.name).includes('كاش') || cleanText(w.name).includes('cash') || cleanText(w.name).includes('نقد'));
+          if (cashWallet) walletId = cashWallet.id;
+        } else if (cleaned.includes('بنك') || cleaned.includes('فيزا') || cleaned.includes('حساب') || cleaned.includes('bank') || cleaned.includes('card') || cleaned.includes('visa')) {
+          const bankWallet = wallets.find(w => cleanText(w.name).includes('بنك') || cleanText(w.name).includes('bank') || cleanText(w.name).includes('فيزا') || cleanText(w.name).includes('بطاقة'));
+          if (bankWallet) walletId = bankWallet.id;
+        }
       }
     }
   }
@@ -462,6 +491,7 @@ export function parseTransactionText(
     type,
     category,
     description: description || text.trim(),
-    walletId
+    walletId,
+    toWalletId: toWalletId || undefined
   };
 }
