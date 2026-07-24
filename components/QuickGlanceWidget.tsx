@@ -117,7 +117,7 @@ export default function QuickGlanceWidget({
           </View>
         </View>
 
-        {/* Row 2: Balance Section - Label & Amount strictly aligned on the SAME side */}
+        {/* Row 2: Balance Section - Prominently displayed on the RIGHT side with larger font */}
         <View style={styles.balanceContainer}>
           <View style={styles.balanceLabelRow}>
             <Text style={styles.balanceLabelText}>
@@ -133,7 +133,7 @@ export default function QuickGlanceWidget({
             >
               <Ionicons
                 name={showBalance ? "eye-outline" : "eye-off-outline"}
-                size={16}
+                size={18}
                 color={colors.textSecondary}
               />
             </Pressable>
@@ -209,25 +209,14 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Summary Info & Secondary Quick Tools */}
+        {/* Row 4: Secondary Quick Action Shortcuts */}
         <View style={styles.bottomRow}>
-          {/* Today Spending Pill */}
-          <View style={styles.todayPill}>
-            <Ionicons name="today-outline" size={14} color={colors.expense} />
-            <Text style={styles.todayText}>
-              {isAr ? 'صرفت اليوم:' : "Today:"}{' '}
-              <Text style={{ fontFamily: 'Cairo_700Bold', color: colors.text }}>
-                {formatCurrency(data.todaySpent, language)} {data.currencySymbol}
-              </Text>
-            </Text>
-          </View>
-
-          {/* Secondary Quick Action Shortcuts */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.secondaryScroll}
           >
+            {/* Installments */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -242,6 +231,25 @@ export default function QuickGlanceWidget({
               <Text style={styles.secondaryPillText}>{isAr ? 'الأقساط' : 'Installments'}</Text>
             </Pressable>
 
+            {/* Recurring Expenses Button (مصاريف متكررة) */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/recurring-list' as any);
+              }}
+              style={({ pressed }) => [
+                styles.secondaryPill,
+                styles.recurringHighlightPill,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Ionicons name="sync-outline" size={14} color={colors.primary} />
+              <Text style={[styles.secondaryPillText, { color: colors.primary }]}>
+                {isAr ? 'مصاريف متكررة' : 'Recurring Expenses'}
+              </Text>
+            </Pressable>
+
+            {/* Bank Statement */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -256,6 +264,7 @@ export default function QuickGlanceWidget({
               <Text style={styles.secondaryPillText}>{isAr ? 'كشف بنكي' : 'Statement'}</Text>
             </Pressable>
 
+            {/* Receipt Scanner */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -434,12 +443,12 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   balanceAmountText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     textAlign: 'left',
   },
   currencySymbolText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Cairo_600SemiBold',
     color: colors.textSecondary,
   },
@@ -513,6 +522,10 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 12,
+  },
+  recurringHighlightPill: {
+    backgroundColor: colors.primary + '18',
+    borderColor: colors.primary + '40',
   },
   secondaryPillText: {
     fontFamily: 'Cairo_600SemiBold',

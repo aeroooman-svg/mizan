@@ -621,19 +621,6 @@ export default function HomeScreen() {
         {/* Dynamic Financial Goal Focus Widget */}
         <FinancialGoalWidget />
 
-        {/* Two Column Health & Forecast Dashboard */}
-        {selectedWallet && (
-          <HealthForecastRow
-            healthScore={healthScore}
-            selectedWalletBalance={selectedWalletBalance}
-            currencySymbol={currencySymbol}
-            balance={balance}
-            forecast={forecast}
-            language={language as 'ar' | 'en'}
-            colors={colors}
-          />
-        )}
-
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
           walletPending={walletPending}

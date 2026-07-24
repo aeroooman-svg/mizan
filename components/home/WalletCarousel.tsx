@@ -187,29 +187,15 @@ export default function WalletCarousel({
                       <Text
                         style={{
                           fontFamily: 'Cairo_700Bold',
-                          fontSize: 22,
+                          fontSize: 24,
                           color: textColor,
                           textAlign: 'left',
-                          lineHeight: 28,
+                          lineHeight: 30,
                         }}
                         numberOfLines={1}
                       >
                         {wallet.name.toUpperCase()}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                        <View style={{ backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                          <Text
-                            style={{
-                              fontFamily: 'Cairo_700Bold',
-                              fontSize: 9,
-                              color: textSecondaryColor,
-                              letterSpacing: 0.8,
-                            }}
-                          >
-                            MIZAN PLATINUM
-                          </Text>
-                        </View>
-                      </View>
                       {wallet.sharedWith && (
                         <Pressable
                           onPress={() => {
@@ -225,7 +211,7 @@ export default function WalletCarousel({
                             paddingVertical: 3,
                             borderRadius: 6,
                             alignSelf: 'flex-start',
-                            marginTop: 6,
+                            marginTop: 4,
                           }}
                         >
                           <Ionicons name="people" size={12} color="#10B981" />
@@ -255,22 +241,22 @@ export default function WalletCarousel({
                       )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {/* Financial Health Badge on Card */}
+                      {/* Enlarged Financial Health Badge on Card */}
                       <View
                         style={{
                           flexDirection: 'row',
                           alignItems: 'center',
-                          gap: 4,
+                          gap: 6,
                           backgroundColor: 'rgba(16, 185, 129, 0.25)',
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 10,
                           borderWidth: 1,
                           borderColor: 'rgba(16, 185, 129, 0.4)',
                         }}
                       >
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#10B981' }}>
                           {healthScore} {language === 'ar' ? 'ممتاز' : 'Good'}
                         </Text>
                       </View>
@@ -298,16 +284,16 @@ export default function WalletCarousel({
                   </View>
 
                   {/* Middle Balance Row - Label & amount strictly aligned on the same side */}
-                  <View style={{ marginVertical: 4, alignItems: 'flex-start' }}>
+                  <View style={{ marginTop: 12, alignItems: 'flex-start' }}>
                     <Text
                       style={{
                         fontFamily: 'Cairo_600SemiBold',
-                        fontSize: 10,
+                        fontSize: 11,
                         color: textSecondaryColor,
                         textTransform: 'uppercase',
                         letterSpacing: 0.5,
                         textAlign: 'left',
-                        marginBottom: 2,
+                        marginBottom: 4,
                       }}
                     >
                       {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
@@ -315,50 +301,19 @@ export default function WalletCarousel({
                     <Text
                       style={{
                         fontFamily: 'Cairo_700Bold',
-                        fontSize: 26,
+                        fontSize: 28,
                         color: textColor,
-                        lineHeight: 34,
+                        lineHeight: 36,
                         textAlign: 'left',
                       }}
                       numberOfLines={1}
                     >
                       {walletBalance >= 0 ? '' : '-'}
                       {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                      <Text style={{ fontSize: 14, fontFamily: 'Cairo_600SemiBold' }}>
+                      <Text style={{ fontSize: 15, fontFamily: 'Cairo_600SemiBold' }}>
                         {wallet.currency}
                       </Text>
                     </Text>
-                  </View>
-
-                  {/* Bottom Footer Row */}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: 'Cairo_600SemiBold',
-                        fontSize: 11,
-                        color: textSecondaryColor,
-                        letterSpacing: 1.5,
-                      }}
-                    >
-                      ••••  ••••  ••••  {cardNumSuffix}
-                    </Text>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text
-                        style={{
-                          fontFamily: 'Cairo_600SemiBold',
-                          fontSize: 10,
-                          color: expiryColor,
-                        }}
-                      >
-                        07/31
-                      </Text>
-                    </View>
                   </View>
                 </View>
               </View>
