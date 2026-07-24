@@ -40,11 +40,24 @@ type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const CUSTOM_CATEGORY_ICONS = [
-  'restaurant', 'directions-car', 'receipt-long', 'shopping-bag',
-  'medical-services', 'school', 'movie', 'home', 'phone-android',
-  'checkroom', 'more-horiz', 'account-balance-wallet', 'laptop-mac',
-  'trending-up', 'card-giftcard', 'stars', 'fitness-center', 'local-gas-station',
-  'flight', 'spa', 'pets', 'work', 'videogame-asset'
+  // Food & Drinks
+  'restaurant', 'local-cafe', 'fastfood', 'local-pizza', 'cake', 'local-grocery-store', 'local-bar',
+  // Shopping & Personal
+  'shopping-bag', 'shopping-cart', 'checkroom', 'card-giftcard', 'diamond', 'brush',
+  // Transport & Travel
+  'directions-car', 'local-gas-station', 'flight', 'directions-bus', 'commute', 'build', 'local-taxi', 'pedal-bike',
+  // Home & Utilities
+  'home', 'receipt-long', 'phone-android', 'lightbulb', 'wifi', 'cleaning-services', 'tv', 'weekend',
+  // Health & Sports
+  'medical-services', 'spa', 'fitness-center', 'sports-soccer', 'medication', 'pool',
+  // Family, Education & Pets
+  'child-care', 'school', 'pets', 'family-restroom',
+  // Entertainment & Tech
+  'movie', 'videogame-asset', 'sports-esports', 'camera-alt', 'music-note', 'beach-access',
+  // Finance & Business
+  'account-balance-wallet', 'laptop-mac', 'trending-up', 'work', 'credit-card', 'attach-money', 'savings', 'storefront', 'monetization-on', 'subscriptions', 'stars',
+  // General
+  'star', 'favorite', 'more-horiz'
 ];
 
 export default function AddTransactionScreen() {
@@ -609,10 +622,11 @@ export default function AddTransactionScreen() {
   // Custom category operations
   const handleSaveCustomCategory = async () => {
     const nameAr = customNameAr.trim();
-    const nameEn = customNameEn.trim();
+    let nameEn = customNameEn.trim();
+    if (!nameEn) nameEn = nameAr;
 
-    if (!nameAr || !nameEn) {
-      Alert.alert(t.error, t.categoryName);
+    if (!nameAr) {
+      Alert.alert(t.error, language === 'ar' ? 'يرجى كتابة اسم الفئة' : 'Please enter category name');
       return;
     }
 
@@ -624,7 +638,6 @@ export default function AddTransactionScreen() {
       setCustomNameAr('');
       setCustomNameEn('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('✅', t.categoryAdded);
     } catch (e) {
       Alert.alert(t.error, 'Could not save category');
     }

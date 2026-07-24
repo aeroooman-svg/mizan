@@ -403,6 +403,22 @@ export function getCategoryName(categoryId: string, lang: Language): string {
   };
   const key = map[categoryId];
   if (key) return translations[lang][key] as string;
+
+  // Check custom category in memory/storage
+  try {
+    const { getCategoryById } = require('./categories');
+    const customCat = getCategoryById(categoryId);
+    if (customCat) {
+      if (lang === 'ar') {
+        return customCat.nameAr || customCat.name || categoryId;
+      } else {
+        return customCat.name || customCat.nameAr || categoryId;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching custom category name:', e);
+  }
+
   return categoryId;
 }
 
