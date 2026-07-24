@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
   Platform,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -42,16 +43,30 @@ export default function WalletCarousel({
   onAddWallet,
   onEditWallet,
 }: WalletCarouselProps) {
-  const styles = getStyles(colors);
+  const { width: windowWidth } = useWindowDimensions();
+  const cardWidth = Math.min(440, Math.max(280, windowWidth - 32));
+  const styles = getStyles(colors, cardWidth);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (selectedWallet && scrollRef.current) {
+      const index = wallets.findIndex((w) => w.id === selectedWallet.id);
+      if (index !== -1) {
+        scrollRef.current.scrollTo({ x: index * (cardWidth + 12), animated: true });
+      }
+    }
+  }, [selectedWallet?.id, cardWidth, wallets]);
 
   return (
     <View style={styles.walletsSection}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.walletsScroll}
-        snapToInterval={290}
+        snapToInterval={cardWidth + 12}
+        snapToAlignment="center"
         decelerationRate="fast"
       >
         {wallets.map((wallet) => {
@@ -564,19 +579,19 @@ export default function WalletCarousel({
   );
 }
 
-const getStyles = (colors: any) =>
+const getStyles = (colors: any, cardWidth: number) =>
   StyleSheet.create({
     walletsSection: {
       marginTop: 12,
-      paddingLeft: 20,
+      paddingHorizontal: 0,
     },
     walletsScroll: {
-      paddingRight: 20,
+      paddingHorizontal: 16,
       gap: 12,
       paddingVertical: 6,
     },
     wallet3DCard: {
-      width: 280,
+      width: cardWidth,
       height: 175,
       borderRadius: 22,
       overflow: 'hidden',
