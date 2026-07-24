@@ -270,7 +270,7 @@ export default function QuickGlanceWidget({
 
           {showFullPicture && (
             <View style={styles.fullPictureCard}>
-              {/* Wallet Balance */}
+              {/* 1. Wallet Balance */}
               <View style={styles.pictureRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="wallet-outline" size={14} color={colors.textSecondary} />
@@ -281,61 +281,81 @@ export default function QuickGlanceWidget({
                 </Text>
               </View>
 
-              {/* Savings Jars */}
-              {totalSavedInGoals > 0 && (
-                <Pressable
-                  onPress={() => router.push('/savings-goals')}
-                  style={styles.pictureRow}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="gift-outline" size={14} color={colors.primary} />
-                    <Text style={[styles.pictureLabel, { color: colors.primary }]}>
-                      {isAr ? `الحصالات الادخارية (${goals.length}):` : `Savings Jars (${goals.length}):`}
-                    </Text>
-                  </View>
-                  <Text style={[styles.pictureValue, { color: colors.primary }]}>
-                    +{formatCurrency(totalSavedInGoals, language)} {data.currencySymbol}
-                  </Text>
-                </Pressable>
-              )}
+              {/* 2. Monthly Income */}
+              <View style={styles.pictureRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="arrow-down-circle-outline" size={14} color={colors.income} />
+                  <Text style={styles.pictureLabel}>{isAr ? 'دخل الشهر الحالي:' : 'Current Month Income:'}</Text>
+                </View>
+                <Text style={[styles.pictureValue, { color: colors.income }]}>
+                  +{formatCurrency(data.monthlyIncome || 0, language)} {data.currencySymbol}
+                </Text>
+              </View>
 
-              {/* Debts I owe */}
-              {totalOwed > 0 && (
-                <Pressable
-                  onPress={() => router.push('/debts')}
-                  style={styles.pictureRow}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="arrow-down-circle-outline" size={14} color={colors.expense} />
-                    <Text style={[styles.pictureLabel, { color: colors.expense }]}>{isAr ? 'ديون مستحقة عليّ:' : 'Debts I Owe:'}</Text>
-                  </View>
-                  <Text style={[styles.pictureValue, { color: colors.expense }]}>
-                    -{formatCurrency(totalOwed, language)} {data.currencySymbol}
-                  </Text>
-                </Pressable>
-              )}
+              {/* 3. Monthly Expense */}
+              <View style={styles.pictureRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="arrow-up-circle-outline" size={14} color={colors.expense} />
+                  <Text style={styles.pictureLabel}>{isAr ? 'مصاريف الشهر الحالي:' : 'Current Month Expense:'}</Text>
+                </View>
+                <Text style={[styles.pictureValue, { color: colors.expense }]}>
+                  -{formatCurrency(data.monthlyExpense || 0, language)} {data.currencySymbol}
+                </Text>
+              </View>
 
-              {/* Loans owed to me */}
-              {totalCollect > 0 && (
-                <Pressable
-                  onPress={() => router.push('/debts')}
-                  style={styles.pictureRow}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="arrow-up-circle-outline" size={14} color={colors.income} />
-                    <Text style={[styles.pictureLabel, { color: colors.income }]}>{isAr ? 'أموال لي بالخارج:' : 'Loans Owed to Me:'}</Text>
-                  </View>
-                  <Text style={[styles.pictureValue, { color: colors.income }]}>
-                    +{formatCurrency(totalCollect, language)} {data.currencySymbol}
+              {/* 4. Savings Jars */}
+              <Pressable
+                onPress={() => router.push('/savings-goals')}
+                style={styles.pictureRow}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="gift-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.pictureLabel, { color: colors.primary }]}>
+                    {isAr ? `الحصالات الادخارية (${goals.length}):` : `Savings Jars (${goals.length}):`}
                   </Text>
-                </Pressable>
-              )}
+                </View>
+                <Text style={[styles.pictureValue, { color: colors.primary }]}>
+                  +{formatCurrency(totalSavedInGoals, language)} {data.currencySymbol}
+                </Text>
+              </Pressable>
+
+              {/* 5. Debts I owe */}
+              <Pressable
+                onPress={() => router.push('/debts')}
+                style={styles.pictureRow}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="receipt-outline" size={14} color={totalOwed > 0 ? colors.expense : colors.textSecondary} />
+                  <Text style={[styles.pictureLabel, totalOwed > 0 && { color: colors.expense }]}>
+                    {isAr ? 'ديون مستحقة عليّ:' : 'Debts I Owe:'}
+                  </Text>
+                </View>
+                <Text style={[styles.pictureValue, { color: totalOwed > 0 ? colors.expense : colors.textSecondary }]}>
+                  {totalOwed > 0 ? '-' : ''}{formatCurrency(totalOwed, language)} {data.currencySymbol}
+                </Text>
+              </Pressable>
+
+              {/* 6. Loans owed to me */}
+              <Pressable
+                onPress={() => router.push('/debts')}
+                style={styles.pictureRow}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="cash-outline" size={14} color={totalCollect > 0 ? colors.income : colors.textSecondary} />
+                  <Text style={[styles.pictureLabel, totalCollect > 0 && { color: colors.income }]}>
+                    {isAr ? 'أموال لي بالخارج:' : 'Loans Owed to Me:'}
+                  </Text>
+                </View>
+                <Text style={[styles.pictureValue, { color: totalCollect > 0 ? colors.income : colors.textSecondary }]}>
+                  {totalCollect > 0 ? '+' : ''}{formatCurrency(totalCollect, language)} {data.currencySymbol}
+                </Text>
+              </Pressable>
 
               <View style={styles.pictureDivider} />
 
-              {/* Total Net Savings */}
+              {/* 7. Total Net Savings */}
               <View style={styles.pictureRow}>
-                <Text style={styles.netSavingsTitle}>{isAr ? 'الصافي الادخاري الكلي:' : 'Total Net Savings:'}</Text>
+                <Text style={styles.netSavingsTitle}>{isAr ? 'الصافي الادخاري الكلي الحقيقي:' : 'Total Net Savings:'}</Text>
                 <Text style={[styles.netSavingsTotalValue, { color: totalNetSavings >= 0 ? colors.income : colors.expense }]}>
                   {formatCurrency(totalNetSavings, language)} {data.currencySymbol}
                 </Text>

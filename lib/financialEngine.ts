@@ -90,6 +90,11 @@ export function calculateHealthScore(
   forecastStatus: 'safe' | 'risk' | 'depleted',
   challengesCompletedCount: number
 ): number {
+  // 0. Empty / brand new wallet protection: 100% balanced
+  if (transactions.length === 0 && totalIncome === 0 && totalExpense === 0) {
+    return 100;
+  }
+
   let score = 100;
 
   // 1. Budget overruns penalty
@@ -115,31 +120,30 @@ export function calculateHealthScore(
     }
   });
 
-  score -= overruns * 15;
+  score -= overruns * 18;
 
-  // 2. Savings rate factor
+  // 2. Savings rate & deficit factor
   if (totalIncome > 0) {
     const savings = totalIncome - totalExpense;
     const savingsRate = savings / totalIncome;
     if (savingsRate < 0) {
-      score -= 15; // Penalty for negative savings
+      score -= 35; // Severe penalty for spending more than income
     } else {
-      score += Math.round(savingsRate * 20); // Up to +20 points bonus
+      score += Math.round(savingsRate * 15); // Up to +15 bonus
     }
   } else if (totalExpense > 0) {
-    score -= 15; // Expense without income penalty
+    score -= 30; // Expense without income penalty
   }
 
   // 3. Challenges bonus
-  score += challengesCompletedCount * 5; // +5 points per completed challenge
+  score += challengesCompletedCount * 4;
 
   // 4. Cashflow forecasting penalty
   if (forecastStatus === 'risk') {
-    score -= 10;
+    score -= 15;
   } else if (forecastStatus === 'depleted') {
-    score -= 20;
+    score -= 35;
   }
 
-  // Cap between 10 and 100
   return Math.min(100, Math.max(10, score));
 }

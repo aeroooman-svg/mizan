@@ -39,7 +39,7 @@ export default function WalletCarousel({
   currentUser,
   language,
   colors,
-  healthScore = 80,
+  healthScore = 100,
   onSelectWallet,
   onDeleteWallet,
   onAddWallet,
