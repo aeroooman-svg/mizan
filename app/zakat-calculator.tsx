@@ -123,6 +123,15 @@ export default function ZakatCalculatorScreen() {
     setCalculated(false);
   };
 
+  const handleGoBack = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -131,18 +140,22 @@ export default function ZakatCalculatorScreen() {
       {/* Top Header */}
       <View style={styles.headerBar}>
         <Pressable
-          onPress={() => {
-            Haptics.selectionAsync();
-            router.back();
-          }}
+          onPress={handleGoBack}
           style={styles.backBtn}
+          hitSlop={12}
         >
           <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {language === 'ar' ? '🕌 حاسبة الزكاة الشرعية' : '🕌 Zakat Calculator'}
         </Text>
-        <View style={{ width: 44 }} />
+        <Pressable
+          onPress={handleGoBack}
+          style={styles.backBtn}
+          hitSlop={12}
+        >
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -382,6 +395,31 @@ export default function ZakatCalculatorScreen() {
             )}
           </View>
         )}
+
+        {/* Bottom Exit & Return to App Button */}
+        <Pressable
+          onPress={handleGoBack}
+          style={({ pressed }) => [
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              paddingVertical: 14,
+              backgroundColor: colors.surfaceAlt,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              marginTop: 12,
+            },
+            pressed && { opacity: 0.8 }
+          ]}
+        >
+          <Ionicons name="home-outline" size={18} color={colors.primary} />
+          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+            {language === 'ar' ? 'العودة للرئيسية والتطبيق 🏠' : 'Close & Return to Home'}
+          </Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
