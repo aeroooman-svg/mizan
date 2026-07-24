@@ -277,7 +277,7 @@ export default function WalletCarousel({
                       <Text
                         style={{
                           fontFamily: 'Cairo_600SemiBold',
-                          fontSize: 11,
+                          fontSize: 12,
                           color: textSecondaryColor,
                           textTransform: 'uppercase',
                           letterSpacing: 0.5,
@@ -290,16 +290,16 @@ export default function WalletCarousel({
                       <Text
                         style={{
                           fontFamily: 'Cairo_700Bold',
-                          fontSize: 28,
+                          fontSize: 34,
                           color: textColor,
-                          lineHeight: 36,
+                          lineHeight: 42,
                           textAlign: 'left',
                         }}
                         numberOfLines={1}
                       >
                         {walletBalance >= 0 ? '' : '-'}
                         {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                        <Text style={{ fontSize: 15, fontFamily: 'Cairo_600SemiBold' }}>
+                        <Text style={{ fontSize: 18, fontFamily: 'Cairo_600SemiBold' }}>
                           {wallet.currency}
                         </Text>
                       </Text>

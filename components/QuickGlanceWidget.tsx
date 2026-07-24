@@ -44,8 +44,7 @@ export default function QuickGlanceWidget({
 }: QuickGlanceWidgetProps) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
-  const [showBalance, setShowBalance] = useState(true);
-  const [showFullPicture, setShowFullPicture] = useState(false);
+  const [showFullPicture, setShowFullPicture] = useState(true);
 
   const isAr = language === 'ar';
   const walletAccent = data.walletColor || colors.primary;
@@ -117,47 +116,7 @@ export default function QuickGlanceWidget({
           </View>
         </View>
 
-        {/* Row 2: Balance Section - Prominently displayed on the RIGHT side with larger font */}
-        <View style={styles.balanceContainer}>
-          <View style={styles.balanceLabelRow}>
-            <Text style={styles.balanceLabelText}>
-              {isAr ? 'الرصيد الحالي' : 'Current Balance'}
-            </Text>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                setShowBalance(!showBalance);
-              }}
-              hitSlop={10}
-              style={styles.eyeBtn}
-            >
-              <Ionicons
-                name={showBalance ? "eye-outline" : "eye-off-outline"}
-                size={18}
-                color={colors.textSecondary}
-              />
-            </Pressable>
-          </View>
-
-          <Text
-            style={[
-              styles.balanceAmountText,
-              { color: data.balance >= 0 ? colors.income : colors.expense }
-            ]}
-            numberOfLines={1}
-          >
-            {showBalance ? (
-              <>
-                {data.balance >= 0 ? '' : '-'}{formatCurrency(Math.abs(data.balance), language)}{' '}
-                <Text style={styles.currencySymbolText}>{data.currencySymbol}</Text>
-              </>
-            ) : (
-              '••••••••'
-            )}
-          </Text>
-        </View>
-
-        {/* Row 3: Large Prominent Action Buttons (Expense & Income Side-by-Side) */}
+        {/* Row 2: Large Prominent Action Buttons (Expense & Income Side-by-Side) */}
         <View style={styles.mainActionsRow}>
           {/* Expense Button (مصروف) - Large */}
           <Pressable
