@@ -483,7 +483,12 @@ export default function FinancialPlanScreen() {
       createdAt: new Date().toISOString(),
       walletId: selectedWallet?.id || '',
       isKakeiboEnabled: isKakeiboEnabledForm,
-      kakeiboBudgets: {
+      kakeiboBudgets: isKakeiboEnabledForm ? {
+        survival: Math.round(parseFloat(kakeiboSurvivalInput) || expenseVal * 0.5),
+        wants: Math.round(parseFloat(kakeiboWantsInput) || expenseVal * 0.25),
+        culture: Math.round(parseFloat(kakeiboCultureInput) || expenseVal * 0.15),
+        extra: Math.round(parseFloat(kakeiboExtraInput) || expenseVal * 0.1),
+      } : {
         survival: Math.round(expenseVal * 0.5),
         wants: Math.round(expenseVal * 0.25),
         culture: Math.round(expenseVal * 0.15),
@@ -632,23 +637,193 @@ export default function FinancialPlanScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>{t.monthlyExpense}</Text>
-          <View style={styles.inputWithCurrency}>
-            <View style={styles.inputCurrencyTag}>
-              <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
+        {!isKakeiboEnabledForm ? (
+          /* Standard Monthly Expense Input for 50/30/20 Rule */
+          <View style={styles.section}>
+            <Text style={styles.label}>{t.monthlyExpense}</Text>
+            <View style={styles.inputWithCurrency}>
+              <View style={styles.inputCurrencyTag}>
+                <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
+              </View>
+              <TextInput
+                style={styles.currencyInput}
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                keyboardType="decimal-pad"
+                value={monthlyExpense}
+                onChangeText={(text) => setMonthlyExpense(normalizeAmountInput(text))}
+                textAlign="right"
+              />
             </View>
-            <TextInput
-              style={styles.currencyInput}
-              placeholder="0"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="decimal-pad"
-              value={monthlyExpense}
-              onChangeText={(text) => setMonthlyExpense(normalizeAmountInput(text))}
-              textAlign="right"
-            />
           </View>
-        </View>
+        ) : (
+          /* Japanese Kakeibo 4 Pillars Form Breakdown */
+          <View style={{ gap: 14, marginVertical: 6, backgroundColor: colors.surfaceAlt + '60', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '30' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Ionicons name="sparkles" size={18} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                {language === 'ar' ? 'توزيع المصاريف على الأركان اليابانية الأربعة (كاكيبو)' : 'Japanese Kakeibo 4 Pillars Breakdown'}
+              </Text>
+            </View>
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', lineHeight: 16, marginTop: -4 }}>
+              {language === 'ar'
+                ? 'في منهج كاكيبو، يتم تقسيم الميزانية لتفهم نيتك وسلوكك المالي بدلاً من الإنفاق العشوائي:'
+                : 'In Kakeibo, expenses are split by intention to master your financial mindfulness:'}
+            </Text>
+
+            {/* Pillar 1: Survival Needs */}
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="home-outline" size={14} color="#10B981" />
+                <Text style={[styles.label, { color: '#10B981', marginBottom: 0 }]}>
+                  {language === 'ar' ? '1. الضروريات والاحتياجات الأساسية (طعام، سكن، مواصلات)' : '1. Must-haves / Survival (Food, Rent, Bills)'}
+                </Text>
+              </View>
+              <View style={styles.inputWithCurrency}>
+                <View style={[styles.inputCurrencyTag, { backgroundColor: '#10B98115' }]}>
+                  <Text style={[styles.inputCurrencyText, { color: '#10B981' }]}>{currencySymbol}</Text>
+                </View>
+                <TextInput
+                  style={styles.currencyInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  value={kakeiboSurvivalInput}
+                  onChangeText={(text) => {
+                    const clean = normalizeAmountInput(text);
+                    setKakeiboSurvivalInput(clean);
+                    const s = parseFloat(clean) || 0;
+                    const w = parseFloat(kakeiboWantsInput) || 0;
+                    const c = parseFloat(kakeiboCultureInput) || 0;
+                    const e = parseFloat(kakeiboExtraInput) || 0;
+                    setMonthlyExpense((s + w + c + e).toString());
+                  }}
+                  textAlign="right"
+                />
+              </View>
+            </View>
+
+            {/* Pillar 2: Optional Wants */}
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="fast-food-outline" size={14} color="#F59E0B" />
+                <Text style={[styles.label, { color: '#F59E0B', marginBottom: 0 }]}>
+                  {language === 'ar' ? '2. الرغبات والتسلية (مطاعم، تسوق، ترفيه)' : '2. Optional Wants (Restaurants, Shopping)'}
+                </Text>
+              </View>
+              <View style={styles.inputWithCurrency}>
+                <View style={[styles.inputCurrencyTag, { backgroundColor: '#F59E0B15' }]}>
+                  <Text style={[styles.inputCurrencyText, { color: '#F59E0B' }]}>{currencySymbol}</Text>
+                </View>
+                <TextInput
+                  style={styles.currencyInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  value={kakeiboWantsInput}
+                  onChangeText={(text) => {
+                    const clean = normalizeAmountInput(text);
+                    setKakeiboWantsInput(clean);
+                    const s = parseFloat(kakeiboSurvivalInput) || 0;
+                    const w = parseFloat(clean) || 0;
+                    const c = parseFloat(kakeiboCultureInput) || 0;
+                    const e = parseFloat(kakeiboExtraInput) || 0;
+                    setMonthlyExpense((s + w + c + e).toString());
+                  }}
+                  textAlign="right"
+                />
+              </View>
+            </View>
+
+            {/* Pillar 3: Culture & Self Growth */}
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="book-outline" size={14} color="#3B82F6" />
+                <Text style={[styles.label, { color: '#3B82F6', marginBottom: 0 }]}>
+                  {language === 'ar' ? '3. الثقافة والتطوير (كتب، رياضة، دورات، هدايا)' : '3. Culture & Growth (Books, Sports, Courses)'}
+                </Text>
+              </View>
+              <View style={styles.inputWithCurrency}>
+                <View style={[styles.inputCurrencyTag, { backgroundColor: '#3B82F615' }]}>
+                  <Text style={[styles.inputCurrencyText, { color: '#3B82F6' }]}>{currencySymbol}</Text>
+                </View>
+                <TextInput
+                  style={styles.currencyInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  value={kakeiboCultureInput}
+                  onChangeText={(text) => {
+                    const clean = normalizeAmountInput(text);
+                    setKakeiboCultureInput(clean);
+                    const s = parseFloat(kakeiboSurvivalInput) || 0;
+                    const w = parseFloat(kakeiboWantsInput) || 0;
+                    const c = parseFloat(clean) || 0;
+                    const e = parseFloat(kakeiboExtraInput) || 0;
+                    setMonthlyExpense((s + w + c + e).toString());
+                  }}
+                  textAlign="right"
+                />
+              </View>
+            </View>
+
+            {/* Pillar 4: Unexpected Extras */}
+            <View style={styles.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="flash-outline" size={14} color="#EC4899" />
+                <Text style={[styles.label, { color: '#EC4899', marginBottom: 0 }]}>
+                  {language === 'ar' ? '4. المفاجآت والطوارئ (علاج، صيانة استثنائية)' : '4. Unexpected Extra (Repairs, Emergencies)'}
+                </Text>
+              </View>
+              <View style={styles.inputWithCurrency}>
+                <View style={[styles.inputCurrencyTag, { backgroundColor: '#EC489915' }]}>
+                  <Text style={[styles.inputCurrencyText, { color: '#EC4899' }]}>{currencySymbol}</Text>
+                </View>
+                <TextInput
+                  style={styles.currencyInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  value={kakeiboExtraInput}
+                  onChangeText={(text) => {
+                    const clean = normalizeAmountInput(text);
+                    setKakeiboExtraInput(clean);
+                    const s = parseFloat(kakeiboSurvivalInput) || 0;
+                    const w = parseFloat(kakeiboWantsInput) || 0;
+                    const c = parseFloat(kakeiboCultureInput) || 0;
+                    const e = parseFloat(clean) || 0;
+                    setMonthlyExpense((s + w + c + e).toString());
+                  }}
+                  textAlign="right"
+                />
+              </View>
+            </View>
+
+            {/* Total Auto Calculated Expenses Display */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginTop: 4 }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                {language === 'ar' ? 'إجمالي الميزانية الموزعة:' : 'Total Calculated Kakeibo Expense:'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.primary }}>
+                {formatCurrency(parseFloat(monthlyExpense) || 0)} {currencySymbol}
+              </Text>
+            </View>
+
+            {/* Monthly Kakeibo Behavioral Pledge Input */}
+            <View style={{ gap: 6, marginTop: 4 }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
+                ✍️ {language === 'ar' ? 'التعهد السلوكي الشرفي للشهر:' : 'Monthly Kakeibo Behavioral Pledge:'}
+              </Text>
+              <TextInput
+                style={[styles.input, { textAlign, fontSize: 12, height: 42, backgroundColor: colors.surface }]}
+                placeholder={language === 'ar' ? 'مثال: سأقلل من الطلبات الخارجية وتناول الطعام بالخارج هذا الشهر...' : 'e.g. I pledge to reduce dining out this month...'}
+                placeholderTextColor={Colors.textTertiary}
+                value={refQ4}
+                onChangeText={setRefQ4}
+              />
+            </View>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.label}>{t.savingsGoal} ({currencySymbol})</Text>
