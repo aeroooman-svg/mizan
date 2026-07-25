@@ -28,9 +28,11 @@ export default function ShareWalletScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { language } = useLanguage();
-  const { wallets } = useTransactions();
+  const { wallets, selectedWallet } = useTransactions();
   const params = useLocalSearchParams<{ walletId: string }>();
-  const wallet = wallets.find(w => w.id === params.walletId);
+
+  const targetWalletId = params.walletId || selectedWallet?.id || (wallets.length > 0 ? wallets[0].id : null);
+  const wallet = wallets.find(w => w.id === targetWalletId) || wallets[0];
 
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [members, setMembers] = useState<SharedMember[]>([]);
@@ -39,43 +41,83 @@ export default function ShareWalletScreen() {
 
   useEffect(() => {
     async function loadData() {
-      if (!params.walletId) return;
+      if (!targetWalletId) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const [code, membersList] = await Promise.all([
-        getOrCreateShareCode(params.walletId),
-        getSharedMembers(params.walletId),
-      ]);
-      setShareCode(code);
-      setMembers(membersList);
-      setLoading(false);
+      try {
+        const [code, membersList] = await Promise.all([
+          getOrCreateShareCode(targetWalletId),
+          getSharedMembers(targetWalletId),
+        ]);
+        setShareCode(code);
+        setMembers(membersList);
+      } catch (e) {
+        console.warn('Failed to load share wallet data', e);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
-  }, [params.walletId]);
+  }, [targetWalletId]);
+
+  const handleBack = () => {
+    try { Haptics.selectionAsync(); } catch {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
 
   const handleCopyCode = async () => {
     if (!shareCode) return;
-    await Clipboard.setStringAsync(shareCode);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      isAr ? 'تم النسخ!' : 'Copied!',
-      isAr ? 'تم نسخ كود المشاركة' : 'Share code copied to clipboard',
-    );
+    try {
+      await Clipboard.setStringAsync(shareCode);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      Alert.alert(
+        isAr ? 'تم النسخ!' : 'Copied!',
+        isAr ? 'تم نسخ كود المشاركة إلى الحافظة' : 'Share code copied to clipboard',
+      );
+    } catch (e) {
+      console.error('Copy error:', e);
+    }
   };
 
   const handleShareCode = async () => {
     if (!shareCode) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+    const walletName = wallet?.name || (isAr ? 'المحفظة' : 'Wallet');
     const message = isAr
-      ? `🔗 انضم لمحفظتي "${wallet?.name}" في تطبيق ميزان!\n\nكود المشاركة: ${shareCode}\n\nحمّل التطبيق وأدخل الكود للانضمام.`
-      : `🔗 Join my wallet "${wallet?.name}" on MIZAN app!\n\nShare code: ${shareCode}\n\nDownload the app and enter the code to join.`;
+      ? `🔗 انضم لمحفظتي "${walletName}" في تطبيق ميزان!\n\nكود المشاركة: ${shareCode}\n\nحمّل التطبيق وأدخل الكود للانضمام.`
+      : `🔗 Join my wallet "${walletName}" on MIZAN app!\n\nShare code: ${shareCode}\n\nDownload the app and enter the code to join.`;
 
     try {
-      await Share.share({ message });
-    } catch {}
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && (navigator as any).share) {
+          await (navigator as any).share({ title: 'Mizan Share Wallet', text: message });
+          return;
+        }
+        await Clipboard.setStringAsync(message);
+        Alert.alert(
+          isAr ? 'تم النسخ!' : 'Copied!',
+          isAr ? 'تم نسخ رسالة وكود المشاركة إلى الحافظة' : 'Share code and message copied to clipboard',
+        );
+      } else {
+        await Share.share({ message });
+      }
+    } catch (e) {
+      await Clipboard.setStringAsync(message);
+      Alert.alert(
+        isAr ? 'تم النسخ!' : 'Copied!',
+        isAr ? 'تم نسخ كود المشاركة إلى الحافظة' : 'Share code copied to clipboard',
+      );
+    }
   };
 
   const handleRemoveMember = (member: SharedMember) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
     Alert.alert(
       isAr ? 'إزالة عضو' : 'Remove Member',
       isAr
@@ -87,7 +129,8 @@ export default function ShareWalletScreen() {
           text: isAr ? 'إزالة' : 'Remove',
           style: 'destructive',
           onPress: async () => {
-            const success = await removeSharedMember(params.walletId!, member.userId);
+            if (!targetWalletId) return;
+            const success = await removeSharedMember(targetWalletId, member.userId);
             if (success) {
               setMembers(prev => prev.filter(m => m.userId !== member.userId));
             }
@@ -128,8 +171,8 @@ export default function ShareWalletScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => { Haptics.selectionAsync(); router.back(); }}
-          style={styles.backBtn}
+          onPress={handleBack}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
         >
           <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
