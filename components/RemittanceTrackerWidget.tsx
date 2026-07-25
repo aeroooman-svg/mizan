@@ -22,7 +22,7 @@ export default function RemittanceTrackerWidget({
   const { language } = useLanguage();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
 
-  if (!stats.latestRemittance) {
+  if (!stats || !stats.latestRemittance) {
     return (
       <View style={styles.card}>
         <View style={styles.header}>

@@ -46,10 +46,11 @@ export default function SendRemittanceModal({
 
   // Initialize wallets
   useEffect(() => {
-    if (wallets.length > 0) {
-      if (!fromWalletId) setFromWalletId(wallets[0].id);
+    const list = wallets || [];
+    if (list.length > 0) {
+      if (!fromWalletId) setFromWalletId(list[0].id);
       if (!toWalletId) {
-        const target = wallets.find((w) => w.id !== wallets[0].id) || wallets[0];
+        const target = list.find((w) => w.id !== list[0].id) || list[0];
         setToWalletId(target.id);
       }
     }
@@ -60,8 +61,8 @@ export default function SendRemittanceModal({
     async function loadRates() {
       try {
         const details = await getExchangeRatesDetails();
-        setRates(details.rates);
-        setIsLive(details.isLive);
+        setRates(details.rates || FALLBACK_RATES);
+        setIsLive(!!details.isLive);
       } catch (e) {
         setRates(FALLBACK_RATES);
       }
@@ -71,8 +72,8 @@ export default function SendRemittanceModal({
     }
   }, [visible]);
 
-  const fromWallet = useMemo(() => wallets.find((w) => w.id === fromWalletId), [wallets, fromWalletId]);
-  const toWallet = useMemo(() => wallets.find((w) => w.id === toWalletId), [wallets, toWalletId]);
+  const fromWallet = useMemo(() => (wallets || []).find((w) => w.id === fromWalletId), [wallets, fromWalletId]);
+  const toWallet = useMemo(() => (wallets || []).find((w) => w.id === toWalletId), [wallets, toWalletId]);
 
   const fromCurrency = fromWallet?.currency || 'USD';
   const toCurrency = toWallet?.currency || 'EGP';
