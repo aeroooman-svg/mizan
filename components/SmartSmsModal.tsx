@@ -129,7 +129,7 @@ export default function SmartSmsModal({
           {/* Raw Text Snippet */}
           <View style={[styles.rawTextContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.rawText, { color: colors.subtext }]} numberOfLines={2}>
-              "{smsData.rawText}"
+              {`"${smsData.rawText}"`}
             </Text>
           </View>
 

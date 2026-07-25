@@ -42,6 +42,7 @@ import FinancialHealthScore from '@/components/FinancialHealthScore';
 import CashflowForecastWidget from '@/components/CashflowForecastWidget';
 import QuickGlanceWidget from '@/components/QuickGlanceWidget';
 import FinancialGoalWidget from '@/components/FinancialGoalWidget';
+import CurrencyConverterModal from '@/components/CurrencyConverterModal';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getWidgetData } from '@/lib/widgetDataProvider';
 import { subscribeSyncStatus, SyncState } from '@/lib/syncService';
@@ -241,6 +242,7 @@ export default function HomeScreen() {
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [isForecastExpanded, setIsForecastExpanded] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false);
   const [undoState, setUndoState] = useState<{ visible: boolean; message: string; action: () => void } | null>(null);
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
@@ -642,6 +644,75 @@ export default function HomeScreen() {
           <FinancialGoalWidget />
         )}
 
+        {/* Quick Tools Row: Envelope Budget & Currency Converter */}
+        <View style={{ marginHorizontal: 20, marginTop: 12, flexDirection: 'row', gap: 12 }}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/envelope-budget' as any);
+            }}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                backgroundColor: colors.card,
+                borderRadius: 18,
+                padding: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#10B98115', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="mail" size={20} color="#10B981" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: language === 'ar' ? 'right' : 'left' }}>
+                {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budget'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, textAlign: language === 'ar' ? 'right' : 'left' }}>
+                {language === 'ar' ? 'تحديد أظرفة النفقات' : 'Category Envelopes'}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsCurrencyConverterOpen(true);
+            }}
+            style={({ pressed }) => [
+              {
+                flex: 1,
+                backgroundColor: colors.card,
+                borderRadius: 18,
+                padding: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#3B82F615', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="repeat" size={20} color="#3B82F6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: language === 'ar' ? 'right' : 'left' }}>
+                {language === 'ar' ? 'محول العملات' : 'Converter'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, textAlign: language === 'ar' ? 'right' : 'left' }}>
+                {language === 'ar' ? 'أسعار الصرف الحية' : 'Live FX Rates'}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
           walletPending={walletPending}
@@ -851,6 +922,32 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  router.push('/envelope-budget' as any);
+                }}
+              >
+                <Ionicons name="mail-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budgeting'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  setIsCurrencyConverterOpen(true);
+                }}
+              >
+                <Ionicons name="repeat-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'محول العملات الحي' : 'Live Currency Converter'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/(tabs)/stats');
                 }}
               >
@@ -936,6 +1033,12 @@ export default function HomeScreen() {
         onSave={handleSaveDetectedSms}
         onEdit={handleEditDetectedSms}
         onDismiss={handleDismissDetectedSms}
+      />
+
+      {/* Live Currency Converter Modal */}
+      <CurrencyConverterModal
+        visible={isCurrencyConverterOpen}
+        onClose={() => setIsCurrencyConverterOpen(false)}
       />
 
       {/* Undo Toast Notification */}

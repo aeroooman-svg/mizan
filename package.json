@@ -16,7 +16,8 @@
     "build:android": "npx eas-cli build -p android --profile production",
     "build:ios": "npx eas-cli build -p ios --profile production",
     "lint": "npx expo lint",
-    "lint:fix": "npx expo lint --fix"
+    "lint:fix": "npx expo lint --fix",
+    "test": "tsx scripts/run-tests.ts"
   },
   "dependencies": {
     "@expo-google-fonts/amiri": "^0.4.1",

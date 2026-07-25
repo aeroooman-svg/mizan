@@ -218,7 +218,73 @@ export default function StatsScreen() {
       });
     }
     return data;
-  }, [monthlyTransactions, currentMonth, currentYear, now]);
+  }, [monthlyTransactions, currentYear, currentMonth, now]);
+
+  const momStats = useMemo(() => {
+    const prevMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    const prevMonthTxns = walletTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === prevMonthIndex && d.getFullYear() === prevMonthYear;
+    });
+
+    const currentMonthExpense = monthlyTransactions
+      .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const prevMonthExpense = prevMonthTxns
+      .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const currentMonthIncome = monthlyTransactions
+      .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const prevMonthIncome = prevMonthTxns
+      .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    let expenseChangePercent = 0;
+    if (prevMonthExpense > 0) {
+      expenseChangePercent = Math.round(((currentMonthExpense - prevMonthExpense) / prevMonthExpense) * 100);
+    } else if (currentMonthExpense > 0) {
+      expenseChangePercent = 100;
+    }
+
+    let incomeChangePercent = 0;
+    if (prevMonthIncome > 0) {
+      incomeChangePercent = Math.round(((currentMonthIncome - prevMonthIncome) / prevMonthIncome) * 100);
+    } else if (currentMonthIncome > 0) {
+      incomeChangePercent = 100;
+    }
+
+    const lastYearTxns = walletTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear - 1;
+    });
+
+    const lastYearExpense = lastYearTxns
+      .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    let yoyExpenseChangePercent = 0;
+    if (lastYearExpense > 0) {
+      yoyExpenseChangePercent = Math.round(((currentMonthExpense - lastYearExpense) / lastYearExpense) * 100);
+    }
+
+    return {
+      currentMonthExpense,
+      prevMonthExpense,
+      expenseChangePercent,
+      currentMonthIncome,
+      prevMonthIncome,
+      incomeChangePercent,
+      lastYearExpense,
+      yoyExpenseChangePercent,
+      prevMonthName: t.months[prevMonthIndex],
+    };
+  }, [walletTransactions, currentMonth, currentYear, monthlyTransactions, selectedWallet, t]);
 
   const maxDailyValue = useMemo(() => {
     return Math.max(...dailyData.map(d => Math.max(d.income, d.expense)), 1);
@@ -606,6 +672,44 @@ export default function StatsScreen() {
         {/* MONTHLY ZOOM IN VIEW */}
         {scope === 'monthly' && (
           <>
+            {/* MoM & YoY Comparison Banner */}
+            <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, padding: 14, borderRadius: 20, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="trending-up" size={18} color={colors.primary} />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                    {language === 'ar' ? 'مقارنة بالشهر السابق (MoM)' : 'Month-over-Month (MoM)'}
+                  </Text>
+                </View>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: momStats.expenseChangePercent <= 0 ? '#10B98118' : '#EF444418' }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: momStats.expenseChangePercent <= 0 ? '#10B981' : '#EF4444' }}>
+                    {momStats.expenseChangePercent <= 0 ? `${momStats.expenseChangePercent}%` : `+${momStats.expenseChangePercent}%`}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                {momStats.expenseChangePercent <= 0
+                  ? (language === 'ar'
+                      ? `ممتاز! مصاريفك هذا الشهر أقل بنسبة ${Math.abs(momStats.expenseChangePercent)}% مقارنة بشهر ${momStats.prevMonthName}.`
+                      : `Great! Your expenses this month are ${Math.abs(momStats.expenseChangePercent)}% lower than ${momStats.prevMonthName}.`)
+                  : (language === 'ar'
+                      ? `تنبيه: مصاريفك هذا الشهر ارتفعت بنسبة ${momStats.expenseChangePercent}% مقارنة بشهر ${momStats.prevMonthName}.`
+                      : `Notice: Your expenses increased by ${momStats.expenseChangePercent}% compared to ${momStats.prevMonthName}.`)}
+              </Text>
+
+              {momStats.lastYearExpense > 0 && (
+                <View style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                    {language === 'ar' ? `مقارنة بنتيجة العام الماضي (${currentYear - 1}):` : `YoY (vs ${currentYear - 1}):`}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: momStats.yoyExpenseChangePercent <= 0 ? '#10B981' : '#EF4444' }}>
+                    {momStats.yoyExpenseChangePercent <= 0 ? `${momStats.yoyExpenseChangePercent}%` : `+${momStats.yoyExpenseChangePercent}%`}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* Overview Row Cards with dynamic ambient shadows */}
             <View style={styles.overviewCards}>
               <View style={[
