@@ -41,6 +41,7 @@ import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } fr
 import FinancialHealthScore from '@/components/FinancialHealthScore';
 import CashflowForecastWidget from '@/components/CashflowForecastWidget';
 import QuickGlanceWidget from '@/components/QuickGlanceWidget';
+import FinancialGoalWidget from '@/components/FinancialGoalWidget';
 import CurrencyConverterModal from '@/components/CurrencyConverterModal';
 import SendRemittanceModal from '@/components/SendRemittanceModal';
 import RemittanceTrackerWidget from '@/components/RemittanceTrackerWidget';
