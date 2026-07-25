@@ -20,6 +20,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { formatCurrency } from '@/lib/categories';
+import { formatDateLocalized } from '@/lib/i18n';
 import {
   getGoals,
   saveGoal,
@@ -355,7 +356,7 @@ export default function SavingsGoalsScreen() {
                 </View>
 
                 <View style={styles.goalFooter}>
-                  <Text style={styles.deadlineText}>📅 {language === 'ar' ? 'الموعد:' : 'By:'} {goal.deadline}</Text>
+                  <Text style={styles.deadlineText}>📅 {language === 'ar' ? 'الموعد:' : 'By:'} {formatDateLocalized(goal.deadline, language)}</Text>
                   {wallet && (
                     <Text style={[styles.walletTagText, { color: wallet.color }]}>💳 {wallet.name}</Text>
                   )}

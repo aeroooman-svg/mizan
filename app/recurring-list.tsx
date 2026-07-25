@@ -49,7 +49,8 @@ export default function RecurringListScreen() {
 
   // Auto Savings Modal State
   const [autoSavingsModalVisible, setAutoSavingsModalVisible] = useState(false);
-  const [savingsInput, setSavingsInput] = useState('');
+  const [targetTotalInput, setTargetTotalInput] = useState('500');
+  const [selectedMonths, setSelectedMonths] = useState(12);
   const [goalTitle, setGoalTitle] = useState('');
 
   const loadData = async () => {
@@ -98,32 +99,39 @@ export default function RecurringListScreen() {
 
   const handleOpenAutoSavingsModal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const suggestedMonthly = freeNetCashflow > 0 ? Math.round(freeNetCashflow * 0.6) : 25;
-    setSavingsInput(suggestedMonthly.toString());
-    setGoalTitle(isAr ? 'ادخار الفائض المالي التلقائي 🎯' : 'Net Surplus Savings Goal 🎯');
+    const suggestedTarget = freeNetCashflow > 0 ? Math.round(freeNetCashflow * 12) : 500;
+    setTargetTotalInput(suggestedTarget.toString());
+    setSelectedMonths(12);
+    setGoalTitle(isAr ? 'ادخار الفائض المالي 🎯' : 'Surplus Savings Goal 🎯');
     setAutoSavingsModalVisible(true);
   };
 
+  const monthlyRequired = useMemo(() => {
+    const total = parseFloat(targetTotalInput) || 0;
+    return selectedMonths > 0 ? Math.round((total / selectedMonths) * 100) / 100 : 0;
+  }, [targetTotalInput, selectedMonths]);
+
   const handleConfirmAutoSavingsGoal = async () => {
-    const targetMonthly = parseFloat(savingsInput);
-    if (isNaN(targetMonthly) || targetMonthly <= 0) {
+    const targetTotal = parseFloat(targetTotalInput);
+    if (isNaN(targetTotal) || targetTotal <= 0) {
       Alert.alert(
         isAr ? 'تنبيه' : 'Notice',
-        isAr ? 'يرجى إدخال مبلغ ادخار شهري صحيح' : 'Please enter a valid monthly savings amount'
+        isAr ? 'يرجى إدخال إجمالي مبلغ الهدف بشكل صحيح' : 'Please enter a valid total target amount'
       );
       return;
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const target6Months = targetMonthly * 6;
+    const deadlineDate = new Date();
+    deadlineDate.setMonth(deadlineDate.getMonth() + selectedMonths);
 
     const autoGoal: SavingsGoal = {
       id: Crypto.randomUUID(),
-      name: goalTitle.trim() || (isAr ? 'ادخار الفائض التلقائي 🎯' : 'Surplus Savings Goal'),
-      targetAmount: target6Months,
+      name: goalTitle.trim() || (isAr ? 'ادخار الفائض 🎯' : 'Surplus Savings Goal'),
+      targetAmount: targetTotal,
       savedAmount: 0,
-      deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+      deadline: deadlineDate.toISOString(),
       walletId: selectedWallet?.id || '',
       createdAt: new Date().toISOString(),
     };
@@ -132,10 +140,10 @@ export default function RecurringListScreen() {
     setAutoSavingsModalVisible(false);
 
     Alert.alert(
-      isAr ? 'تمت إضافة هدف الادخار التلقائي 🎉' : 'Savings Goal Created 🎉',
+      isAr ? 'تمت إضافة هدف الادخار بنجاح 🎉' : 'Savings Goal Created 🎉',
       isAr
-        ? `تم إنشاء هدف ادخار بمبلغ (${formatCurrency(target6Months)} ${currencySymbol}) بمعدل ادخار شهري مقترح (${formatCurrency(targetMonthly)} ${currencySymbol}).`
-        : `Created goal to save ${formatCurrency(target6Months)} ${currencySymbol} from free cashflow!`,
+        ? `تم إنشاء هدف "${autoGoal.name}" بمبلغ إجمالي (${formatCurrency(targetTotal)} ${currencySymbol}) ومعدل ادخار شهري (${formatCurrency(monthlyRequired)} ${currencySymbol}).`
+        : `Created goal to save ${formatCurrency(targetTotal)} ${currencySymbol}!`,
       [
         {
           text: isAr ? 'الانتقال للأهداف' : 'View Goals',
@@ -367,12 +375,12 @@ export default function RecurringListScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
               <View style={styles.modalInfoBox}>
                 <Text style={styles.modalInfoTitle}>
-                  {isAr ? 'تحويل فائض سيولتك إلى ثروة ومدخرات' : 'Turn Net Surplus Into Wealth'}
+                  {isAr ? '🎯 تخطيط هدف ادخاري شفاف وعملي' : '🎯 Practical & Transparent Goal Setup'}
                 </Text>
                 <Text style={styles.modalInfoSub}>
                   {isAr
-                    ? `إجمالي الفائض الصافي المتاح لديك حالياً هو (${formatCurrency(freeNetCashflow)} ${currencySymbol}). حدد المستهدف الشهري المفضل للادخار:`
-                    : `Your current net free surplus is (${formatCurrency(freeNetCashflow)} ${currencySymbol}). Select target monthly savings:`}
+                    ? `أدخل المبلغ الإجمالي الذي تتمنى ادخاره، واختر عدد الأشهر، وسيحسب التطبيق قسط الادخار الشهري المباشر تلقائياً.`
+                    : `Enter your total target amount and duration, and the app will calculate your monthly savings requirement.`}
                 </Text>
               </View>
 
@@ -383,21 +391,21 @@ export default function RecurringListScreen() {
                   style={styles.modalInput}
                   value={goalTitle}
                   onChangeText={setGoalTitle}
-                  placeholder="مثال: ادخار طوارئ، شراء سيارة..."
+                  placeholder="مثال: شراء سيارة، ادخار منزل، صندوق طوارئ..."
                   placeholderTextColor={colors.textTertiary}
                   textAlign={isAr ? 'right' : 'left'}
                 />
               </View>
 
-              {/* Monthly Savings Target Input */}
+              {/* Total Target Amount Input */}
               <View style={styles.formGroup}>
                 <Text style={styles.inputLabel}>
-                  {isAr ? `المستهدف الشهري للادخار (${currencySymbol}):` : `Monthly Savings Target (${currencySymbol}):`}
+                  {isAr ? `إجمالي المبلغ المراد ادخاره (${currencySymbol}):` : `Total Target Savings Amount (${currencySymbol}):`}
                 </Text>
                 <TextInput
                   style={styles.modalInput}
-                  value={savingsInput}
-                  onChangeText={setSavingsInput}
+                  value={targetTotalInput}
+                  onChangeText={setTargetTotalInput}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
                   placeholderTextColor={colors.textTertiary}
@@ -405,28 +413,49 @@ export default function RecurringListScreen() {
                 />
               </View>
 
-              {/* Quick Amount Chips */}
+              {/* Duration Months Selector Chips */}
               <Text style={[styles.inputLabel, { marginTop: 4 }]}>
-                {isAr ? 'أو اختر مبلغ ادخار شهري سريع:' : 'Or Select Quick Monthly Savings:'}
+                {isAr ? 'اختر مدة الادخار (عدد الأشهر):' : 'Select Savings Duration (Months):'}
               </Text>
               <View style={styles.presetChipRow}>
-                {[10, 25, 50, 100, 200].map(amt => (
+                {[
+                  { m: 3, labelAr: '3 أشهر', labelEn: '3 Mos' },
+                  { m: 6, labelAr: '6 أشهر', labelEn: '6 Mos' },
+                  { m: 12, labelAr: '12 شهراً (سنة)', labelEn: '12 Mos (1 Yr)' },
+                  { m: 24, labelAr: '24 شهراً (سنتين)', labelEn: '24 Mos (2 Yrs)' },
+                  { m: 36, labelAr: '36 شهراً (3 سنوات)', labelEn: '36 Mos (3 Yrs)' },
+                ].map(opt => (
                   <Pressable
-                    key={amt}
+                    key={opt.m}
                     onPress={() => {
                       Haptics.selectionAsync();
-                      setSavingsInput(amt.toString());
+                      setSelectedMonths(opt.m);
                     }}
                     style={[
                       styles.presetChip,
-                      savingsInput === amt.toString() && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }
+                      selectedMonths === opt.m && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }
                     ]}
                   >
-                    <Text style={[styles.presetChipText, savingsInput === amt.toString() && { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
-                      {amt} {currencySymbol}
+                    <Text style={[styles.presetChipText, selectedMonths === opt.m && { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
+                      {isAr ? opt.labelAr : opt.labelEn}
                     </Text>
                   </Pressable>
                 ))}
+              </View>
+
+              {/* Dynamic Live Calculation Banner */}
+              <View style={[styles.modalInfoBox, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '40', marginTop: 6 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="calculator-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.modalInfoTitle, { color: colors.primary }]}>
+                    {isAr ? 'الحساب الآلي للادخار الشهري:' : 'Calculated Monthly Savings:'}
+                  </Text>
+                </View>
+                <Text style={[styles.modalInfoSub, { fontSize: 14, fontFamily: 'Cairo_700Bold', color: colors.text, marginTop: 4 }]}>
+                  {isAr
+                    ? `💡 للوصول لهدف (${formatCurrency(parseFloat(targetTotalInput) || 0)} ${currencySymbol}) خلال (${selectedMonths}) شهراً:\nستحتاج لادخار (${formatCurrency(monthlyRequired)} ${currencySymbol}) شهرياً.`
+                    : `💡 To reach ${formatCurrency(parseFloat(targetTotalInput) || 0)} ${currencySymbol} in ${selectedMonths} months:\nYou need to save ${formatCurrency(monthlyRequired)} ${currencySymbol} monthly.`}
+                </Text>
               </View>
             </ScrollView>
 
