@@ -560,27 +560,30 @@ export default function AddRecurringScreen() {
               textAlignVertical="top"
             />
           </View>
+        </ScrollView>
 
+        {/* Pinned Bottom Footer Save Button */}
+        <View style={styles.fixedSaveFooter}>
           <Pressable
             onPress={handleSave}
             disabled={isSaving || !amount || !selectedCategory}
             style={({ pressed }) => [
               styles.saveButton,
               {
-                backgroundColor: type === 'expense' ? Colors.expense : Colors.income,
+                backgroundColor: selectedColor || (type === 'expense' ? Colors.expense : Colors.income),
                 opacity: (isSaving || !amount || !selectedCategory) ? 0.5 : pressed ? 0.9 : 1,
                 transform: [{ scale: pressed ? 0.98 : 1 }],
               },
             ]}
           >
-            <Ionicons name="checkmark" size={22} color="#fff" />
+            <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 6 }} />
             <Text style={styles.saveText}>
               {isEditMode
                 ? (language === 'ar' ? 'تحديث المعاملة المتكررة' : 'Update Recurring')
                 : (language === 'ar' ? 'حفظ المعاملة المتكررة' : t.save)}
             </Text>
           </Pressable>
-        </ScrollView>
+        </View>
       </View>
 
       {/* Start Date Picker Modal */}
@@ -1257,17 +1260,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
     paddingVertical: 6,
-    maxHeight: 180,
   },
   iconBox: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
+  },
+  fixedSaveFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   modalSaveBtn: {
     flexDirection: 'row',
