@@ -79,6 +79,29 @@ export default function SavingsGoalsScreen() {
     loadAllData();
   }, []);
 
+  // Edit Goal state
+  const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
+
+  const handleOpenAddGoal = () => {
+    Haptics.selectionAsync();
+    setEditingGoal(null);
+    setGoalName('');
+    setTargetAmount('');
+    setDeadline('');
+    setGoalWalletId(selectedWallet?.id || (wallets[0]?.id || ''));
+    setAddGoalVisible(true);
+  };
+
+  const handleOpenEditGoal = (goal: SavingsGoal) => {
+    Haptics.selectionAsync();
+    setEditingGoal(goal);
+    setGoalName(goal.name);
+    setTargetAmount(goal.targetAmount.toString());
+    setDeadline(goal.deadline ? goal.deadline.split('T')[0] : '');
+    setGoalWalletId(goal.walletId);
+    setAddGoalVisible(true);
+  };
+
   const handleAddGoal = async () => {
     if (!goalName.trim()) {
       Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'يرجى إدخال اسم الهدف' : 'Please enter goal name');
@@ -94,18 +117,19 @@ export default function SavingsGoalsScreen() {
       return;
     }
 
-    const newGoal: SavingsGoal = {
-      id: Crypto.randomUUID(),
+    const goalItem: SavingsGoal = {
+      id: editingGoal ? editingGoal.id : Crypto.randomUUID(),
       name: goalName.trim(),
       targetAmount: target,
-      savedAmount: 0,
-      deadline: deadline || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year default
+      savedAmount: editingGoal ? editingGoal.savedAmount : 0,
+      deadline: deadline || (editingGoal ? editingGoal.deadline : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
       walletId: goalWalletId,
-      createdAt: new Date().toISOString(),
+      createdAt: editingGoal ? editingGoal.createdAt : new Date().toISOString(),
     };
 
-    await saveGoal(newGoal);
+    await saveGoal(goalItem);
     setAddGoalVisible(false);
+    setEditingGoal(null);
     setGoalName('');
     setTargetAmount('');
     setDeadline('');
@@ -154,9 +178,20 @@ export default function SavingsGoalsScreen() {
   };
 
   const handleDeleteRule = (id: string) => {
+    const confirmMsg = language === 'ar' ? 'هل تريد حذف هذه القاعدة الذكية؟' : 'Are you sure you want to delete this smart rule?';
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) {
+        deleteRule(id).then(() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          loadAllData();
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       language === 'ar' ? 'حذف القاعدة' : 'Delete Rule',
-      language === 'ar' ? 'هل تريد حذف هذه القاعدة الذكية؟' : 'Are you sure you want to delete this smart rule?',
+      confirmMsg,
       [
         { text: t.cancel, style: 'cancel' },
         {
@@ -172,10 +207,24 @@ export default function SavingsGoalsScreen() {
     );
   };
 
-  const handleDeleteGoal = (id: string) => {
+  const handleDeleteGoal = (id: string, goalNameStr?: string) => {
+    const confirmMsg = language === 'ar' 
+      ? `هل أنت متأكد من حذف هدف الادخار "${goalNameStr || ''}"؟ سيتم حذف القواعد المرتبطة به أيضاً.`
+      : `Deleting this goal will also delete its linked rules. Proceed?`;
+    
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) {
+        deleteGoal(id).then(() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          loadAllData();
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       language === 'ar' ? 'حذف الهدف' : 'Delete Goal',
-      language === 'ar' ? 'حذف الهدف سيحذف القواعد المرتبطة به. هل أنت متأكد؟' : 'Deleting this goal will also delete its linked rules. Proceed?',
+      confirmMsg,
       [
         { text: t.cancel, style: 'cancel' },
         {
@@ -260,15 +309,7 @@ export default function SavingsGoalsScreen() {
             {language === 'ar' ? '🎯 الأهداف الحالية' : 'SAVINGS TARGETS'}
           </Text>
           <Pressable
-            onPress={() => {
-              Haptics.selectionAsync();
-              if (wallets.length === 0) {
-                Alert.alert(language === 'ar' ? 'تنبيه' : 'Warning', language === 'ar' ? 'يرجى إنشاء محفظة أولاً' : 'Please create a wallet first');
-                return;
-              }
-              setGoalWalletId(selectedWallet?.id || wallets[0].id);
-              setAddGoalVisible(true);
-            }}
+            onPress={handleOpenAddGoal}
             style={styles.addBtnSmall}
           >
             <Ionicons name="add" size={16} color="#fff" />
@@ -301,6 +342,13 @@ export default function SavingsGoalsScreen() {
                   {/* Actions */}
                   <View style={styles.goalActions}>
                     <Pressable
+                      onPress={() => handleOpenEditGoal(goal)}
+                      style={styles.actionBtnIcon}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="create-outline" size={18} color={colors.primary} />
+                    </Pressable>
+                    <Pressable
                       onPress={() => {
                         Haptics.selectionAsync();
                         setSelectedGoal(goal);
@@ -308,12 +356,14 @@ export default function SavingsGoalsScreen() {
                         setManualVisible(true);
                       }}
                       style={styles.actionBtnIcon}
+                      hitSlop={8}
                     >
                       <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
                     </Pressable>
                     <Pressable
-                      onPress={() => handleDeleteGoal(goal.id)}
+                      onPress={() => handleDeleteGoal(goal.id, goal.name)}
                       style={styles.actionBtnIcon}
+                      hitSlop={8}
                     >
                       <Ionicons name="trash-outline" size={18} color={colors.expense} />
                     </Pressable>
@@ -456,7 +506,11 @@ export default function SavingsGoalsScreen() {
         <View style={styles.modalBg}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{language === 'ar' ? 'إنشاء هدف ادخار جديد' : 'New Savings Goal'}</Text>
+              <Text style={styles.modalTitle}>
+                {editingGoal
+                  ? (language === 'ar' ? 'تعديل هدف الادخار' : 'Edit Savings Goal')
+                  : (language === 'ar' ? 'إنشاء هدف ادخار جديد' : 'New Savings Goal')}
+              </Text>
               <Pressable onPress={() => setAddGoalVisible(false)} hitSlop={15}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
@@ -519,7 +573,11 @@ export default function SavingsGoalsScreen() {
               </View>
 
               <Pressable onPress={handleAddGoal} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.saveBtnText}>{t.save}</Text>
+                <Text style={styles.saveBtnText}>
+                  {editingGoal
+                    ? (language === 'ar' ? 'تحديث وتعديل الهدف 🎯' : 'Update Goal 🎯')
+                    : (language === 'ar' ? 'حفظ الهدف 🎯' : 'Save Goal 🎯')}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
