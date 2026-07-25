@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
@@ -24,7 +24,12 @@ import { expenseCategories, incomeCategories, formatCurrency, WALLET_COLORS } fr
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
-import { saveRecurringTransaction, RecurringTransaction } from '@/lib/recurringStorage';
+import {
+  saveRecurringTransaction,
+  updateRecurringTransaction,
+  getRecurringTransactions,
+  RecurringTransaction
+} from '@/lib/recurringStorage';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';
 
 type TransactionType = 'expense' | 'income';
@@ -37,6 +42,10 @@ export default function AddRecurringScreen() {
   const { selectedWallet, currencySymbol, customCategories, addCustomCategory } = useTransactions();
   const { t, language } = useLanguage();
 
+  const params = useLocalSearchParams<{ editId?: string }>();
+  const isEditMode = !!params.editId;
+  const [existingItem, setExistingItem] = useState<RecurringTransaction | null>(null);
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -44,6 +53,32 @@ export default function AddRecurringScreen() {
   const [frequency, setFrequency] = useState<FrequencyType>('monthly');
   const [isSaving, setIsSaving] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
+
+  // Load existing recurring transaction if editing
+  useEffect(() => {
+    async function loadExisting() {
+      if (params.editId) {
+        const all = await getRecurringTransactions();
+        const found = all.find(i => i.id === params.editId);
+        if (found) {
+          setExistingItem(found);
+          setType(found.type);
+          setAmount(found.amount.toString());
+          setSelectedCategory(found.category);
+          setDescription(found.description || '');
+          setFrequency(found.frequency);
+          setIsVariable(!!found.isVariable);
+          if (found.nextDueDate) {
+            const d = new Date(found.nextDueDate);
+            setSelectedDay(d.getDate());
+            setSelectedMonth(d.getMonth());
+            setSelectedYear(d.getFullYear());
+          }
+        }
+      }
+    }
+    loadExisting();
+  }, [params.editId]);
 
   // Next Due Date selection
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -123,7 +158,7 @@ export default function AddRecurringScreen() {
     nextDueDate.setHours(9, 0, 0, 0); // Default run at 9:00 AM
 
     const recurring: RecurringTransaction = {
-      id: Crypto.randomUUID(),
+      id: existingItem?.id || Crypto.randomUUID(),
       walletId: selectedWallet.id,
       type,
       amount: parseFloat(amount),
@@ -131,12 +166,17 @@ export default function AddRecurringScreen() {
       description: description.trim(),
       frequency,
       nextDueDate: nextDueDate.toISOString(),
-      isActive: true,
+      isActive: existingItem ? existingItem.isActive : true,
       isVariable,
-      createdAt: new Date().toISOString(),
+      createdAt: existingItem?.createdAt || new Date().toISOString(),
     };
 
-    await saveRecurringTransaction(recurring);
+    if (isEditMode) {
+      await updateRecurringTransaction(recurring);
+    } else {
+      await saveRecurringTransaction(recurring);
+    }
+
     setIsSaving(false);
     router.back();
   };
@@ -226,7 +266,11 @@ export default function AddRecurringScreen() {
     >
       <View style={styles.container}>
         <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, zIndex: 10, elevation: 10 }]}>
-          <Text style={styles.sheetTitle}>{t.addRecurring}</Text>
+          <Text style={styles.sheetTitle}>
+            {isEditMode
+              ? (language === 'ar' ? 'تعديل المعاملة المتكررة' : 'Edit Recurring Transaction')
+              : t.addRecurring}
+          </Text>
           <Pressable 
             onPress={() => {
               Haptics.selectionAsync();
@@ -449,7 +493,11 @@ export default function AddRecurringScreen() {
             ]}
           >
             <Ionicons name="checkmark" size={22} color="#fff" />
-            <Text style={styles.saveText}>{t.save}</Text>
+            <Text style={styles.saveText}>
+              {isEditMode
+                ? (language === 'ar' ? 'تحديث المعاملة المتكررة' : 'Update Recurring')
+                : (language === 'ar' ? 'حفظ المعاملة المتكررة' : t.save)}
+            </Text>
           </Pressable>
         </ScrollView>
       </View>

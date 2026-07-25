@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { useMemo } from 'react';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
@@ -26,6 +27,8 @@ import {
   deleteRecurringTransaction,
   updateRecurringTransaction,
 } from '@/lib/recurringStorage';
+import { getInstallmentPlans, InstallmentPlan } from '@/lib/installmentStorage';
+import { saveGoal, SavingsGoal } from '@/lib/goalStorage';
 
 export default function RecurringListScreen() {
   const { colors } = useTheme();
@@ -33,33 +36,103 @@ export default function RecurringListScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { t, language } = useLanguage();
+  const isAr = language === 'ar';
   const { currencySymbol, selectedWallet } = useTransactions();
+  
   const [items, setItems] = useState<RecurringTransaction[]>([]);
+  const [installments, setInstallments] = useState<InstallmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadRecurring = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const data = await getRecurringTransactions();
+    const [recData, instData] = await Promise.all([
+      getRecurringTransactions(),
+      getInstallmentPlans()
+    ]);
+    
     // Filter to current wallet if set
     if (selectedWallet) {
-      setItems(data.filter(item => item.walletId === selectedWallet.id));
+      setItems(recData.filter(item => item.walletId === selectedWallet.id));
+      setInstallments(instData.filter(item => item.walletId === selectedWallet.id));
     } else {
-      setItems(data);
+      setItems(recData);
+      setInstallments(instData);
     }
     setLoading(false);
   };
 
   useFocusEffect(
     React.useCallback(() => {
-      loadRecurring();
+      loadData();
     }, [selectedWallet])
   );
+
+  // Financial calculations
+  const totalRecurringIncome = useMemo(() => {
+    return items
+      .filter(i => i.isActive && i.type === 'income')
+      .reduce((sum, i) => sum + i.amount, 0);
+  }, [items]);
+
+  const totalRecurringExpenses = useMemo(() => {
+    return items
+      .filter(i => i.isActive && i.type === 'expense')
+      .reduce((sum, i) => sum + i.amount, 0);
+  }, [items]);
+
+  const totalMonthlyInstallments = useMemo(() => {
+    return installments.reduce((sum, i) => sum + (i.monthlyAmount || 0), 0);
+  }, [installments]);
+
+  const totalCommitments = totalRecurringExpenses + totalMonthlyInstallments;
+  const freeNetCashflow = totalRecurringIncome - totalCommitments;
+
+  const handleCreateAutoSavingsGoal = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (freeNetCashflow <= 0) {
+      Alert.alert(
+        isAr ? 'تنبيه السيولة ⚠️' : 'Cashflow Notice',
+        isAr
+          ? 'لا يوجد فائض سيولة حر متبقي حالياً لإنشاء هدف ادخار تلقائي. يرجى مراجعة المصاريف والأقساط.'
+          : 'No free net surplus remaining to auto-create a savings goal.'
+      );
+      return;
+    }
+
+    const monthlySavingsTarget = Math.round(freeNetCashflow * 0.6); // 60% of free cashflow
+    const target6Months = monthlySavingsTarget * 6;
+
+    const autoGoal: SavingsGoal = {
+      id: Crypto.randomUUID(),
+      name: isAr ? 'ادخار الفائض الصافي التلقائي 🎯' : 'Net Surplus Auto-Savings Goal 🎯',
+      targetAmount: target6Months,
+      savedAmount: 0,
+      deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+      walletId: selectedWallet?.id || '',
+      createdAt: new Date().toISOString(),
+    };
+
+    await saveGoal(autoGoal);
+
+    Alert.alert(
+      isAr ? 'تمت إضافة هدف الادخار التلقائي 🎉' : 'Savings Goal Created 🎉',
+      isAr
+        ? `تم إنشاء هدف ادخار بمبلغ (${formatCurrency(target6Months)} ${currencySymbol}) بمعدل ادخار شهري مقترح (${formatCurrency(monthlySavingsTarget)} ${currencySymbol}).`
+        : `Created goal to save ${formatCurrency(target6Months)} ${currencySymbol} from free cashflow!`,
+      [
+        {
+          text: isAr ? 'الانتقال للأهداف' : 'View Goals',
+          onPress: () => router.push('/savings-goals'),
+        },
+        { text: isAr ? 'موافق' : 'OK' }
+      ]
+    );
+  };
 
   const handleToggleActive = async (item: RecurringTransaction, val: boolean) => {
     Haptics.selectionAsync();
     const updated = { ...item, isActive: val };
     await updateRecurringTransaction(updated);
-    // Update local state
     setItems(prev => prev.map(i => i.id === item.id ? updated : i));
   };
 
@@ -70,7 +143,7 @@ export default function RecurringListScreen() {
     
     Alert.alert(
       t.deletePlan,
-      language === 'ar' ? `هل تريد حذف المعاملة المتكررة "${displayName}"؟` : `Delete recurring transaction "${displayName}"?`,
+      isAr ? `هل تريد حذف المعاملة المتكررة "${displayName}"؟` : `Delete recurring transaction "${displayName}"?`,
       [
         { text: t.cancel, style: 'cancel' },
         {
@@ -78,7 +151,7 @@ export default function RecurringListScreen() {
           style: 'destructive',
           onPress: async () => {
             await deleteRecurringTransaction(id);
-            loadRecurring();
+            loadData();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
         },
@@ -96,13 +169,71 @@ export default function RecurringListScreen() {
     }
   };
 
+  const renderHeader = () => (
+    <View style={styles.summaryContainer}>
+      {/* Overview Card */}
+      <View style={styles.summaryCard}>
+        <LinearGradient
+          colors={[colors.primary + '18', 'transparent']}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <View style={styles.summaryHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="stats-chart" size={18} color={colors.primary} />
+            <Text style={styles.summaryTitle}>
+              {isAr ? 'رؤية السيولة والتعهدات الشهرية' : 'Monthly Commitments & Cashflow'}
+            </Text>
+          </View>
+          <Text style={styles.walletBadgeText}>{selectedWallet?.name}</Text>
+        </View>
+
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{isAr ? 'دخل متكرر' : 'Recurring Income'}</Text>
+            <Text style={[styles.summaryVal, { color: colors.income }]}>
+              +{formatCurrency(totalRecurringIncome)} {currencySymbol}
+            </Text>
+          </View>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{isAr ? 'التزامات وأقساط' : 'Bills & Installments'}</Text>
+            <Text style={[styles.summaryVal, { color: colors.expense }]}>
+              -{formatCurrency(totalCommitments)} {currencySymbol}
+            </Text>
+          </View>
+          <View style={styles.summaryCol}>
+            <Text style={styles.summaryLabel}>{isAr ? 'فائض حر صافي' : 'Net Free Surplus'}</Text>
+            <Text style={[styles.summaryVal, { color: freeNetCashflow >= 0 ? '#3B82F6' : colors.expense }]}>
+              {formatCurrency(freeNetCashflow)} {currencySymbol}
+            </Text>
+          </View>
+        </View>
+
+        {/* Auto Savings Goal Button */}
+        <Pressable
+          onPress={handleCreateAutoSavingsGoal}
+          style={({ pressed }) => [
+            styles.autoSavingsBtn,
+            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+          ]}
+        >
+          <Ionicons name="trophy-outline" size={18} color="#FFF" />
+          <Text style={styles.autoSavingsBtnText}>
+            {isAr ? '🎯 تحويل الفائض إلى هدف ادخار آلي' : '🎯 Create Auto Savings Goal'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
   const renderItem = ({ item }: { item: RecurringTransaction }) => {
     const cat = getCategoryById(item.category);
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View style={[styles.catIcon, { backgroundColor: (cat?.color || '#999') + '18' }]}>
-            <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || '#999'} />
+          <View style={[styles.catIcon, { backgroundColor: (cat?.color || colors.primary) + '18' }]}>
+            <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || colors.primary} />
           </View>
           <View style={styles.info}>
             <Text style={styles.catName}>{getCategoryName(item.category, language)}</Text>
@@ -117,22 +248,32 @@ export default function RecurringListScreen() {
             </View>
           </View>
           <View style={styles.actionColumn}>
-            <Text style={[styles.amount, { color: item.type === 'income' ? Colors.income : Colors.expense }]}>
+            <Text style={[styles.amount, { color: item.type === 'income' ? colors.income : colors.expense }]}>
               {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)} {currencySymbol}
             </Text>
             <View style={styles.actions}>
               <Switch
                 value={item.isActive}
                 onValueChange={(val) => handleToggleActive(item, val)}
-                trackColor={{ false: Colors.border, true: Colors.primary + '50' }}
-                thumbColor={item.isActive ? Colors.primary : Colors.textTertiary}
+                trackColor={{ false: colors.border, true: colors.primary + '50' }}
+                thumbColor={item.isActive ? colors.primary : colors.textTertiary}
               />
               <Pressable
-                onPress={() => handleDelete(item.id, item.description, item.category)}
-                style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.7 }]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  router.push(`/add-recurring?editId=${item.id}`);
+                }}
+                style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}
                 hitSlop={8}
               >
-                <Ionicons name="trash-outline" size={18} color={Colors.expense} />
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+              </Pressable>
+              <Pressable
+                onPress={() => handleDelete(item.id, item.description, item.category)}
+                style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}
+                hitSlop={8}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.expense} />
               </Pressable>
             </View>
           </View>
@@ -143,9 +284,10 @@ export default function RecurringListScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top Header Bar */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || webTopInset) + 16 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name={isAr ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>{t.recurringTransactions}</Text>
         <Pressable
@@ -160,19 +302,23 @@ export default function RecurringListScreen() {
       </View>
 
       {items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="calendar-outline" size={64} color={Colors.textTertiary} />
-          <Text style={styles.emptyTitle}>{t.noRecurring}</Text>
-          <Pressable
-            onPress={() => router.push('/add-recurring')}
-            style={styles.emptyButton}
-          >
-            <Text style={styles.emptyButtonText}>{t.addRecurring}</Text>
-          </Pressable>
+        <View style={{ flex: 1 }}>
+          {renderHeader()}
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={54} color={colors.textTertiary} />
+            <Text style={styles.emptyTitle}>{t.noRecurring}</Text>
+            <Pressable
+              onPress={() => router.push('/add-recurring')}
+              style={styles.emptyButton}
+            >
+              <Text style={styles.emptyButtonText}>{t.addRecurring}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : (
         <FlatList
           data={items}
+          ListHeaderComponent={renderHeader}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
@@ -195,7 +341,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: colors.border,
     justifyContent: 'space-between',
     zIndex: 10,
     elevation: 10,
@@ -218,19 +364,79 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  listContent: {
+  summaryContainer: {
     padding: 16,
+    paddingBottom: 8,
+  },
+  summaryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+    overflow: 'hidden',
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+  },
+  walletBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceAlt,
+    padding: 12,
+    borderRadius: 14,
+  },
+  summaryCol: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  summaryLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  summaryVal: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
+  autoSavingsBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  autoSavingsBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
     gap: 12,
   },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -281,7 +487,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   nextDue: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
   actionColumn: {
     alignItems: 'flex-end',
@@ -294,16 +500,16 @@ const getStyles = (colors: any) => StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  deleteBtn: {
+  actionBtn: {
     padding: 4,
   },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 40,
     gap: 12,
   },
   emptyTitle: {
@@ -322,6 +528,6 @@ const getStyles = (colors: any) => StyleSheet.create({
   emptyButtonText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
-    color: colors.text,
+    color: '#FFF',
   },
 });
