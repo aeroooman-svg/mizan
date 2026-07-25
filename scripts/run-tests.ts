@@ -3,6 +3,7 @@ import { runCurrencyApiTests } from '../__tests__/currencyApi.test';
 import { runSmsParserTests } from '../__tests__/smsParser.test';
 import { runZakatTests } from '../__tests__/zakat.test';
 import { runAnalyticsTests } from '../__tests__/analytics.test';
+import { runRemittanceTests } from '../__tests__/remittance.test';
 
 console.log('--------------------------------------------------');
 console.log('🚀 Running MIZAN Automated Unit Testing Suite...');
@@ -17,6 +18,7 @@ const suites = [
   { name: 'SMS Bank Parser', runner: runSmsParserTests },
   { name: 'Zakat Calculator', runner: runZakatTests },
   { name: 'MoM & YoY Analytics', runner: runAnalyticsTests },
+  { name: 'Expat Remittance & Runway', runner: runRemittanceTests },
 ];
 
 for (const suite of suites) {

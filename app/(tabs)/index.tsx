@@ -41,8 +41,10 @@ import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } fr
 import FinancialHealthScore from '@/components/FinancialHealthScore';
 import CashflowForecastWidget from '@/components/CashflowForecastWidget';
 import QuickGlanceWidget from '@/components/QuickGlanceWidget';
-import FinancialGoalWidget from '@/components/FinancialGoalWidget';
 import CurrencyConverterModal from '@/components/CurrencyConverterModal';
+import SendRemittanceModal from '@/components/SendRemittanceModal';
+import RemittanceTrackerWidget from '@/components/RemittanceTrackerWidget';
+import { getRemittancesForWallet, calculateRemittanceStats, RemittanceStats } from '@/lib/remittanceStorage';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getWidgetData } from '@/lib/widgetDataProvider';
 import { subscribeSyncStatus, SyncState } from '@/lib/syncService';
@@ -243,7 +245,24 @@ export default function HomeScreen() {
   const [isForecastExpanded, setIsForecastExpanded] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false);
+  const [isRemittanceModalOpen, setIsRemittanceModalOpen] = useState(false);
+  const [remittanceStats, setRemittanceStats] = useState<RemittanceStats | null>(null);
   const [undoState, setUndoState] = useState<{ visible: boolean; message: string; action: () => void } | null>(null);
+
+  const loadRemittancesData = useCallback(async () => {
+    if (!selectedWallet) return;
+    try {
+      const list = await getRemittancesForWallet(selectedWallet.id);
+      const computed = calculateRemittanceStats(list, selectedWallet.id, walletTransactions);
+      setRemittanceStats(computed);
+    } catch (e) {}
+  }, [selectedWallet, walletTransactions]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRemittancesData();
+    }, [loadRemittancesData])
+  );
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -620,6 +639,15 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
+        {/* Expat Family Remittance Tracker Widget */}
+        {remittanceStats && (
+          <RemittanceTrackerWidget
+            stats={remittanceStats}
+            currencySymbol={currencySymbol}
+            onSendPress={() => setIsRemittanceModalOpen(true)}
+          />
+        )}
+
         {/* Quick Glance Widget */}
         {widgetConfig.showQuickGlance !== false && (
           <QuickGlanceWidget
@@ -922,6 +950,19 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  setIsRemittanceModalOpen(true);
+                }}
+              >
+                <Ionicons name="paper-plane-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'إرسال حوالة للبيت' : 'Send Family Remittance'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/envelope-budget' as any);
                 }}
               >
@@ -1039,6 +1080,13 @@ export default function HomeScreen() {
       <CurrencyConverterModal
         visible={isCurrencyConverterOpen}
         onClose={() => setIsCurrencyConverterOpen(false)}
+      />
+
+      {/* Send Remittance Modal */}
+      <SendRemittanceModal
+        visible={isRemittanceModalOpen}
+        onClose={() => setIsRemittanceModalOpen(false)}
+        onSuccess={loadRemittancesData}
       />
 
       {/* Undo Toast Notification */}

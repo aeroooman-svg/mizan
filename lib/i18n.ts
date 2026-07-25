@@ -192,6 +192,9 @@ const translations = {
     noRecurring: 'لا توجد معاملات متكررة مجدولة بعد',
     recurringProcessed: 'تمت معالجة المعاملات المتكررة بنجاح!',
     recurringAdded: 'تم إضافة المعاملة المتكررة بنجاح!',
+    sendRemittance: 'حوالة المغتربين والبيت',
+    sendRemittanceDesc: 'تحويل عابر للعملات والحدود للبيت',
+    remittanceTracker: 'متابعة حوالة البيت',
   },
   en: {
     home: 'Home',
@@ -384,6 +387,9 @@ const translations = {
     noRecurring: 'No recurring transactions scheduled yet',
     recurringProcessed: 'Recurring transactions processed successfully!',
     recurringAdded: 'Recurring transaction added successfully!',
+    sendRemittance: 'Expat Remittance',
+    sendRemittanceDesc: 'Cross-border family transfer',
+    remittanceTracker: 'Home Remittance Tracker',
   },
 } as const;
 
