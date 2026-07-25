@@ -83,6 +83,64 @@ export default function FinancialPlanScreen() {
   const [adjustIncome, setAdjustIncome] = useState('');
   const [adjustExpense, setAdjustExpense] = useState('');
 
+  // Single Month Target Override State
+  const [singleMonthModalOpen, setSingleMonthModalOpen] = useState(false);
+  const [selectedMonthKey, setSelectedMonthKey] = useState('');
+  const [selectedMonthName, setSelectedMonthName] = useState('');
+  const [singleMonthIncomeInput, setSingleMonthIncomeInput] = useState('');
+  const [singleMonthExpenseInput, setSingleMonthExpenseInput] = useState('');
+
+  const handleOpenSingleMonthModal = (monthKey: string, monthNameStr: string, currentPlannedInc: number, currentPlannedExp: number) => {
+    Haptics.selectionAsync();
+    setSelectedMonthKey(monthKey);
+    setSelectedMonthName(monthNameStr);
+    
+    const override = plan?.customMonthlyOverrides?.[monthKey];
+    setSingleMonthIncomeInput((override?.income ?? currentPlannedInc).toString());
+    setSingleMonthExpenseInput((override?.expense ?? currentPlannedExp).toString());
+    setSingleMonthModalOpen(true);
+  };
+
+  const handleSaveSingleMonthOverride = async () => {
+    if (!plan || !selectedMonthKey) return;
+    const incVal = parseFloat(singleMonthIncomeInput) || 0;
+    const expVal = parseFloat(singleMonthExpenseInput) || 0;
+
+    const currentOverrides = plan.customMonthlyOverrides || {};
+    const updatedOverrides = {
+      ...currentOverrides,
+      [selectedMonthKey]: {
+        income: Math.round(incVal),
+        expense: Math.round(expVal),
+      }
+    };
+
+    const updatedPlan: FinancialPlan = {
+      ...plan,
+      customMonthlyOverrides: updatedOverrides,
+    };
+
+    await saveFinancialPlan(updatedPlan);
+    setPlan(updatedPlan);
+    setSingleMonthModalOpen(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleResetSingleMonthOverride = async () => {
+    if (!plan || !selectedMonthKey || !plan.customMonthlyOverrides) return;
+    const currentOverrides = { ...plan.customMonthlyOverrides };
+    delete currentOverrides[selectedMonthKey];
+
+    const updatedPlan: FinancialPlan = {
+      ...plan,
+      customMonthlyOverrides: currentOverrides,
+    };
+
+    await saveFinancialPlan(updatedPlan);
+    setPlan(updatedPlan);
+    setSingleMonthModalOpen(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
 
   const handleSaveAdjustment = async () => {
     if (!plan) return;
@@ -101,8 +159,10 @@ export default function FinancialPlanScreen() {
     setIsAdjustModalOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      language === 'ar' ? 'نجاح' : 'Success',
-      t.adjustPlanSuccess || 'Plan updated!'
+      language === 'ar' ? 'تم تحديث خطة المستقبل 🚀' : 'Future Plan Updated 🚀',
+      language === 'ar'
+        ? 'تم تحديث المستهدفات للأشهر القادمة بناءً على متوسطاتك، مع الحفاظ الكامل على البيانات التاريخية للأشهر السابقة كما حدثت بالفعل.'
+        : 'Updated future plan targets while keeping historical past months intact.'
     );
   };
 
@@ -1833,8 +1893,15 @@ export default function FinancialPlanScreen() {
               const m = monthDate.getMonth();
               const y = monthDate.getFullYear();
               const monthName = t.months[m];
+              const monthKey = `${y}-${(m + 1).toString().padStart(2, '0')}`;
               const isPast = i < monthsElapsed;
               const isCurrent = i === monthsElapsed;
+
+              // Check if custom override exists for this month
+              const customOverride = plan.customMonthlyOverrides?.[monthKey];
+              const plannedInc = customOverride?.income ?? plan.monthlyIncome;
+              const plannedExp = customOverride?.expense ?? plan.monthlyExpense;
+              const plannedSaving = plannedInc - plannedExp;
 
               const monthTx = walletTransactions.filter(tx => {
                 const d = new Date(tx.date);
@@ -1844,23 +1911,25 @@ export default function FinancialPlanScreen() {
               const actualMonthExpense = monthTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
               const actualMonthSaving = actualMonthIncome - actualMonthExpense;
               const hasActualData = monthTx.length > 0;
-              const cumulativeSavings = plan.monthlySaving * (i + 1);
+              const cumulativeSavings = (plannedSaving) * (i + 1);
 
               return (
-                <View
+                <Pressable
                   key={i}
-                  style={[
+                  onPress={() => handleOpenSingleMonthModal(monthKey, `${monthName} ${y}`, plannedInc, plannedExp)}
+                  style={({ pressed }) => [
                     styles.timelineRow,
                     {
                       backgroundColor: isCurrent ? colors.primary + '18' : isPast ? colors.surfaceAlt : colors.surface,
-                      borderColor: isCurrent ? colors.primary : isPast ? colors.border : colors.border + '60',
-                      borderWidth: isCurrent ? 1.5 : 1,
+                      borderColor: isCurrent ? colors.primary : customOverride ? colors.accent : (isPast ? colors.border : colors.border + '60'),
+                      borderWidth: isCurrent || customOverride ? 1.5 : 1,
                       borderRadius: 16,
                       padding: 12,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 10,
+                      opacity: pressed ? 0.9 : 1,
                     },
                   ]}
                 >
@@ -1902,30 +1971,42 @@ export default function FinancialPlanScreen() {
                             </Text>
                           </View>
                         )}
+                        {customOverride && (
+                          <View style={{ backgroundColor: colors.accent + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: colors.accent }}>
+                              {language === 'ar' ? 'تعديل مخصص ✏️' : 'Custom ✏️'}
+                            </Text>
+                          </View>
+                        )}
                       </View>
 
                       <Text style={[styles.timelineAmount, { color: colors.textSecondary, fontSize: 11, fontFamily: 'Cairo_600SemiBold' }]}>
-                        {language === 'ar' ? 'الادخار المخطط:' : 'Target:'} <Text style={{ color: '#10B981', fontFamily: 'Cairo_700Bold' }}>+{formatCurrency(plan.monthlySaving)} {sym}</Text>
+                        {language === 'ar' ? 'المخطط:' : 'Planned:'} <Text style={{ color: '#10B981', fontFamily: 'Cairo_700Bold' }}>+{formatCurrency(plannedSaving)} {sym}</Text> (دخل: {formatCurrency(plannedInc)} | صرف: {formatCurrency(plannedExp)})
                       </Text>
 
                       {(isPast || isCurrent) && hasActualData && (
                         <Text style={[styles.timelineActual, { color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444', fontSize: 10, fontFamily: 'Cairo_600SemiBold' }]}>
-                          {t.actualSaving}: {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
+                          {language === 'ar' ? 'الفعلي الواقعي:' : 'Actual:'} {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
                         </Text>
                       )}
                     </View>
                   </View>
 
-                  {/* Right Column: High Contrast Cumulative Total Badge */}
-                  <View style={{ backgroundColor: isCurrent ? colors.primary + '25' : colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: isCurrent ? colors.primary + '50' : colors.border, alignItems: 'flex-end', gap: 2 }}>
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'الرصيد التراكمي' : 'Cumulative Total'}
-                    </Text>
-                    <Text style={[styles.timelineTotal, { color: isCurrent ? colors.primary : colors.text, fontFamily: 'Cairo_700Bold', fontSize: 13 }]}>
-                      {formatCurrency(cumulativeSavings)} {sym}
-                    </Text>
+                  {/* Right Column: High Contrast Cumulative Total Badge & Edit Icon */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ backgroundColor: isCurrent ? colors.primary + '25' : colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: isCurrent ? colors.primary + '50' : colors.border, alignItems: 'flex-end', gap: 2 }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
+                        {language === 'ar' ? 'الرصيد التراكمي' : 'Cumulative Total'}
+                      </Text>
+                      <Text style={[styles.timelineTotal, { color: isCurrent ? colors.primary : colors.text, fontFamily: 'Cairo_700Bold', fontSize: 13 }]}>
+                        {formatCurrency(cumulativeSavings)} {sym}
+                      </Text>
+                    </View>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="create-outline" size={16} color={colors.primary} />
+                    </View>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -2061,6 +2142,118 @@ export default function FinancialPlanScreen() {
                     {language === 'ar' ? 'إلغاء' : 'Cancel'}
                   </Text>
                 </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Single Month Custom Target Modal */}
+        <Modal
+          visible={singleMonthModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSingleMonthModalOpen(false)}
+        >
+          <Pressable 
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+            onPress={Keyboard.dismiss}
+          >
+            <Pressable 
+              style={{ width: '100%', maxWidth: 420, backgroundColor: Colors.surface, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: Colors.border, gap: 16 }}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: Colors.border, paddingBottom: 10 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF' }}>
+                  {language === 'ar' ? `تخصيص استهداف شهر (${selectedMonthName})` : `Custom Target for (${selectedMonthName})`}
+                </Text>
+                <Pressable onPress={() => setSingleMonthModalOpen(false)} hitSlop={10}>
+                  <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                </Pressable>
+              </View>
+
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: Colors.textSecondary, lineHeight: 18, textAlign: 'left' }}>
+                {language === 'ar'
+                  ? 'يمكنك تعديل الدخل والمصاريف المتوقعة لهذا الشهر المحدد فقط (مثل مصاريف المدارس أو المكافآت) دون تغيير باقي أشهر الخطة.'
+                  : 'Customize expected income and expenses for this specific month only.'}
+              </Text>
+
+              {/* Monthly Income Input */}
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
+                  {language === 'ar' ? `الدخل المستهدف لشهر (${selectedMonthName}):` : 'Target Income:'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
+                  <TextInput
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    keyboardType="decimal-pad"
+                    value={singleMonthIncomeInput}
+                    onChangeText={setSingleMonthIncomeInput}
+                  />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: Colors.primary, marginLeft: 8 }}>{currencySymbol}</Text>
+                </View>
+              </View>
+
+              {/* Monthly Expense Input */}
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
+                  {language === 'ar' ? `المصاريف المستهدفة لشهر (${selectedMonthName}):` : 'Target Expenses:'}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
+                  <TextInput
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    keyboardType="decimal-pad"
+                    value={singleMonthExpenseInput}
+                    onChangeText={setSingleMonthExpenseInput}
+                  />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: Colors.primary, marginLeft: 8 }}>{currencySymbol}</Text>
+                </View>
+              </View>
+
+              {/* Net Result Preview */}
+              {(() => {
+                const inc = parseFloat(singleMonthIncomeInput) || 0;
+                const exp = parseFloat(singleMonthExpenseInput) || 0;
+                const net = inc - exp;
+                return (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.surfaceAlt, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.border }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: Colors.textSecondary }}>
+                      {language === 'ar' ? 'الادخار الصافي المتوقع لهذا الشهر:' : 'Projected Savings:'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: net >= 0 ? Colors.primary : Colors.expense }}>
+                      {formatCurrency(net)} {currencySymbol}
+                    </Text>
+                  </View>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              <View style={{ gap: 8, marginTop: 4 }}>
+                <Pressable
+                  onPress={handleSaveSingleMonthOverride}
+                  style={({ pressed }) => [
+                    { height: 46, borderRadius: 14, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 },
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                  ]}
+                >
+                  <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                    {language === 'ar' ? `حفظ استهداف ${selectedMonthName} 🎯` : 'Save Month Target 🎯'}
+                  </Text>
+                </Pressable>
+
+                {plan?.customMonthlyOverrides?.[selectedMonthKey] && (
+                  <Pressable
+                    onPress={handleResetSingleMonthOverride}
+                    style={({ pressed }) => [
+                      { height: 40, borderRadius: 12, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
+                      pressed && { opacity: 0.8 }
+                    ]}
+                  >
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.expense }}>
+                      {language === 'ar' ? 'إعادة للاستهداف العام 🔄' : 'Reset to Global Target 🔄'}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </Pressable>
           </Pressable>

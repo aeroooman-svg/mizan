@@ -18,6 +18,11 @@ export interface KakeiboReflection {
   completedAt: string;
 }
 
+export interface MonthOverride {
+  income?: number;
+  expense?: number;
+}
+
 export interface FinancialPlan {
   id: string;
   goalName: string;
@@ -33,6 +38,7 @@ export interface FinancialPlan {
   isKakeiboEnabled?: boolean;
   kakeiboBudgets?: KakeiboBudgets;
   kakeiboReflections?: KakeiboReflection[];
+  customMonthlyOverrides?: Record<string, MonthOverride>;
 }
 
 
