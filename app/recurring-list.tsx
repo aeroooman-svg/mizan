@@ -8,6 +8,10 @@ import {
   Platform,
   Alert,
   Switch,
+  Modal,
+  TextInput,
+  SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -42,6 +46,11 @@ export default function RecurringListScreen() {
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [installments, setInstallments] = useState<InstallmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Auto Savings Modal State
+  const [autoSavingsModalVisible, setAutoSavingsModalVisible] = useState(false);
+  const [savingsInput, setSavingsInput] = useState('');
+  const [goalTitle, setGoalTitle] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -87,24 +96,31 @@ export default function RecurringListScreen() {
   const totalCommitments = totalRecurringExpenses + totalMonthlyInstallments;
   const freeNetCashflow = totalRecurringIncome - totalCommitments;
 
-  const handleCreateAutoSavingsGoal = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (freeNetCashflow <= 0) {
+  const handleOpenAutoSavingsModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const suggestedMonthly = freeNetCashflow > 0 ? Math.round(freeNetCashflow * 0.6) : 25;
+    setSavingsInput(suggestedMonthly.toString());
+    setGoalTitle(isAr ? 'ادخار الفائض المالي التلقائي 🎯' : 'Net Surplus Savings Goal 🎯');
+    setAutoSavingsModalVisible(true);
+  };
+
+  const handleConfirmAutoSavingsGoal = async () => {
+    const targetMonthly = parseFloat(savingsInput);
+    if (isNaN(targetMonthly) || targetMonthly <= 0) {
       Alert.alert(
-        isAr ? 'تنبيه السيولة ⚠️' : 'Cashflow Notice',
-        isAr
-          ? 'لا يوجد فائض سيولة حر متبقي حالياً لإنشاء هدف ادخار تلقائي. يرجى مراجعة المصاريف والأقساط.'
-          : 'No free net surplus remaining to auto-create a savings goal.'
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى إدخال مبلغ ادخار شهري صحيح' : 'Please enter a valid monthly savings amount'
       );
       return;
     }
 
-    const monthlySavingsTarget = Math.round(freeNetCashflow * 0.6); // 60% of free cashflow
-    const target6Months = monthlySavingsTarget * 6;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const target6Months = targetMonthly * 6;
 
     const autoGoal: SavingsGoal = {
       id: Crypto.randomUUID(),
-      name: isAr ? 'ادخار الفائض الصافي التلقائي 🎯' : 'Net Surplus Auto-Savings Goal 🎯',
+      name: goalTitle.trim() || (isAr ? 'ادخار الفائض التلقائي 🎯' : 'Surplus Savings Goal'),
       targetAmount: target6Months,
       savedAmount: 0,
       deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
@@ -113,11 +129,12 @@ export default function RecurringListScreen() {
     };
 
     await saveGoal(autoGoal);
+    setAutoSavingsModalVisible(false);
 
     Alert.alert(
       isAr ? 'تمت إضافة هدف الادخار التلقائي 🎉' : 'Savings Goal Created 🎉',
       isAr
-        ? `تم إنشاء هدف ادخار بمبلغ (${formatCurrency(target6Months)} ${currencySymbol}) بمعدل ادخار شهري مقترح (${formatCurrency(monthlySavingsTarget)} ${currencySymbol}).`
+        ? `تم إنشاء هدف ادخار بمبلغ (${formatCurrency(target6Months)} ${currencySymbol}) بمعدل ادخار شهري مقترح (${formatCurrency(targetMonthly)} ${currencySymbol}).`
         : `Created goal to save ${formatCurrency(target6Months)} ${currencySymbol} from free cashflow!`,
       [
         {
@@ -212,7 +229,7 @@ export default function RecurringListScreen() {
 
         {/* Auto Savings Goal Button */}
         <Pressable
-          onPress={handleCreateAutoSavingsGoal}
+          onPress={handleOpenAutoSavingsModal}
           style={({ pressed }) => [
             styles.autoSavingsBtn,
             pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
@@ -229,18 +246,21 @@ export default function RecurringListScreen() {
 
   const renderItem = ({ item }: { item: RecurringTransaction }) => {
     const cat = getCategoryById(item.category);
+    const itemColor = item.color || cat?.color || (item.type === 'income' ? colors.income : colors.primary);
+    const itemIcon = item.icon || cat?.icon || 'receipt';
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View style={[styles.catIcon, { backgroundColor: (cat?.color || colors.primary) + '18' }]}>
-            <MaterialIcons name={cat?.icon as any || 'receipt'} size={22} color={cat?.color || colors.primary} />
+          <View style={[styles.catIcon, { backgroundColor: itemColor + '18' }]}>
+            <MaterialIcons name={itemIcon as any} size={22} color={itemColor} />
           </View>
           <View style={styles.info}>
             <Text style={styles.catName}>{getCategoryName(item.category, language)}</Text>
             {item.description ? <Text style={styles.desc} numberOfLines={1}>{item.description}</Text> : null}
             <View style={styles.badgeRow}>
-              <View style={styles.frequencyBadge}>
-                <Text style={styles.frequencyText}>{getFrequencyLabel(item.frequency)}</Text>
+              <View style={[styles.frequencyBadge, { backgroundColor: itemColor + '15' }]}>
+                <Text style={[styles.frequencyText, { color: itemColor }]}>{getFrequencyLabel(item.frequency)}</Text>
               </View>
               <Text style={styles.nextDue}>
                 {t.nextDueDate}: {formatDateLocalized(item.nextDueDate, language)}
@@ -325,6 +345,108 @@ export default function RecurringListScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Auto Savings Goal Setup Modal Sheet */}
+      <Modal
+        visible={autoSavingsModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAutoSavingsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {isAr ? '🎯 إنشاء هدف ادخار مالي آلي' : '🎯 Create Auto Savings Goal'}
+              </Text>
+              <Pressable onPress={() => setAutoSavingsModalVisible(false)} hitSlop={12}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
+              <View style={styles.modalInfoBox}>
+                <Text style={styles.modalInfoTitle}>
+                  {isAr ? 'تحويل فائض سيولتك إلى ثروة ومدخرات' : 'Turn Net Surplus Into Wealth'}
+                </Text>
+                <Text style={styles.modalInfoSub}>
+                  {isAr
+                    ? `إجمالي الفائض الصافي المتاح لديك حالياً هو (${formatCurrency(freeNetCashflow)} ${currencySymbol}). حدد المستهدف الشهري المفضل للادخار:`
+                    : `Your current net free surplus is (${formatCurrency(freeNetCashflow)} ${currencySymbol}). Select target monthly savings:`}
+                </Text>
+              </View>
+
+              {/* Goal Title Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.inputLabel}>{isAr ? 'اسم هدف الادخار:' : 'Goal Name:'}</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={goalTitle}
+                  onChangeText={setGoalTitle}
+                  placeholder="مثال: ادخار طوارئ، شراء سيارة..."
+                  placeholderTextColor={colors.textTertiary}
+                  textAlign={isAr ? 'right' : 'left'}
+                />
+              </View>
+
+              {/* Monthly Savings Target Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.inputLabel}>
+                  {isAr ? `المستهدف الشهري للادخار (${currencySymbol}):` : `Monthly Savings Target (${currencySymbol}):`}
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={savingsInput}
+                  onChangeText={setSavingsInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textTertiary}
+                  textAlign="right"
+                />
+              </View>
+
+              {/* Quick Amount Chips */}
+              <Text style={[styles.inputLabel, { marginTop: 4 }]}>
+                {isAr ? 'أو اختر مبلغ ادخار شهري سريع:' : 'Or Select Quick Monthly Savings:'}
+              </Text>
+              <View style={styles.presetChipRow}>
+                {[10, 25, 50, 100, 200].map(amt => (
+                  <Pressable
+                    key={amt}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSavingsInput(amt.toString());
+                    }}
+                    style={[
+                      styles.presetChip,
+                      savingsInput === amt.toString() && { borderColor: colors.primary, backgroundColor: colors.primary + '20' }
+                    ]}
+                  >
+                    <Text style={[styles.presetChipText, savingsInput === amt.toString() && { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
+                      {amt} {currencySymbol}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Pressable
+                onPress={handleConfirmAutoSavingsGoal}
+                style={({ pressed }) => [
+                  styles.modalConfirmBtn,
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.modalConfirmBtnText}>
+                  {isAr ? 'إنشاء وتفعيل هدف الادخار 🎯' : 'Create & Activate Goal'}
+                </Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -528,6 +650,112 @@ const getStyles = (colors: any) => StyleSheet.create({
   emptyButtonText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
+    color: '#FFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: colors.text,
+  },
+  modalBody: {
+    padding: 20,
+    gap: 14,
+  },
+  modalInfoBox: {
+    backgroundColor: colors.primary + '12',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    gap: 4,
+  },
+  modalInfoTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.primary,
+  },
+  modalInfoSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  formGroup: {
+    gap: 6,
+  },
+  inputLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  modalInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 15,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  presetChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  presetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  presetChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalConfirmBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 14,
+  },
+  modalConfirmBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
     color: '#FFF',
   },
 });

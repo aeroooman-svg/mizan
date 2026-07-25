@@ -49,6 +49,8 @@ export default function AddRecurringScreen() {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedIcon, setSelectedIcon] = useState<string>('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<FrequencyType>('monthly');
   const [isSaving, setIsSaving] = useState(false);
@@ -65,6 +67,8 @@ export default function AddRecurringScreen() {
           setType(found.type);
           setAmount(found.amount.toString());
           setSelectedCategory(found.category);
+          if (found.color) setSelectedColor(found.color);
+          if (found.icon) setSelectedIcon(found.icon);
           setDescription(found.description || '');
           setFrequency(found.frequency);
           setIsVariable(!!found.isVariable);
@@ -169,6 +173,8 @@ export default function AddRecurringScreen() {
       isActive: existingItem ? existingItem.isActive : true,
       isVariable,
       createdAt: existingItem?.createdAt || new Date().toISOString(),
+      color: selectedColor || undefined,
+      icon: selectedIcon || undefined,
     };
 
     if (isEditMode) {
@@ -431,18 +437,20 @@ export default function AddRecurringScreen() {
                   onPress={() => {
                     Haptics.selectionAsync();
                     setSelectedCategory(cat.id);
+                    if (!selectedColor) setSelectedColor(cat.color);
+                    if (!selectedIcon) setSelectedIcon(cat.icon);
                   }}
                   style={[
                     styles.categoryItem,
-                    selectedCategory === cat.id && { borderColor: cat.color, borderWidth: 2 },
+                    selectedCategory === cat.id && { borderColor: selectedColor || cat.color, borderWidth: 2 },
                   ]}
                 >
-                  <View style={[styles.categoryIcon, { backgroundColor: cat.color + '18' }]}>
-                    <MaterialIcons name={cat.icon as any} size={22} color={cat.color} />
+                  <View style={[styles.categoryIcon, { backgroundColor: (selectedCategory === cat.id ? (selectedColor || cat.color) : cat.color) + '18' }]}>
+                    <MaterialIcons name={(selectedCategory === cat.id && selectedIcon ? selectedIcon : cat.icon) as any} size={22} color={selectedCategory === cat.id ? (selectedColor || cat.color) : cat.color} />
                   </View>
                   <Text style={[
                     styles.categoryName,
-                    selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
+                    selectedCategory === cat.id && { color: selectedColor || cat.color, fontFamily: 'Cairo_700Bold' as const },
                   ]}>
                     {getCategoryName(cat.id, language)}
                   </Text>
@@ -463,6 +471,79 @@ export default function AddRecurringScreen() {
                   {t.newCategory}
                 </Text>
               </Pressable>
+            </View>
+          </View>
+
+          {/* Color & Icon Customizer Section */}
+          <View style={styles.categorySection}>
+            <Text style={styles.label}>
+              {language === 'ar' ? '🎨 تخصيص اللون والأيقونة للمعاملة المتكررة:' : '🎨 Customize Item Color & Icon:'}
+            </Text>
+
+            {/* Colors Grid */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={[styles.label, { fontSize: 12, color: colors.textSecondary }]}>
+                {language === 'ar' ? 'اختر اللون المميز:' : 'Select Color:'}
+              </Text>
+              <View style={styles.colorsGrid}>
+                {WALLET_COLORS.map(c => {
+                  const isSelected = selectedColor === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedColor(c);
+                      }}
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: c },
+                        isSelected && { borderColor: '#FFF', borderWidth: 3, transform: [{ scale: 1.15 }] }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Icons Grid */}
+            <View>
+              <Text style={[styles.label, { fontSize: 12, color: colors.textSecondary }]}>
+                {language === 'ar' ? 'اختر الأيقونة المعبرة (60+ أيقونة):' : 'Select Icon (60+ icons):'}
+              </Text>
+              <View style={styles.iconsGrid}>
+                {[
+                  // Housing & Utilities
+                  'home', 'receipt-long', 'phone-android', 'lightbulb', 'wifi', 'cleaning-services', 'tv', 'weekend',
+                  // Transport & Vehicles
+                  'directions-car', 'local-gas-station', 'flight', 'directions-bus', 'commute', 'build', 'local-taxi', 'pedal-bike',
+                  // Subscriptions, Entertainment & Fitness
+                  'subscriptions', 'movie', 'videogame-asset', 'sports-esports', 'music-note', 'fitness-center', 'sports-soccer', 'spa',
+                  // Shopping, Food & Life
+                  'restaurant', 'local-cafe', 'fastfood', 'local-pizza', 'cake', 'local-grocery-store', 'shopping-bag', 'shopping-cart', 'checkroom', 'card-giftcard', 'diamond',
+                  // Family, Health & Education
+                  'child-care', 'school', 'pets', 'family-restroom', 'medical-services', 'medication',
+                  // Income, Banking & Debt
+                  'account-balance-wallet', 'laptop-mac', 'trending-up', 'work', 'credit-card', 'attach-money', 'savings', 'storefront', 'monetization-on', 'stars'
+                ].map(ic => {
+                  const isSelected = selectedIcon === ic;
+                  return (
+                    <Pressable
+                      key={ic}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedIcon(ic);
+                      }}
+                      style={[
+                        styles.iconBox,
+                        isSelected && { borderColor: selectedColor || colors.primary, borderWidth: 2, backgroundColor: (selectedColor || colors.primary) + '20' }
+                      ]}
+                    >
+                      <MaterialIcons name={ic as any} size={22} color={isSelected ? (selectedColor || colors.primary) : colors.textSecondary} />
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
           </View>
 

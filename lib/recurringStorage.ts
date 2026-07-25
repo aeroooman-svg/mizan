@@ -12,6 +12,8 @@ export interface RecurringTransaction {
   isActive: boolean;
   isVariable?: boolean;
   createdAt: string;
+  color?: string;
+  icon?: string;
 }
 
 const RECURRING_KEY = '@masarif_recurring_transactions';
