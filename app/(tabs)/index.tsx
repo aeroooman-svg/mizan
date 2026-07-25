@@ -55,6 +55,7 @@ import HealthForecastRow from '@/components/home/HealthForecastRow';
 import PendingRecurringSection from '@/components/home/PendingRecurringSection';
 import ActivePlanSection from '@/components/home/ActivePlanSection';
 import GoalsDebtsSections from '@/components/home/GoalsDebtsSections';
+import FinancialJourneySlider from '@/components/home/FinancialJourneySlider';
 import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 
@@ -640,15 +641,6 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
-        {/* Expat Family Remittance Tracker Widget */}
-        {remittanceStats && (
-          <RemittanceTrackerWidget
-            stats={remittanceStats}
-            currencySymbol={currencySymbol}
-            onSendPress={() => setIsRemittanceModalOpen(true)}
-          />
-        )}
-
         {/* Quick Glance Widget */}
         {widgetConfig.showQuickGlance !== false && (
           <QuickGlanceWidget
@@ -673,75 +665,6 @@ export default function HomeScreen() {
           <FinancialGoalWidget />
         )}
 
-        {/* Quick Tools Row: Envelope Budget & Currency Converter */}
-        <View style={{ marginHorizontal: 20, marginTop: 12, flexDirection: 'row', gap: 12 }}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/envelope-budget' as any);
-            }}
-            style={({ pressed }) => [
-              {
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: 18,
-                padding: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-          >
-            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#10B98115', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="mail" size={20} color="#10B981" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: language === 'ar' ? 'right' : 'left' }}>
-                {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budget'}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, textAlign: language === 'ar' ? 'right' : 'left' }}>
-                {language === 'ar' ? 'تحديد أظرفة النفقات' : 'Category Envelopes'}
-              </Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsCurrencyConverterOpen(true);
-            }}
-            style={({ pressed }) => [
-              {
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: 18,
-                padding: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-          >
-            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#3B82F615', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="repeat" size={20} color="#3B82F6" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: language === 'ar' ? 'right' : 'left' }}>
-                {language === 'ar' ? 'محول العملات' : 'Converter'}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, textAlign: language === 'ar' ? 'right' : 'left' }}>
-                {language === 'ar' ? 'أسعار الصرف الحية' : 'Live FX Rates'}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
-
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
           walletPending={walletPending}
@@ -753,32 +676,23 @@ export default function HomeScreen() {
           onSaveAdjustedAmount={(item, amt) => approveRecurringTransaction(item, amt)}
         />
 
-        {/* Active Plan & Savings & Debts Section */}
+        {/* Horizontal Financial Journey Slider (Budgets, Goals, Subscriptions, Remittances) */}
         {selectedWallet && (
-          <View style={{ marginHorizontal: 20, marginTop: 16, gap: 20 }}>
-            {/* Widget 0: Smart Financial Plan Widget */}
-            <ActivePlanSection
-              plan={plan}
-              goals={goals}
-              debts={debts}
-              walletTransactions={walletTransactions}
-              selectedWalletId={selectedWallet?.id}
-              currencySymbol={currencySymbol}
-              language={language as 'ar' | 'en'}
-              colors={colors}
-            />
-
-            {/* Widget 1 & 2 & 3: Goals, Debts and Picture */}
-            <GoalsDebtsSections
-              goals={goals}
-              debts={debts}
-              plan={plan}
-              walletTransactions={walletTransactions}
-              selectedWalletId={selectedWallet?.id}
-              currencySymbol={currencySymbol}
-              language={language as 'ar' | 'en'}
-              colors={colors}
-            />
+          <FinancialJourneySlider
+            plan={plan}
+            goals={goals}
+            debts={debts}
+            budgets={budgets}
+            remittanceStats={remittanceStats}
+            walletTransactions={walletTransactions}
+            selectedWalletId={selectedWallet?.id}
+            currencySymbol={currencySymbol}
+            language={language as 'ar' | 'en'}
+            colors={colors}
+            onOpenRemittanceModal={() => setIsRemittanceModalOpen(true)}
+            onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
+          />
+        )}
 
             {/* Widget 4: AI Smart Financial Tip of the Day */}
             <View
@@ -820,8 +734,6 @@ export default function HomeScreen() {
                 {getSmartTip()}
               </Text>
             </View>
-          </View>
-        )}
       </ScrollView>
 
 
