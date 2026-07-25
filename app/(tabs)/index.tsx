@@ -964,6 +964,36 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  if (selectedWallet) {
+                    router.push(`/share-wallet?walletId=${selectedWallet.id}` as any);
+                  } else {
+                    Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى اختيار محفظة أولاً' : 'Select a wallet first');
+                  }
+                }}
+              >
+                <Ionicons name="share-social-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'مشاركة المحفظة الحالية' : 'Share Current Wallet'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/join-wallet' as any);
+                }}
+              >
+                <Ionicons name="link-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/envelope-budget' as any);
                 }}
               >
