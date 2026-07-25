@@ -3,13 +3,16 @@
  * 
  * Handles wallet sharing operations: generating share codes,
  * joining shared wallets, listing members, etc.
+ * Supports both online API sync and local offline fallback.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from './query-client';
 
 const SHARE_CODES_KEY = '@masarif_share_codes';
+const SHARE_REGISTRY_KEY = '@masarif_share_registry';
 const SHARED_MEMBERS_CACHE_KEY = '@masarif_shared_members_cache';
+const WALLETS_KEY = '@masarif_wallets';
 
 export interface SharedMember {
   id: string;
@@ -25,7 +28,7 @@ export interface ShareInfo {
   members: SharedMember[];
 }
 
-// ── Local Share Code Storage (for offline) ─────────────
+// ── Local Share Code Storage & Registry ─────────────────
 
 async function getLocalShareCodes(): Promise<Record<string, string>> {
   try {
@@ -36,10 +39,24 @@ async function getLocalShareCodes(): Promise<Record<string, string>> {
   }
 }
 
-async function saveLocalShareCode(walletId: string, code: string): Promise<void> {
+async function saveLocalShareCode(walletId: string, code: string, walletName?: string): Promise<void> {
   const codes = await getLocalShareCodes();
   codes[walletId] = code;
   await AsyncStorage.setItem(SHARE_CODES_KEY, JSON.stringify(codes));
+
+  // Register in local share registry
+  try {
+    const registryData = await AsyncStorage.getItem(SHARE_REGISTRY_KEY);
+    const registry = registryData ? JSON.parse(registryData) : {};
+    registry[code] = {
+      walletId,
+      walletName: walletName || 'Shared Wallet',
+      createdAt: new Date().toISOString(),
+    };
+    await AsyncStorage.setItem(SHARE_REGISTRY_KEY, JSON.stringify(registry));
+  } catch (e) {
+    console.warn('Failed to update share registry:', e);
+  }
 }
 
 // ── Share Code Generation ──────────────────────────────
@@ -57,16 +74,30 @@ function generateCode(): string {
  * Generate or retrieve a share code for a wallet
  */
 export async function getOrCreateShareCode(walletId: string): Promise<string> {
+  // Get wallet name from local storage if available
+  let walletName = 'Shared Wallet';
+  try {
+    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    if (rawWallets) {
+      const wallets = JSON.parse(rawWallets);
+      const target = wallets.find((w: any) => w.id === walletId);
+      if (target) walletName = target.name;
+    }
+  } catch {}
+
   // Check local first
   const codes = await getLocalShareCodes();
-  if (codes[walletId]) return codes[walletId];
+  if (codes[walletId]) {
+    await saveLocalShareCode(walletId, codes[walletId], walletName);
+    return codes[walletId];
+  }
 
   // Try API
   try {
     const response = await apiRequest('POST', `/api/wallets/${walletId}/share`);
     if (response.ok) {
       const data = await response.json();
-      await saveLocalShareCode(walletId, data.shareCode);
+      await saveLocalShareCode(walletId, data.shareCode, walletName);
       return data.shareCode;
     }
   } catch {
@@ -75,25 +106,96 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
 
   // Generate locally
   const code = generateCode();
-  await saveLocalShareCode(walletId, code);
+  await saveLocalShareCode(walletId, code, walletName);
   return code;
 }
 
 /**
- * Join a shared wallet using a share code
+ * Join a shared wallet using a share code (supports online API & offline fallback)
  */
 export async function joinSharedWallet(code: string): Promise<{ success: boolean; walletName?: string; error?: string }> {
+  const cleanCode = code.trim().toUpperCase();
+  
+  // 1. Try Online Server API
   try {
-    const response = await apiRequest('POST', '/api/wallets/join', { shareCode: code });
-    const data = await response.json();
-    
+    const response = await apiRequest('POST', '/api/wallets/join', { shareCode: cleanCode });
     if (response.ok) {
+      const data = await response.json();
       return { success: true, walletName: data.walletName };
     }
-    return { success: false, error: data.error || 'Failed to join' };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Network error' };
+  } catch (e) {
+    // Server un-reachable or offline, proceed to local registry check
   }
+
+  // 2. Offline / Local Fallback Check
+  try {
+    // Check local registry first
+    const registryData = await AsyncStorage.getItem(SHARE_REGISTRY_KEY);
+    const registry = registryData ? JSON.parse(registryData) : {};
+    let matchedInfo = registry[cleanCode];
+
+    let targetWallet: any = null;
+    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    const wallets = rawWallets ? JSON.parse(rawWallets) : [];
+
+    if (matchedInfo) {
+      targetWallet = wallets.find((w: any) => w.id === matchedInfo.walletId);
+    } else {
+      // Search all wallets directly by shareCode
+      const localCodes = await getLocalShareCodes();
+      targetWallet = wallets.find((w: any) => w.shareCode === cleanCode || (w.id && localCodes[w.id] === cleanCode));
+    }
+
+    if (!targetWallet && matchedInfo) {
+      // Reconstruct wallet if found in registry but missing locally
+      targetWallet = {
+        id: matchedInfo.walletId,
+        name: matchedInfo.walletName || 'المحفظة المشتركة',
+        currency: 'EGP',
+        icon: 'people',
+        color: '#4F46E5',
+        cardStyle: 'glass',
+        createdAt: new Date().toISOString(),
+        shareCode: cleanCode,
+      };
+    }
+
+    if (targetWallet) {
+      // Add local user as a member
+      const newMember: SharedMember = {
+        id: `mem_${Date.now()}`,
+        userId: `user_${Date.now()}`,
+        username: 'عضو جديد (مشارك)',
+        role: 'editor',
+        joinedAt: new Date().toISOString(),
+      };
+
+      const existingMembers = await getLocalMembersCache(targetWallet.id);
+      const updatedMembers = [...existingMembers, newMember];
+      await saveLocalMembersCache(targetWallet.id, updatedMembers);
+
+      // Save/update wallet in local storage
+      const existingIdx = wallets.findIndex((w: any) => w.id === targetWallet.id);
+      targetWallet.sharedWith = JSON.stringify(updatedMembers.map(m => ({ userId: m.userId, username: m.username, role: m.role })));
+      targetWallet.shareCode = cleanCode;
+
+      if (existingIdx !== -1) {
+        wallets[existingIdx] = targetWallet;
+      } else {
+        wallets.push(targetWallet);
+      }
+      await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(wallets));
+
+      return { success: true, walletName: targetWallet.name };
+    }
+  } catch (e: any) {
+    console.error('Error during local wallet join:', e);
+  }
+
+  return {
+    success: false,
+    error: 'كود المشاركة غير صحيح أو تعذر العثور على المحفظة (تأكد من كتابة الكود الصحيح)',
+  };
 }
 
 /**
@@ -210,3 +312,4 @@ export function getSharedMemberCount(sharedWith: string | null | undefined): num
     return 0;
   }
 }
+

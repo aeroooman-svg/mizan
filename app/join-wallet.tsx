@@ -16,11 +16,13 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { useTransactions } from '@/lib/TransactionContext';
 import { joinSharedWallet } from '@/lib/sharingService';
 
 export default function JoinWalletScreen() {
   const { colors } = useTheme();
   const { language } = useLanguage();
+  const { refresh } = useTransactions();
   const isAr = language === 'ar';
   const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
 
@@ -44,6 +46,7 @@ export default function JoinWalletScreen() {
     setLoading(false);
 
     if (result.success) {
+      await refresh();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         isAr ? 'تم الانضمام! 🎉' : 'Joined! 🎉',
