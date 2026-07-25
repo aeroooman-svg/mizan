@@ -1303,7 +1303,7 @@ export default function AddTransactionScreen() {
       </Modal>
 
       {/* Custom Category Modal */}
-      <Modal visible={customModalVisible} animationType="slide" transparent>
+      <Modal visible={customModalVisible} animationType="slide" transparent onRequestClose={() => setCustomModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <SafeAreaView style={styles.customCatSheet}>
             <View style={styles.calcHeader}>
@@ -1322,7 +1322,7 @@ export default function AddTransactionScreen() {
                 <Text style={styles.label}>{t.categoryNameAr}</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="مثال: اشتراكات"
+                  placeholder="مثال: اشتراكات، قهوة، صيانة..."
                   placeholderTextColor={Colors.textTertiary}
                   value={customNameAr}
                   onChangeText={setCustomNameAr}
@@ -1334,7 +1334,7 @@ export default function AddTransactionScreen() {
                 <Text style={styles.label}>{t.categoryNameEn}</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="e.g. Subscriptions"
+                  placeholder="e.g. Subscriptions, Coffee, Care..."
                   placeholderTextColor={Colors.textTertiary}
                   value={customNameEn}
                   onChangeText={setCustomNameEn}
@@ -1358,7 +1358,7 @@ export default function AddTransactionScreen() {
                         style={[
                           styles.colorCircle,
                           { backgroundColor: c },
-                          isSelected && { borderColor: '#000', borderWidth: 2, transform: [{ scale: 1.15 }] }
+                          isSelected && { borderColor: '#FFF', borderWidth: 3, transform: [{ scale: 1.15 }] }
                         ]}
                       />
                     );
@@ -1381,7 +1381,7 @@ export default function AddTransactionScreen() {
                         }}
                         style={[
                           styles.iconBox,
-                          isSelected && { borderColor: customColor, borderWidth: 2, backgroundColor: customColor + '12' }
+                          isSelected && { borderColor: customColor, borderWidth: 2, backgroundColor: customColor + '20' }
                         ]}
                       >
                         <MaterialIcons name={ic as any} size={22} color={isSelected ? customColor : Colors.textSecondary} />
@@ -1390,14 +1390,24 @@ export default function AddTransactionScreen() {
                   })}
                 </View>
               </View>
+            </ScrollView>
 
+            {/* Pinned Bottom Footer Save Button */}
+            <View style={styles.modalFooter}>
               <Pressable
                 onPress={handleSaveCustomCategory}
-                style={({ pressed }) => [styles.modalSaveBtn, { backgroundColor: customColor }, pressed && { opacity: 0.9 }]}
+                style={({ pressed }) => [
+                  styles.modalSaveBtn,
+                  { backgroundColor: customColor || Colors.primary },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
               >
-                <Text style={styles.modalSaveText}>{t.createWallet}</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.modalSaveText}>
+                  {language === 'ar' ? 'حفظ وإنشاء الفئة' : 'Save & Create Category'}
+                </Text>
               </Pressable>
-            </ScrollView>
+            </View>
           </SafeAreaView>
         </View>
       </Modal>
@@ -1870,11 +1880,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 20,
+    maxHeight: '85%',
+    flexDirection: 'column',
   },
   customCatBody: {
     padding: 20,
+    paddingBottom: 30,
     gap: 16,
   },
   formGroup: {
@@ -1897,9 +1908,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 6,
   },
   colorCircle: {
-    width: SCREEN_WIDTH * 0.13,
+    width: SCREEN_WIDTH * 0.12,
     aspectRatio: 1,
-    borderRadius: SCREEN_WIDTH * 0.065,
+    borderRadius: SCREEN_WIDTH * 0.06,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -1909,30 +1920,39 @@ const getStyles = (colors: any) => StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
     paddingVertical: 6,
-    maxHeight: 180,
   },
   iconBox: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   modalSaveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 10,
+    height: 48,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   modalSaveText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: colors.text,
+    fontSize: 15,
+    color: '#FFFFFF',
   },
   recurringAlertBanner: {
     flexDirection: 'row',
