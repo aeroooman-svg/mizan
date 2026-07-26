@@ -46,7 +46,7 @@ function RootLayoutNav() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setMinTimeElapsed(true);
-    }, 4000); // 4.0 seconds for comfortably reading the Quranic verse
+    }, 6000); // 6.0 seconds for comfortably reading the Quranic verse
     return () => clearTimeout(timer);
   }, []);
 

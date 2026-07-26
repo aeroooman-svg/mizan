@@ -1,4 +1,8 @@
-import { expenseCategories, incomeCategories } from './categories';
+/**
+ * Enhanced Bank Statement & SMS Parser Engine (lib/statementParser.ts)
+ * Parses CSV files, copied Bank SMS logs, and raw statements for Arab/MENA banks:
+ * CIB, NBE (الأهلي), Banque Misr, QNB, InstaPay, Vodafone Cash, Al Rajhi, KFH, etc.
+ */
 
 export interface ParsedStatementTransaction {
   id: string;
@@ -10,56 +14,52 @@ export interface ParsedStatementTransaction {
   selected: boolean;
 }
 
-// Category keyword matching helper
 function inferCategory(description: string, type: 'income' | 'expense'): string {
   const desc = description.toLowerCase();
 
   if (type === 'income') {
-    if (desc.includes('salary') || desc.includes('مرتب') || desc.includes('راتب') || desc.includes('payroll')) {
+    if (desc.includes('salary') || desc.includes('مرتب') || desc.includes('راتب') || desc.includes('payroll') || desc.includes('تحويل راتب')) {
       return 'salary';
     }
     if (desc.includes('freelance') || desc.includes('مستقل') || desc.includes('مشروع')) {
       return 'freelance';
     }
-    if (desc.includes('dividend') || desc.includes('profit') || desc.includes('ارباح') || desc.includes('استثمار')) {
+    if (desc.includes('dividend') || desc.includes('profit') || desc.includes('ارباح') || desc.includes('أرباح') || desc.includes('استثمار') || desc.includes('فوائد')) {
       return 'investment';
     }
-    if (desc.includes('gift') || desc.includes('هدية') || desc.includes('منحة')) {
+    if (desc.includes('gift') || desc.includes('هدية') || desc.includes('منحة') || desc.includes('عيدية')) {
       return 'gift';
     }
     return 'other_income';
   } else {
-    if (desc.includes('uber') || desc.includes('careem') || desc.includes('metro') || desc.includes('مواصلات') || desc.includes('بنزين') || desc.includes('غاز') || desc.includes('fuel')) {
+    if (desc.includes('uber') || desc.includes('careem') || desc.includes('metro') || desc.includes('مواصلات') || desc.includes('بنزين') || desc.includes('وقود') || desc.includes('غاز') || desc.includes('fuel') || desc.includes('تاكسي')) {
       return 'transport';
     }
-    if (desc.includes('supermarket') || desc.includes('carrefour') || desc.includes('hyper') || desc.includes('مطعم') || desc.includes('أكل') || desc.includes('طعام') || desc.includes('kfc') || desc.includes('mcdonald') || desc.includes('talabat')) {
+    if (desc.includes('supermarket') || desc.includes('carrefour') || desc.includes('hyper') || desc.includes('مطعم') || desc.includes('أكل') || desc.includes('طعام') || desc.includes('kfc') || desc.includes('mcdonald') || desc.includes('talabat') || desc.includes('سوبرماركت') || desc.includes('أسواق')) {
       return 'food';
     }
-    if (desc.includes('bill') || desc.includes('vodafone') || desc.includes('orange') || desc.includes('etisalat') || desc.includes('we') || desc.includes('كهرباء') || desc.includes('مياه') || desc.includes('فاتورة')) {
+    if (desc.includes('bill') || desc.includes('vodafone') || desc.includes('orange') || desc.includes('etisalat') || desc.includes('we') || desc.includes('كهرباء') || desc.includes('مياه') || desc.includes('فاتورة') || desc.includes('فواتير') || desc.includes('فوري') || desc.includes('fawry')) {
       return 'bills';
     }
-    if (desc.includes('pharmacy') || desc.includes('hospital') || desc.includes('دواء') || desc.includes('صيدلية') || desc.includes('علاج') || desc.includes('doctor')) {
+    if (desc.includes('pharmacy') || desc.includes('hospital') || desc.includes('دواء') || desc.includes('صيدلية') || desc.includes('علاج') || desc.includes('doctor') || desc.includes('مستشفى') || desc.includes('عيادة')) {
       return 'health';
     }
-    if (desc.includes('school') || desc.includes('course') || desc.includes('جامعة') || desc.includes('مدرسة') || desc.includes('دراسة')) {
+    if (desc.includes('school') || desc.includes('course') || desc.includes('جامعة') || desc.includes('مدرسة') || desc.includes('دراسة') || desc.includes('رسوم')) {
       return 'education';
     }
-    if (desc.includes('cinema') || desc.includes('netlfix') || desc.includes('spotify') || desc.includes('سينما') || desc.includes('ترفيه')) {
+    if (desc.includes('cinema') || desc.includes('netflix') || desc.includes('spotify') || desc.includes('سينما') || desc.includes('ترفيه') || desc.includes('ألعاب')) {
       return 'entertainment';
     }
     if (desc.includes('rent') || desc.includes('إيجار') || desc.includes('ايجار')) {
       return 'rent';
     }
-    if (desc.includes('clothes') || desc.includes('zara') || desc.includes('h&m') || desc.includes('ملابس')) {
+    if (desc.includes('clothes') || desc.includes('zara') || desc.includes('h&m') || desc.includes('ملابس') || desc.includes('أزياء')) {
       return 'clothes';
     }
     return 'other';
   }
 }
 
-/**
- * Parse CSV or plain text bank statements
- */
 export function parseBankStatementText(rawText: string): ParsedStatementTransaction[] {
   if (!rawText || !rawText.trim()) return [];
 
@@ -69,7 +69,6 @@ export function parseBankStatementText(rawText: string): ParsedStatementTransact
   let isCSV = false;
   let delimiter = ',';
 
-  // Check first line for CSV format
   const firstLine = lines[0];
   if (firstLine.includes(';') || firstLine.includes(',') || firstLine.includes('\t')) {
     isCSV = true;
@@ -77,7 +76,6 @@ export function parseBankStatementText(rawText: string): ParsedStatementTransact
     else if (firstLine.includes('\t')) delimiter = '\t';
   }
 
-  // Helper date validator/formatter
   const formatDateStr = (rawDate: string): string => {
     const cleaned = rawDate.trim().replace(/['"]/g, '');
     const dateObj = new Date(cleaned);
@@ -88,7 +86,6 @@ export function parseBankStatementText(rawText: string): ParsedStatementTransact
   };
 
   lines.forEach((line, index) => {
-    // Skip header line if CSV
     if (isCSV && index === 0 && (line.toLowerCase().includes('date') || line.toLowerCase().includes('تاريخ') || line.toLowerCase().includes('amount') || line.toLowerCase().includes('مبلغ'))) {
       return;
     }
@@ -96,16 +93,14 @@ export function parseBankStatementText(rawText: string): ParsedStatementTransact
     if (isCSV) {
       const parts = line.split(delimiter).map(p => p.trim().replace(/^["']|["']$/g, ''));
       if (parts.length >= 3) {
-        // Try identifying date, description, amount
         let dateVal = parts[0];
         let descVal = parts[1];
         let amountValStr = parts[2];
         let typeVal: 'income' | 'expense' = 'expense';
 
-        // Check if 4th column specifies credit/debit
         if (parts.length >= 4) {
           const typeStr = parts[3].toLowerCase();
-          if (typeStr.includes('cr') || typeStr.includes('credit') || typeStr.includes('إيداع') || typeStr.includes('دخل')) {
+          if (typeStr.includes('cr') || typeStr.includes('credit') || typeStr.includes('إيداع') || typeStr.includes('دخل') || typeStr.includes('إضافة')) {
             typeVal = 'income';
           }
         }
@@ -131,18 +126,28 @@ export function parseBankStatementText(rawText: string): ParsedStatementTransact
         });
       }
     } else {
-      // Regex parsing for plain SMS/Text formatted bank lines
-      // e.g. "2026-07-15 Purchase of EGP 350.00 at Carrefour"
-      const amountMatch = line.match(/(?:EGP|USD|KWD|SAR|AED|\$|ج\.م|د\.ك)?\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+      // Enhanced Bank SMS & Statement regex matching (InstaPay, CIB, NBE, QNB, Vodafone Cash, etc.)
+      const amountMatch = line.match(/(?:EGP|USD|KWD|SAR|AED|\$|ج\.م|د\.ك)?\s*([0-9]+(?:[\.\,][0-9]{1,2})?)/i);
       if (amountMatch) {
-        const num = parseFloat(amountMatch[1]);
+        const cleanedVal = amountMatch[1].replace(',', '.');
+        const num = parseFloat(cleanedVal);
         if (!isNaN(num) && num > 0) {
           let typeVal: 'income' | 'expense' = 'expense';
-          if (line.includes('received') || line.includes('deposit') || line.includes('إيداع') || line.includes('إضافة') || line.includes('تحويل إليك')) {
+          const lowerLine = line.toLowerCase();
+          if (
+            lowerLine.includes('received') ||
+            lowerLine.includes('deposit') ||
+            lowerLine.includes('إيداع') ||
+            lowerLine.includes('إضافة') ||
+            lowerLine.includes('تحويل إليك') ||
+            lowerLine.includes('تم استلام') ||
+            lowerLine.includes('إيداع نقدي') ||
+            lowerLine.includes('credit')
+          ) {
             typeVal = 'income';
           }
 
-          const descVal = line.replace(amountMatch[0], '').trim() || 'Bank Line';
+          const descVal = line.replace(amountMatch[0], '').trim() || 'معاملة بنكية';
           const categoryId = inferCategory(descVal, typeVal);
 
           transactions.push({

@@ -120,6 +120,7 @@ export default function SendRemittanceModal({
 
       // 1. Deduct from Source Expat Wallet (KWD)
       await addTransaction({
+        id: 'rem_exp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         type: 'expense',
         amount: numAmount,
         category: 'other',
@@ -127,11 +128,13 @@ export default function SendRemittanceModal({
           ? `حوالة عائلية للبيت: ${note}`
           : `حوالة عائلية إلى (${toWallet.name})`,
         date: nowStr,
+        createdAt: nowStr,
         walletId: fromWallet.id,
       });
 
       // 2. Add Income to Target Home Wallet (EGP)
       await addTransaction({
+        id: 'rem_inc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         type: 'income',
         amount: convertedAmount,
         category: 'other',
@@ -139,6 +142,7 @@ export default function SendRemittanceModal({
           ? `حوالة واردة من المغترب: ${note}`
           : `حوالة واردة من (${fromWallet.name})`,
         date: nowStr,
+        createdAt: nowStr,
         walletId: toWallet.id,
       });
 

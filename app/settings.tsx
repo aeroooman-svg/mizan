@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   SafeAreaView,
   Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -73,11 +74,16 @@ export default function SettingsScreen() {
   const [confirmedPin, setConfirmedPin] = useState('');
   const [pinError, setPinError] = useState('');
 
-  // Auto SMS Automation States
+  // Auto SMS Automation & Backup States
   const [autoSmsEnabled, setAutoSmsEnabledState] = useState(true);
   const [autoSmsAutoSave, setAutoSmsAutoSaveState] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [userGoal, setUserGoal] = useState<string>('saving');
+
+  // Restore Backup Modal States
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [restoreJsonInput, setRestoreJsonInput] = useState('');
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     async function loadUserGoal() {
@@ -317,6 +323,35 @@ export default function SettingsScreen() {
     } catch (e) {
       console.error(e);
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل إنشاء النسخة الاحتياطية' : 'Failed to create backup');
+    }
+  };
+
+  const handlePerformRestore = async () => {
+    if (!restoreJsonInput.trim()) {
+      Alert.alert(isAr ? 'تنبيه' : 'Alert', isAr ? 'يرجى لصق نص كود النسخة الاحتياطية (JSON)' : 'Please paste backup JSON content');
+      return;
+    }
+    setIsRestoring(true);
+    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      const ok = await restoreFullBackup(restoreJsonInput);
+      if (ok) {
+        await refresh();
+        safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+        setIsRestoreModalOpen(false);
+        setRestoreJsonInput('');
+        Alert.alert(
+          isAr ? 'تمت الاستعادة بنجاح 🎉' : 'Restore Successful 🎉',
+          isAr ? 'تم استرجاع كامل معاملاتك ومحافظك وخططك بنجاح!' : 'All transactions, wallets, and plans restored successfully!'
+        );
+      } else {
+        safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Invalid backup JSON file');
+      }
+    } catch (e) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ أثناء استعادة البيانات' : 'Failed to restore backup');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -775,6 +810,23 @@ export default function SettingsScreen() {
                   {isAr ? 'تصدير نسخة احتياطية كاملة (JSON Backup)' : 'Create Full Backup (JSON)'}
                 </Text>
               </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  safeHaptic.selection();
+                  setIsRestoreModalOpen(true);
+                }}
+                style={({ pressed }) => [
+                  styles.exportBtn,
+                  { backgroundColor: '#3B82F615', borderWidth: 1, borderColor: '#3B82F630' },
+                  pressed && { opacity: 0.9 }
+                ]}
+              >
+                <Ionicons name="cloud-upload-outline" size={18} color="#3B82F6" />
+                <Text style={[styles.exportBtnText, { color: '#3B82F6' }]}>
+                  {isAr ? 'استعادة نسخة احتياطية (Restore JSON Backup)' : 'Restore Full Backup (JSON)'}
+                </Text>
+              </Pressable>
             </View>
           </View>
 
@@ -964,6 +1016,83 @@ export default function SettingsScreen() {
         </Modal>
 
         {/* Bank SMS Automation Guide Modal */}
+        {/* Restore Backup Modal */}
+        <Modal
+          visible={isRestoreModalOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsRestoreModalOpen(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ width: '100%', maxWidth: 450, backgroundColor: colors.surface, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="cloud-upload" size={22} color="#3B82F6" />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                    {isAr ? 'استعادة النسخة الاحتياطية (JSON)' : 'Restore JSON Backup'}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setIsRestoreModalOpen(false)}>
+                  <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+                </Pressable>
+              </View>
+
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                {isAr
+                  ? 'الصق كود الـ JSON الخفي أو محتوى ملف النسخة الاحتياطية هنا لاستعادة كافة البيانات فوراً:'
+                  : 'Paste your JSON backup data string below to restore transactions and wallets:'}
+              </Text>
+
+              <TextInput
+                style={{
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: 12,
+                  fontFamily: 'Cairo_400Regular',
+                  fontSize: 12,
+                  color: colors.text,
+                  minHeight: 120,
+                  textAlignVertical: 'top',
+                }}
+                placeholder='{"version": "1.0.0", "transactions": [...] }'
+                placeholderTextColor={colors.textSecondary + '80'}
+                multiline
+                value={restoreJsonInput}
+                onChangeText={setRestoreJsonInput}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                <Pressable
+                  onPress={() => setIsRestoreModalOpen(false)}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.textSecondary }}>
+                    {isAr ? 'إلغاء' : 'Cancel'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handlePerformRestore}
+                  disabled={isRestoring}
+                  style={{ flex: 2, paddingVertical: 12, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                >
+                  {isRestoring ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                        {isAr ? 'تأكيد الاستعادة' : 'Confirm Restore'}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         <SmsAutomationGuideModal
           visible={isGuideOpen}
           onClose={() => setIsGuideOpen(false)}

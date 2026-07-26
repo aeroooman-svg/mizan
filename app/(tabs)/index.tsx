@@ -900,6 +900,32 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  router.push('/import-statement' as any);
+                }}
+              >
+                <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? '📄 الربط البنكي واستيراد الكشوفات' : '📄 Bank Sync & Statement Import'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/widgets-setup' as any);
+                }}
+              >
+                <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? '📱 ودجت الشاشة الرئيسية والقفل' : '📱 Live Home & Lock Screen Widgets'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/(tabs)/stats');
                 }}
               >
