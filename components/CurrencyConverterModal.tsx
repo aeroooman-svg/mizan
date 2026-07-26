@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,13 +22,13 @@ import {
 } from '@/lib/currencyApi';
 
 const CURRENCIES = [
-  { code: 'USD', symbol: '$', nameAr: 'دولار أمريكي', nameEn: 'US Dollar' },
-  { code: 'EGP', symbol: 'ج.م', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound' },
-  { code: 'KWD', symbol: 'د.ك', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar' },
-  { code: 'SAR', symbol: 'ر.س', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal' },
-  { code: 'AED', symbol: 'د.إ', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham' },
-  { code: 'EUR', symbol: '€', nameAr: 'يورو أوروبي', nameEn: 'Euro' },
-  { code: 'GBP', symbol: '£', nameAr: 'جنيه إسترليني', nameEn: 'British Pound' },
+  { code: 'USD', symbol: '$', nameAr: 'دولار أمريكي', flag: '🇺🇸' },
+  { code: 'EGP', symbol: 'ج.م', nameAr: 'جنيه مصري', flag: '🇪🇬' },
+  { code: 'SAR', symbol: 'ر.س', nameAr: 'ريال سعودي', flag: '🇸🇦' },
+  { code: 'KWD', symbol: 'د.ك', nameAr: 'دينار كويتي', flag: '🇰🇼' },
+  { code: 'AED', symbol: 'د.إ', nameAr: 'درهم إماراتي', flag: '🇦🇪' },
+  { code: 'EUR', symbol: '€', nameAr: 'يورو أوروبي', flag: '🇪🇺' },
+  { code: 'GBP', symbol: '£', nameAr: 'جنيه إسترليني', flag: '🇬🇧' },
 ];
 
 interface CurrencyConverterModalProps {
@@ -38,7 +39,8 @@ interface CurrencyConverterModalProps {
 export default function CurrencyConverterModal({ visible, onClose }: CurrencyConverterModalProps) {
   const { colors, theme } = useTheme();
   const { language } = useLanguage();
-  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const isAr = language === 'ar';
+  const styles = useMemo(() => getStyles(colors, theme, isAr), [colors, theme, isAr]);
 
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('EGP');
@@ -51,6 +53,13 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
     try {
       const details = await getExchangeRatesDetails(force);
       setRatesData(details);
+      if (force) {
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+        Alert.alert(
+          isAr ? 'تم التحديث! 🔄' : 'Updated! 🔄',
+          isAr ? 'تم تحديث أسعار الصرف الحية بنجاح من المورد العالمي.' : 'Live exchange rates refreshed successfully.',
+        );
+      }
     } catch (e) {
       console.warn('Error fetching currency rates:', e);
     } finally {
@@ -77,15 +86,17 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
   }, [fromCurrency, toCurrency, ratesData]);
 
   const handleSwap = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
   };
 
   const handleRefresh = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     fetchRates(true);
   };
+
+  const fromCurrObj = CURRENCIES.find(c => c.code === fromCurrency) || CURRENCIES[0];
+  const toCurrObj = CURRENCIES.find(c => c.code === toCurrency) || CURRENCIES[1];
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -98,7 +109,7 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
                 <Ionicons name="repeat" size={20} color="#10B981" />
               </View>
               <Text style={styles.title}>
-                {language === 'ar' ? 'محول العملات الحي' : 'Live Currency Converter'}
+                {isAr ? 'محول العملات الحي' : 'Live Currency Converter'}
               </Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
@@ -107,7 +118,7 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
-            {/* Rates Status Indicator */}
+            {/* Status & Refresh Bar */}
             <View style={styles.statusRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View
@@ -118,29 +129,29 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
                 />
                 <Text style={styles.statusText}>
                   {ratesData?.isLive
-                    ? language === 'ar'
-                      ? 'أسعار حية مباشرة'
-                      : 'Live Market Rates'
-                    : language === 'ar'
-                    ? 'أسعار غير متصلة (أوفلاين)'
-                    : 'Offline Fallback Rates'}
+                    ? (isAr ? 'أسعار حية مباشرة' : 'Live Market Rates')
+                    : (isAr ? 'أسعار أوفلاين محفوضة' : 'Offline Fallback Rates')}
                 </Text>
               </View>
-              <Pressable onPress={handleRefresh} style={styles.refreshBtn} disabled={loading}>
+              <Pressable
+                onPress={handleRefresh}
+                style={({ pressed }) => [styles.refreshBtn, pressed && { opacity: 0.8 }]}
+                disabled={loading}
+              >
                 {loading ? (
                   <ActivityIndicator size="small" color="#10B981" />
                 ) : (
                   <Ionicons name="refresh-outline" size={16} color="#10B981" />
                 )}
                 <Text style={styles.refreshBtnText}>
-                  {language === 'ar' ? 'تحديث' : 'Refresh'}
+                  {isAr ? 'تحديث الأسعار' : 'Refresh'}
                 </Text>
               </Pressable>
             </View>
 
             {/* Input Amount */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>{language === 'ar' ? 'المبلغ المراد تحويله' : 'Amount'}</Text>
+              <Text style={styles.label}>{isAr ? 'المبلغ المراد تحويله' : 'Amount to Convert'}</Text>
               <TextInput
                 style={styles.amountInput}
                 keyboardType="numeric"
@@ -151,12 +162,15 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
               />
             </View>
 
-            {/* Currency Selection Grid */}
-            <View style={styles.converterBox}>
-              {/* From Currency Selector */}
+            {/* Currency Selector Grid (Clear & Fixed Direction) */}
+            <View style={styles.selectorsRow}>
+              {/* FROM Currency Column */}
               <View style={styles.selectorCol}>
-                <Text style={styles.label}>{language === 'ar' ? 'من' : 'From'}</Text>
-                <ScrollView style={{ maxHeight: 120 }}>
+                <View style={styles.colHeader}>
+                  <Text style={styles.colLabel}>{isAr ? 'من (العملة الأصلية)' : 'From'}</Text>
+                  <Text style={styles.activeFlag}>{fromCurrObj.flag}</Text>
+                </View>
+                <ScrollView style={{ maxHeight: 130 }} showsVerticalScrollIndicator={false}>
                   {CURRENCIES.map((c) => (
                     <Pressable
                       key={'from_' + c.code}
@@ -172,7 +186,7 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
                           fromCurrency === c.code && styles.currencyTextSelected,
                         ]}
                       >
-                        {c.code} ({c.symbol})
+                        {c.flag} {c.code} ({c.symbol})
                       </Text>
                     </Pressable>
                   ))}
@@ -181,13 +195,16 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
 
               {/* Swap Button */}
               <Pressable onPress={handleSwap} style={styles.swapBtn}>
-                <Ionicons name="swap-horizontal" size={22} color="#FFFFFF" />
+                <Ionicons name="swap-horizontal" size={20} color="#FFFFFF" />
               </Pressable>
 
-              {/* To Currency Selector */}
+              {/* TO Currency Column */}
               <View style={styles.selectorCol}>
-                <Text style={styles.label}>{language === 'ar' ? 'إلى' : 'To'}</Text>
-                <ScrollView style={{ maxHeight: 120 }}>
+                <View style={styles.colHeader}>
+                  <Text style={styles.colLabel}>{isAr ? 'إلى (العملة المستهدفة)' : 'To'}</Text>
+                  <Text style={styles.activeFlag}>{toCurrObj.flag}</Text>
+                </View>
+                <ScrollView style={{ maxHeight: 130 }} showsVerticalScrollIndicator={false}>
                   {CURRENCIES.map((c) => (
                     <Pressable
                       key={'to_' + c.code}
@@ -203,7 +220,7 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
                           toCurrency === c.code && styles.currencyTextSelected,
                         ]}
                       >
-                        {c.code} ({c.symbol})
+                        {c.flag} {c.code} ({c.symbol})
                       </Text>
                     </Pressable>
                   ))}
@@ -214,14 +231,14 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
             {/* Result Box */}
             <View style={styles.resultCard}>
               <Text style={styles.resultLabel}>
-                {language === 'ar' ? 'النتيجة المحولة' : 'Converted Result'}
+                {isAr ? `النتيجة بحسب سعر الصرف الحالي` : 'Converted Result'}
               </Text>
               <Text style={styles.resultAmount}>
                 {convertedValue.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}{' '}
-                <Text style={styles.resultCurrency}>{toCurrency}</Text>
+                <Text style={styles.resultCurrency}>{toCurrObj.symbol}</Text>
               </Text>
 
               <View style={styles.rateUnitRow}>
@@ -237,7 +254,7 @@ export default function CurrencyConverterModal({ visible, onClose }: CurrencyCon
   );
 }
 
-const getStyles = (colors: any, theme: string) =>
+const getStyles = (colors: any, theme: string, isAr: boolean) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
@@ -315,27 +332,42 @@ const getStyles = (colors: any, theme: string) =>
       fontSize: 13,
       fontFamily: 'Cairo_600SemiBold',
       color: colors.textSecondary,
+      textAlign: 'left',
     },
     amountInput: {
       backgroundColor: colors.background,
       borderRadius: 14,
       paddingHorizontal: 16,
       paddingVertical: 12,
-      fontSize: 20,
+      fontSize: 24,
       fontFamily: 'Cairo_700Bold',
       color: colors.text,
       borderWidth: 1,
       borderColor: colors.border,
       textAlign: 'center',
     },
-    converterBox: {
-      flexDirection: 'row',
+    selectorsRow: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 8,
     },
     selectorCol: {
       flex: 1,
       gap: 6,
+    },
+    colHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 4,
+    },
+    colLabel: {
+      fontSize: 12,
+      fontFamily: 'Cairo_700Bold',
+      color: colors.text,
+    },
+    activeFlag: {
+      fontSize: 14,
     },
     currencyItem: {
       paddingVertical: 8,
@@ -361,13 +393,13 @@ const getStyles = (colors: any, theme: string) =>
       fontFamily: 'Cairo_700Bold',
     },
     swapBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: '#10B981',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 20,
+      marginTop: 18,
       elevation: 3,
     },
     resultCard: {
