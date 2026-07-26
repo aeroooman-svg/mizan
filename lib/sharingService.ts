@@ -3,7 +3,7 @@
  * 
  * Handles wallet sharing operations: generating share codes,
  * joining shared wallets, listing members, etc.
- * Supports both online API sync and local offline fallback.
+ * Supports online API, cloud KVDB relay (cross-device/tab sync), and local offline fallback.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +28,33 @@ export interface ShareInfo {
   members: SharedMember[];
 }
 
+// ── Cloud Relay KV Sync (For Universal Cross-Device / Tab Joining) ───
+
+async function publishCloudShareRelay(code: string, walletInfo: any): Promise<void> {
+  try {
+    await fetch(`https://kvdb.io/masarif_share_v1/${code}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(walletInfo),
+    });
+  } catch (e) {
+    console.warn('Cloud relay publish notice:', e);
+  }
+}
+
+async function fetchCloudShareRelay(code: string): Promise<any> {
+  try {
+    const res = await fetch(`https://kvdb.io/masarif_share_v1/${code}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (e) {
+    console.warn('Cloud relay fetch notice:', e);
+  }
+  return null;
+}
+
 // ── Local Share Code Storage & Registry ─────────────────
 
 async function getLocalShareCodes(): Promise<Record<string, string>> {
@@ -39,24 +66,30 @@ async function getLocalShareCodes(): Promise<Record<string, string>> {
   }
 }
 
-async function saveLocalShareCode(walletId: string, code: string, walletName?: string): Promise<void> {
+async function saveLocalShareCode(walletId: string, code: string, walletName?: string, currency?: string): Promise<void> {
   const codes = await getLocalShareCodes();
   codes[walletId] = code;
   await AsyncStorage.setItem(SHARE_CODES_KEY, JSON.stringify(codes));
+
+  const info = {
+    walletId,
+    walletName: walletName || 'Shared Wallet',
+    currency: currency || 'SAR',
+    createdAt: new Date().toISOString(),
+  };
 
   // Register in local share registry
   try {
     const registryData = await AsyncStorage.getItem(SHARE_REGISTRY_KEY);
     const registry = registryData ? JSON.parse(registryData) : {};
-    registry[code] = {
-      walletId,
-      walletName: walletName || 'Shared Wallet',
-      createdAt: new Date().toISOString(),
-    };
+    registry[code] = info;
     await AsyncStorage.setItem(SHARE_REGISTRY_KEY, JSON.stringify(registry));
   } catch (e) {
     console.warn('Failed to update share registry:', e);
   }
+
+  // Publish to cloud relay KVDB for universal cross-device / browser access
+  publishCloudShareRelay(code, info);
 }
 
 // ── Share Code Generation ──────────────────────────────
@@ -74,21 +107,24 @@ function generateCode(): string {
  * Generate or retrieve a share code for a wallet
  */
 export async function getOrCreateShareCode(walletId: string): Promise<string> {
-  // Get wallet name from local storage if available
   let walletName = 'Shared Wallet';
+  let currency = 'SAR';
   try {
     const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
     if (rawWallets) {
       const wallets = JSON.parse(rawWallets);
       const target = wallets.find((w: any) => w.id === walletId);
-      if (target) walletName = target.name;
+      if (target) {
+        walletName = target.name;
+        currency = target.currency || 'SAR';
+      }
     }
   } catch {}
 
   // Check local first
   const codes = await getLocalShareCodes();
   if (codes[walletId]) {
-    await saveLocalShareCode(walletId, codes[walletId], walletName);
+    await saveLocalShareCode(walletId, codes[walletId], walletName, currency);
     return codes[walletId];
   }
 
@@ -97,7 +133,7 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
     const response = await apiRequest('POST', `/api/wallets/${walletId}/share`);
     if (response.ok) {
       const data = await response.json();
-      await saveLocalShareCode(walletId, data.shareCode, walletName);
+      await saveLocalShareCode(walletId, data.shareCode, walletName, currency);
       return data.shareCode;
     }
   } catch {
@@ -106,15 +142,18 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
 
   // Generate locally
   const code = generateCode();
-  await saveLocalShareCode(walletId, code, walletName);
+  await saveLocalShareCode(walletId, code, walletName, currency);
   return code;
 }
 
 /**
- * Join a shared wallet using a share code (supports online API & offline fallback)
+ * Join a shared wallet using a share code (supports online API, cloud KVDB relay & offline fallback)
  */
 export async function joinSharedWallet(code: string): Promise<{ success: boolean; walletName?: string; error?: string }> {
   const cleanCode = code.trim().toUpperCase();
+  if (cleanCode.length < 6) {
+    return { success: false, error: 'كود المشاركة يتكون من 6 أحرف/أرقام' };
+  }
   
   // 1. Try Online Server API
   try {
@@ -124,15 +163,17 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       return { success: true, walletName: data.walletName };
     }
   } catch (e) {
-    // Server un-reachable or offline, proceed to local registry check
+    // Server un-reachable or offline, proceed to Cloud Relay KV & Local Check
   }
 
-  // 2. Offline / Local Fallback Check
+  // 2. Try Cloud Relay KV (for universal cross-device instant sharing)
+  let cloudInfo = await fetchCloudShareRelay(cleanCode);
+
+  // 3. Fallback Check Local Registry
   try {
-    // Check local registry first
     const registryData = await AsyncStorage.getItem(SHARE_REGISTRY_KEY);
     const registry = registryData ? JSON.parse(registryData) : {};
-    let matchedInfo = registry[cleanCode];
+    let matchedInfo = cloudInfo || registry[cleanCode];
 
     let targetWallet: any = null;
     const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
@@ -141,23 +182,27 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
     if (matchedInfo) {
       targetWallet = wallets.find((w: any) => w.id === matchedInfo.walletId);
     } else {
-      // Search all wallets directly by shareCode
       const localCodes = await getLocalShareCodes();
       targetWallet = wallets.find((w: any) => w.shareCode === cleanCode || (w.id && localCodes[w.id] === cleanCode));
     }
 
     if (!targetWallet && matchedInfo) {
-      // Reconstruct wallet if found in registry but missing locally
+      // Reconstruct wallet from cloud / registry info
       targetWallet = {
-        id: matchedInfo.walletId,
+        id: matchedInfo.walletId || `w_shared_${cleanCode}`,
         name: matchedInfo.walletName || 'المحفظة المشتركة',
-        currency: 'EGP',
+        currency: matchedInfo.currency || 'SAR',
         icon: 'people',
-        color: '#4F46E5',
+        color: '#10B981',
         cardStyle: 'glass',
         createdAt: new Date().toISOString(),
         shareCode: cleanCode,
       };
+    }
+
+    // Fallback search by matching code directly in wallet names/codes
+    if (!targetWallet) {
+      targetWallet = wallets.find((w: any) => w.shareCode === cleanCode);
     }
 
     if (targetWallet) {
@@ -194,7 +239,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
 
   return {
     success: false,
-    error: 'كود المشاركة غير صحيح أو تعذر العثور على المحفظة (تأكد من كتابة الكود الصحيح)',
+    error: 'تعذر الانضمام للمحفظة. يرجى التأكد من صحة كود المشاركة المكون من 6 أحرف.',
   };
 }
 
@@ -248,7 +293,6 @@ export async function updateSharedMemberRole(
       return true;
     }
   } catch {
-    // Local update fallback
     const members = await getLocalMembersCache(walletId);
     const updated = members.map(m => m.userId === userId ? { ...m, role: newRole } : m);
     await saveLocalMembersCache(walletId, updated);
@@ -312,4 +356,3 @@ export function getSharedMemberCount(sharedWith: string | null | undefined): num
     return 0;
   }
 }
-

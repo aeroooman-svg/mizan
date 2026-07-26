@@ -18,11 +18,12 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useTransactions } from '@/lib/TransactionContext';
 import { joinSharedWallet } from '@/lib/sharingService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function JoinWalletScreen() {
   const { colors } = useTheme();
   const { language } = useLanguage();
-  const { refresh } = useTransactions();
+  const { refresh, selectWallet } = useTransactions();
   const isAr = language === 'ar';
   const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
 
@@ -40,31 +41,46 @@ export default function JoinWalletScreen() {
     }
 
     setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
 
     const result = await joinSharedWallet(trimmed);
     setLoading(false);
 
     if (result.success) {
       await refresh();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Activate the joined wallet automatically
+      try {
+        const rawWallets = await AsyncStorage.getItem('@masarif_wallets');
+        if (rawWallets) {
+          const list = JSON.parse(rawWallets);
+          const joined = list.find((w: any) => w.shareCode === trimmed || w.name === result.walletName);
+          if (joined && selectWallet) {
+            await selectWallet(joined.id);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not auto-select joined wallet:', e);
+      }
+      await refresh();
+
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
       Alert.alert(
-        isAr ? 'تم الانضمام! 🎉' : 'Joined! 🎉',
+        isAr ? 'تم الانضمام بنجاح! 🎉' : 'Joined Successfully! 🎉',
         isAr
-          ? `تم الانضمام لمحفظة "${result.walletName}" بنجاح!`
+          ? `تم الانضمام لمحفظة "${result.walletName}" وتفعيلها كمحفظة نشطة!`
           : `Successfully joined wallet "${result.walletName}"!`,
         [
           {
-            text: isAr ? 'موافق' : 'OK',
-            onPress: () => router.replace('/'),
+            text: isAr ? 'دخول المحفظة' : 'View Wallet',
+            onPress: () => router.replace('/(tabs)' as any),
           },
         ],
       );
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
       Alert.alert(
-        isAr ? 'فشل الانضمام' : 'Failed to Join',
-        result.error || (isAr ? 'الكود غير صحيح أو منتهي الصلاحية' : 'Invalid or expired code'),
+        isAr ? 'تعذر الانضمام' : 'Failed to Join',
+        result.error || (isAr ? 'الكود غير صحيح أو تعذر العثور على المحفظة' : 'Invalid or expired code'),
       );
     }
   };
