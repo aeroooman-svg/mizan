@@ -30,6 +30,10 @@ interface FinancialJourneySliderProps {
   remittanceStats: RemittanceStats | null;
   walletTransactions: Transaction[];
   selectedWalletId: string | undefined;
+  totalConsolidatedBalance?: number;
+  totalIncomeVal?: number;
+  totalExpenseVal?: number;
+  healthScore?: number;
   currencySymbol: string;
   language: 'ar' | 'en';
   colors: any;
@@ -45,6 +49,10 @@ export default function FinancialJourneySlider({
   remittanceStats,
   walletTransactions,
   selectedWalletId,
+  totalConsolidatedBalance = 0,
+  totalIncomeVal = 0,
+  totalExpenseVal = 0,
+  healthScore = 100,
   currencySymbol,
   language,
   colors,
@@ -112,7 +120,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex(activeIndex === 0 ? 4 : activeIndex - 1);
+              scrollToIndex(activeIndex === 0 ? 5 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -130,7 +138,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex((activeIndex + 1) % 5);
+              scrollToIndex((activeIndex + 1) % 6);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -157,11 +165,61 @@ export default function FinancialJourneySlider({
         onMomentumScrollEnd={(e) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const idx = Math.round(offsetX / (cardWidth + cardGap));
-          if (idx !== activeIndex && idx >= 0 && idx <= 4) {
+          if (idx !== activeIndex && idx >= 0 && idx <= 5) {
             setActiveIndex(idx);
           }
         }}
       >
+        {/* CARD 1: الصورة الكاملة للوضع المالي */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>
+              {isAr ? 'الصورة الكاملة للوضع المالي' : 'Full Financial Picture'}
+            </Text>
+            <Pressable onPress={() => router.push('/(tabs)/stats')}>
+              <Text style={styles.cardAction}>{isAr ? 'التحليلات' : 'Analytics'}</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ flex: 1, justifyContent: 'center', gap: 12 }}>
+            <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '25', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, marginBottom: 2 }}>
+                {isAr ? 'إجمالي الرصيد الشامل للمحافظ' : 'Total Consolidated Balance'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: totalConsolidatedBalance >= 0 ? colors.income : colors.expense }}>
+                {totalConsolidatedBalance >= 0 ? '' : '-'}
+                {formatCurrency(Math.abs(totalConsolidatedBalance), language)} {currencySymbol}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt + '60', padding: 10, borderRadius: 14 }}>
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الدخل' : 'Income'}</Text>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981', marginTop: 2 }}>
+                  +{formatCurrency(totalIncomeVal, language)}
+                </Text>
+              </View>
+
+              <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'المصروف' : 'Expense'}</Text>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#EF4444', marginTop: 2 }}>
+                  -{formatCurrency(totalExpenseVal, language)}
+                </Text>
+              </View>
+
+              <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الصحة' : 'Health'}</Text>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#F59E0B', marginTop: 2 }}>
+                  {healthScore}%
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
         {/* CARD 1: الأهداف المالية وحصالة الادخار */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -353,7 +411,7 @@ export default function FinancialJourneySlider({
 
       {/* Pagination Dots */}
       <View style={styles.paginationDots}>
-        {[0, 1, 2, 3, 4].map((idx) => (
+        {[0, 1, 2, 3, 4, 5].map((idx) => (
           <Pressable
             key={idx}
             onPress={() => scrollToIndex(idx)}

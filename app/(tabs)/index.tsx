@@ -435,12 +435,21 @@ export default function HomeScreen() {
   };
 
   const handleDeleteWallet = (id: string, name: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+    const confirmMsg = language === 'ar'
+      ? `هل أنت متاكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
+      : `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`;
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(confirmMsg)) {
+        removeWallet(id);
+      }
+      return;
+    }
+
     Alert.alert(
       language === 'ar' ? 'حذف المحفظة' : t.deleteWallet,
-      language === 'ar'
-        ? `هل أنت متاكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
-        : `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`,
+      confirmMsg,
       [
         { text: t.cancel, style: 'cancel' },
         { text: t.delete, style: 'destructive', onPress: () => removeWallet(id) },
@@ -681,6 +690,10 @@ export default function HomeScreen() {
             remittanceStats={remittanceStats}
             walletTransactions={walletTransactions}
             selectedWalletId={selectedWallet?.id}
+            totalConsolidatedBalance={totalConsolidatedBalance}
+            totalIncomeVal={totalIncome}
+            totalExpenseVal={totalExpense}
+            healthScore={healthScore}
             currencySymbol={currencySymbol}
             language={language as 'ar' | 'en'}
             colors={colors}
