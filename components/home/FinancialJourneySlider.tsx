@@ -66,6 +66,7 @@ export default function FinancialJourneySlider({
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [recurringItems, setRecurringItems] = useState<RecurringTransaction[]>([]);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const isAr = language === 'ar';
 
@@ -82,6 +83,16 @@ export default function FinancialJourneySlider({
     });
     return () => { isMounted = false; };
   }, [selectedWalletId, walletTransactions]);
+
+  const totalSavedInGoals = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
+  const totalOwed = debts
+    .filter((d) => d.type === 'debt_to_others' && d.status !== 'paid')
+    .reduce((s, d) => s + (d.amount - (d.paidAmount || 0)), 0);
+  const totalCollect = debts
+    .filter((d) => d.type === 'debt_to_me' && d.status !== 'paid')
+    .reduce((s, d) => s + (d.amount - (d.paidAmount || 0)), 0);
+
+  const totalNetSavings = totalConsolidatedBalance + totalSavedInGoals - totalOwed + totalCollect;
 
   const totalGoalSaved = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalGoalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
@@ -181,44 +192,124 @@ export default function FinancialJourneySlider({
             </Pressable>
           </View>
 
-          <View style={{ flex: 1, justifyContent: 'center', gap: 12 }}>
-            <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '25', alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, marginBottom: 2 }}>
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <View style={{ backgroundColor: colors.primary + '12', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.primary + '25', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, marginBottom: 1 }}>
                 {isAr ? 'إجمالي الرصيد الشامل للمحافظ' : 'Total Consolidated Balance'}
               </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: totalConsolidatedBalance >= 0 ? colors.income : colors.expense }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 20, color: totalConsolidatedBalance >= 0 ? colors.income : colors.expense }}>
                 {totalConsolidatedBalance >= 0 ? '' : '-'}
                 {formatCurrency(Math.abs(totalConsolidatedBalance), language)} {currencySymbol}
               </Text>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt + '60', padding: 10, borderRadius: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt + '60', padding: 8, borderRadius: 12 }}>
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الدخل' : 'Income'}</Text>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981', marginTop: 2 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#10B981', marginTop: 1 }}>
                   +{formatCurrency(totalIncomeVal, language)}
                 </Text>
               </View>
 
-              <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+              <View style={{ width: 1, height: 20, backgroundColor: colors.border }} />
 
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'المصروف' : 'Expense'}</Text>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#EF4444', marginTop: 2 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#EF4444', marginTop: 1 }}>
                   -{formatCurrency(totalExpenseVal, language)}
                 </Text>
               </View>
 
-              <View style={{ width: 1, height: 24, backgroundColor: colors.border }} />
+              <View style={{ width: 1, height: 20, backgroundColor: colors.border }} />
 
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الصحة' : 'Health'}</Text>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#F59E0B', marginTop: 2 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#F59E0B', marginTop: 1 }}>
                   {healthScore}%
                 </Text>
               </View>
             </View>
-          </View>
+
+            {/* Expandable Dropdown Toggle Button */}
+            <Pressable
+              onPress={() => {
+                try { Haptics.selectionAsync(); } catch {}
+                setIsDetailsExpanded(!isDetailsExpanded);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 6,
+                paddingHorizontal: 8,
+                backgroundColor: colors.primary + '15',
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: colors.primary + '30',
+              }}
+            >
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                {isAr ? (isDetailsExpanded ? 'إخفاء التفاصيل 🔼' : 'عرض باقي تفاصيل الوضع المالي 🔽') : (isDetailsExpanded ? 'Hide Details 🔼' : 'Show Full Breakdown 🔽')}
+              </Text>
+            </Pressable>
+
+            {/* Detailed Breakdown List (When Expanded) */}
+            {isDetailsExpanded && (
+              <View style={{ gap: 6, backgroundColor: colors.surfaceAlt + '40', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                {/* Savings Goals */}
+                <Pressable onPress={() => router.push('/savings-goals')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="gift-outline" size={13} color="#10B981" />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                      {isAr ? `الحصالات الادخارية (${goals.length}):` : `Savings Jars (${goals.length}):`}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
+                    +{formatCurrency(totalSavedInGoals, language)} {currencySymbol}
+                  </Text>
+                </Pressable>
+
+                {/* Debts I Owe */}
+                <Pressable onPress={() => router.push('/debts')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="receipt-outline" size={13} color={totalOwed > 0 ? '#EF4444' : colors.textSecondary} />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: totalOwed > 0 ? '#EF4444' : colors.textSecondary }}>
+                      {isAr ? 'ديون مستحقة عليّ:' : 'Debts I Owe:'}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: totalOwed > 0 ? '#EF4444' : colors.textSecondary }}>
+                    {totalOwed > 0 ? '-' : ''}{formatCurrency(totalOwed, language)} {currencySymbol}
+                  </Text>
+                </Pressable>
+
+                {/* Loans Owed to Me */}
+                <Pressable onPress={() => router.push('/debts')} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="cash-outline" size={13} color={totalCollect > 0 ? '#10B981' : colors.textSecondary} />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: totalCollect > 0 ? '#10B981' : colors.textSecondary }}>
+                      {isAr ? 'أموال لي بالخارج:' : 'Loans Owed to Me:'}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: totalCollect > 0 ? '#10B981' : colors.textSecondary }}>
+                    {totalCollect > 0 ? '+' : ''}{formatCurrency(totalCollect, language)} {currencySymbol}
+                  </Text>
+                </Pressable>
+
+                <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 1 }} />
+
+                {/* Total Net Savings */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }}>
+                    {isAr ? 'الصافي الادخاري الكلي الحقيقي:' : 'Total Net Savings:'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: totalNetSavings >= 0 ? colors.income : colors.expense }}>
+                    {formatCurrency(totalNetSavings, language)} {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
         </View>
         {/* CARD 1: الأهداف المالية وحصالة الادخار */}
         <View style={styles.card}>
