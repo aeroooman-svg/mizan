@@ -1195,12 +1195,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.border,
     gap: 8,
   },
   themeCardOptionActive: {
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.primary + '18',
     borderColor: colors.primary,
   },
   themeCardHeader: {
@@ -1220,7 +1220,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   themeCardText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.text,
   },
   themeCardTextActive: {
     color: colors.primary,

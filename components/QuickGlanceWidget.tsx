@@ -99,18 +99,18 @@ export default function QuickGlanceWidget({
         end={{ x: 1, y: 1 }}
       />
 
-      {/* Outer Border Glow */}
-      <View style={[StyleSheet.absoluteFill, styles.borderGlow, { borderColor: walletAccent + '30' }]} />
+      {/* Outer Border */}
+      <View style={[StyleSheet.absoluteFill, styles.borderGlow, { borderColor: colors.border }]} />
 
       {/* Main Content */}
       <View style={styles.widgetContent}>
         
         {/* Row 1: Wallet Name Badge */}
         <View style={styles.headerRow}>
-          {/* Wallet Name Badge - Prominent & Distinctive */}
-          <View style={[styles.walletBadge, { backgroundColor: walletAccent + '18', borderColor: walletAccent + '40' }]}>
-            <Ionicons name="wallet" size={16} color={walletAccent} />
-            <Text style={[styles.walletBadgeText, { color: walletAccent }]} numberOfLines={1}>
+          {/* Wallet Name Badge - Soft, Elegant & Modern */}
+          <View style={[styles.walletBadge, { backgroundColor: colors.surfaceAlt }]}>
+            <Ionicons name="wallet-outline" size={16} color={colors.primary} />
+            <Text style={[styles.walletBadgeText, { color: colors.text }]} numberOfLines={1}>
               {data.walletName || (isAr ? 'المحفظة الرئيسية' : 'Main Wallet')}
             </Text>
           </View>

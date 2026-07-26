@@ -1165,7 +1165,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface + '60',
+    backgroundColor: colors.surface,
     padding: 12,
     gap: 12,
     overflow: 'hidden',
@@ -1194,7 +1194,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt + '80',
+    backgroundColor: colors.surfaceAlt,
     borderRadius: 10,
     padding: 3,
     borderWidth: 0.5,
@@ -1231,7 +1231,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     padding: 14,
-    backgroundColor: colors.surface + '80',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     elevation: 4,
@@ -1270,7 +1270,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   donutCard: {
     marginHorizontal: 20,
-    backgroundColor: colors.surface + '60',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
@@ -1314,7 +1314,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginTop: 10,
   },
   premiumCategoryCard: {
-    backgroundColor: colors.surface + '60',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
@@ -1408,7 +1408,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textSecondary,
   },
   barChartCard: {
-    backgroundColor: colors.surface + '60',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 18,
@@ -1419,7 +1419,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   budgetsSection: {
     marginHorizontal: 20,
     marginTop: 20,
-    backgroundColor: colors.surface + '60',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,

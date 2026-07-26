@@ -586,10 +586,10 @@ export default function HomeScreen() {
             }}
             style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
           >
-            <Ionicons name="menu-outline" size={24} color="#FFF" />
+            <Ionicons name="menu-outline" size={24} color={colors.text} />
           </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.topBarTitle}>MIZAN</Text>
+            <Text style={[styles.topBarTitle, { color: colors.text }]}>MIZAN</Text>
             <View style={[
               styles.syncStatusBadge,
               { backgroundColor: syncState === 'synced' ? 'rgba(16, 185, 129, 0.2)' : syncState === 'syncing' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)' }
@@ -616,7 +616,7 @@ export default function HomeScreen() {
               }}
               style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="notifications-outline" size={24} color="#FFF" />
+              <Ionicons name="notifications-outline" size={24} color={colors.text} />
               {unreadNotifCount > 0 && (
                 <View style={styles.notifBadge}>
                   <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
@@ -630,7 +630,7 @@ export default function HomeScreen() {
               }}
               style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="settings-outline" size={24} color="#FFF" />
+              <Ionicons name="settings-outline" size={24} color={colors.text} />
             </Pressable>
           </View>
         </View>
