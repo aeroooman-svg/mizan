@@ -87,15 +87,22 @@ async function saveLocalShareCode(walletId: string, code: string, walletName?: s
     }
   } catch {}
 
+  let ownerUsername = 'صاحب المحفظة';
+  try {
+    const username = await AsyncStorage.getItem('@masarif_username');
+    if (username) ownerUsername = username;
+  } catch {}
+
   const info = {
     walletId: walletId,
-    walletName: fullWallet?.name || walletName || 'Shared Wallet',
+    walletName: fullWallet?.name || walletName || 'المحفظة المشتركة',
     currency: fullWallet?.currency || currency || 'SAR',
-    icon: fullWallet?.icon || 'wallet',
+    icon: fullWallet?.icon || 'people',
     color: fullWallet?.color || '#10B981',
     cardStyle: fullWallet?.cardStyle || 'glass',
     createdAt: fullWallet?.createdAt || new Date().toISOString(),
     shareCode: code,
+    ownerUsername: ownerUsername,
     transactions: walletTransactions,
   };
 
@@ -240,6 +247,12 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       };
     }
 
+    let ownerName = 'مالك المحفظة';
+    try {
+      const savedUser = await AsyncStorage.getItem('@masarif_username');
+      if (savedUser) ownerName = savedUser;
+    } catch {}
+
     if (targetWallet) {
       // Import transactions array from cloud info if present
       if (cloudInfo && Array.isArray(cloudInfo.transactions) && cloudInfo.transactions.length > 0) {
@@ -249,7 +262,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
           const existingIds = new Set(txs.map((t: any) => t.id));
           const newTxs = cloudInfo.transactions.map((t: any) => ({
             ...t,
-            walletId: targetWallet.id, // Ensure walletId matches targetWallet
+            walletId: targetWallet.id,
           })).filter((t: any) => !existingIds.has(t.id));
           if (newTxs.length > 0) {
             txs = [...txs, ...newTxs];
@@ -260,17 +273,32 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
         }
       }
 
-      // Add local user as a member
-      const newMember: SharedMember = {
-        id: `mem_${Date.now()}`,
-        userId: `user_${Date.now()}`,
-        username: 'عضو جديد (مشارك)',
+      // Add local user as a member with clear role name
+      const ownerMember: SharedMember = {
+        id: `mem_owner_${targetWallet.id}`,
+        userId: `owner_${targetWallet.id}`,
+        username: matchedInfo?.ownerUsername || 'مالك المحفظة الأصلي',
+        role: 'owner',
+        joinedAt: targetWallet.createdAt || new Date().toISOString(),
+      };
+
+      const localUserMember: SharedMember = {
+        id: `mem_joined_${Date.now()}`,
+        userId: `user_joined_${Date.now()}`,
+        username: ownerName !== 'مالك المحفظة' ? ownerName : 'أنت (عضو مشارك)',
         role: 'editor',
         joinedAt: new Date().toISOString(),
       };
 
-      const existingMembers = await getLocalMembersCache(targetWallet.id);
-      const updatedMembers = [...existingMembers, newMember];
+      let existingMembers = await getLocalMembersCache(targetWallet.id);
+      if (existingMembers.length === 0) {
+        existingMembers = [ownerMember];
+      }
+      
+      // Avoid duplicate self additions
+      const hasSelf = existingMembers.some(m => m.username === localUserMember.username || m.role === 'editor');
+      const updatedMembers = hasSelf ? existingMembers : [...existingMembers, localUserMember];
+      
       await saveLocalMembersCache(targetWallet.id, updatedMembers);
 
       // Save/update wallet in local storage
