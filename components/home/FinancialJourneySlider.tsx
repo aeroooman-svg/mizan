@@ -90,12 +90,12 @@ export default function FinancialJourneySlider({
           </Text>
         </View>
 
-        <View style={styles.arrowControls}>
-          {/* Previous Card Button */}
+        <View style={[styles.arrowControls, { flexDirection: isAr ? 'row-reverse' : 'row' }]}>
+          {/* Left Arrow Button (<) */}
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              const nextIdx = activeIndex === 0 ? 3 : activeIndex - 1;
+              const nextIdx = isAr ? (activeIndex + 1) % 4 : (activeIndex === 0 ? 3 : activeIndex - 1);
               scrollToIndex(nextIdx);
             }}
             style={({ pressed }) => [
@@ -104,17 +104,17 @@ export default function FinancialJourneySlider({
             ]}
           >
             <Ionicons
-              name={isAr ? 'chevron-forward' : 'chevron-back'}
+              name="chevron-back"
               size={18}
               color={colors.text}
             />
           </Pressable>
 
-          {/* Next Card Button */}
+          {/* Right Arrow Button (>) */}
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              const nextIdx = (activeIndex + 1) % 4;
+              const nextIdx = isAr ? (activeIndex === 0 ? 3 : activeIndex - 1) : (activeIndex + 1) % 4;
               scrollToIndex(nextIdx);
             }}
             style={({ pressed }) => [
@@ -123,7 +123,7 @@ export default function FinancialJourneySlider({
             ]}
           >
             <Ionicons
-              name={isAr ? 'chevron-back' : 'chevron-forward'}
+              name="chevron-forward"
               size={18}
               color={colors.text}
             />
