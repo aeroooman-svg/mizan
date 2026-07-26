@@ -27,6 +27,9 @@ import { FinancialPlan, saveFinancialPlan, getFinancialPlan } from '@/lib/planSt
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
+import { getOrCreateShareCode, syncSharedWalletByCode } from '@/lib/sharingService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export default function AddWalletScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -70,7 +73,26 @@ export default function AddWalletScreen() {
     setIsSaving(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+    let ownerName = 'مالك المحفظة الأصلي';
+    try {
+      const u = await AsyncStorage.getItem('@masarif_username');
+      if (u) ownerName = u;
+    } catch {}
+
+    const partnerName = shareWithUser.trim() || 'عضو مشارك';
+    const sharedMembersList = isShared ? [
+      { id: `mem_owner_${Date.now()}`, userId: `owner_${Date.now()}`, username: ownerName, role: 'owner', joinedAt: new Date().toISOString() },
+      { id: `mem_partner_${Date.now()}`, userId: `partner_${Date.now()}`, username: partnerName, role: 'editor', joinedAt: new Date().toISOString() }
+    ] : null;
+
+    const sharedWithJson = sharedMembersList ? JSON.stringify(sharedMembersList) : undefined;
+
     if (isEditing && existingWallet) {
+      let code = existingWallet.shareCode;
+      if (isShared) {
+        code = await getOrCreateShareCode(existingWallet.id);
+      }
+
       const updated = {
         ...existingWallet,
         name: name.trim(),
@@ -78,9 +100,14 @@ export default function AddWalletScreen() {
         icon: selectedIcon,
         color: selectedColor,
         cardStyle,
-        sharedWith: isShared ? shareWithUser.trim() : undefined,
+        shareCode: isShared ? code : existingWallet.shareCode,
+        sharedWith: sharedWithJson,
       };
       await updateWallet(updated);
+
+      if (isShared && code) {
+        await syncSharedWalletByCode(code);
+      }
 
       // Also sync financial plan currency if changed
       try {
@@ -110,8 +137,13 @@ export default function AddWalletScreen() {
       selectedIcon,
       selectedColor,
       cardStyle,
-      isShared ? shareWithUser.trim() : undefined
+      sharedWithJson
     );
+
+    if (isShared) {
+      const code = await getOrCreateShareCode(wallet.id);
+      await syncSharedWalletByCode(code);
+    }
 
     const currInfo = getCurrencyInfo(currency);
     const defaultPlan: FinancialPlan = {

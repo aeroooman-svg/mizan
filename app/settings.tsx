@@ -15,6 +15,8 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import ConfirmModal from '@/components/ConfirmModal';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -180,35 +182,30 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = async () => {
+  const [confirmModalState, setConfirmModalState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
+  const handleLogout = () => {
     safeHaptic.selection();
-    const confirmMsg = isAr ? 'هل أنت متأكد من رغبتك في تسجيل الخروج؟' : 'Are you sure you want to logout?';
-
-    const doLogout = async () => {
-      await performLogout();
-      setUser(null);
-      router.replace('/auth' as any);
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(confirmMsg);
-      if (confirmed) {
-        await doLogout();
+    setConfirmModalState({
+      visible: true,
+      title: isAr ? 'تسجيل الخروج' : 'Logout',
+      message: isAr ? 'هل أنت متأكد من رغبتك في تسجيل الخروج؟' : 'Are you sure you want to logout?',
+      confirmText: isAr ? 'تسجيل الخروج' : 'Logout',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmModalState(prev => ({ ...prev, visible: false }));
+        await performLogout();
+        setUser(null);
+        router.replace('/auth' as any);
       }
-    } else {
-      Alert.alert(
-        isAr ? 'تسجيل الخروج' : 'Logout',
-        confirmMsg,
-        [
-          { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-          {
-            text: isAr ? 'خروج' : 'Logout',
-            style: 'destructive',
-            onPress: doLogout,
-          }
-        ]
-      );
-    }
+    });
   };
 
   const handleTogglePin = async (value: boolean) => {
@@ -368,60 +365,24 @@ export default function SettingsScreen() {
 
   const handleClearAllData = () => {
     safeHaptic.notification(Haptics.NotificationFeedbackType.Warning);
-    const title = isAr ? 'مسح جميع البيانات' : 'Clear All Data';
-    const message = isAr ? 'هل أنت متأكد؟ سيتم مسح جميع المعاملات والمحافظ نهائياً.' : 'Are you sure? All transactions and wallets will be permanently deleted.';
-    
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(message);
-      if (confirmed) {
-        (async () => {
-          try {
-            await AsyncStorage.clear();
-            await refresh();
-            safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
-            window.alert(isAr ? 'تم مسح البيانات بنجاح' : 'Data cleared successfully');
-            router.replace('/');
-          } catch (e) {
-            console.error(e);
-            window.alert(isAr ? 'خطأ: فشل مسح البيانات' : 'Error: Failed to clear data');
-          }
-        })();
+    setConfirmModalState({
+      visible: true,
+      title: isAr ? 'مسح جميع البيانات' : 'Clear All Data',
+      message: isAr ? 'هل أنت متأكد؟ سيتم مسح جميع المعاملات والمحافظ نهائياً.' : 'Are you sure? All transactions and wallets will be permanently deleted.',
+      confirmText: isAr ? 'مسح نهائي' : 'Clear All',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmModalState(prev => ({ ...prev, visible: false }));
+        try {
+          await AsyncStorage.clear();
+          await refresh();
+          safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+          router.replace('/');
+        } catch (e) {
+          console.error(e);
+        }
       }
-    } else {
-      Alert.alert(
-        title,
-        message,
-        [
-          { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-          {
-            text: isAr ? 'مسح' : 'Clear',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await AsyncStorage.clear();
-                await refresh();
-                safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
-                Alert.alert(
-                  isAr ? 'نجاح' : 'Success',
-                  isAr ? 'تم مسح البيانات بنجاح' : 'Data cleared successfully',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        router.replace('/');
-                      }
-                    }
-                  ]
-                );
-              } catch (e) {
-                console.error(e);
-                Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل مسح البيانات' : 'Failed to clear data');
-              }
-            }
-          }
-        ]
-      );
-    }
+    });
   };
 
 
@@ -1107,6 +1068,17 @@ export default function SettingsScreen() {
         <SmsAutomationGuideModal
           visible={isGuideOpen}
           onClose={() => setIsGuideOpen(false)}
+        />
+
+        {/* Custom Glassmorphic Confirmation Modal */}
+        <ConfirmModal
+          visible={confirmModalState.visible}
+          title={confirmModalState.title}
+          message={confirmModalState.message}
+          confirmText={confirmModalState.confirmText}
+          isDestructive={confirmModalState.isDestructive}
+          onConfirm={confirmModalState.onConfirm}
+          onCancel={() => setConfirmModalState(prev => ({ ...prev, visible: false }))}
         />
       </View>
     </KeyboardAvoidingView>

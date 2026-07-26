@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import ConfirmModal from '@/components/ConfirmModal';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
@@ -434,27 +435,33 @@ export default function HomeScreen() {
     } as any);
   };
 
+  const [confirmModalState, setConfirmModalState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
   const handleDeleteWallet = (id: string, name: string) => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-    const confirmMsg = language === 'ar'
-      ? `هل أنت متاكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
+    const title = language === 'ar' ? 'حذف المحفظة' : t.deleteWallet;
+    const message = language === 'ar'
+      ? `هل أنت متأكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
       : `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`;
 
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(confirmMsg)) {
-        removeWallet(id);
+    setConfirmModalState({
+      visible: true,
+      title,
+      message,
+      confirmText: language === 'ar' ? 'حذف المحفظة' : 'Delete Wallet',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmModalState(prev => ({ ...prev, visible: false }));
+        await removeWallet(id);
       }
-      return;
-    }
-
-    Alert.alert(
-      language === 'ar' ? 'حذف المحفظة' : t.deleteWallet,
-      confirmMsg,
-      [
-        { text: t.cancel, style: 'cancel' },
-        { text: t.delete, style: 'destructive', onPress: () => removeWallet(id) },
-      ],
-    );
+    });
   };
 
   const handleApproveConfirm = async (item: RecurringTransaction) => {
@@ -1026,15 +1033,16 @@ export default function HomeScreen() {
         onSuccess={loadRemittancesData}
       />
 
-      {/* Undo Toast Notification */}
-      {undoState && (
-        <UndoSnackbar
-          visible={undoState.visible}
-          message={undoState.message}
-          onUndo={undoState.action}
-          onDismiss={() => setUndoState(null)}
-        />
-      )}
+      {/* Custom Confirmation Modal */}
+      <ConfirmModal
+        visible={confirmModalState.visible}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText={confirmModalState.confirmText}
+        isDestructive={confirmModalState.isDestructive}
+        onConfirm={confirmModalState.onConfirm}
+        onCancel={() => setConfirmModalState(prev => ({ ...prev, visible: false }))}
+      />
     </LinearGradient>
   );
 }
