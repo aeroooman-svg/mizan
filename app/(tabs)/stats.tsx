@@ -393,13 +393,13 @@ export default function StatsScreen() {
                 setScope('monthly');
               }}
               style={[
-                { flex: 1, paddingVertical: 8, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 },
+                { flex: 1, paddingVertical: 8, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
                 scope === 'monthly' && { backgroundColor: colors.primary }
               ]}
             >
-              <Ionicons name="search-outline" size={14} color={scope === 'monthly' ? '#FFF' : colors.textSecondary} />
-              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: scope === 'monthly' ? '#FFF' : colors.textSecondary }}>
-                {language === 'ar' ? '🔍 شهري (Zoom In)' : '🔍 Monthly (Zoom In)'}
+              <Ionicons name="calendar-outline" size={16} color={scope === 'monthly' ? '#FFF' : colors.textSecondary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: scope === 'monthly' ? '#FFF' : colors.textSecondary }}>
+                {language === 'ar' ? 'شهري' : 'Monthly'}
               </Text>
             </Pressable>
 
@@ -409,13 +409,13 @@ export default function StatsScreen() {
                 setScope('yearly');
               }}
               style={[
-                { flex: 1, paddingVertical: 8, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 },
+                { flex: 1, paddingVertical: 8, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
                 scope === 'yearly' && { backgroundColor: colors.primary }
               ]}
             >
-              <Ionicons name="globe-outline" size={14} color={scope === 'yearly' ? '#FFF' : colors.textSecondary} />
-              <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: scope === 'yearly' ? '#FFF' : colors.textSecondary }}>
-                {language === 'ar' ? '🌐 سنوي (Zoom Out)' : '🌐 Yearly (Zoom Out)'}
+              <Ionicons name="stats-chart-outline" size={16} color={scope === 'yearly' ? '#FFF' : colors.textSecondary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: scope === 'yearly' ? '#FFF' : colors.textSecondary }}>
+                {language === 'ar' ? 'سنوي' : 'Yearly'}
               </Text>
             </Pressable>
           </View>
