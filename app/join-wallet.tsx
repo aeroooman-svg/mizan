@@ -41,10 +41,10 @@ export default function JoinWalletScreen() {
 
   const handleJoin = async () => {
     const trimmed = code.trim().toUpperCase();
-    if (trimmed.length < 6) {
+    if (trimmed.length < 3) {
       Alert.alert(
-        isAr ? 'خطأ' : 'Error',
-        isAr ? 'الرجاء إدخال كود مشاركة صحيح (6 أحرف)' : 'Please enter a valid 6-character share code',
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'الرجاء إدخال كود المشاركة' : 'Please enter a share code',
       );
       return;
     }
@@ -52,45 +52,43 @@ export default function JoinWalletScreen() {
     setLoading(true);
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
 
-    const result = await joinSharedWallet(trimmed);
-    setLoading(false);
+    try {
+      const result = await joinSharedWallet(trimmed);
+      setLoading(false);
 
-    if (result.success) {
-      await refresh();
-      // Activate the joined wallet automatically
-      try {
-        const rawWallets = await AsyncStorage.getItem('@masarif_wallets');
-        if (rawWallets) {
-          const list = JSON.parse(rawWallets);
-          const joined = list.find((w: any) => w.shareCode === trimmed || w.name === result.walletName);
-          if (joined && selectWallet) {
-            await selectWallet(joined.id);
+      if (result.success) {
+        await refresh();
+        // Activate the joined wallet automatically
+        try {
+          const rawWallets = await AsyncStorage.getItem('@masarif_wallets');
+          if (rawWallets) {
+            const list = JSON.parse(rawWallets);
+            const joined = list.find((w: any) => w.shareCode === trimmed || w.id === `w_shared_${trimmed.toLowerCase()}` || w.name === result.walletName);
+            if (joined && selectWallet) {
+              await selectWallet(joined.id);
+            }
           }
+        } catch (e) {
+          console.warn('Could not auto-select joined wallet:', e);
         }
-      } catch (e) {
-        console.warn('Could not auto-select joined wallet:', e);
-      }
-      await refresh();
+        await refresh();
 
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-      Alert.alert(
-        isAr ? 'تم الانضمام بنجاح! 🎉' : 'Joined Successfully! 🎉',
-        isAr
-          ? `تم الانضمام لمحفظة "${result.walletName}" وتفعيلها كمحفظة نشطة!`
-          : `Successfully joined wallet "${result.walletName}"!`,
-        [
-          {
-            text: isAr ? 'دخول المحفظة' : 'View Wallet',
-            onPress: () => router.replace('/(tabs)' as any),
-          },
-        ],
-      );
-    } else {
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
-      Alert.alert(
-        isAr ? 'تعذر الانضمام' : 'Failed to Join',
-        result.error || (isAr ? 'الكود غير صحيح أو تعذر العثور على المحفظة' : 'Invalid or expired code'),
-      );
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+        
+        // Immediate redirect to Home tab
+        router.replace('/(tabs)' as any);
+      } else {
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
+        Alert.alert(
+          isAr ? 'تعذر الانضمام' : 'Failed to Join',
+          result.error || (isAr ? 'الكود غير صحيح' : 'Invalid code'),
+        );
+      }
+    } catch (err) {
+      setLoading(false);
+      console.error('handleJoin error:', err);
+      // Fail-proof fallback redirect
+      router.replace('/(tabs)' as any);
     }
   };
 
@@ -157,10 +155,10 @@ export default function JoinWalletScreen() {
             {/* Join Button */}
             <Pressable
               onPress={handleJoin}
-              disabled={loading || code.trim().length < 6}
+              disabled={loading || code.trim().length < 1}
               style={({ pressed }) => [
                 styles.joinBtn,
-                (loading || code.trim().length < 6) && styles.joinBtnDisabled,
+                (loading || code.trim().length < 1) && styles.joinBtnDisabled,
                 pressed && { opacity: 0.9 },
               ]}
             >
