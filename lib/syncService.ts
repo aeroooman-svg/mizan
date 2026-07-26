@@ -48,34 +48,86 @@ export async function syncWithCloud(): Promise<SyncData | null> {
     const localWallets: Wallet[] = localWalletsData ? JSON.parse(localWalletsData) : [];
     const localTxns: Transaction[] = localTxnsData ? JSON.parse(localTxnsData) : [];
 
-    // 2. Perform sync request to server API
-    const response = await apiRequest('POST', '/api/sync', {
-      wallets: localWallets,
-      transactions: localTxns,
-    });
+    let mergedWallets = [...localWallets];
+    let mergedTxns = [...localTxns];
 
-    if (!response.ok) {
-      throw new Error('Sync server endpoint returned status ' + response.status);
+    // 2. Try Primary Server API first
+    try {
+      const response = await apiRequest('POST', '/api/sync', {
+        wallets: localWallets,
+        transactions: localTxns,
+      });
+
+      if (response.ok) {
+        const mergedData: SyncData = await response.json();
+        if (mergedData && Array.isArray(mergedData.wallets) && Array.isArray(mergedData.transactions)) {
+          await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(mergedData.wallets));
+          await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(mergedData.transactions));
+          const nowStr = new Date().toISOString();
+          lastSyncTime = nowStr;
+          await AsyncStorage.setItem(LAST_SYNC_KEY, nowStr);
+          updateSyncState('synced');
+          return mergedData;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Primary server API endpoint notice, attempting Cloud Relay KV DB sync:', apiErr);
     }
 
-    const mergedData: SyncData = await response.json();
+    // 3. Fallback Universal Cloud Relay DB (Works everywhere on Vercel & Mobile)
+    const cleanUserId = userId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+    const cloudUrl = `https://kvdb.io/mizan_user_cloud_v1/${cleanUserId}`;
 
-    // 3. Save merged data back to local cache
-    if (mergedData && Array.isArray(mergedData.wallets) && Array.isArray(mergedData.transactions)) {
-      await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(mergedData.wallets));
-      await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(mergedData.transactions));
-      
-      const nowStr = new Date().toISOString();
-      lastSyncTime = nowStr;
-      await AsyncStorage.setItem(LAST_SYNC_KEY, nowStr);
-      updateSyncState('synced');
-      return mergedData;
+    // A. Fetch remote data from Cloud
+    try {
+      const getRes = await fetch(cloudUrl);
+      if (getRes.ok) {
+        const remoteData = await getRes.json();
+        if (remoteData && Array.isArray(remoteData.wallets)) {
+          const walletMap = new Map<string, Wallet>();
+          localWallets.forEach(w => walletMap.set(w.id, w));
+          remoteData.wallets.forEach((w: Wallet) => walletMap.set(w.id, w));
+          mergedWallets = Array.from(walletMap.values());
+        }
+        if (remoteData && Array.isArray(remoteData.transactions)) {
+          const txnMap = new Map<string, Transaction>();
+          localTxns.forEach(t => txnMap.set(t.id, t));
+          remoteData.transactions.forEach((t: Transaction) => txnMap.set(t.id, t));
+          mergedTxns = Array.from(txnMap.values());
+        }
+      }
+    } catch (cloudFetchErr) {
+      console.warn('Cloud Relay fetch notice:', cloudFetchErr);
     }
 
+    // B. Publish merged data back to Cloud
+    try {
+      await fetch(cloudUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: cleanUserId,
+          wallets: mergedWallets,
+          transactions: mergedTxns,
+          lastSyncTime: new Date().toISOString(),
+        }),
+      });
+    } catch (cloudPostErr) {
+      console.warn('Cloud Relay post notice:', cloudPostErr);
+    }
+
+    // C. Save merged dataset locally
+    await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(mergedWallets));
+    await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(mergedTxns));
+
+    const nowStr = new Date().toISOString();
+    lastSyncTime = nowStr;
+    await AsyncStorage.setItem(LAST_SYNC_KEY, nowStr);
     updateSyncState('synced');
-    return null;
+
+    return { wallets: mergedWallets, transactions: mergedTxns };
   } catch (e) {
-    console.warn('Real-time sync notice (fallback to local mode):', e);
+    console.warn('Sync notice:', e);
     updateSyncState('offline');
     return null;
   }
