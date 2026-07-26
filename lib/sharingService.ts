@@ -2,7 +2,7 @@
  * Sharing Service — خدمة المشاركة العائلية
  * 
  * Handles wallet sharing operations: generating share codes,
- * joining shared wallets, listing members, etc.
+ * joining shared wallets, listing members, syncing transactions, etc.
  * Supports online API, cloud KVDB relay (cross-device/tab sync), and local offline fallback.
  */
 
@@ -28,7 +28,7 @@ export interface ShareInfo {
   members: SharedMember[];
 }
 
-// ── Cloud Relay KV Sync (For Universal Cross-Device / Tab Joining) ───
+// ── Cloud Relay KV Sync (For Universal Cross-Device / Tab Joining & Tx Sync) ───
 
 async function publishCloudShareRelay(code: string, walletInfo: any): Promise<void> {
   try {
@@ -71,11 +71,32 @@ async function saveLocalShareCode(walletId: string, code: string, walletName?: s
   codes[walletId] = code;
   await AsyncStorage.setItem(SHARE_CODES_KEY, JSON.stringify(codes));
 
+  // Get full wallet & transactions snapshot to send over Cloud Relay
+  let fullWallet: any = null;
+  let walletTransactions: any[] = [];
+  try {
+    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    if (rawWallets) {
+      const wallets = JSON.parse(rawWallets);
+      fullWallet = wallets.find((w: any) => w.id === walletId);
+    }
+    const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+    if (rawTxs) {
+      const allTxs = JSON.parse(rawTxs);
+      walletTransactions = Array.isArray(allTxs) ? allTxs.filter((t: any) => t.walletId === walletId) : [];
+    }
+  } catch {}
+
   const info = {
-    walletId,
-    walletName: walletName || 'Shared Wallet',
-    currency: currency || 'SAR',
-    createdAt: new Date().toISOString(),
+    walletId: walletId,
+    walletName: fullWallet?.name || walletName || 'Shared Wallet',
+    currency: fullWallet?.currency || currency || 'SAR',
+    icon: fullWallet?.icon || 'wallet',
+    color: fullWallet?.color || '#10B981',
+    cardStyle: fullWallet?.cardStyle || 'glass',
+    createdAt: fullWallet?.createdAt || new Date().toISOString(),
+    shareCode: code,
+    transactions: walletTransactions,
   };
 
   // Register in local share registry
@@ -151,8 +172,8 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
  */
 export async function joinSharedWallet(code: string): Promise<{ success: boolean; walletName?: string; error?: string }> {
   const cleanCode = code.trim().toUpperCase();
-  if (cleanCode.length < 6) {
-    return { success: false, error: 'كود المشاركة يتكون من 6 أحرف/أرقام' };
+  if (cleanCode.length < 3) {
+    return { success: false, error: 'كود المشاركة يتكون من 3 أحرف/أرقام أو أكثر' };
   }
   
   // 1. Try Online Server API
@@ -187,15 +208,15 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
     }
 
     if (!targetWallet && matchedInfo) {
-      // Reconstruct wallet from cloud / registry info
+      // Reconstruct wallet with EXACT walletId and properties from cloud/registry info
       targetWallet = {
-        id: matchedInfo.walletId || `w_shared_${cleanCode}`,
+        id: matchedInfo.walletId || `w_shared_${cleanCode.toLowerCase()}`,
         name: matchedInfo.walletName || 'المحفظة المشتركة',
         currency: matchedInfo.currency || 'SAR',
-        icon: 'people',
-        color: '#10B981',
-        cardStyle: 'glass',
-        createdAt: new Date().toISOString(),
+        icon: matchedInfo.icon || 'people',
+        color: matchedInfo.color || '#10B981',
+        cardStyle: matchedInfo.cardStyle || 'glass',
+        createdAt: matchedInfo.createdAt || new Date().toISOString(),
         shareCode: cleanCode,
       };
     }
@@ -205,7 +226,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       targetWallet = wallets.find((w: any) => w.shareCode === cleanCode);
     }
 
-    // Guaranteed Fail-Proof Fallback: Create shared wallet so joining NEVER fails
+    // Guaranteed Fail-Proof Fallback
     if (!targetWallet) {
       targetWallet = {
         id: `w_shared_${cleanCode.toLowerCase()}`,
@@ -220,6 +241,25 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
     }
 
     if (targetWallet) {
+      // Import transactions array from cloud info if present
+      if (cloudInfo && Array.isArray(cloudInfo.transactions) && cloudInfo.transactions.length > 0) {
+        try {
+          const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+          let txs = rawTxs ? JSON.parse(rawTxs) : [];
+          const existingIds = new Set(txs.map((t: any) => t.id));
+          const newTxs = cloudInfo.transactions.map((t: any) => ({
+            ...t,
+            walletId: targetWallet.id, // Ensure walletId matches targetWallet
+          })).filter((t: any) => !existingIds.has(t.id));
+          if (newTxs.length > 0) {
+            txs = [...txs, ...newTxs];
+            await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(txs));
+          }
+        } catch (txErr) {
+          console.warn('Error importing cloud transactions:', txErr);
+        }
+      }
+
       // Add local user as a member
       const newMember: SharedMember = {
         id: `mem_${Date.now()}`,
@@ -253,7 +293,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
 
   return {
     success: false,
-    error: 'تعذر الانضمام للمحفظة. يرجى التأكد من صحة كود المشاركة المكون من 6 أحرف.',
+    error: 'تعذر الانضمام للمحفظة. يرجى التأكد من صحة كود المشاركة.',
   };
 }
 
