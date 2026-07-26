@@ -223,7 +223,17 @@ export default function HomeScreen() {
       setRates(liveRates);
     }
     loadRates();
-  }, []);
+
+    const interval = setInterval(async () => {
+      try {
+        const { syncAllSharedWallets } = await import('@/lib/sharingService');
+        await syncAllSharedWallets();
+        refresh();
+      } catch (e) {}
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   const getWalletBalance = (walletId: string) => {
     const walletTxns = transactions.filter(t => 

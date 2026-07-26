@@ -141,6 +141,20 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 
     let targetWalletId = localWallet?.id || cloudInfo?.walletId || `w_shared_${cleanCode.toLowerCase()}`;
 
+    // Determine Authoritative Wallet Name
+    let realWalletName = 'المحفظة المشتركة';
+    if (localWallet?.name && !localWallet.name.startsWith('محفظة مشتركة (')) {
+      realWalletName = localWallet.name;
+    } else if (cloudInfo?.walletName && !cloudInfo.walletName.startsWith('محفظة مشتركة (')) {
+      realWalletName = cloudInfo.walletName;
+    } else if (localWallet?.name) {
+      realWalletName = localWallet.name;
+    } else if (cloudInfo?.walletName) {
+      realWalletName = cloudInfo.walletName;
+    }
+
+    const realCurrency = localWallet?.currency || cloudInfo?.currency || 'SAR';
+
     // Merge transactions from cloud if any
     let updatedTxs = [...localTxs];
     if (cloudInfo && Array.isArray(cloudInfo.transactions)) {
@@ -151,6 +165,26 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
       });
       updatedTxs = Array.from(txMap.values());
       await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(updatedTxs));
+    }
+
+    // Update local wallet record in AsyncStorage if needed
+    if (localWallet) {
+      let changed = false;
+      if (localWallet.name !== realWalletName) {
+        localWallet.name = realWalletName;
+        changed = true;
+      }
+      if (localWallet.currency !== realCurrency) {
+        localWallet.currency = realCurrency;
+        changed = true;
+      }
+      if (changed) {
+        const wIdx = wallets.findIndex((w: any) => w.id === targetWalletId);
+        if (wIdx !== -1) {
+          wallets[wIdx] = localWallet;
+          await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(wallets));
+        }
+      }
     }
 
     // Now send local snapshot back up to cloud relay so all other members receive it
@@ -164,12 +198,12 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 
     const updatedCloudInfo = {
       walletId: targetWalletId,
-      walletName: localWallet?.name || cloudInfo?.walletName || `محفظة مشتركة (${cleanCode})`,
-      currency: localWallet?.currency || cloudInfo?.currency || 'SAR',
-      icon: localWallet?.icon || 'people',
-      color: localWallet?.color || '#10B981',
-      cardStyle: localWallet?.cardStyle || 'glass',
-      createdAt: localWallet?.createdAt || new Date().toISOString(),
+      walletName: realWalletName,
+      currency: realCurrency,
+      icon: localWallet?.icon || cloudInfo?.icon || 'people',
+      color: localWallet?.color || cloudInfo?.color || '#10B981',
+      cardStyle: localWallet?.cardStyle || cloudInfo?.cardStyle || 'glass',
+      createdAt: localWallet?.createdAt || cloudInfo?.createdAt || new Date().toISOString(),
       shareCode: cleanCode,
       ownerUsername: cloudInfo?.ownerUsername || ownerUsername,
       transactions: currentWalletTxs,
