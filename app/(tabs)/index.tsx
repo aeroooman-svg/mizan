@@ -660,11 +660,6 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Dynamic Financial Goal Focus Widget */}
-        {widgetConfig.showGoalWidget !== false && (
-          <FinancialGoalWidget />
-        )}
-
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
           walletPending={walletPending}
