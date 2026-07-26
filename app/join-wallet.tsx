@@ -30,6 +30,15 @@ export default function JoinWalletScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleBack = () => {
+    try { Haptics.selectionAsync(); } catch {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)' as any);
+    }
+  };
+
   const handleJoin = async () => {
     const trimmed = code.trim().toUpperCase();
     if (trimmed.length < 6) {
@@ -95,7 +104,7 @@ export default function JoinWalletScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Pressable
-            onPress={() => { Haptics.selectionAsync(); router.back(); }}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
