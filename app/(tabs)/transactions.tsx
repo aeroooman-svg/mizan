@@ -408,38 +408,6 @@ export default function TransactionsScreen() {
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{t.transactions}</Text>
-          
-          <View style={styles.actionButtonsRow}>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.push('/recurring-list');
-              }}
-              style={({ pressed }) => [styles.actionHeaderBtn, pressed && { opacity: 0.7 }]}
-              hitSlop={8}
-            >
-              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-              <Text style={styles.actionHeaderBtnText}>{language === 'ar' ? 'المتكررة' : 'Recurring'}</Text>
-            </Pressable>
-
-            {filteredTransactions.length > 0 && (
-              <Pressable
-                onPress={handleExport}
-                style={({ pressed }) => [styles.actionHeaderBtn, pressed && { opacity: 0.7 }]}
-                hitSlop={8}
-              >
-                <MaterialIcons name="file-download" size={18} color={colors.primary} />
-                <Text style={styles.actionHeaderBtnText}>{language === 'ar' ? 'تصدير' : 'Export'}</Text>
-              </Pressable>
-            )}
-
-            {selectedWallet && (
-              <View style={[styles.walletBadge, { backgroundColor: selectedWallet.color + '15' }]}>
-                <MaterialIcons name={selectedWallet.icon as any} size={12} color={selectedWallet.color} />
-                <Text style={[styles.walletBadgeText, { color: selectedWallet.color }]}>{selectedWallet.name}</Text>
-              </View>
-            )}
-          </View>
         </View>
 
         {/* Wallet Selector Row */}
