@@ -211,7 +211,11 @@ export default function RecurringListScreen() {
               {isAr ? 'رؤية السيولة والتعهدات الشهرية' : 'Monthly Commitments & Cashflow'}
             </Text>
           </View>
-          <Text style={styles.walletBadgeText}>{selectedWallet?.name}</Text>
+          {selectedWallet?.name && (
+            <View style={{ backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={[styles.walletBadgeText, { color: colors.primary }]}>{selectedWallet.name}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.summaryGrid}>

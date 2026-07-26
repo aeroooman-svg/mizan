@@ -255,19 +255,45 @@ export default function FinancialJourneySlider({
 
           <View style={styles.subsList}>
             <View style={styles.subItem}>
-              <Ionicons name="film-outline" size={18} color="#E50914" />
-              <Text style={styles.subName}>Netflix / الترفيه</Text>
-              <Text style={styles.subStatus}>{isAr ? 'نشط' : 'Active'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
+                <Ionicons name="film-outline" size={18} color="#E50914" />
+                <Text style={styles.subName} numberOfLines={1}>
+                  {isAr ? 'نتفلكس / الترفيه' : 'Netflix / Entertainment'}
+                </Text>
+              </View>
+              <View style={[styles.subStatusBadge, { backgroundColor: '#10B98115' }]}>
+                <Text style={[styles.subStatusText, { color: '#10B981' }]}>
+                  {isAr ? 'نشط' : 'Active'}
+                </Text>
+              </View>
             </View>
+
             <View style={styles.subItem}>
-              <Ionicons name="fitness-outline" size={18} color="#10B981" />
-              <Text style={styles.subName}>الجيم / الصحة</Text>
-              <Text style={styles.subStatus}>{isAr ? 'نشط' : 'Active'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
+                <Ionicons name="fitness-outline" size={18} color="#10B981" />
+                <Text style={styles.subName} numberOfLines={1}>
+                  {isAr ? 'الجيم / اللياقة' : 'Gym / Fitness'}
+                </Text>
+              </View>
+              <View style={[styles.subStatusBadge, { backgroundColor: '#10B98115' }]}>
+                <Text style={[styles.subStatusText, { color: '#10B981' }]}>
+                  {isAr ? 'نشط' : 'Active'}
+                </Text>
+              </View>
             </View>
+
             <View style={styles.subItem}>
-              <Ionicons name="home-outline" size={18} color="#3B82F6" />
-              <Text style={styles.subName}>إيجار البيت</Text>
-              <Text style={styles.subStatus}>{isAr ? 'مكتمل' : 'Paid'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
+                <Ionicons name="home-outline" size={18} color="#3B82F6" />
+                <Text style={styles.subName} numberOfLines={1}>
+                  {isAr ? 'إيجار السكن' : 'House Rent'}
+                </Text>
+              </View>
+              <View style={[styles.subStatusBadge, { backgroundColor: '#3B82F615' }]}>
+                <Text style={[styles.subStatusText, { color: '#3B82F6' }]}>
+                  {isAr ? 'مدفوع' : 'Paid'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -497,12 +523,15 @@ const getStyles = (colors: any, cardWidth: number) =>
       fontSize: 12,
       color: colors.text,
       flex: 1,
-      marginLeft: 8,
     },
-    subStatus: {
-      fontFamily: 'Cairo_600SemiBold',
+    subStatusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    subStatusText: {
+      fontFamily: 'Cairo_700Bold',
       fontSize: 10,
-      color: colors.textSecondary,
     },
     remittanceCardBody: {
       flexDirection: 'row',
