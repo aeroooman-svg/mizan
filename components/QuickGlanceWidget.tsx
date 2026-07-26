@@ -168,59 +168,71 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Smart Full Tools Bar */}
-        <View style={styles.bottomRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.toolsGridBar}
+        {/* Row 4: Premium Quick Action Cards (مصاريف متكررة & الأقساط) */}
+        <View style={styles.quickActionPairRow}>
+          {/* Recurring Expenses Button */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/recurring-list' as any);
+            }}
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              styles.recurringCard,
+              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+            ]}
           >
-
-            {/* Recurring Expenses Button (مصاريف متكررة) */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/recurring-list' as any);
-              }}
-              style={({ pressed }) => [
-                styles.gridToolItem,
-                styles.recurringHighlightItem,
-                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-              ]}
+            <LinearGradient
+              colors={['#10B98118', '#10B98105']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardGradientBg}
+            />
+            <View style={styles.cardBorderGlow} />
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.iconCircle3D}
             >
-              <LinearGradient
-                colors={['#10B981', '#059669']}
-                style={styles.toolIconBadge3D}
-              >
-                <Ionicons name="sync" size={14} color="#FFF" />
-              </LinearGradient>
-              <Text style={[styles.gridToolText, { color: colors.primary }]}>
-                {isAr ? 'مصاريف متكررة' : 'Recurring'}
-              </Text>
-            </Pressable>
+              <Ionicons name="sync" size={16} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.quickActionCardText}>
+              {isAr ? 'مصاريف متكررة' : 'Recurring'}
+            </Text>
+          </Pressable>
 
-            {/* Installments */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/installments' as any);
-              }}
-              style={({ pressed }) => [
-                styles.gridToolItem,
-                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-              ]}
+          {/* Installments Button */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/installments' as any);
+            }}
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              styles.installmentsCard,
+              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+            ]}
+          >
+            <LinearGradient
+              colors={['#8B5CF618', '#8B5CF605']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardGradientBg}
+            />
+            <View style={styles.cardBorderGlowPurple} />
+            <LinearGradient
+              colors={['#8B5CF6', '#6D28D9']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.iconCircle3D}
             >
-              <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
-                style={styles.toolIconBadge3D}
-              >
-                <Ionicons name="card" size={14} color="#FFF" />
-              </LinearGradient>
-              <Text style={styles.gridToolText}>
-                {isAr ? 'الأقساط' : 'Installments'}
-              </Text>
-            </Pressable>
-          </ScrollView>
+              <Ionicons name="card" size={16} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.quickActionCardText}>
+              {isAr ? 'الأقساط' : 'Installments'}
+            </Text>
+          </Pressable>
         </View>
 
         {/* Row 5: Integrated "الصورة الكاملة للوضع المالي" (Complete Financial Picture) */}
@@ -489,13 +501,69 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  recurringHighlightItem: {
-    backgroundColor: colors.primary + '18',
-    borderColor: colors.primary + '40',
-  },
   gridToolText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
+    color: colors.text,
+  },
+  quickActionPairRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 4,
+  },
+  quickActionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt + '60',
+    borderWidth: 1,
+    borderColor: colors.border,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  recurringCard: {
+    borderColor: '#10B98135',
+  },
+  installmentsCard: {
+    borderColor: '#8B5CF635',
+  },
+  cardGradientBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+  },
+  cardBorderGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: '#10B98125',
+    borderRadius: 16,
+  },
+  cardBorderGlowPurple: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: '#8B5CF625',
+    borderRadius: 16,
+  },
+  iconCircle3D: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickActionCardText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
     color: colors.text,
   },
   fullPictureToggle: {

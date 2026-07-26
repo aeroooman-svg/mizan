@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -18,7 +18,9 @@ import { SavingsGoal } from '@/lib/goalStorage';
 import { Debt } from '@/lib/debtStorage';
 import { Transaction } from '@/lib/storage';
 import { RemittanceStats } from '@/lib/remittanceStorage';
-import { formatCurrency } from '@/lib/categories';
+import { formatCurrency, getCategoryById } from '@/lib/categories';
+import { getCategoryName } from '@/lib/i18n';
+import { getRecurringTransactions, RecurringTransaction } from '@/lib/recurringStorage';
 
 interface FinancialJourneySliderProps {
   plan: FinancialPlan | null;
@@ -55,8 +57,23 @@ export default function FinancialJourneySlider({
   const styles = getStyles(colors, cardWidth);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [recurringItems, setRecurringItems] = useState<RecurringTransaction[]>([]);
   const scrollRef = useRef<ScrollView>(null);
   const isAr = language === 'ar';
+
+  useEffect(() => {
+    let isMounted = true;
+    getRecurringTransactions().then((items) => {
+      if (isMounted) {
+        if (selectedWalletId) {
+          setRecurringItems(items.filter(i => i.walletId === selectedWalletId));
+        } else {
+          setRecurringItems(items);
+        }
+      }
+    });
+    return () => { isMounted = false; };
+  }, [selectedWalletId, walletTransactions]);
 
   const totalGoalSaved = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalGoalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
@@ -245,60 +262,56 @@ export default function FinancialJourneySlider({
           </View>
         </View>
 
-        {/* CARD 3: الاشتراكات والمعاملات المكررة */}
+        {/* CARD 4: المعاملات المتكررة الفعليه */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
-              {isAr ? 'الاشتراكات المكررة' : 'Subscriptions'}
+              {isAr ? 'المعاملات المتكررة' : 'Recurring Transactions'}
             </Text>
             <Pressable onPress={() => router.push('/recurring-list')}>
               <Text style={styles.cardAction}>{isAr ? 'عرض الكل' : 'View All'}</Text>
             </Pressable>
           </View>
 
-          <View style={styles.subsList}>
-            <View style={styles.subItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
-                <Ionicons name="film-outline" size={18} color="#E50914" />
-                <Text style={styles.subName} numberOfLines={1}>
-                  {isAr ? 'نتفلكس / الترفيه' : 'Netflix / Entertainment'}
-                </Text>
-              </View>
-              <View style={[styles.subStatusBadge, { backgroundColor: '#10B98115' }]}>
-                <Text style={[styles.subStatusText, { color: '#10B981' }]}>
-                  {isAr ? 'نشط' : 'Active'}
-                </Text>
-              </View>
+          {recurringItems.length > 0 ? (
+            <View style={styles.subsList}>
+              {recurringItems.slice(0, 3).map((item) => {
+                const cat = getCategoryById(item.category);
+                const name = item.description || (cat ? getCategoryName(cat.id, language) : item.category);
+                const iconName = cat?.icon || 'sync-outline';
+                return (
+                  <View key={item.id} style={styles.subItem}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
+                      <Ionicons name={iconName as any} size={18} color={item.type === 'income' ? colors.income : colors.primary} />
+                      <Text style={styles.subName} numberOfLines={1}>
+                        {name}
+                      </Text>
+                    </View>
+                    <View style={[styles.subStatusBadge, { backgroundColor: item.isActive ? '#10B98115' : colors.surfaceAlt }]}>
+                      <Text style={[styles.subStatusText, { color: item.isActive ? '#10B981' : colors.textSecondary }]}>
+                        {formatCurrency(item.amount, language)} {currencySymbol}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-
-            <View style={styles.subItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
-                <Ionicons name="fitness-outline" size={18} color="#10B981" />
-                <Text style={styles.subName} numberOfLines={1}>
-                  {isAr ? 'الجيم / اللياقة' : 'Gym / Fitness'}
-                </Text>
+          ) : (
+            <View style={styles.emptyCardContent}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="sync" size={22} color={colors.primary} />
               </View>
-              <View style={[styles.subStatusBadge, { backgroundColor: '#10B98115' }]}>
-                <Text style={[styles.subStatusText, { color: '#10B981' }]}>
-                  {isAr ? 'نشط' : 'Active'}
-                </Text>
-              </View>
+              <Text style={styles.emptyCardText}>
+                {isAr ? 'لا توجد معاملات متكررة مضافة بعد' : 'No recurring transactions scheduled yet'}
+              </Text>
+              <Pressable
+                onPress={() => router.push('/add-recurring')}
+                style={styles.cardBtn}
+              >
+                <Text style={styles.cardBtnText}>{isAr ? '+ إضافة معاملة' : '+ Add Recurring'}</Text>
+              </Pressable>
             </View>
-
-            <View style={styles.subItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
-                <Ionicons name="home-outline" size={18} color="#3B82F6" />
-                <Text style={styles.subName} numberOfLines={1}>
-                  {isAr ? 'إيجار السكن' : 'House Rent'}
-                </Text>
-              </View>
-              <View style={[styles.subStatusBadge, { backgroundColor: '#3B82F615' }]}>
-                <Text style={[styles.subStatusText, { color: '#3B82F6' }]}>
-                  {isAr ? 'مدفوع' : 'Paid'}
-                </Text>
-              </View>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* CARD 4: حوالات المغتربين والبيت */}
