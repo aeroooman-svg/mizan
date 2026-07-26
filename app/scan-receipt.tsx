@@ -161,7 +161,10 @@ export default function ScanReceiptScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Pressable
           style={styles.closeBtn}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)' as any);
+          }}
           hitSlop={10}
         >
           <Ionicons name="close" size={24} color={colors.text} />

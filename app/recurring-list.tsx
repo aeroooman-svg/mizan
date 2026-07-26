@@ -314,11 +314,20 @@ export default function RecurringListScreen() {
     );
   };
 
+  const handleBack = () => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)' as any);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Top Header Bar */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || webTopInset) + 16 }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
+        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
           <Ionicons name={isAr ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>{t.recurringTransactions}</Text>
