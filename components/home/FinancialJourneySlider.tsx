@@ -90,13 +90,12 @@ export default function FinancialJourneySlider({
           </Text>
         </View>
 
-        <View style={[styles.arrowControls, { flexDirection: isAr ? 'row-reverse' : 'row' }]}>
-          {/* Left Arrow Button (<) */}
+        <View style={[styles.arrowControls, { direction: 'ltr', flexDirection: 'row' } as any]}>
+          {/* Left Button (<) */}
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              const nextIdx = isAr ? (activeIndex + 1) % 4 : (activeIndex === 0 ? 3 : activeIndex - 1);
-              scrollToIndex(nextIdx);
+              scrollToIndex(activeIndex === 0 ? 3 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -110,12 +109,11 @@ export default function FinancialJourneySlider({
             />
           </Pressable>
 
-          {/* Right Arrow Button (>) */}
+          {/* Right Button (>) */}
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              const nextIdx = isAr ? (activeIndex === 0 ? 3 : activeIndex - 1) : (activeIndex + 1) % 4;
-              scrollToIndex(nextIdx);
+              scrollToIndex((activeIndex + 1) % 4);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
