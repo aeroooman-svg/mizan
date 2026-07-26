@@ -689,46 +689,6 @@ export default function HomeScreen() {
           />
         )}
 
-            {/* Widget 4: AI Smart Financial Tip of the Day */}
-            <View
-              style={{
-                backgroundColor: Colors.primary + '0a',
-                borderWidth: 1,
-                borderColor: Colors.primary + '20',
-                borderRadius: 20,
-                padding: 16,
-                gap: 6,
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: Colors.primary + '18',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="bulb-outline" size={22} color={Colors.primary} />
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  fontFamily: 'Cairo_600SemiBold',
-                  fontSize: 12,
-                  color: Colors.text,
-                  lineHeight: 18,
-                  textAlign: 'left',
-                  marginLeft: 10,
-                }}
-              >
-                {getSmartTip()}
-              </Text>
-            </View>
       </ScrollView>
 
 

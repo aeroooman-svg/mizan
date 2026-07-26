@@ -95,7 +95,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex(activeIndex === 0 ? 3 : activeIndex - 1);
+              scrollToIndex(activeIndex === 0 ? 4 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -113,7 +113,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex((activeIndex + 1) % 4);
+              scrollToIndex((activeIndex + 1) % 5);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -140,63 +140,12 @@ export default function FinancialJourneySlider({
         onMomentumScrollEnd={(e) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const idx = Math.round(offsetX / (cardWidth + cardGap));
-          if (idx !== activeIndex && idx >= 0 && idx <= 3) {
+          if (idx !== activeIndex && idx >= 0 && idx <= 4) {
             setActiveIndex(idx);
           }
         }}
       >
-        {/* CARD 1: الميزانيات والخطط الشهرية */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'الميزانيات الشهريّة' : 'Monthly Budgets'}
-            </Text>
-            <Pressable onPress={() => router.push('/(tabs)/financial-plan')}>
-              <Text style={styles.cardAction}>{isAr ? 'التفاصيل' : 'Details'}</Text>
-            </Pressable>
-          </View>
-
-          {topBudgets.length > 0 ? (
-            <View style={styles.budgetsList}>
-              {topBudgets.map((b, i) => (
-                <View key={i} style={styles.budgetItem}>
-                  <View style={styles.budgetMeta}>
-                    <Text style={styles.budgetName}>{b.name}</Text>
-                    <Text style={styles.budgetAmount}>
-                      {formatCurrency(b.spent, language)} / {formatCurrency(b.limit, language)} {currencySymbol}
-                    </Text>
-                  </View>
-                  <View style={styles.barBg}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        {
-                          width: `${b.pct}%`,
-                          backgroundColor: b.pct >= 100 ? Colors.expense : b.pct >= 80 ? '#F59E0B' : colors.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCardContent}>
-              <Ionicons name="pie-chart-outline" size={32} color={colors.primary} />
-              <Text style={styles.emptyCardText}>
-                {isAr ? 'لم تقم بتحديد ميزانيات شهريّة بعد' : 'No monthly budgets set yet'}
-              </Text>
-              <Pressable
-                onPress={() => router.push('/(tabs)/financial-plan')}
-                style={styles.cardBtn}
-              >
-                <Text style={styles.cardBtnText}>{isAr ? 'إنشاء ميزانية' : 'Create Budget'}</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* CARD 2: الأهداف المالية وحصالة الادخار */}
+        {/* CARD 1: الأهداف المالية وحصالة الادخار */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
@@ -239,6 +188,60 @@ export default function FinancialJourneySlider({
                 {isAr ? `المستهدف: ${formatCurrency(totalGoalTarget, language)}` : `Target: ${formatCurrency(totalGoalTarget, language)}`}
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* CARD 2: قارئ الفواتير بالذكاء الاصطناعي (فاتورة) */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>
+              {isAr ? 'فاتورة (مسح أوتوماتيكي)' : 'Receipt Scanner AI'}
+            </Text>
+            <Pressable onPress={() => router.push('/scan-receipt')}>
+              <Text style={styles.cardAction}>{isAr ? 'افتح المسح' : 'Scan'}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.emptyCardContent}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="receipt" size={24} color="#F59E0B" />
+            </View>
+            <Text style={styles.emptyCardText}>
+              {isAr ? 'التقط صورة أي فاتورة لاستخراج البيانات أوتوماتيكياً' : 'Snap a photo of any receipt to auto-extract transaction'}
+            </Text>
+            <Pressable
+              onPress={() => router.push('/scan-receipt')}
+              style={styles.cardBtn}
+            >
+              <Text style={styles.cardBtnText}>{isAr ? '📷 مسح فاتورة' : '📷 Scan Receipt'}</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* CARD 3: كشف حساب (استيراد بنكي) */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>
+              {isAr ? 'كشف حساب (استيراد)' : 'Bank Statement'}
+            </Text>
+            <Pressable onPress={() => router.push('/import-statement' as any)}>
+              <Text style={styles.cardAction}>{isAr ? 'استيراد' : 'Import'}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.emptyCardContent}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#3B82F618', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="document-text" size={24} color="#3B82F6" />
+            </View>
+            <Text style={styles.emptyCardText}>
+              {isAr ? 'رفع وتفريغ كشف الحساب البنكي بتنسيقات متعددة' : 'Upload and extract bank statements seamlessly'}
+            </Text>
+            <Pressable
+              onPress={() => router.push('/import-statement' as any)}
+              style={styles.cardBtn}
+            >
+              <Text style={styles.cardBtnText}>{isAr ? '📄 رفع كشف حساب' : '📄 Import Statement'}</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -337,7 +340,7 @@ export default function FinancialJourneySlider({
 
       {/* Pagination Dots */}
       <View style={styles.paginationDots}>
-        {[0, 1, 2, 3].map((idx) => (
+        {[0, 1, 2, 3, 4].map((idx) => (
           <Pressable
             key={idx}
             onPress={() => scrollToIndex(idx)}

@@ -168,56 +168,13 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Smart Full Tools Bar (Complete, Distinctive & Intelligent Bar) */}
+        {/* Row 4: Smart Full Tools Bar */}
         <View style={styles.bottomRow}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.toolsGridBar}
           >
-            {/* Receipt Scanner */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/scan-receipt');
-              }}
-              style={({ pressed }) => [
-                styles.gridToolItem,
-                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-              ]}
-            >
-              <LinearGradient
-                colors={['#F59E0B', '#D97706']}
-                style={styles.toolIconBadge3D}
-              >
-                <Ionicons name="receipt" size={14} color="#FFF" />
-              </LinearGradient>
-              <Text style={styles.gridToolText}>
-                {isAr ? 'فاتورة' : 'Receipt'}
-              </Text>
-            </Pressable>
-
-            {/* Bank Statement */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/import-statement' as any);
-              }}
-              style={({ pressed }) => [
-                styles.gridToolItem,
-                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-              ]}
-            >
-              <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
-                style={styles.toolIconBadge3D}
-              >
-                <Ionicons name="document-text" size={14} color="#FFF" />
-              </LinearGradient>
-              <Text style={styles.gridToolText}>
-                {isAr ? 'كشف حساب' : 'Statement'}
-              </Text>
-            </Pressable>
 
             {/* Recurring Expenses Button (مصاريف متكررة) */}
             <Pressable
