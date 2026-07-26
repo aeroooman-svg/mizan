@@ -62,14 +62,22 @@ export default function AuthScreen() {
       await performLogin(displayName, deterministicUserId);
       setLoading(false);
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-      Alert.alert(
-        isAr ? 'تم تسجيل الدخول والمزامنة 🎉' : 'Sign-In Success 🎉',
-        isAr ? `أهلاً بك ${displayName}! تم ربط وتأمين حسابك سحابياً بنجاح.` : `Welcome ${displayName}! Cloud account synced successfully.`,
-        [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
-      );
+      if (Platform.OS === 'web') {
+        router.replace('/(tabs)' as any);
+      } else {
+        Alert.alert(
+          isAr ? 'تم تسجيل الدخول والمزامنة 🎉' : 'Sign-In Success 🎉',
+          isAr ? `أهلاً بك ${displayName}! تم ربط وتأمين حسابك سحابياً بنجاح.` : `Welcome ${displayName}! Cloud account synced successfully.`,
+          [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
+        );
+      }
     } catch (err: any) {
       setLoading(false);
-      Alert.alert(isAr ? 'خطأ' : 'Error', err.message || 'Could not process sign in');
+      if (Platform.OS === 'web') {
+        window.alert(err.message || 'Could not process sign in');
+      } else {
+        Alert.alert(isAr ? 'خطأ' : 'Error', err.message || 'Could not process sign in');
+      }
     }
   };
   const [username, setUsername] = useState('');
@@ -155,26 +163,34 @@ export default function AuthScreen() {
         await performLogin(loggedInUser.username, loggedInUser.id);
 
         try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-        Alert.alert(
-          isAr ? 'تمت العملية بنجاح! 🎉' : 'Success! 🎉',
-          isLogin
-            ? (isAr ? `أهلاً بك مجدداً ${loggedInUser.username}! تم تفعيل الحساب والمزامنة السحابية.` : `Welcome back ${loggedInUser.username}! Cloud sync activated.`)
-            : (isAr ? `تم إنشاء حساب "${loggedInUser.username}" وتأمين بياناتك بنجاح.` : `Account "${loggedInUser.username}" created successfully.`),
-          [
-            {
-              text: isAr ? 'دخول التطبيق' : 'Continue',
-              onPress: () => router.replace('/(tabs)' as any),
-            },
-          ]
-        );
+        if (Platform.OS === 'web') {
+          router.replace('/(tabs)' as any);
+        } else {
+          Alert.alert(
+            isAr ? 'تمت العملية بنجاح! 🎉' : 'Success! 🎉',
+            isLogin
+              ? (isAr ? `أهلاً بك مجدداً ${loggedInUser.username}! تم تفعيل الحساب والمزامنة السحابية.` : `Welcome back ${loggedInUser.username}! Cloud sync activated.`)
+              : (isAr ? `تم إنشاء حساب "${loggedInUser.username}" وتأمين بياناتك بنجاح.` : `Account "${loggedInUser.username}" created successfully.`),
+            [
+              {
+                text: isAr ? 'دخول التطبيق' : 'Continue',
+                onPress: () => router.replace('/(tabs)' as any),
+              },
+            ]
+          );
+        }
       }
     } catch (e: any) {
       console.error(e);
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
-      Alert.alert(
-        isAr ? 'فشل العملية' : 'Authentication Error',
-        e.message || (isAr ? 'تعذر إتمام العملية، يرجى المحاولة لاحقاً' : 'Could not process request, please try again')
-      );
+      if (Platform.OS === 'web') {
+        window.alert(e.message || (isAr ? 'تعذر إتمام العملية، يرجى المحاولة لاحقاً' : 'Could not process request, please try again'));
+      } else {
+        Alert.alert(
+          isAr ? 'فشل العملية' : 'Authentication Error',
+          e.message || (isAr ? 'تعذر إتمام العملية، يرجى المحاولة لاحقاً' : 'Could not process request, please try again')
+        );
+      }
     } finally {
       setLoading(false);
     }

@@ -182,22 +182,33 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     safeHaptic.selection();
-    Alert.alert(
-      isAr ? 'تسجيل الخروج' : 'Logout',
-      isAr ? 'هل أنت متأكد من رغبتك في تسجيل الخروج؟ سيتم مسح الكاش المحلي للتطبيق.' : 'Are you sure you want to logout? Local cache will be cleared.',
-      [
-        { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: isAr ? 'خروج' : 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await performLogout();
-            setUser(null);
-            router.replace('/auth' as any);
+    const confirmMsg = isAr ? 'هل أنت متأكد من رغبتك في تسجيل الخروج؟' : 'Are you sure you want to logout?';
+
+    const doLogout = async () => {
+      await performLogout();
+      setUser(null);
+      router.replace('/auth' as any);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(confirmMsg);
+      if (confirmed) {
+        await doLogout();
+      }
+    } else {
+      Alert.alert(
+        isAr ? 'تسجيل الخروج' : 'Logout',
+        confirmMsg,
+        [
+          { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
+          {
+            text: isAr ? 'خروج' : 'Logout',
+            style: 'destructive',
+            onPress: doLogout,
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleTogglePin = async (value: boolean) => {
