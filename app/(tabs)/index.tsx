@@ -784,7 +784,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="heart-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'أهداف الادخار وحصالات العمليات' : 'Smart Savings Goals'}
+                  {language === 'ar' ? 'أهداف الادخار وحصالة الفكة' : 'Savings & Piggy Goals'}
                 </Text>
               </Pressable>
 
@@ -2051,11 +2051,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   drawerSheet: {
-    width: 290,
+    width: 320,
     height: '100%',
     backgroundColor: colors.surface,
-    padding: 24,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
     justifyContent: 'space-between',
     borderRightWidth: 1,
     borderColor: colors.border,
@@ -2094,16 +2095,17 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     width: '100%',
-    marginVertical: 20,
+    marginVertical: 14,
   },
   drawerLinksContainer: {
     flex: 1,
-    gap: 12,
+    gap: 8,
   },
   drawerLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
     borderRadius: 12,
     gap: 12,
   },
@@ -2111,6 +2113,8 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
     color: colors.text,
+    flex: 1,
+    textAlign: 'left',
   },
   drawerCloseBtn: {
     flexDirection: 'row',
