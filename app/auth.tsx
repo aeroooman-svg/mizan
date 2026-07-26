@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -28,6 +29,49 @@ export default function AuthScreen() {
   const isAr = language === 'ar';
 
   const [isLogin, setIsLogin] = useState(true);
+  const [socialModalVisible, setSocialModalVisible] = useState(false);
+  const [socialProvider, setSocialProvider] = useState<'google' | 'email' | 'apple'>('google');
+  const [emailInput, setEmailInput] = useState('');
+
+  const openSocialAuth = (provider: 'google' | 'email' | 'apple') => {
+    setSocialProvider(provider);
+    setEmailInput('');
+    setSocialModalVisible(true);
+  };
+
+  const handleSocialSubmit = async () => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    if (!cleanEmail) {
+      Alert.alert(
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى إدخال البريد الإلكتروني أو الحساب' : 'Please enter your email or account address'
+      );
+      return;
+    }
+
+    setLoading(true);
+    setSocialModalVisible(false);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+
+    const providerTag = socialProvider;
+    const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    const deterministicUserId = `usr_${providerTag}_${cleanId}`;
+    const displayName = cleanEmail.split('@')[0] || cleanEmail;
+
+    try {
+      await performLogin(displayName, deterministicUserId);
+      setLoading(false);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      Alert.alert(
+        isAr ? 'تم تسجيل الدخول والمزامنة 🎉' : 'Sign-In Success 🎉',
+        isAr ? `أهلاً بك ${displayName}! تم ربط وتأمين حسابك سحابياً بنجاح.` : `Welcome ${displayName}! Cloud account synced successfully.`,
+        [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
+      );
+    } catch (err: any) {
+      setLoading(false);
+      Alert.alert(isAr ? 'خطأ' : 'Error', err.message || 'Could not process sign in');
+    }
+  };
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -259,20 +303,7 @@ export default function AuthScreen() {
           <View style={styles.socialButtonsRow}>
             {/* Google Sign In */}
             <Pressable
-              onPress={async () => {
-                setLoading(true);
-                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-                const googleUser = `google_user_${Math.random().toString(36).substring(2, 7)}`;
-                const googleName = isAr ? 'مستخدم حساب جوجل' : 'Google Account User';
-                await performLogin(googleName, googleUser);
-                setLoading(false);
-                try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-                Alert.alert(
-                  isAr ? 'تم الدخول بحساب Google 🎉' : 'Google Sign-In Success 🎉',
-                  isAr ? 'تم تفعيل المزامنة السحابية بحساب جوجل بنجاح!' : 'Cloud sync activated with Google Account!',
-                  [{ text: isAr ? 'استمرار' : 'OK', onPress: () => router.replace('/(tabs)' as any) }]
-                );
-              }}
+              onPress={() => openSocialAuth('google')}
               style={({ pressed }) => [styles.socialCircleBtn, pressed && { opacity: 0.8 }]}
             >
               <Ionicons name="logo-google" size={24} color="#EA4335" />
@@ -281,20 +312,7 @@ export default function AuthScreen() {
 
             {/* Email Sign In */}
             <Pressable
-              onPress={async () => {
-                setLoading(true);
-                try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-                const emailUser = `email_user_${Math.random().toString(36).substring(2, 7)}`;
-                const emailName = isAr ? 'حساب البريد الإلكتروني' : 'Email User';
-                await performLogin(emailName, emailUser);
-                setLoading(false);
-                try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-                Alert.alert(
-                  isAr ? 'تم الدخول بالبريد الإلكتروني 🎉' : 'Email Sign-In Success 🎉',
-                  isAr ? 'تمت المزامنة وحفظ الحساب سحابياً بنجاح!' : 'Account synced successfully to cloud!',
-                  [{ text: isAr ? 'استمرار' : 'OK', onPress: () => router.replace('/(tabs)' as any) }]
-                );
-              }}
+              onPress={() => openSocialAuth('email')}
               style={({ pressed }) => [styles.socialCircleBtn, pressed && { opacity: 0.8 }]}
             >
               <Ionicons name="mail" size={24} color="#4285F4" />
@@ -304,20 +322,7 @@ export default function AuthScreen() {
 
           {/* Apple Sign In Button */}
           <Pressable
-            onPress={async () => {
-              setLoading(true);
-              try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-              const appleUser = `apple_user_${Math.random().toString(36).substring(2, 7)}`;
-              const appleName = isAr ? 'حساب Apple' : 'Apple Account User';
-              await performLogin(appleName, appleUser);
-              setLoading(false);
-              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-              Alert.alert(
-                isAr ? 'تم الدخول بحساب Apple 🎉' : 'Apple Sign-In Success 🎉',
-                isAr ? 'تم تفعيل المزامنة السحابية بحساب Apple بنجاح!' : 'Cloud sync activated with Apple ID!',
-                [{ text: isAr ? 'استمرار' : 'OK', onPress: () => router.replace('/(tabs)' as any) }]
-              );
-            }}
+            onPress={() => openSocialAuth('apple')}
             style={({ pressed }) => [styles.appleBtn, pressed && { opacity: 0.8 }]}
           >
             <Ionicons name="logo-apple" size={20} color={theme === 'dark' ? '#000' : '#FFF'} />
@@ -344,6 +349,79 @@ export default function AuthScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Interactive Social Login Email Modal */}
+      <Modal
+        visible={socialModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSocialModalVisible(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 24 }}
+          onPress={() => setSocialModalVisible(false)}
+        >
+          <Pressable
+            style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons
+                name={socialProvider === 'google' ? 'logo-google' : socialProvider === 'apple' ? 'logo-apple' : 'mail'}
+                size={28}
+                color={socialProvider === 'google' ? '#EA4335' : colors.primary}
+              />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.text }}>
+                {socialProvider === 'google'
+                  ? (isAr ? 'الدخول بحساب Google' : 'Google Sign-In')
+                  : socialProvider === 'apple'
+                  ? (isAr ? 'الدخول بحساب Apple' : 'Apple Sign-In')
+                  : (isAr ? 'الدخول بالبريد الإلكتروني' : 'Email Sign-In')}
+              </Text>
+            </View>
+
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+              {isAr
+                ? 'أدخل عنوان بريدك الإلكتروني لربطه سحابياً واستخدام نفس الحساب على أي هاتف أو متصفح:'
+                : 'Enter your email address to sync and use the exact same account across any device:'}
+            </Text>
+
+            <View style={[styles.inputContainer, { marginBottom: 0 }]}>
+              <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+              <TextInput
+                value={emailInput}
+                onChangeText={setEmailInput}
+                placeholder={socialProvider === 'google' ? 'yourname@gmail.com' : 'user@domain.com'}
+                placeholderTextColor={colors.textTertiary}
+                style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoFocus
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <Pressable
+                onPress={() => setSocialModalVisible(false)}
+                style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.textSecondary }}>
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSocialSubmit}
+                style={{ flex: 1.5, height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                  {isAr ? 'تأكيد ودخول' : 'Confirm & Sync'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

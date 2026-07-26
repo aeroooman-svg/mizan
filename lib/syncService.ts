@@ -120,6 +120,12 @@ export async function syncWithCloud(): Promise<SyncData | null> {
     await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(mergedWallets));
     await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(mergedTxns));
 
+    // D. Automatically Sync All Shared Wallets Live
+    try {
+      const { syncAllSharedWallets } = await import('./sharingService');
+      await syncAllSharedWallets();
+    } catch {}
+
     const nowStr = new Date().toISOString();
     lastSyncTime = nowStr;
     await AsyncStorage.setItem(LAST_SYNC_KEY, nowStr);

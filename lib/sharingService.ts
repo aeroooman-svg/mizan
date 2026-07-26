@@ -120,6 +120,89 @@ async function saveLocalShareCode(walletId: string, code: string, walletName?: s
   publishCloudShareRelay(code, info);
 }
 
+/**
+ * Synchronize a shared wallet in real-time across devices via Cloud Relay KVDB
+ */
+export async function syncSharedWalletByCode(code: string): Promise<boolean> {
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) return false;
+
+  try {
+    // 1. Fetch current cloud payload for this share code
+    const cloudInfo = await fetchCloudShareRelay(cleanCode);
+    
+    // 2. Fetch local wallet and transactions
+    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    const wallets: any[] = rawWallets ? JSON.parse(rawWallets) : [];
+    const localWallet = wallets.find((w: any) => w.shareCode === cleanCode || (w.id && w.id.includes(cleanCode.toLowerCase())));
+
+    const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+    let localTxs: any[] = rawTxs ? JSON.parse(rawTxs) : [];
+
+    let targetWalletId = localWallet?.id || cloudInfo?.walletId || `w_shared_${cleanCode.toLowerCase()}`;
+
+    // Merge transactions from cloud if any
+    let updatedTxs = [...localTxs];
+    if (cloudInfo && Array.isArray(cloudInfo.transactions)) {
+      const txMap = new Map<string, any>();
+      localTxs.forEach((t: any) => txMap.set(t.id, t));
+      cloudInfo.transactions.forEach((t: any) => {
+        txMap.set(t.id, { ...t, walletId: targetWalletId });
+      });
+      updatedTxs = Array.from(txMap.values());
+      await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(updatedTxs));
+    }
+
+    // Now send local snapshot back up to cloud relay so all other members receive it
+    const currentWalletTxs = updatedTxs.filter((t: any) => t.walletId === targetWalletId);
+
+    let ownerUsername = 'صاحب المحفظة';
+    try {
+      const username = await AsyncStorage.getItem('@masarif_username');
+      if (username) ownerUsername = username;
+    } catch {}
+
+    const updatedCloudInfo = {
+      walletId: targetWalletId,
+      walletName: localWallet?.name || cloudInfo?.walletName || `محفظة مشتركة (${cleanCode})`,
+      currency: localWallet?.currency || cloudInfo?.currency || 'SAR',
+      icon: localWallet?.icon || 'people',
+      color: localWallet?.color || '#10B981',
+      cardStyle: localWallet?.cardStyle || 'glass',
+      createdAt: localWallet?.createdAt || new Date().toISOString(),
+      shareCode: cleanCode,
+      ownerUsername: cloudInfo?.ownerUsername || ownerUsername,
+      transactions: currentWalletTxs,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    await publishCloudShareRelay(cleanCode, updatedCloudInfo);
+    return true;
+  } catch (e) {
+    console.warn('syncSharedWalletByCode error:', e);
+    return false;
+  }
+}
+
+/**
+ * Sync all shared wallets for the user
+ */
+export async function syncAllSharedWallets(): Promise<void> {
+  try {
+    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    if (!rawWallets) return;
+    const wallets: any[] = JSON.parse(rawWallets);
+    const sharedWallets = wallets.filter((w: any) => w.shareCode || (w.sharedWith && w.sharedWith.length > 0));
+    for (const wallet of sharedWallets) {
+      if (wallet.shareCode) {
+        await syncSharedWalletByCode(wallet.shareCode);
+      }
+    }
+  } catch (e) {
+    console.warn('syncAllSharedWallets error:', e);
+  }
+}
+
 // ── Share Code Generation ──────────────────────────────
 
 function generateCode(): string {
