@@ -11,6 +11,7 @@ export interface InstallmentPlan {
   totalMonths: number;
   provider: 'valu' | 'tabby' | 'tamara' | 'bank_card' | 'other';
   walletId: string;
+  toWalletId?: string;
   category: string;
   dueDay: number;
   createdAt: string;
@@ -67,16 +68,17 @@ export async function payInstallmentMonth(
   const currentMonthKey = new Date().toISOString().substring(0, 7);
   const now = new Date().toISOString();
 
-  // Add expense transaction to the target wallet
+  // Add expense or transfer transaction
   await addTransactionFn({
     id: `inst_tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     amount: plan.monthlyAmount,
-    type: 'expense',
+    type: plan.toWalletId ? 'transfer' : 'expense',
     category: plan.category || 'other',
     description: `قسط: ${plan.title} (${plan.totalMonths - plan.remainingMonths + 1}/${plan.totalMonths})`,
     date: now,
     createdAt: now,
     walletId: plan.walletId,
+    toWalletId: plan.toWalletId || undefined,
   });
 
   const updatedRemaining = plan.remainingMonths - 1;

@@ -411,75 +411,218 @@ export default function SettingsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-          {/* Cloud Sync Section */}
+          {/* Section 1: Account & Cloud Sync */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="cloud-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'المزامنة السحابية' : 'Cloud Sync'}</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="cloud-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'الحساب والمزامنة السحابية' : 'Account & Cloud Sync'}</Text>
             </View>
 
             {user ? (
-              <View style={styles.userStatus}>
-                <View style={styles.userInfo}>
-                  <Ionicons name="person-circle" size={32} color={colors.primary} />
-                  <View style={{ marginLeft: 8, alignItems: 'flex-start' }}>
-                    <Text style={[styles.menuButtonText, { fontFamily: 'Cairo_700Bold' }]}>{user.username}</Text>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary, fontFamily: 'Cairo_400Regular' }}>
-                      {isAr ? 'حساب نشط ومتصل' : 'Account active & connected'}
+              <View style={styles.userCard}>
+                <View style={styles.userInfoRow}>
+                  <View style={styles.userAvatar}>
+                    <Ionicons name="person" size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.userName}>{user.username}</Text>
+                    <Text style={styles.userSubtext}>
+                      {isAr ? '🟢 حساب نشط ومتصل' : '🟢 Active & Synced'}
                     </Text>
                   </View>
                 </View>
-                
-                <Pressable
-                  onPress={handleSync}
-                  disabled={syncing}
-                  style={styles.syncBtn}
-                >
-                  {syncing ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="sync" size={16} color="#FFF" />
-                      <Text style={styles.syncBtnText}>{isAr ? 'مزامنة الآن' : 'Sync Now'}</Text>
-                    </>
-                  )}
-                </Pressable>
 
-                <Pressable onPress={handleLogout} style={styles.logoutBtn}>
-                  <Ionicons name="log-out-outline" size={16} color={colors.expense} />
-                  <Text style={styles.logoutBtnText}>{isAr ? 'تسجيل الخروج' : 'Logout'}</Text>
-                </Pressable>
+                <View style={styles.userActionsRow}>
+                  <Pressable
+                    onPress={handleSync}
+                    disabled={syncing}
+                    style={({ pressed }) => [styles.primaryActionBtn, pressed && { opacity: 0.8 }, { flex: 1 }]}
+                  >
+                    {syncing ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="sync" size={16} color="#FFF" />
+                        <Text style={styles.primaryActionBtnText}>{isAr ? 'مزامنة الآن' : 'Sync Now'}</Text>
+                      </>
+                    )}
+                  </Pressable>
+
+                  <Pressable onPress={handleLogout} style={({ pressed }) => [styles.secondaryActionBtn, pressed && { opacity: 0.8 }]}>
+                    <Ionicons name="log-out-outline" size={16} color={colors.expense} />
+                    <Text style={styles.secondaryActionBtnText}>{isAr ? 'خروج' : 'Logout'}</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : (
               <View style={styles.noUserBox}>
                 <Text style={styles.noUserText}>
-                  {isAr ? 'سجل دخولك لمزامنة وحفظ بياناتك سحابياً' : 'Login to sync and secure your data in the cloud'}
+                  {isAr ? 'سجل دخولك لحفظ بياناتك ومزامنتها سحابياً بأمان تام' : 'Login to secure and sync your data seamlessly'}
                 </Text>
                 <Pressable
                   onPress={() => {
                     safeHaptic.selection();
                     router.push('/auth' as any);
                   }}
-                  style={styles.loginBtn}
+                  style={({ pressed }) => [styles.primaryActionBtn, pressed && { opacity: 0.8 }, { width: '100%' }]}
                 >
                   <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
-                  <Text style={styles.loginBtnText}>
-                    {isAr ? 'إنشاء حساب / تسجيل دخول' : 'Login / Register'}
+                  <Text style={styles.primaryActionBtnText}>
+                    {isAr ? 'إنشاء حساب / تسجيل الدخول' : 'Login / Register'}
                   </Text>
                 </Pressable>
               </View>
             )}
           </View>
 
-          {/* Security PIN Lock Section */}
+          {/* Section 2: Appearance & Personalization */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'الحماية والأمان' : 'Security & Protection'}</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'المظهر والتخصيص' : 'Appearance & Themes'}</Text>
             </View>
 
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>{isAr ? 'قفل رمز PIN' : 'PIN Lock'}</Text>
+            {/* Language Selector */}
+            <View style={styles.settingBlock}>
+              <Text style={styles.settingBlockLabel}>{isAr ? 'لغة التطبيق' : 'App Language'}</Text>
+              <View style={styles.langRow}>
+                <Pressable
+                  onPress={() => handleToggleLanguage('ar')}
+                  style={[
+                    styles.langOption,
+                    language === 'ar' && styles.langOptionActive,
+                  ]}
+                >
+                  <Text style={[styles.langText, language === 'ar' && styles.langTextActive]}>
+                    العربية 🇸🇦
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleToggleLanguage('en')}
+                  style={[
+                    styles.langOption,
+                    language === 'en' && styles.langOptionActive,
+                  ]}
+                >
+                  <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
+                    English 🇺🇸
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Theme Selector Grid */}
+            <View style={styles.settingBlock}>
+              <Text style={styles.settingBlockLabel}>{isAr ? 'ثيم التطبيق والمظهر' : 'Color Theme'}</Text>
+              <View style={styles.themeGrid}>
+                {[
+                  { id: 'light', nameAr: 'نهاري / لايت', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F9FAFB' },
+                  { id: 'dark', nameAr: 'ليلي / دارك', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
+                  { id: 'midnight', nameAr: 'أزرق الليل / ميدنايت', nameEn: 'Midnight', icon: 'sparkles-outline', primary: '#6366F1', bg: '#0B0F19' },
+                  { id: 'emerald', nameAr: 'الزمرد الأخضر', nameEn: 'Emerald', icon: 'leaf-outline', primary: '#059669', bg: '#061B14' },
+                  { id: 'rose', nameAr: 'الوردي الأنيق / روز', nameEn: 'Rose Gold', icon: 'flower-outline', primary: '#EC4899', bg: '#0F0712' },
+                ].map((t) => {
+                  const isActive = theme === t.id;
+                  return (
+                    <Pressable
+                      key={t.id}
+                      onPress={() => handleToggleTheme(t.id as any)}
+                      style={[
+                        styles.themeCardOption,
+                        isActive && styles.themeCardOptionActive,
+                      ]}
+                    >
+                      <View style={styles.themeCardHeader}>
+                        <Ionicons
+                          name={t.icon as any}
+                          size={18}
+                          color={isActive ? colors.primary : colors.textSecondary}
+                        />
+                        <View style={styles.themeDotContainer}>
+                          <View style={[styles.themeDot, { backgroundColor: t.primary }]} />
+                          <View style={[styles.themeDot, { backgroundColor: t.bg, borderWidth: 1, borderColor: colors.border }]} />
+                        </View>
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.themeCardText, isActive && styles.themeCardTextActive]}
+                      >
+                        {isAr ? t.nameAr : t.nameEn}
+                      </Text>
+                      {isActive && (
+                        <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={styles.themeActiveBadge} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Primary Goal Selection */}
+            <View style={styles.settingBlock}>
+              <Text style={styles.settingBlockLabel}>{isAr ? 'الهدف المالي الرئيسي' : 'Primary Goal'}</Text>
+              <View style={{ gap: 8 }}>
+                {[
+                  { id: 'saving', labelAr: '🎯 توفير المال وبناء الأمان', labelEn: '🎯 Build Savings & Security', color: '#10B981' },
+                  { id: 'debts', labelAr: '💳 سداد الديون والالتزامات', labelEn: '💳 Pay Off Debts & Obligations', color: '#EF4444' },
+                  { id: 'tracking', labelAr: '📊 ضبط النفقات والسيولة اليومية', labelEn: '📊 Control Daily Expenses', color: '#6366F1' },
+                ].map((g) => {
+                  const isActive = userGoal === g.id;
+                  return (
+                    <Pressable
+                      key={g.id}
+                      onPress={() => handleGoalChange(g.id)}
+                      style={[
+                        styles.menuRowItem,
+                        isActive && { backgroundColor: g.color + '15', borderColor: g.color, borderWidth: 1.5 },
+                      ]}
+                    >
+                      <Text style={[styles.menuRowText, isActive && { color: g.color, fontFamily: 'Cairo_700Bold' }]}>
+                        {isAr ? g.labelAr : g.labelEn}
+                      </Text>
+                      {isActive && <Ionicons name="checkmark-circle" size={18} color={g.color} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Home Widget Link */}
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/widgets-setup' as any);
+              }}
+              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
+                <Text style={styles.menuRowText}>
+                  {isAr ? 'ودجت الشاشة الرئيسية (Widgets)' : 'Home Screen Widgets'}
+                </Text>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+
+          {/* Section 3: Security & Sharing */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'الحماية والأمان والمشاركة' : 'Security & Sharing'}</Text>
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'قفل رمز PIN' : 'PIN Lock'}</Text>
+                <Text style={styles.switchSubtext}>{isAr ? 'حماية فتح التطبيق برمز حماية' : 'Secure app opening with PIN'}</Text>
+              </View>
               <Switch
                 value={isPinEnabled}
                 onValueChange={handleTogglePin}
@@ -487,21 +630,16 @@ export default function SettingsScreen() {
               />
             </View>
 
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>{isAr ? 'البصمة البيومترية' : 'Biometric Lock'}</Text>
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'البصمة البيومترية' : 'Biometrics (Face/Touch ID)'}</Text>
+                <Text style={styles.switchSubtext}>{isAr ? 'استخدام بصمة الوجه أو الأصبع' : 'Unlock using biometric sensor'}</Text>
+              </View>
               <Switch
                 value={isBiometricEnabled}
                 onValueChange={handleToggleBiometrics}
                 trackColor={{ false: colors.border, true: colors.primary }}
               />
-            </View>
-          </View>
-
-          {/* Wallet Collaboration & Permissions Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="people-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'إدارة المشاركة والصلاحيات' : 'Wallet Sharing & Permissions'}</Text>
             </View>
 
             <Pressable
@@ -509,50 +647,32 @@ export default function SettingsScreen() {
                 safeHaptic.selection();
                 router.push('/wallet-collaboration' as any);
               }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="people-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'مشاركة وتظافر المحفظة والصلاحيات' : 'Shared Wallet & Member Permissions'}
-              </Text>
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="people-outline" size={18} color={colors.primary} />
+                <Text style={styles.menuRowText}>
+                  {isAr ? 'إدارة مشاركة المحفظة والصلاحيات' : 'Shared Wallet & Member Permissions'}
+                </Text>
+              </View>
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
             </Pressable>
           </View>
 
-          {/* App Customization & Widgets Section */}
+          {/* Section 4: Bank SMS Automation */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="options-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'التخصيص ومظهر التطبيق' : 'App Customization & Widgets'}</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'أتمتة الرسائل البنكية' : 'Bank SMS Automation'}</Text>
             </View>
 
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/widgets-setup' as any);
-              }}
-              style={({ pressed }) => [styles.menuButton, pressed && { opacity: 0.7 }]}
-            >
-              <Ionicons name="hardware-chip-outline" size={20} color={colors.primary} />
-              <Text style={styles.menuButtonText}>
-                {isAr ? 'ودجت الشاشة الرئيسية (iOS & Android)' : 'Home Screen Widget Setup'}
-              </Text>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-          </View>
-
-          {/* Bank SMS Automation Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'أتمتة الرسائل البنكية' : 'Bank SMS Automation'}</Text>
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={styles.settingLabel}>{isAr ? 'التقاط الرسائل البنكية' : 'Bank SMS Auto-Detection'}</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                  {isAr ? 'فحص وتحليل الرسائل البنكية تلقائياً فور النسخ أو الفتح' : 'Automatically parse bank messages'}
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'التقاط الرسائل البنكية' : 'Bank SMS Auto-Detection'}</Text>
+                <Text style={styles.switchSubtext}>
+                  {isAr ? 'تحليل الرسائل البنكية تلقائياً فور النسخ أو الفتح' : 'Automatically parse copied or received SMS'}
                 </Text>
               </View>
               <Switch
@@ -563,11 +683,11 @@ export default function SettingsScreen() {
             </View>
 
             {autoSmsEnabled && (
-              <View style={styles.settingItem}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={styles.settingLabel}>{isAr ? 'التسجيل التلقائي الفوري' : 'Auto-Save Mode'}</Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                    {isAr ? 'حفظ المعاملات البنكية فوراً بدون طلب تأكيد' : 'Save bank transactions directly without confirmation popup'}
+              <View style={styles.switchRow}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.switchLabel}>{isAr ? 'التسجيل التلقائي الفوري' : 'Auto-Save Mode'}</Text>
+                  <Text style={styles.switchSubtext}>
+                    {isAr ? 'حفظ المعاملات فوراً بدون نافذة تأكيد' : 'Save bank transactions without confirmation popup'}
                   </Text>
                 </View>
                 <Switch
@@ -584,157 +704,51 @@ export default function SettingsScreen() {
                 setIsGuideOpen(true);
               }}
               style={({ pressed }) => [
-                styles.menuButton,
-                { marginTop: 8, backgroundColor: colors.primary + '12', borderRadius: 12, padding: 12 },
+                styles.menuRowItem,
+                { backgroundColor: colors.primary + '12', borderRadius: 12 },
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
-              <Text style={[styles.menuButtonText, { color: colors.primary, fontFamily: 'Cairo_700Bold', flex: 1 }]}>
-                {isAr ? 'دليل إعداد الأتمتة الكاملة (Android / iOS)' : 'Full Automation Guide (Android / iOS)'}
-              </Text>
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
+                <Text style={[styles.menuRowText, { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
+                  {isAr ? 'دليل إعداد الأتمتة الكاملة (Android / iOS)' : 'Full Automation Setup Guide'}
+                </Text>
+              </View>
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.primary} />
             </Pressable>
 
             <Pressable
               onPress={handleClearSmsHistory}
               style={({ pressed }) => [
-                styles.menuButton,
-                { marginTop: 6 },
+                styles.menuRowItem,
+                { backgroundColor: 'transparent', paddingHorizontal: 4, borderWidth: 0 },
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Ionicons name="refresh-outline" size={18} color={colors.textSecondary} />
-              <Text style={[styles.menuButtonText, { color: colors.textSecondary, fontSize: 12 }]}>
-                {isAr ? 'إعادة ضبط سجل الرسائل المقروءة' : 'Reset processed SMS log'}
-              </Text>
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
+                <Text style={[styles.menuRowText, { color: colors.textSecondary, fontSize: 12 }]}>
+                  {isAr ? 'إعادة ضبط سجل الرسائل المقروءة' : 'Reset processed SMS log'}
+                </Text>
+              </View>
             </Pressable>
           </View>
 
-          {/* Language Selection Section */}
+          {/* Section 5: Data & Backup Management */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="language" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{t.language}</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'تصدير وإدارة البيانات' : 'Data & Export'}</Text>
             </View>
-            <View style={styles.langRow}>
-              <Pressable
-                onPress={() => handleToggleLanguage('ar')}
-                style={[
-                  styles.langOption,
-                  language === 'ar' && styles.langOptionActive,
-                ]}
-              >
-                <Text style={[styles.langText, language === 'ar' && styles.langTextActive]}>
-                  العربية
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleToggleLanguage('en')}
-                style={[
-                  styles.langOption,
-                  language === 'en' && styles.langOptionActive,
-                ]}
-              >
-                <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
-                  English
-                </Text>
-              </Pressable>
-            </View>
-          </View>
 
-          {/* Primary Financial Goal Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="compass-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>
-                {isAr ? 'الهدف المالي الرئيسي' : 'Primary Financial Goal'}
-              </Text>
-            </View>
-            <View style={{ gap: 10, marginTop: 4 }}>
-              {[
-                { id: 'saving', labelAr: '🎯 توفير المال وبناء الأمان', labelEn: '🎯 Build Savings & Security', color: '#10B981' },
-                { id: 'debts', labelAr: '💳 سداد الديون والالتزامات', labelEn: '💳 Pay Off Debts & Obligations', color: '#EF4444' },
-                { id: 'tracking', labelAr: '📊 ضبط النفقات والسيولة اليومية', labelEn: '📊 Control Daily Expenses', color: '#6366F1' },
-              ].map((g) => {
-                const isActive = userGoal === g.id;
-                return (
-                  <Pressable
-                    key={g.id}
-                    onPress={() => handleGoalChange(g.id)}
-                    style={[
-                      styles.menuButton,
-                      isActive && { backgroundColor: g.color + '15', borderColor: g.color, borderWidth: 1 },
-                    ]}
-                  >
-                    <Text style={[styles.menuButtonText, isActive && { color: g.color, fontFamily: 'Cairo_700Bold' }]}>
-                      {isAr ? g.labelAr : g.labelEn}
-                    </Text>
-                    {isActive && <Ionicons name="checkmark-circle" size={18} color={g.color} />}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Theme Mode Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'المظهر / الثيم' : 'Appearance / Theme'}</Text>
-            </View>
-            <View style={styles.themeGrid}>
-              {[
-                { id: 'light', nameAr: 'نهاري / لايت', nameEn: 'Light Mode', icon: 'sunny-outline', primary: '#10B981', bg: '#F9FAFB' },
-                { id: 'dark', nameAr: 'ليلي / دارك', nameEn: 'Dark Mode', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
-                { id: 'midnight', nameAr: 'أزرق الليل / ميدنايت', nameEn: 'Midnight Blue', icon: 'sparkles-outline', primary: '#6366F1', bg: '#0B0F19' },
-                { id: 'emerald', nameAr: 'الزمرد الأخضر', nameEn: 'Emerald Green', icon: 'leaf-outline', primary: '#059669', bg: '#061B14' },
-                { id: 'rose', nameAr: 'الوردي الأنيق / روز', nameEn: 'Rose Gold', icon: 'flower-outline', primary: '#EC4899', bg: '#0F0712' },
-              ].map((t) => {
-                const isActive = theme === t.id;
-                return (
-                  <Pressable
-                    key={t.id}
-                    onPress={() => handleToggleTheme(t.id as any)}
-                    style={[
-                      styles.themeCardOption,
-                      isActive && styles.themeCardOptionActive,
-                    ]}
-                  >
-                    <View style={styles.themeCardHeader}>
-                      <Ionicons
-                        name={t.icon as any}
-                        size={18}
-                        color={isActive ? colors.primary : colors.textSecondary}
-                      />
-                      <View style={styles.themeDotContainer}>
-                        <View style={[styles.themeDot, { backgroundColor: t.primary }]} />
-                        <View style={[styles.themeDot, { backgroundColor: t.bg, borderWidth: 1, borderColor: colors.border }]} />
-                      </View>
-                    </View>
-                    <Text style={[styles.themeCardText, isActive && styles.themeCardTextActive]}>
-                      {isAr ? t.nameAr : t.nameEn}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Export Statement Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="document-text-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'تصدير البيانات' : 'Export Data'}</Text>
-            </View>
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: 8 }}>
               <Pressable
                 onPress={handleExportPDF}
                 disabled={exporting}
-                style={({ pressed }) => [
-                  styles.exportBtn,
-                  pressed && { opacity: 0.9 }
-                ]}
+                style={({ pressed }) => [styles.exportBtn, pressed && { opacity: 0.85 }]}
               >
                 {exporting ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -751,11 +765,7 @@ export default function SettingsScreen() {
               <Pressable
                 onPress={handleExportCSV}
                 disabled={exporting}
-                style={({ pressed }) => [
-                  styles.exportBtn,
-                  { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-                  pressed && { opacity: 0.9 }
-                ]}
+                style={({ pressed }) => [styles.exportBtnOutline, pressed && { opacity: 0.85 }]}
               >
                 {exporting ? (
                   <ActivityIndicator size="small" color={colors.primary} />
@@ -763,79 +773,76 @@ export default function SettingsScreen() {
                   <>
                     <Ionicons name="grid-outline" size={18} color={colors.primary} />
                     <Text style={[styles.exportBtnText, { color: colors.text }]}>
-                      {isAr ? 'تصدير كشف الحساب بصيغة Excel / CSV' : 'Export Statement to Excel / CSV'}
+                      {isAr ? 'تصدير كشف الحساب Excel / CSV' : 'Export Statement to Excel / CSV'}
                     </Text>
                   </>
                 )}
               </Pressable>
 
-              <Pressable
-                onPress={handleCreateBackup}
-                style={({ pressed }) => [
-                  styles.exportBtn,
-                  { backgroundColor: colors.primary + '15', borderWidth: 1, borderColor: colors.primary + '30' },
-                  pressed && { opacity: 0.9 }
-                ]}
-              >
-                <Ionicons name="cloud-download-outline" size={18} color={colors.primary} />
-                <Text style={[styles.exportBtnText, { color: colors.primary }]}>
-                  {isAr ? 'تصدير نسخة احتياطية كاملة (JSON Backup)' : 'Create Full Backup (JSON)'}
-                </Text>
-              </Pressable>
+              <View style={styles.backupRow}>
+                <Pressable
+                  onPress={handleCreateBackup}
+                  style={({ pressed }) => [styles.backupBtn, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }, pressed && { opacity: 0.85 }]}
+                >
+                  <Ionicons name="cloud-download-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.backupBtnText, { color: colors.primary }]}>
+                    {isAr ? 'إنشاء نسخة JSON' : 'Create Backup'}
+                  </Text>
+                </Pressable>
 
-              <Pressable
-                onPress={() => {
-                  safeHaptic.selection();
-                  setIsRestoreModalOpen(true);
-                }}
-                style={({ pressed }) => [
-                  styles.exportBtn,
-                  { backgroundColor: '#3B82F615', borderWidth: 1, borderColor: '#3B82F630' },
-                  pressed && { opacity: 0.9 }
-                ]}
-              >
-                <Ionicons name="cloud-upload-outline" size={18} color="#3B82F6" />
-                <Text style={[styles.exportBtnText, { color: '#3B82F6' }]}>
-                  {isAr ? 'استعادة نسخة احتياطية (Restore JSON Backup)' : 'Restore Full Backup (JSON)'}
-                </Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => {
+                    safeHaptic.selection();
+                    setIsRestoreModalOpen(true);
+                  }}
+                  style={({ pressed }) => [styles.backupBtn, { backgroundColor: '#3B82F615', borderColor: '#3B82F630' }, pressed && { opacity: 0.85 }]}
+                >
+                  <Ionicons name="cloud-upload-outline" size={16} color="#3B82F6" />
+                  <Text style={[styles.backupBtnText, { color: '#3B82F6' }]}>
+                    {isAr ? 'استعادة نسخة JSON' : 'Restore Backup'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
 
-          {/* Clear All Data Section */}
-          <View style={[styles.sectionCard, { borderColor: colors.expense + '20' }]}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="trash-outline" size={18} color={colors.expense} />
-              <Text style={[styles.sectionLabel, { color: colors.expense }]}>
+          {/* Section 6: Danger Zone */}
+          <View style={[styles.sectionCard, { borderColor: colors.expense + '30', backgroundColor: colors.expense + '06' }]}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconBadge, { backgroundColor: colors.expense + '15' }]}>
+                <Ionicons name="alert-circle-outline" size={18} color={colors.expense} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: colors.expense }]}>
                 {isAr ? 'منطقة الخطر' : 'Danger Zone'}
               </Text>
             </View>
-            <Text style={[styles.settingLabel, { fontSize: 12, color: colors.textSecondary, fontFamily: 'Cairo_400Regular', textAlign: 'left', lineHeight: 18 }]}>
+
+            <Text style={styles.dangerSubtext}>
               {isAr 
-                ? 'سيتم حذف جميع المعاملات والمحافظ والتأملات والخطط نهائياً من جهازك وجعل التطبيق جديد تماماً.' 
-                : 'This will permanently delete all transactions, wallets, reflections, and plans from this device, resetting the app to a clean state.'}
+                ? 'حذف جميع المعاملات والمحافظ والبيانات نهائياً وإعادة التطبيق للحالة الافتراضية.' 
+                : 'Permanently remove all data, transactions, and wallets, resetting app.'}
             </Text>
+
             <Pressable
               onPress={handleClearAllData}
-              style={({ pressed }) => [
-                styles.clearBtn,
-                { backgroundColor: colors.expense },
-                pressed && { opacity: 0.9 }
-              ]}
+              style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.9 }]}
             >
               <Ionicons name="trash-outline" size={18} color="#FFF" />
               <Text style={styles.clearBtnText}>
-                {isAr ? 'مسح جميع البيانات' : 'Clear All Data'}
+                {isAr ? 'مسح جميع البيانات نهائياً' : 'Clear All Data'}
               </Text>
             </Pressable>
           </View>
 
-          {/* Privacy Policy Section */}
+          {/* Section 7: Privacy & About */}
           <View style={styles.sectionCard}>
-            <View style={styles.sectionLabelRow}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
-              <Text style={styles.sectionLabel}>{isAr ? 'الخصوصية والأمان' : 'Privacy & Security'}</Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'الخصوصية والمعلومات' : 'Privacy & Info'}</Text>
             </View>
+
             <Pressable
               onPress={async () => {
                 safeHaptic.selection();
@@ -850,30 +857,25 @@ export default function SettingsScreen() {
                   );
                 }
               }}
-              style={({ pressed }) => [
-                styles.menuButton,
-                pressed && { backgroundColor: colors.surfaceAlt }
-              ]}
+              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
             >
-              <View style={styles.menuButtonLeft}>
-                <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
-                <Text style={styles.menuButtonText}>
-                  {isAr ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy & Data Protection'}
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="shield-outline" size={18} color={colors.textSecondary} />
+                <Text style={styles.menuRowText}>
+                  {isAr ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy'}
                 </Text>
               </View>
-              <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={18} color={colors.textSecondary} />
+              <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={16} color={colors.textSecondary} />
             </Pressable>
           </View>
 
-          {/* About App Section */}
+          {/* App Branding Footer */}
           <View style={styles.aboutContainer}>
-            <Text style={styles.aboutTitle}>
-              {isAr ? 'عن التطبيق' : 'About Mizan'}
-            </Text>
+            <Text style={styles.aboutTitle}>{isAr ? 'ميزان - Mizan' : 'Mizan App'}</Text>
             <Text style={styles.aboutDesc}>
               {isAr 
-                ? 'تطبيق ميزان لإدارة مصاريفك وتخطيطك المالي بكل ذكاء وسهولة.' 
-                : 'Mizan helps you track expenses, organize savings, and plan your financial future mindfully.'}
+                ? 'إدارة مصاريفك وتخطيطك المالي بكل ذكاء وسهولة.' 
+                : 'Track expenses & plan your financial future mindfully.'}
             </Text>
             <Text style={styles.versionText}>
               {isAr ? 'الإصدار 1.0.0 (بيتا)' : 'Version 1.0.0 (Beta)'}
@@ -1096,7 +1098,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 12,
+    paddingBottom: 14,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -1113,33 +1115,123 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
-    gap: 12,
+    gap: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sectionLabelRow: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 10,
+    marginBottom: 2,
   },
-  sectionLabel: {
+  sectionIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.primary + '14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
     color: colors.text,
   },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
+  userCard: {
+    gap: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  settingLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  userAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primary + '18',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
     color: colors.text,
+  },
+  userSubtext: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  userActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  primaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  primaryActionBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#FFF',
+  },
+  secondaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.expense + '15',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.expense + '30',
+  },
+  secondaryActionBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.expense,
+  },
+  noUserBox: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  noUserText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  settingBlock: {
+    gap: 8,
+  },
+  settingBlockLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   langRow: {
     flexDirection: 'row',
@@ -1149,19 +1241,19 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   langOptionActive: {
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.primary + '14',
     borderColor: colors.primary,
   },
   langText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textSecondary,
   },
   langTextActive: {
@@ -1170,20 +1262,20 @@ const getStyles = (colors: any) => StyleSheet.create({
   themeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 10,
   },
   themeCardOption: {
-    width: '45%',
-    flexGrow: 1,
+    width: '48%',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1.5,
     borderColor: colors.border,
-    gap: 8,
+    gap: 6,
   },
   themeCardOptionActive: {
-    backgroundColor: colors.primary + '18',
+    backgroundColor: colors.primary + '14',
     borderColor: colors.primary,
   },
   themeCardHeader: {
@@ -1202,96 +1294,54 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   themeCardText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
+    fontSize: 12,
     color: colors.text,
   },
   themeCardTextActive: {
     color: colors.primary,
   },
-  userStatus: {
-    gap: 10,
-    alignItems: 'stretch',
+  themeActiveBadge: {
+    alignSelf: 'flex-end',
+    marginTop: -2,
   },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuButtonText: {
-    fontSize: 15,
-    color: colors.text,
-    fontFamily: 'Cairo_600SemiBold',
-  },
-  syncBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  syncBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: '#FFF',
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.expense + '12',
-    borderRadius: 12,
-    paddingVertical: 10,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.expense + '30',
-  },
-  logoutBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: colors.expense,
-  },
-  noUserBox: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-  },
-  noUserText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  menuButton: {
+  menuRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  menuButtonLeft: {
+  menuRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
-  loginBtn: {
+  menuRowText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    width: '100%',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 6,
   },
-  loginBtnText: {
-    fontFamily: 'Cairo_700Bold',
+  switchLabel: {
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 14,
-    color: '#FFF',
+    color: colors.text,
+  },
+  switchSubtext: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
   exportBtn: {
     flexDirection: 'row',
@@ -1302,15 +1352,51 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  exportBtnOutline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    paddingVertical: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   exportBtnText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFF',
+  },
+  backupRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  backupBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    gap: 6,
+    borderWidth: 1,
+  },
+  backupBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  dangerSubtext: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
   clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.expense,
     borderRadius: 12,
     paddingVertical: 12,
     gap: 8,
@@ -1322,8 +1408,8 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   aboutContainer: {
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
+    gap: 4,
+    marginTop: 4,
     paddingHorizontal: 20,
   },
   aboutTitle: {
@@ -1336,12 +1422,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 16,
   },
   versionText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
   },
 });

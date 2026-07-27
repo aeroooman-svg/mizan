@@ -54,6 +54,17 @@ export default function InstallmentsScreen() {
   const [dueDay, setDueDay] = useState('5');
   const [category, setCategory] = useState('other');
 
+  // Wallet selection & Auto-transfer states
+  const [sourceWalletId, setSourceWalletId] = useState<string>(selectedWallet?.id || wallets[0]?.id || '');
+  const [isTransfer, setIsTransfer] = useState(false);
+  const [toWalletId, setToWalletId] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedWallet && !sourceWalletId) {
+      setSourceWalletId(selectedWallet.id);
+    }
+  }, [selectedWallet]);
+
   const loadPlans = useCallback(async () => {
     const data = await getInstallmentPlans();
     setPlans(data);
@@ -144,7 +155,8 @@ export default function InstallmentsScreen() {
     }
 
     const numDueDay = parseInt(dueDay, 10) || 5;
-    const targetWalletId = selectedWallet?.id || (wallets[0] ? wallets[0].id : '');
+    const activeSourceId = sourceWalletId || selectedWallet?.id || (wallets[0] ? wallets[0].id : '');
+    const activeTargetId = isTransfer && toWalletId ? toWalletId : undefined;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -157,7 +169,8 @@ export default function InstallmentsScreen() {
       provider,
       dueDay: numDueDay,
       category,
-      walletId: targetWalletId,
+      walletId: activeSourceId,
+      toWalletId: activeTargetId,
     });
 
     setTitle('');
@@ -632,6 +645,94 @@ export default function InstallmentsScreen() {
                   value={title}
                   onChangeText={setTitle}
                 />
+              </View>
+
+              {/* Source Wallet Picker */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{isAr ? 'محفظة الخصم (من)' : 'Source Wallet (From)'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                  {wallets.map(w => {
+                    const isSelected = (sourceWalletId || selectedWallet?.id) === w.id;
+                    return (
+                      <Pressable
+                        key={w.id}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setSourceWalletId(w.id);
+                        }}
+                        style={[
+                          styles.walletChip,
+                          isSelected && { backgroundColor: w.color + '22', borderColor: w.color, borderWidth: 2 }
+                        ]}
+                      >
+                        <MaterialCommunityIcons name={w.icon as any} size={16} color={w.color} />
+                        <Text style={[styles.walletChipText, isSelected && { color: w.color, fontFamily: 'Cairo_700Bold' }]}>{w.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Auto-Transfer to Target / Shared Wallet */}
+              <View style={styles.formGroup}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    const nextVal = !isTransfer;
+                    setIsTransfer(nextVal);
+                    if (nextVal && !toWalletId) {
+                      const other = wallets.find(w => w.id !== (sourceWalletId || selectedWallet?.id));
+                      if (other) setToWalletId(other.id);
+                    }
+                  }}
+                  style={styles.toggleRow}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.toggleLabel}>
+                      {isAr ? 'تحويل تلقائي لمحفظة أخرى (أو مشتركة)' : 'Auto-transfer to target/shared wallet'}
+                    </Text>
+                    <Text style={styles.toggleSub}>
+                      {isAr 
+                        ? 'تُخصم من المحفظة المصدر وتُضاف للمحفظة المستهدفة عند سداد القسط.' 
+                        : 'Deducted from source wallet and added to target wallet when paid.'}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.customSwitch,
+                    isTransfer ? { backgroundColor: colors.primary, alignItems: 'flex-end' } : { backgroundColor: colors.surfaceAlt, alignItems: 'flex-start', borderWidth: 1, borderColor: colors.border }
+                  ]}>
+                    <View style={styles.customSwitchCircle} />
+                  </View>
+                </Pressable>
+
+                {isTransfer && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={styles.label}>{isAr ? 'المحفظة المستهدفة (إلى)' : 'Target Wallet (To)'}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                      {wallets.filter(w => w.id !== (sourceWalletId || selectedWallet?.id)).map(w => {
+                        const isSelected = toWalletId === w.id;
+                        return (
+                          <Pressable
+                            key={w.id}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setToWalletId(w.id);
+                            }}
+                            style={[
+                              styles.walletChip,
+                              isSelected && { backgroundColor: w.color + '22', borderColor: w.color, borderWidth: 2 }
+                            ]}
+                          >
+                            <MaterialCommunityIcons name={w.icon as any} size={16} color={w.color} />
+                            <Text style={[styles.walletChipText, isSelected && { color: w.color, fontFamily: 'Cairo_700Bold' }]}>
+                              {w.name} {w.sharedWith ? (isAr ? '🤝 (مشتركة)' : '🤝 (Shared)') : ''}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
 
               {/* Calculator Mode Switcher Toggle */}
@@ -1325,5 +1426,61 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
     color: '#FFF',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceAlt,
+    padding: 14,
+    borderRadius: 16,
+    gap: 12,
+  },
+  toggleLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  toggleSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 16,
+  },
+  customSwitch: {
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    padding: 3,
+  },
+  customSwitchCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.text,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  walletChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });

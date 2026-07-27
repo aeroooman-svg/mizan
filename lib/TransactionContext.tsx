@@ -110,7 +110,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
           const newTx: Transaction = {
             id: Crypto.randomUUID(),
             walletId: rec.walletId,
-            type: rec.type,
+            toWalletId: rec.toWalletId || undefined,
+            type: rec.toWalletId ? 'transfer' : rec.type,
             amount: rec.amount,
             category: rec.category,
             description: rec.description || '',

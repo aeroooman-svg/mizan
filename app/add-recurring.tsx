@@ -39,7 +39,7 @@ export default function AddRecurringScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const { selectedWallet, currencySymbol, customCategories, addCustomCategory } = useTransactions();
+  const { wallets, selectedWallet, currencySymbol, customCategories, addCustomCategory } = useTransactions();
   const { t, language } = useLanguage();
 
   const params = useLocalSearchParams<{ editId?: string }>();
@@ -56,6 +56,17 @@ export default function AddRecurringScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isVariable, setIsVariable] = useState(false);
 
+  // Wallet selection & Auto-transfer states
+  const [sourceWalletId, setSourceWalletId] = useState<string>(selectedWallet?.id || wallets[0]?.id || '');
+  const [isTransfer, setIsTransfer] = useState(false);
+  const [toWalletId, setToWalletId] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedWallet && !sourceWalletId) {
+      setSourceWalletId(selectedWallet.id);
+    }
+  }, [selectedWallet]);
+
   // Load existing recurring transaction if editing
   useEffect(() => {
     async function loadExisting() {
@@ -64,7 +75,7 @@ export default function AddRecurringScreen() {
         const found = all.find(i => i.id === params.editId);
         if (found) {
           setExistingItem(found);
-          setType(found.type);
+          setType(found.type === 'transfer' ? 'expense' : found.type);
           setAmount(found.amount.toString());
           setSelectedCategory(found.category);
           if (found.color) setSelectedColor(found.color);
@@ -72,6 +83,11 @@ export default function AddRecurringScreen() {
           setDescription(found.description || '');
           setFrequency(found.frequency);
           setIsVariable(!!found.isVariable);
+          if (found.walletId) setSourceWalletId(found.walletId);
+          if (found.toWalletId) {
+            setIsTransfer(true);
+            setToWalletId(found.toWalletId);
+          }
           if (found.nextDueDate) {
             const d = new Date(found.nextDueDate);
             setSelectedDay(d.getDate());
@@ -150,8 +166,13 @@ export default function AddRecurringScreen() {
       Alert.alert(t.error, t.selectCategory);
       return;
     }
-    if (!selectedWallet) {
+    const activeWalletId = sourceWalletId || selectedWallet?.id;
+    if (!activeWalletId) {
       Alert.alert(t.error, t.noWalletSelected);
+      return;
+    }
+    if (isTransfer && !toWalletId) {
+      Alert.alert(t.error, language === 'ar' ? 'الرجاء اختيار المحفظة المستهدفة' : 'Please select a target wallet');
       return;
     }
 
@@ -161,10 +182,13 @@ export default function AddRecurringScreen() {
     const nextDueDate = new Date(selectedYear, selectedMonth, selectedDay);
     nextDueDate.setHours(9, 0, 0, 0); // Default run at 9:00 AM
 
+    const targetWallet = isTransfer && toWalletId ? toWalletId : undefined;
+
     const recurring: RecurringTransaction = {
       id: existingItem?.id || Crypto.randomUUID(),
-      walletId: selectedWallet.id,
-      type,
+      walletId: activeWalletId,
+      toWalletId: targetWallet,
+      type: targetWallet ? 'transfer' : type,
       amount: parseFloat(amount),
       category: selectedCategory,
       description: description.trim(),
@@ -298,14 +322,31 @@ export default function AddRecurringScreen() {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20, paddingTop: 16 }]}
           keyboardShouldPersistTaps="handled"
         >
-          {selectedWallet && (
-            <View style={[styles.walletBadge, { marginHorizontal: 0, marginBottom: 16, marginTop: 0 }]}>
-              <MaterialIcons name={selectedWallet.icon as any} size={16} color={selectedWallet.color} />
-              <Text style={[styles.walletBadgeText, { color: selectedWallet.color }]}>
-                {selectedWallet.name} ({currencySymbol})
-              </Text>
-            </View>
-          )}
+          {/* Source Wallet Picker */}
+          <View style={[styles.section, { marginTop: 0, marginBottom: 16 }]}>
+            <Text style={styles.label}>{language === 'ar' ? 'محفظة الخصم (من)' : 'Source Wallet (From)'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+              {wallets.map(w => {
+                const isSelected = (sourceWalletId || selectedWallet?.id) === w.id;
+                return (
+                  <Pressable
+                    key={w.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSourceWalletId(w.id);
+                    }}
+                    style={[
+                      styles.walletChip,
+                      isSelected && { backgroundColor: w.color + '22', borderColor: w.color, borderWidth: 2 }
+                    ]}
+                  >
+                    <MaterialIcons name={w.icon as any} size={16} color={w.color} />
+                    <Text style={[styles.walletChipText, isSelected && { color: w.color, fontFamily: 'Cairo_700Bold' }]}>{w.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
           <View style={styles.typeToggle}>
             <Pressable
               onPress={() => handleTypeSwitch('expense')}
@@ -382,6 +423,68 @@ export default function AddRecurringScreen() {
                 <View style={styles.customSwitchCircle} />
               </View>
             </Pressable>
+          </View>
+
+          {/* Auto-Transfer to another/shared wallet */}
+          <View style={styles.section}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                const nextVal = !isTransfer;
+                setIsTransfer(nextVal);
+                if (nextVal && !toWalletId) {
+                  const other = wallets.find(w => w.id !== (sourceWalletId || selectedWallet?.id));
+                  if (other) setToWalletId(other.id);
+                }
+              }}
+              style={styles.toggleRow}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.toggleLabel}>
+                  {language === 'ar' ? 'تحويل تلقائي لمحفظة أخرى (أو مشتركة)' : 'Auto-transfer to target/shared wallet'}
+                </Text>
+                <Text style={styles.toggleSub}>
+                  {language === 'ar' 
+                    ? 'تُخصم من المحفظة المصدر وتُضاف إلى المحفظة المستهدفة عند الاستحقاق.' 
+                    : 'Deducted from the source wallet and added to the target wallet when due.'}
+                </Text>
+              </View>
+              <View style={[
+                styles.customSwitch,
+                isTransfer ? { backgroundColor: selectedWallet?.color || Colors.primary, alignItems: 'flex-end' } : { backgroundColor: colors.surfaceAlt, alignItems: 'flex-start', borderWidth: 1, borderColor: colors.border }
+              ]}>
+                <View style={styles.customSwitchCircle} />
+              </View>
+            </Pressable>
+
+            {isTransfer && (
+              <View style={{ marginTop: 14 }}>
+                <Text style={styles.label}>{language === 'ar' ? 'المحفظة المستهدفة (إلى)' : 'Target Wallet (To)'}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                  {wallets.filter(w => w.id !== (sourceWalletId || selectedWallet?.id)).map(w => {
+                    const isSelected = toWalletId === w.id;
+                    return (
+                      <Pressable
+                        key={w.id}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setToWalletId(w.id);
+                        }}
+                        style={[
+                          styles.walletChip,
+                          isSelected && { backgroundColor: w.color + '22', borderColor: w.color, borderWidth: 2 }
+                        ]}
+                      >
+                        <MaterialIcons name={w.icon as any} size={16} color={w.color} />
+                        <Text style={[styles.walletChipText, isSelected && { color: w.color, fontFamily: 'Cairo_700Bold' }]}>
+                          {w.name} {w.sharedWith ? (language === 'ar' ? '🤝 (مشتركة)' : '🤝 (Shared)') : ''}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </View>
 
           {/* Frequency Section */}
@@ -1330,5 +1433,21 @@ const getStyles = (colors: any) => StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
+  },
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  walletChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });

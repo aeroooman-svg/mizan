@@ -62,8 +62,8 @@ export default function RecurringListScreen() {
     
     // Filter to current wallet if set
     if (selectedWallet) {
-      setItems(recData.filter(item => item.walletId === selectedWallet.id));
-      setInstallments(instData.filter(item => item.walletId === selectedWallet.id));
+      setItems(recData.filter(item => item.walletId === selectedWallet.id || item.toWalletId === selectedWallet.id));
+      setInstallments(instData.filter(item => item.walletId === selectedWallet.id || item.toWalletId === selectedWallet.id));
     } else {
       setItems(recData);
       setInstallments(instData);

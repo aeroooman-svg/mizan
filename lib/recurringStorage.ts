@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface RecurringTransaction {
   id: string;
   walletId: string;
-  type: 'expense' | 'income';
+  toWalletId?: string;
+  type: 'expense' | 'income' | 'transfer';
   amount: number;
   category: string;
   description: string;
