@@ -12,6 +12,7 @@ export interface Jameya {
   walletId: string;
   createdAt: string;
   lastPaidMonth?: string; // YYYY-MM
+  sharesCount?: number; // عدد الأسهم/الأسماء (مثلاً 1، 2، 0.5، 1.5)
 }
 
 const JAMEYAS_KEY = '@masarif_jameyas';

@@ -50,6 +50,7 @@ export default function JameyaScreen() {
   // Form State
   const [name, setName] = useState('');
   const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [sharesCount, setSharesCount] = useState('1'); // عدد الأسهم/الأسماء (مثل 1، 2، 0.5)
   const [totalMonths, setTotalMonths] = useState('10');
   const [payoutMonth, setPayoutMonth] = useState('1');
   const [startMonth, setStartMonth] = useState(new Date().toISOString().substring(0, 7));
@@ -90,6 +91,7 @@ export default function JameyaScreen() {
     setEditingJameya(null);
     setName('');
     setMonthlyAmount('');
+    setSharesCount('1');
     setTotalMonths('10');
     setPayoutMonth('1');
     setStartMonth(new Date().toISOString().substring(0, 7));
@@ -102,6 +104,7 @@ export default function JameyaScreen() {
     setEditingJameya(item);
     setName(item.name);
     setMonthlyAmount(item.monthlyAmount.toString());
+    setSharesCount((item.sharesCount || 1).toString());
     setTotalMonths(item.totalMonths.toString());
     setPayoutMonth(item.payoutMonth.toString());
     setStartMonth(item.startMonth);
@@ -117,6 +120,11 @@ export default function JameyaScreen() {
     const numMonthly = parseFloat(monthlyAmount);
     if (isNaN(numMonthly) || numMonthly <= 0) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال قسط شهري صحيح' : 'Please enter a valid monthly amount');
+      return;
+    }
+    const numShares = parseFloat(sharesCount);
+    if (isNaN(numShares) || numShares <= 0) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أسهم/أسماء صحيح' : 'Please enter a valid shares count');
       return;
     }
     const numTotalMonths = parseInt(totalMonths, 10);
@@ -139,6 +147,7 @@ export default function JameyaScreen() {
         id: editingJameya?.id,
         name: name.trim(),
         monthlyAmount: numMonthly,
+        sharesCount: numShares,
         totalMonths: numTotalMonths,
         payoutMonth: numPayoutMonth,
         startMonth: startMonth || new Date().toISOString().substring(0, 7),
@@ -205,6 +214,21 @@ export default function JameyaScreen() {
     }
   };
 
+  const renderSharesBadge = (shares: number = 1) => {
+    let label = isAr ? 'اسم واحد (سهم)' : '1 Share';
+    if (shares === 0.5) label = isAr ? 'نصف اسم (0.5 سهم)' : '0.5 Share';
+    else if (shares === 2) label = isAr ? 'اسمين (2 سهم)' : '2 Shares';
+    else if (shares > 2) label = isAr ? `${shares} أسماء (أسهم)` : `${shares} Shares`;
+    else if (shares > 0 && shares !== 1) label = isAr ? `${shares} اسم (سهم)` : `${shares} Shares`;
+
+    return (
+      <View style={styles.sharesBadge}>
+        <MaterialCommunityIcons name="ticket-account" size={14} color={colors.primary} />
+        <Text style={styles.sharesBadgeText}>{label}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Top Header */}
@@ -263,7 +287,7 @@ export default function JameyaScreen() {
             <MaterialCommunityIcons name="account-group" size={56} color={colors.textSecondary} style={{ opacity: 0.5 }} />
             <Text style={styles.emptyTitle}>{isAr ? 'لا توجد جمعيات نشطة حالياً' : 'No Active Associations'}</Text>
             <Text style={styles.emptySubtitle}>
-              {isAr ? 'انقر على (+) لإضافة جمعية جديدة ومتابعة أقساطها وشهر قبضها بسهولة' : 'Tap (+) to add a new association and track monthly payouts'}
+              {isAr ? 'انقر على (+) لإضافة جمعية جديدة بأي عدد من الأسماء/الأسهم (اسم، اسمين، أو نصف اسم)' : 'Tap (+) to add a new association with any shares/slots'}
             </Text>
             <Pressable style={styles.createButton} onPress={handleOpenAdd}>
               <Text style={styles.createButtonText}>{isAr ? '+ إضافة جمعية' : '+ Add Association'}</Text>
@@ -274,6 +298,7 @@ export default function JameyaScreen() {
             const potAmount = item.monthlyAmount * item.totalMonths;
             const progress = item.paidMonthsCount / item.totalMonths;
             const isPayoutMonth = item.paidMonthsCount + 1 === item.payoutMonth;
+            const shares = item.sharesCount || 1;
 
             return (
               <View key={item.id} style={styles.card}>
@@ -283,7 +308,10 @@ export default function JameyaScreen() {
                       <MaterialCommunityIcons name="account-group" size={22} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1, marginHorizontal: 10 }}>
-                      <Text style={styles.cardTitle}>{item.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        {renderSharesBadge(shares)}
+                      </View>
                       <Text style={styles.cardSubtitle}>
                         {isAr
                           ? `دور القبض: الشهر الـ ${item.payoutMonth} من أصل ${item.totalMonths}`
@@ -399,9 +427,37 @@ export default function JameyaScreen() {
                 onChangeText={setName}
               />
 
+              {/* Shares Count Quick Select (نصف اسم، اسم واحد، اسمين، إلخ) */}
+              <Text style={styles.inputLabel}>{isAr ? 'عدد الأسماء / الأسهم التي تشارك بها' : 'Your Participation Shares/Names'}</Text>
+              <View style={styles.sharesChipsRow}>
+                {[
+                  { label: isAr ? '0.5 (نصف اسم)' : '0.5 Share', val: '0.5' },
+                  { label: isAr ? '1 (اسم واحد)' : '1 Share', val: '1' },
+                  { label: isAr ? '2 (اسمين)' : '2 Shares', val: '2' },
+                  { label: isAr ? '3 (3 أسماء)' : '3 Shares', val: '3' },
+                ].map((chip) => (
+                  <Pressable
+                    key={chip.val}
+                    style={[styles.shareChip, sharesCount === chip.val && styles.shareChipActive]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSharesCount(chip.val);
+                    }}
+                  >
+                    <Text style={[styles.shareChipText, sharesCount === chip.val && styles.shareChipTextActive]}>
+                      {chip.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'القسط الشهري' : 'Monthly Pay'}</Text>
+                  <Text style={styles.inputLabel}>
+                    {isAr
+                      ? `القسط الشهري الخاص بك (${sharesCount === '0.5' ? 'نصف قسط' : sharesCount === '2' ? 'ضعف القسط' : 'القسط'})`
+                      : 'Your Monthly Pay'}
+                  </Text>
                   <TextInput
                     style={styles.textInput}
                     placeholder="1000"
@@ -453,7 +509,7 @@ export default function JameyaScreen() {
               {/* Calculated Pot Preview */}
               {monthlyAmount && totalMonths ? (
                 <View style={styles.potPreviewBox}>
-                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي مبلغ القبض الصافي:' : 'Total Pot Value:'}</Text>
+                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي مبلغ القبض الخاص بك:' : 'Your Total Pot Payout:'}</Text>
                   <Text style={styles.potPreviewValue}>
                     {formatCurrency((parseFloat(monthlyAmount) || 0) * (parseInt(totalMonths, 10) || 0))} {currencySymbol}
                   </Text>
@@ -657,6 +713,16 @@ function getStyles(colors: any) {
     },
     cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
     cardSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    sharesBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: `${colors.primary}15`,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    sharesBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
     iconBtn: { padding: 6 },
     statsRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: 12, padding: 10, marginBottom: 12 },
     statBox: { alignItems: 'center' },
@@ -704,6 +770,18 @@ function getStyles(colors: any) {
       fontSize: 14,
       color: colors.text,
     },
+    sharesChipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 6 },
+    shareChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    shareChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    shareChipText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
+    shareChipTextActive: { color: '#FFF', fontWeight: '700' },
     potPreviewBox: { backgroundColor: `${colors.primary}10`, padding: 12, borderRadius: 12, marginTop: 12, alignItems: 'center' },
     potPreviewLabel: { fontSize: 12, color: colors.textSecondary },
     potPreviewValue: { fontSize: 18, fontWeight: '800', color: colors.primary, marginTop: 4 },
