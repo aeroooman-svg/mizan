@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -28,39 +27,51 @@ import {
   receiveJameyaPayout,
 } from '@/lib/jameyaStorage';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function JameyaScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { language } = useLanguage();
   const isAr = language === 'ar';
-  const { selectedWallet, wallets, addTransaction, totalIncome, currencySymbol } = useTransactions();
+  const { selectedWallet, wallets, addTransaction, currencySymbol } = useTransactions();
 
   const [jameyas, setJameyas] = useState<Jameya[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingJameya, setEditingJameya] = useState<Jameya | null>(null);
 
-  // Modals for Actions
+  // Action Confirmation Modals
   const [payingItem, setPayingItem] = useState<Jameya | null>(null);
-  const [payoutItem, setPayoutItem] = useState<Jameya | null>(null);
+  const [payoutTarget, setPayoutTarget] = useState<{ item: Jameya; month?: number } | null>(null);
   const [deletingItem, setDeletingItem] = useState<Jameya | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
   const [monthlyAmount, setMonthlyAmount] = useState('');
-  const [sharesCount, setSharesCount] = useState('1'); // عدد الأسهم/الأسماء (مثل 1، 2، 0.5)
+  const [sharesCount, setSharesCount] = useState('1'); // '0.5' | '1' | '2' | '3'
   const [totalMonths, setTotalMonths] = useState('10');
-  const [payoutMonth, setPayoutMonth] = useState('1');
   const [startMonth, setStartMonth] = useState(new Date().toISOString().substring(0, 7));
   const [walletId, setWalletId] = useState(selectedWallet?.id || wallets[0]?.id || '');
+  
+  // Array of payout months corresponding to sharesCount (e.g. ['2', '7'] for 2 shares)
+  const [payoutMonthsInputs, setPayoutMonthsInputs] = useState<string[]>(['1']);
 
   useEffect(() => {
     if (selectedWallet && !walletId) {
       setWalletId(selectedWallet.id);
     }
   }, [selectedWallet]);
+
+  // Adjust payoutMonthsInputs array whenever sharesCount changes
+  useEffect(() => {
+    const count = Math.max(1, Math.floor(parseFloat(sharesCount) || 1));
+    setPayoutMonthsInputs(prev => {
+      const next = [...prev];
+      while (next.length < count) {
+        next.push((next.length + 1).toString());
+      }
+      return next.slice(0, count);
+    });
+  }, [sharesCount]);
 
   const loadJameyas = useCallback(async () => {
     const data = await getJameyas();
@@ -86,6 +97,15 @@ export default function JameyaScreen() {
     [jameyas]
   );
 
+  const handleBack = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   const handleOpenAdd = () => {
     Haptics.selectionAsync();
     setEditingJameya(null);
@@ -93,7 +113,7 @@ export default function JameyaScreen() {
     setMonthlyAmount('');
     setSharesCount('1');
     setTotalMonths('10');
-    setPayoutMonth('1');
+    setPayoutMonthsInputs(['1']);
     setStartMonth(new Date().toISOString().substring(0, 7));
     setWalletId(selectedWallet?.id || wallets[0]?.id || '');
     setModalVisible(true);
@@ -104,9 +124,15 @@ export default function JameyaScreen() {
     setEditingJameya(item);
     setName(item.name);
     setMonthlyAmount(item.monthlyAmount.toString());
-    setSharesCount((item.sharesCount || 1).toString());
+    const count = item.sharesCount || 1;
+    setSharesCount(count.toString());
     setTotalMonths(item.totalMonths.toString());
-    setPayoutMonth(item.payoutMonth.toString());
+    
+    const pm = item.payoutMonths && item.payoutMonths.length > 0
+      ? item.payoutMonths.map(n => n.toString())
+      : [(item.payoutMonth || 1).toString()];
+    setPayoutMonthsInputs(pm);
+
     setStartMonth(item.startMonth);
     setWalletId(item.walletId);
     setModalVisible(true);
@@ -132,11 +158,21 @@ export default function JameyaScreen() {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أشهر صحيح' : 'Please enter valid total months');
       return;
     }
-    const numPayoutMonth = parseInt(payoutMonth, 10);
-    if (isNaN(numPayoutMonth) || numPayoutMonth < 1 || numPayoutMonth > numTotalMonths) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? `ترتيب شهر القبض يجب أن يكون بين 1 و ${numTotalMonths}` : `Payout month must be between 1 and ${numTotalMonths}`);
-      return;
+
+    // Parse payout months list
+    const parsedPayoutMonths: number[] = [];
+    for (let i = 0; i < payoutMonthsInputs.length; i++) {
+      const val = parseInt(payoutMonthsInputs[i], 10);
+      if (isNaN(val) || val < 1 || val > numTotalMonths) {
+        Alert.alert(
+          isAr ? 'خطأ في شهر القبض' : 'Payout Month Error',
+          isAr ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${numTotalMonths}` : `Payout month #${i + 1} must be between 1 and ${numTotalMonths}`
+        );
+        return;
+      }
+      parsedPayoutMonths.push(val);
     }
+
     if (!walletId) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى اختيار محفظة' : 'Please select a wallet');
       return;
@@ -149,7 +185,9 @@ export default function JameyaScreen() {
         monthlyAmount: numMonthly,
         sharesCount: numShares,
         totalMonths: numTotalMonths,
-        payoutMonth: numPayoutMonth,
+        payoutMonth: parsedPayoutMonths[0] || 1,
+        payoutMonths: parsedPayoutMonths,
+        receivedPayoutMonths: editingJameya ? editingJameya.receivedPayoutMonths : [],
         startMonth: startMonth || new Date().toISOString().substring(0, 7),
         paidMonthsCount: editingJameya ? editingJameya.paidMonthsCount : 0,
         isPayoutReceived: editingJameya ? editingJameya.isPayoutReceived : false,
@@ -184,16 +222,16 @@ export default function JameyaScreen() {
   };
 
   const handleConfirmReceivePayout = async () => {
-    if (!payoutItem || isSubmitting) return;
+    if (!payoutTarget || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const res = await receiveJameyaPayout(payoutItem.id, addTransaction);
+      const res = await receiveJameyaPayout(payoutTarget.item.id, addTransaction, payoutTarget.month);
       if (res) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setPayoutItem(null);
+        setPayoutTarget(null);
         loadJameyas();
       } else {
-        Alert.alert(isAr ? 'ملاحظة' : 'Notice', isAr ? 'تم استلام مبلغ هذه الجمعية سابقاً' : 'Payout already received');
+        Alert.alert(isAr ? 'ملاحظة' : 'Notice', isAr ? 'تم استلام مبلغ هذا الدور سابقاً' : 'Payout already received');
       }
     } catch (e) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ أثناء تسجيل القبض' : 'Error recording payout');
@@ -219,11 +257,10 @@ export default function JameyaScreen() {
     if (shares === 0.5) label = isAr ? 'نصف اسم (0.5 سهم)' : '0.5 Share';
     else if (shares === 2) label = isAr ? 'اسمين (2 سهم)' : '2 Shares';
     else if (shares > 2) label = isAr ? `${shares} أسماء (أسهم)` : `${shares} Shares`;
-    else if (shares > 0 && shares !== 1) label = isAr ? `${shares} اسم (سهم)` : `${shares} Shares`;
 
     return (
       <View style={styles.sharesBadge}>
-        <MaterialCommunityIcons name="ticket-account" size={14} color={colors.primary} />
+        <MaterialCommunityIcons name="ticket-account" size={13} color={colors.primary} />
         <Text style={styles.sharesBadgeText}>{label}</Text>
       </View>
     );
@@ -231,13 +268,13 @@ export default function JameyaScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
+      {/* Top Bar Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name={isAr ? 'chevron-forward' : 'chevron-back'} size={24} color={colors.text} />
+        <Pressable style={styles.backButton} onPress={handleBack} hitSlop={12}>
+          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>{isAr ? '🤝 الجمعيات المالية (ROSCA)' : '🤝 Savings Associations'}</Text>
-        <Pressable style={styles.addButton} onPress={handleOpenAdd}>
+        <Pressable style={styles.addButton} onPress={handleOpenAdd} hitSlop={8}>
           <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>
@@ -284,10 +321,10 @@ export default function JameyaScreen() {
 
         {activeJameyas.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="account-group" size={56} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+            <MaterialCommunityIcons name="account-group" size={56} color={colors.textSecondary} style={{ opacity: 0.4 }} />
             <Text style={styles.emptyTitle}>{isAr ? 'لا توجد جمعيات نشطة حالياً' : 'No Active Associations'}</Text>
             <Text style={styles.emptySubtitle}>
-              {isAr ? 'انقر على (+) لإضافة جمعية جديدة بأي عدد من الأسماء/الأسهم (اسم، اسمين، أو نصف اسم)' : 'Tap (+) to add a new association with any shares/slots'}
+              {isAr ? 'انقر على (+) لإضافة جمعية جديدة بأي عدد من الأسماء والشهور بسهولة' : 'Tap (+) to add a new association with any shares and months'}
             </Text>
             <Pressable style={styles.createButton} onPress={handleOpenAdd}>
               <Text style={styles.createButtonText}>{isAr ? '+ إضافة جمعية' : '+ Add Association'}</Text>
@@ -297,8 +334,11 @@ export default function JameyaScreen() {
           activeJameyas.map((item) => {
             const potAmount = item.monthlyAmount * item.totalMonths;
             const progress = item.paidMonthsCount / item.totalMonths;
-            const isPayoutMonth = item.paidMonthsCount + 1 === item.payoutMonth;
             const shares = item.sharesCount || 1;
+            const payoutMonthsList = item.payoutMonths && item.payoutMonths.length > 0
+              ? item.payoutMonths
+              : [item.payoutMonth || 1];
+            const receivedList = item.receivedPayoutMonths || [];
 
             return (
               <View key={item.id} style={styles.card}>
@@ -312,19 +352,14 @@ export default function JameyaScreen() {
                         <Text style={styles.cardTitle}>{item.name}</Text>
                         {renderSharesBadge(shares)}
                       </View>
-                      <Text style={styles.cardSubtitle}>
-                        {isAr
-                          ? `دور القبض: الشهر الـ ${item.payoutMonth} من أصل ${item.totalMonths}`
-                          : `Payout Turn: Month ${item.payoutMonth} of ${item.totalMonths}`}
-                      </Text>
                     </View>
                   </View>
 
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Pressable onPress={() => handleOpenEdit(item)} style={styles.iconBtn}>
+                    <Pressable onPress={() => handleOpenEdit(item)} style={styles.iconBtn} hitSlop={8}>
                       <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
                     </Pressable>
-                    <Pressable onPress={() => setDeletingItem(item)} style={styles.iconBtn}>
+                    <Pressable onPress={() => setDeletingItem(item)} style={styles.iconBtn} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={colors.expense} />
                     </Pressable>
                   </View>
@@ -353,28 +388,49 @@ export default function JameyaScreen() {
                   </View>
                 </View>
 
-                {/* Status Badges & Action Buttons */}
-                <View style={styles.actionsRow}>
-                  {item.isPayoutReceived ? (
-                    <View style={styles.badgeSuccess}>
-                      <Ionicons name="checkmark-circle" size={14} color="#0D7C66" />
-                      <Text style={styles.badgeSuccessText}>{isAr ? 'تم قبض الجمعية 🎉' : 'Pot Received 🎉'}</Text>
-                    </View>
-                  ) : (
-                    <Pressable
-                      style={[styles.payoutButton, isPayoutMonth && styles.payoutButtonHighlight]}
-                      onPress={() => setPayoutItem(item)}
-                    >
-                      <Ionicons name="cash-outline" size={16} color="#FFF" />
-                      <Text style={styles.payoutButtonText}>
-                        {isAr ? 'قبض الجمعية الآن' : 'Receive Pot Now'}
-                      </Text>
-                    </Pressable>
-                  )}
+                {/* Payout Months Badges & Collection Buttons */}
+                <Text style={styles.payoutSectionTitle}>{isAr ? 'مواعيد وشهور الاستحقاق (القبض):' : 'Payout Schedule:'}</Text>
+                <View style={styles.payoutMonthsRow}>
+                  {payoutMonthsList.map((mNum, idx) => {
+                    const isReceived = receivedList.includes(mNum);
+                    const isCurrentTurn = item.paidMonthsCount + 1 >= mNum;
 
+                    return (
+                      <Pressable
+                        key={`${mNum}_${idx}`}
+                        disabled={isReceived}
+                        style={[
+                          styles.payoutMonthChip,
+                          isReceived && styles.payoutMonthChipReceived,
+                          !isReceived && isCurrentTurn && styles.payoutMonthChipCurrent,
+                        ]}
+                        onPress={() => setPayoutTarget({ item, month: mNum })}
+                      >
+                        <Ionicons
+                          name={isReceived ? 'checkmark-circle' : isCurrentTurn ? 'cash' : 'time-outline'}
+                          size={14}
+                          color={isReceived ? '#0D7C66' : isCurrentTurn ? '#FFF' : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.payoutMonthChipText,
+                            isReceived && styles.payoutMonthChipTextReceived,
+                            !isReceived && isCurrentTurn && styles.payoutMonthChipTextCurrent,
+                          ]}
+                        >
+                          {payoutMonthsList.length > 1 ? (isAr ? `الاسم ${idx + 1}: الشهر ${mNum}` : `Slot ${idx + 1}: Month ${mNum}`) : (isAr ? `الشهر الـ ${mNum}` : `Month ${mNum}`)}
+                          {isReceived ? (isAr ? ' (تم القبض)' : ' (Done)') : (isAr ? ' (قبض الآن)' : ' (Receive)')}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionsRow}>
                   <Pressable style={styles.payMonthButton} onPress={() => setPayingItem(item)}>
                     <Ionicons name="wallet-outline" size={16} color="#FFF" />
-                    <Text style={styles.payMonthButtonText}>{isAr ? 'دفع قسط الشهر' : 'Pay This Month'}</Text>
+                    <Text style={styles.payMonthButtonText}>{isAr ? 'دفع قسط الشهر الحالي' : 'Pay This Month'}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -412,12 +468,12 @@ export default function JameyaScreen() {
               <Text style={styles.modalTitle}>
                 {editingJameya ? (isAr ? 'تعديل الجمعية' : 'Edit Association') : (isAr ? 'إضافة جمعية جديدة' : 'Add Association')}
               </Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+              <Pressable onPress={() => setModalVisible(false)} hitSlop={12}>
+                <Ionicons name="close-circle" size={26} color={colors.textSecondary} />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               <Text style={styles.inputLabel}>{isAr ? 'اسم الجمعية / المجموعة' : 'Association Name'}</Text>
               <TextInput
                 style={styles.textInput}
@@ -428,7 +484,7 @@ export default function JameyaScreen() {
               />
 
               {/* Shares Count Quick Select (نصف اسم، اسم واحد، اسمين، إلخ) */}
-              <Text style={styles.inputLabel}>{isAr ? 'عدد الأسماء / الأسهم التي تشارك بها' : 'Your Participation Shares/Names'}</Text>
+              <Text style={styles.inputLabel}>{isAr ? 'عدد الأسماء / الأسهم التي تشارك بها:' : 'Participation Shares/Names:'}</Text>
               <View style={styles.sharesChipsRow}>
                 {[
                   { label: isAr ? '0.5 (نصف اسم)' : '0.5 Share', val: '0.5' },
@@ -451,13 +507,9 @@ export default function JameyaScreen() {
                 ))}
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>
-                    {isAr
-                      ? `القسط الشهري الخاص بك (${sharesCount === '0.5' ? 'نصف قسط' : sharesCount === '2' ? 'ضعف القسط' : 'القسط'})`
-                      : 'Your Monthly Pay'}
-                  </Text>
+                  <Text style={styles.inputLabel}>{isAr ? 'إجمالي قسطك الشهري' : 'Your Monthly Pay'}</Text>
                   <TextInput
                     style={styles.textInput}
                     placeholder="1000"
@@ -469,7 +521,7 @@ export default function JameyaScreen() {
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'عدد الأشهر / الأعضاء' : 'Total Months'}</Text>
+                  <Text style={styles.inputLabel}>{isAr ? 'عدد أشهر الجمعية' : 'Total Months'}</Text>
                   <TextInput
                     style={styles.textInput}
                     placeholder="10"
@@ -481,38 +533,49 @@ export default function JameyaScreen() {
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'ترتيب شهر قبضك (1-10)' : 'Your Payout Month'}</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="3"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="numeric"
-                    value={payoutMonth}
-                    onChangeText={setPayoutMonth}
-                  />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'شهر البداية (YYYY-MM)' : 'Start Month'}</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="2026-07"
-                    placeholderTextColor={colors.textSecondary}
-                    value={startMonth}
-                    onChangeText={setStartMonth}
-                  />
+              {/* Dynamic Payout Months Inputs based on Shares Count */}
+              <View style={styles.payoutMonthsInputBox}>
+                <Text style={styles.payoutMonthsInputBoxTitle}>
+                  {isAr
+                    ? `شهور ترتيب قبضك (${payoutMonthsInputs.length} ${payoutMonthsInputs.length > 1 ? 'شهور لـ ' + payoutMonthsInputs.length + ' أسماء' : 'شهر'})`
+                    : `Payout Months (${payoutMonthsInputs.length} slots)`}
+                </Text>
+                
+                <View style={{ gap: 8, marginTop: 6 }}>
+                  {payoutMonthsInputs.map((val, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.payoutInputPrefix}>
+                        {payoutMonthsInputs.length > 1 ? (isAr ? `الاسم الـ ${idx + 1}:` : `Slot #${idx + 1}:`) : (isAr ? 'ترتيب القبض:' : 'Payout Turn:')}
+                      </Text>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1, paddingVertical: 8 }]}
+                        placeholder={isAr ? `ترتيب الشهر (مثلاً ${idx + 2})` : `Month index (e.g. ${idx + 2})`}
+                        placeholderTextColor={colors.textSecondary}
+                        keyboardType="numeric"
+                        value={val}
+                        onChangeText={(txt) => {
+                          const updated = [...payoutMonthsInputs];
+                          updated[idx] = txt;
+                          setPayoutMonthsInputs(updated);
+                        }}
+                      />
+                    </View>
+                  ))}
                 </View>
               </View>
 
               {/* Calculated Pot Preview */}
               {monthlyAmount && totalMonths ? (
                 <View style={styles.potPreviewBox}>
-                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي مبلغ القبض الخاص بك:' : 'Your Total Pot Payout:'}</Text>
+                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي مبلغ القبض الصافي الخاص بك:' : 'Your Total Pot Payout:'}</Text>
                   <Text style={styles.potPreviewValue}>
                     {formatCurrency((parseFloat(monthlyAmount) || 0) * (parseInt(totalMonths, 10) || 0))} {currencySymbol}
                   </Text>
+                  {payoutMonthsInputs.length > 1 && (
+                    <Text style={{ fontSize: 11, color: colors.primary, marginTop: 2 }}>
+                      {isAr ? `(كل اسم يقبض ${formatCurrency(((parseFloat(monthlyAmount) || 0) * (parseInt(totalMonths, 10) || 0)) / payoutMonthsInputs.length)} ${currencySymbol} في شهره)` : ''}
+                    </Text>
+                  )}
                 </View>
               ) : null}
 
@@ -565,19 +628,25 @@ export default function JameyaScreen() {
         </Modal>
       )}
 
-      {payoutItem && (
+      {payoutTarget && (
         <Modal visible transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.confirmBox}>
               <MaterialCommunityIcons name="cash-fast" size={40} color="#0D7C66" />
-              <Text style={styles.confirmTitle}>{isAr ? 'قبض الجمعية' : 'Receive Association Pot'}</Text>
+              <Text style={styles.confirmTitle}>
+                {isAr
+                  ? `قبض دور الجمعية ${payoutTarget.month ? '(الشهر الـ ' + payoutTarget.month + ')' : ''}`
+                  : 'Receive Association Pot'}
+              </Text>
               <Text style={styles.confirmText}>
                 {isAr
-                  ? `سيتم تسجيل مضاف كـ "دخل" بمبلغ إجمالي (${formatCurrency(payoutItem.monthlyAmount * payoutItem.totalMonths)} ${currencySymbol}) يضاف لرصيد محفظتك!`
-                  : `Will record an income transaction of (${formatCurrency(payoutItem.monthlyAmount * payoutItem.totalMonths)} ${currencySymbol}).`}
+                  ? `سيتم تسجيل مضاف كـ "دخل" بمبلغ (${formatCurrency(
+                      (payoutTarget.item.monthlyAmount * payoutTarget.item.totalMonths) / (payoutTarget.item.sharesCount || 1)
+                    )} ${currencySymbol}) يضاف فوراً لرصيد محفظتك!`
+                  : `Will record an income transaction of pot payout.`}
               </Text>
               <View style={styles.confirmActions}>
-                <Pressable style={styles.cancelBtn} onPress={() => setPayoutItem(null)}>
+                <Pressable style={styles.cancelBtn} onPress={() => setPayoutTarget(null)}>
                   <Text style={styles.cancelBtnText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
                 </Pressable>
                 <Pressable style={[styles.confirmBtn, { backgroundColor: '#0D7C66' }]} onPress={handleConfirmReceivePayout} disabled={isSubmitting}>
@@ -625,14 +694,23 @@ function getStyles(colors: any) {
       paddingTop: Platform.OS === 'ios' ? 54 : 16,
       paddingBottom: 12,
       backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
-    backButton: { padding: 8, borderRadius: 20 },
-    headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
     addButton: {
       backgroundColor: colors.primary,
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -731,35 +809,44 @@ function getStyles(colors: any) {
     progressContainer: { marginBottom: 12 },
     progressBarBg: { height: 8, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden' },
     progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
-    actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', alignItems: 'center' },
-    payoutButton: {
+    payoutSectionTitle: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 },
+    payoutMonthsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
+    payoutMonthChip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: colors.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       borderRadius: 10,
     },
-    payoutButtonHighlight: { backgroundColor: '#0D7C66' },
-    payoutButtonText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+    payoutMonthChipCurrent: { backgroundColor: colors.primary, borderColor: colors.primary },
+    payoutMonthChipReceived: { backgroundColor: '#0D7C6615', borderColor: '#0D7C6640' },
+    payoutMonthChipText: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+    payoutMonthChipTextCurrent: { color: '#FFF', fontWeight: '700' },
+    payoutMonthChipTextReceived: { color: '#0D7C66', fontWeight: '700' },
+    actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', alignItems: 'center' },
     payMonthButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
       backgroundColor: colors.text,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
       borderRadius: 10,
+      flex: 1,
+      justifyContent: 'center',
     },
-    payMonthButtonText: { color: colors.background, fontSize: 12, fontWeight: '700' },
+    payMonthButtonText: { color: colors.background, fontSize: 13, fontWeight: '700' },
     badgeSuccess: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0D7C6615', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     badgeSuccessText: { color: '#0D7C66', fontSize: 12, fontWeight: '700' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
+    modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-    inputLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 10 },
+    inputLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 10 },
     textInput: {
       backgroundColor: colors.background,
       borderWidth: 1,
@@ -782,6 +869,9 @@ function getStyles(colors: any) {
     shareChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     shareChipText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
     shareChipTextActive: { color: '#FFF', fontWeight: '700' },
+    payoutMonthsInputBox: { backgroundColor: colors.background, borderRadius: 12, padding: 12, marginTop: 10, borderWidth: 1, borderColor: colors.border },
+    payoutMonthsInputBoxTitle: { fontSize: 12, fontWeight: '700', color: colors.text },
+    payoutInputPrefix: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, width: 80 },
     potPreviewBox: { backgroundColor: `${colors.primary}10`, padding: 12, borderRadius: 12, marginTop: 12, alignItems: 'center' },
     potPreviewLabel: { fontSize: 12, color: colors.textSecondary },
     potPreviewValue: { fontSize: 18, fontWeight: '800', color: colors.primary, marginTop: 4 },

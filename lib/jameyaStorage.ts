@@ -3,16 +3,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface Jameya {
   id: string;
   name: string;
-  monthlyAmount: number;
+  monthlyAmount: number; // إجمالي القسط الشهري الخاص بالمستخدم
   totalMonths: number;
-  payoutMonth: number; // e.g. 1 to totalMonths (which month the user gets the pot)
+  payoutMonth: number; // For backward compatibility
+  payoutMonths?: number[]; // قائمة شهور القبض (مثلاً [2, 7] لمن يشارك باسمين)
+  receivedPayoutMonths?: number[]; // قائمة الشهور التي تم قبضها بالفعل (مثلاً [2])
   startMonth: string; // YYYY-MM
   paidMonthsCount: number;
   isPayoutReceived: boolean;
   walletId: string;
   createdAt: string;
   lastPaidMonth?: string; // YYYY-MM
-  sharesCount?: number; // عدد الأسهم/الأسماء (مثلاً 1، 2، 0.5، 1.5)
+  sharesCount?: number; // عدد الأسهم/الأسماء (مثلاً 1، 2، 0.5)
 }
 
 const JAMEYAS_KEY = '@masarif_jameyas';
@@ -21,7 +23,14 @@ export async function getJameyas(): Promise<Jameya[]> {
   try {
     const data = await AsyncStorage.getItem(JAMEYAS_KEY);
     if (!data) return [];
-    return JSON.parse(data);
+    const list: Jameya[] = JSON.parse(data);
+    // Self-healing migration for existing data missing payoutMonths
+    return list.map(j => ({
+      ...j,
+      payoutMonths: j.payoutMonths && j.payoutMonths.length > 0 ? j.payoutMonths : [j.payoutMonth || 1],
+      receivedPayoutMonths: j.receivedPayoutMonths || (j.isPayoutReceived ? (j.payoutMonths || [j.payoutMonth || 1]) : []),
+      sharesCount: j.sharesCount || 1,
+    }));
   } catch (e) {
     console.error('Error loading Jameyas:', e);
     return [];
@@ -34,9 +43,16 @@ export async function saveJameya(jameya: Omit<Jameya, 'id' | 'createdAt'> & { id
     const id = jameya.id || `jameya_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const nowStr = new Date().toISOString();
 
+    const payoutMonths = jameya.payoutMonths && jameya.payoutMonths.length > 0
+      ? jameya.payoutMonths
+      : [jameya.payoutMonth || 1];
+
     const newJameya: Jameya = {
       ...jameya,
       id,
+      payoutMonth: payoutMonths[0] || 1,
+      payoutMonths,
+      receivedPayoutMonths: jameya.receivedPayoutMonths || [],
       createdAt: jameya.id ? (list.find(j => j.id === jameya.id)?.createdAt || nowStr) : nowStr,
     };
 
@@ -122,7 +138,8 @@ export async function payJameyaMonth(
 
 export async function receiveJameyaPayout(
   id: string,
-  addTransactionFn: (tx: any) => Promise<any>
+  addTransactionFn: (tx: any) => Promise<any>,
+  specificMonth?: number
 ): Promise<boolean> {
   try {
     const list = await getJameyas();
@@ -130,10 +147,25 @@ export async function receiveJameyaPayout(
     if (index === -1) return false;
 
     const item = list[index];
-    if (item.isPayoutReceived) return false;
+    const sharesCount = item.sharesCount || 1;
+    const payoutMonths = item.payoutMonths || [item.payoutMonth || 1];
+    const receivedPayoutMonths = item.receivedPayoutMonths || [];
 
-    const potAmount = item.monthlyAmount * item.totalMonths;
+    let potAmount = 0;
+    let targetMonth = specificMonth;
+
+    if (targetMonth !== undefined) {
+      if (receivedPayoutMonths.includes(targetMonth)) return false;
+      // Portion of pot for 1 share/turn
+      const totalPotAllShares = item.monthlyAmount * item.totalMonths;
+      potAmount = totalPotAllShares / sharesCount;
+    } else {
+      if (item.isPayoutReceived) return false;
+      potAmount = item.monthlyAmount * item.totalMonths;
+    }
+
     const now = new Date().toISOString();
+    const descSuffix = targetMonth ? ` (دور الشهر الـ ${targetMonth})` : '';
 
     // Add Income transaction for the payout pot
     await addTransactionFn({
@@ -141,15 +173,22 @@ export async function receiveJameyaPayout(
       amount: potAmount,
       type: 'income',
       category: 'other_income',
-      description: `قبض جمعية: ${item.name}`,
+      description: `قبض جمعية: ${item.name}${descSuffix}`,
       date: now,
       createdAt: now,
       walletId: item.walletId,
     });
 
+    const updatedReceivedMonths = targetMonth
+      ? [...receivedPayoutMonths, targetMonth]
+      : payoutMonths;
+
+    const allReceived = payoutMonths.every(m => updatedReceivedMonths.includes(m));
+
     list[index] = {
       ...item,
-      isPayoutReceived: true,
+      receivedPayoutMonths: updatedReceivedMonths,
+      isPayoutReceived: allReceived,
     };
 
     await AsyncStorage.setItem(JAMEYAS_KEY, JSON.stringify(list));
