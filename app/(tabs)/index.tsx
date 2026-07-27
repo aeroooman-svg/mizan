@@ -820,6 +820,19 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  router.push('/jameya' as any);
+                }}
+              >
+                <Ionicons name="people-circle-outline" size={22} color={Colors.primary} />
+                <Text style={styles.drawerLinkText}>
+                  {language === 'ar' ? 'الجمعيات والالتزامات' : 'Savings Associations (ROSCA)'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/savings-goals');
                 }}
               >

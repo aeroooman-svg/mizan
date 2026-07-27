@@ -32,6 +32,7 @@ import {
   updateRecurringTransaction,
 } from '@/lib/recurringStorage';
 import { getInstallmentPlans, InstallmentPlan } from '@/lib/installmentStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import { saveGoal, SavingsGoal } from '@/lib/goalStorage';
 
 export default function RecurringListScreen() {
@@ -45,6 +46,7 @@ export default function RecurringListScreen() {
   
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [installments, setInstallments] = useState<InstallmentPlan[]>([]);
+  const [jameyas, setJameyas] = useState<Jameya[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Auto Savings Modal State
@@ -55,18 +57,21 @@ export default function RecurringListScreen() {
 
   const loadData = async () => {
     setLoading(true);
-    const [recData, instData] = await Promise.all([
+    const [recData, instData, jamData] = await Promise.all([
       getRecurringTransactions(),
-      getInstallmentPlans()
+      getInstallmentPlans(),
+      getJameyas()
     ]);
     
     // Filter to current wallet if set
     if (selectedWallet) {
       setItems(recData.filter(item => item.walletId === selectedWallet.id || item.toWalletId === selectedWallet.id));
       setInstallments(instData.filter(item => item.walletId === selectedWallet.id || item.toWalletId === selectedWallet.id));
+      setJameyas(jamData.filter(item => item.walletId === selectedWallet.id && item.paidMonthsCount < item.totalMonths));
     } else {
       setItems(recData);
       setInstallments(instData);
+      setJameyas(jamData.filter(item => item.paidMonthsCount < item.totalMonths));
     }
     setLoading(false);
   };
@@ -103,8 +108,10 @@ export default function RecurringListScreen() {
   }, [items]);
 
   const totalMonthlyInstallments = useMemo(() => {
-    return installments.reduce((sum, i) => sum + (i.monthlyAmount || 0), 0);
-  }, [installments]);
+    const instSum = installments.reduce((sum, i) => sum + (i.monthlyAmount || 0), 0);
+    const jamSum = jameyas.reduce((sum, j) => sum + (j.monthlyAmount || 0), 0);
+    return instSum + jamSum;
+  }, [installments, jameyas]);
 
   const totalCommitments = totalRecurringExpenses + totalMonthlyInstallments;
   const freeNetCashflow = totalRecurringIncome - totalCommitments;

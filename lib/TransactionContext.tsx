@@ -21,6 +21,7 @@ import { deleteFinancialPlan } from './planStorage';
 import { deleteBudgetsForWallet } from './budgetStorage';
 import { deleteEnvelopesForWallet } from './envelopeBudgetStorage';
 import { deleteInstallmentsForWallet } from './installmentStorage';
+import { deleteJameyasForWallet } from './jameyaStorage';
 import { getCustomCategories, saveCustomCategory, deleteCustomCategory as deleteCustomCatFromStorage, CustomCategory } from './customCategories';
 import { getRecurringTransactions, updateRecurringTransaction, deleteRecurringTransaction, RecurringTransaction } from './recurringStorage';
 import { getGoals, deleteGoal, getRules, deleteRule } from './goalStorage';
@@ -478,6 +479,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     await deleteBudgetsForWallet(id);
     await deleteEnvelopesForWallet(id);
     await deleteInstallmentsForWallet(id);
+    await deleteJameyasForWallet(id);
 
     // Clean up Goals & Rules associated with this wallet
     try {

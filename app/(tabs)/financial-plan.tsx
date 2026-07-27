@@ -30,6 +30,7 @@ import { getGoals } from '@/lib/goalStorage';
 import { getDebts } from '@/lib/debtStorage';
 import { getRecurringTransactions, RecurringTransaction } from '@/lib/recurringStorage';
 import { getInstallmentPlans, InstallmentPlan } from '@/lib/installmentStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import Methodology3DSelector from '@/components/Methodology3DSelector';
 
@@ -96,6 +97,7 @@ export default function FinancialPlanScreen() {
   const [debts, setDebts] = useState<any[]>([]);
   const [recurringList, setRecurringList] = useState<RecurringTransaction[]>([]);
   const [installmentList, setInstallmentList] = useState<InstallmentPlan[]>([]);
+  const [jameyaList, setJameyaList] = useState<Jameya[]>([]);
 
   // Single Month Target Override State
   const [singleMonthModalOpen, setSingleMonthModalOpen] = useState(false);
@@ -334,22 +336,25 @@ export default function FinancialPlanScreen() {
   useEffect(() => {
     async function loadExtraData() {
       try {
-        const [goalsData, debtsData, recData, instData] = await Promise.all([
+        const [goalsData, debtsData, recData, instData, jamData] = await Promise.all([
           getGoals(),
           getDebts(),
           getRecurringTransactions(),
           getInstallmentPlans(),
+          getJameyas(),
         ]);
         if (walletId) {
           setGoals(goalsData.filter((g: any) => g.walletId === walletId));
           setDebts(debtsData.filter((d: any) => d.walletId === walletId));
           setRecurringList(recData.filter((r: any) => (r.walletId === walletId || r.toWalletId === walletId) && r.isActive));
           setInstallmentList(instData.filter((i: any) => (i.walletId === walletId || i.toWalletId === walletId) && i.remainingMonths > 0));
+          setJameyaList(jamData.filter((j: any) => j.walletId === walletId && j.paidMonthsCount < j.totalMonths));
         } else {
           setGoals(goalsData);
           setDebts(debtsData);
           setRecurringList(recData.filter((r: any) => r.isActive));
           setInstallmentList(instData.filter((i: any) => i.remainingMonths > 0));
+          setJameyaList(jamData.filter((j: any) => j.paidMonthsCount < j.totalMonths));
         }
       } catch (err) {
         console.error('Error loading plan integration data:', err);
@@ -370,8 +375,10 @@ export default function FinancialPlanScreen() {
   }, [recurringList]);
 
   const totalInstallmentsMonthly = useMemo(() => {
-    return installmentList.reduce((sum, inst) => sum + (inst.monthlyAmount || 0), 0);
-  }, [installmentList]);
+    const instSum = installmentList.reduce((sum, inst) => sum + (inst.monthlyAmount || 0), 0);
+    const jamSum = jameyaList.reduce((sum, jam) => sum + (jam.monthlyAmount || 0), 0);
+    return instSum + jamSum;
+  }, [installmentList, jameyaList]);
 
   const totalFixedCommitments = totalRecurringMonthly + totalInstallmentsMonthly;
 

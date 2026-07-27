@@ -298,6 +298,19 @@ export default function InstallmentsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Quick Nav Bar between Installments & Jameya */}
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+          <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.primary }}>
+            <Ionicons name="card-outline" size={18} color="#FFF" />
+            <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>{isAr ? 'الأقساط والكروت' : 'Installments'}</Text>
+          </Pressable>
+
+          <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }} onPress={() => router.push('/jameya' as any)}>
+            <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 13 }}>{isAr ? 'الجمعيات' : 'Associations (ROSCA)'}</Text>
+          </Pressable>
+        </View>
+
         {/* Urgent Due Date Alert Header Banner */}
         {urgentStats.overdueCount > 0 ? (
           <View style={[styles.urgentBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
