@@ -282,17 +282,26 @@ export default function InstallmentsScreen() {
     return { overdueCount, dueSoonCount };
   }, [activePlans]);
 
+  const handleBack = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+        <Pressable onPress={handleBack} style={styles.backBtn} hitSlop={15}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
-          {isAr ? '💳 الأقساط والبطاقات الائتمانية' : '💳 Installments & Credit Cards'}
+          {isAr ? '💳 أقساط وجمعيات' : '💳 Installments & Associations'}
         </Text>
-        <Pressable onPress={() => setModalVisible(true)} style={styles.addBtn}>
+        <Pressable onPress={() => setModalVisible(true)} style={styles.addBtn} hitSlop={8}>
           <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>

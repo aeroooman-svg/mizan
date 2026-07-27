@@ -270,10 +270,10 @@ export default function JameyaScreen() {
     <View style={styles.container}>
       {/* Top Bar Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={handleBack} hitSlop={12}>
-          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+        <Pressable style={styles.backButton} onPress={handleBack} hitSlop={15}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{isAr ? '🤝 الجمعيات المالية (ROSCA)' : '🤝 Savings Associations'}</Text>
+        <Text style={styles.headerTitle}>{isAr ? '🤝 أقساط وجمعيات' : '🤝 Installments & Associations'}</Text>
         <Pressable style={styles.addButton} onPress={handleOpenAdd} hitSlop={8}>
           <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
