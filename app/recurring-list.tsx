@@ -41,7 +41,7 @@ export default function RecurringListScreen() {
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { t, language } = useLanguage();
   const isAr = language === 'ar';
-  const { currencySymbol, selectedWallet } = useTransactions();
+  const { currencySymbol, selectedWallet, wallets } = useTransactions();
   
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [installments, setInstallments] = useState<InstallmentPlan[]>([]);
@@ -269,9 +269,17 @@ export default function RecurringListScreen() {
   );
 
   const renderItem = ({ item }: { item: RecurringTransaction }) => {
+    const isTransfer = item.type === 'transfer' || !!item.toWalletId;
+    const targetWalletObj = isTransfer && item.toWalletId ? wallets.find(w => w.id === item.toWalletId) : null;
     const cat = getCategoryById(item.category);
     const itemColor = item.color || cat?.color || (item.type === 'income' ? colors.income : colors.primary);
-    const itemIcon = item.icon || cat?.icon || 'receipt';
+    const itemIcon = item.icon || (isTransfer ? 'swap-horiz' : cat?.icon || 'receipt');
+
+    const displayName = isTransfer
+      ? (targetWalletObj 
+          ? (isAr ? `تحويل إلى ${targetWalletObj.name}` : `Transfer to ${targetWalletObj.name}`)
+          : (isAr ? 'تحويل محفظة' : 'Wallet Transfer'))
+      : getCategoryName(item.category, language);
 
     return (
       <View style={styles.card}>
@@ -280,7 +288,7 @@ export default function RecurringListScreen() {
             <MaterialIcons name={itemIcon as any} size={22} color={itemColor} />
           </View>
           <View style={styles.info}>
-            <Text style={styles.catName}>{getCategoryName(item.category, language)}</Text>
+            <Text style={styles.catName}>{displayName}</Text>
             {item.description ? <Text style={styles.desc} numberOfLines={1}>{item.description}</Text> : null}
             <View style={styles.badgeRow}>
               <View style={[styles.frequencyBadge, { backgroundColor: itemColor + '15' }]}>

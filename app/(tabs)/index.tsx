@@ -692,6 +692,7 @@ export default function HomeScreen() {
           currencySymbol={currencySymbol}
           language={language as 'ar' | 'en'}
           colors={colors}
+          wallets={wallets}
           onApproveConfirm={handleApproveConfirm}
           onApproveSkip={handleApproveSkip}
           onSaveAdjustedAmount={(item, amt) => approveRecurringTransaction(item, amt)}

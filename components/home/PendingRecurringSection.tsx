@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { RecurringTransaction } from '@/lib/recurringStorage';
+import { Wallet } from '@/lib/storage';
 import { formatCurrency } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
 
@@ -21,6 +22,7 @@ interface PendingRecurringSectionProps {
   currencySymbol: string;
   language: 'ar' | 'en';
   colors: any;
+  wallets?: Wallet[];
   onApproveConfirm: (item: RecurringTransaction) => void;
   onApproveSkip: (item: RecurringTransaction) => void;
   onSaveAdjustedAmount: (item: RecurringTransaction, amount: number) => void;
@@ -31,6 +33,7 @@ export default function PendingRecurringSection({
   currencySymbol,
   language,
   colors,
+  wallets,
   onApproveConfirm,
   onApproveSkip,
   onSaveAdjustedAmount,
@@ -77,16 +80,25 @@ export default function PendingRecurringSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.pendingScroll}
       >
-        {walletPending.map((item) => (
-          <View key={item.id} style={styles.pendingItemCard}>
-            <View style={styles.pendingItemInfo}>
-              <Text style={styles.pendingItemName}>
-                {getCategoryName(item.category, language)}
-              </Text>
-              <Text style={styles.pendingItemAmount}>
-                {formatCurrency(item.amount, language)} {currencySymbol}
-              </Text>
-            </View>
+        {walletPending.map((item) => {
+          const isTransfer = item.type === 'transfer' || !!item.toWalletId;
+          const targetWallet = isTransfer && item.toWalletId ? wallets?.find(w => w.id === item.toWalletId) : null;
+          const itemName = isTransfer
+            ? (targetWallet
+                ? (language === 'ar' ? `تحويل إلى ${targetWallet.name}` : `Transfer to ${targetWallet.name}`)
+                : (language === 'ar' ? 'تحويل محفظة' : 'Wallet Transfer'))
+            : getCategoryName(item.category, language);
+
+          return (
+            <View key={item.id} style={styles.pendingItemCard}>
+              <View style={styles.pendingItemInfo}>
+                <Text style={styles.pendingItemName} numberOfLines={1}>
+                  {itemName}
+                </Text>
+                <Text style={styles.pendingItemAmount}>
+                  {formatCurrency(item.amount, language)} {currencySymbol}
+                </Text>
+              </View>
             <Text style={styles.pendingItemDate}>
               {language === 'ar' ? 'مستحق: ' : 'Due: '}
               {new Date(item.nextDueDate).toLocaleDateString(
@@ -132,7 +144,8 @@ export default function PendingRecurringSection({
               </Pressable>
             </View>
           </View>
-        ))}
+        );
+      })}
       </ScrollView>
 
       {/* Adjust Amount Modal */}

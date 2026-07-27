@@ -159,6 +159,18 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
           Alert.alert(lang === 'ar' ? 'المعاملات المتكررة' : 'Recurring Transactions', msg);
         }, 600);
       }
+
+      // Self-healing: Repair any existing transfer transactions missing toWalletId
+      for (let i = 0; i < txns.length; i++) {
+        const t = txns[i];
+        if (t.type === 'transfer' && !t.toWalletId) {
+          const matchRec = recurringList.find(r => r.toWalletId && r.walletId === t.walletId);
+          if (matchRec && matchRec.toWalletId) {
+            t.toWalletId = matchRec.toWalletId;
+            await updateInStorage(t);
+          }
+        }
+      }
     } catch (e) {
     }
 
@@ -544,7 +556,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       const newTx: Transaction = {
         id: Crypto.randomUUID(),
         walletId: rec.walletId,
-        type: rec.type,
+        toWalletId: rec.toWalletId || undefined,
+        type: rec.toWalletId ? 'transfer' : rec.type,
         amount: finalAmount,
         category: rec.category,
         description: rec.description || '',
