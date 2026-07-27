@@ -89,11 +89,12 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
 
   return (
     <View style={styles.floatingBarContainer}>
-      {Platform.OS === 'ios' ? (
-        <BlurView intensity={80} tint={theme === 'light' ? 'light' : 'dark'} style={[StyleSheet.absoluteFill, { borderRadius: 33, overflow: 'hidden' }]} />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface + 'EE', borderRadius: 33, overflow: 'hidden' }]} />
-      )}
+      <LinearGradient
+        colors={['#0A3329', '#041B15', '#02100C']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[StyleSheet.absoluteFill, { borderRadius: 36 }]}
+      />
       
       <View style={styles.tabBarInner}>
         {renderTab(0)}
@@ -111,10 +112,10 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
           ]}
         >
           <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
+            colors={['#10B981', '#059669', '#046C4E']}
             style={styles.centerFabGradient}
           >
-            <Ionicons name="add" size={28} color="#fff" />
+            <Ionicons name="add" size={32} color="#fff" />
           </LinearGradient>
         </Pressable>
 
@@ -251,18 +252,18 @@ export default function TabLayout() {
 const getStyles = (colors: any) => StyleSheet.create({
   floatingBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 18,
+    bottom: Platform.OS === 'ios' ? 26 : 16,
     left: 16,
     right: 16,
-    height: 66,
-    borderRadius: 33,
-    borderWidth: 1.5,
-    borderColor: colors.cardBorder || 'rgba(255, 255, 255, 0.08)',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    height: 68,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: '#34D399',
+    elevation: 12,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
   },
   tabBarInner: {
     flex: 1,
@@ -284,23 +285,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     marginTop: 2,
   },
   centerFab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginTop: -30,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginTop: -32,
+    shadowColor: '#34D399',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.6,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowRadius: 14,
+    elevation: 14,
   },
   centerFabGradient: {
     flex: 1,
-    borderRadius: 30,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.45)',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
   },
 
   // Modal Styles
