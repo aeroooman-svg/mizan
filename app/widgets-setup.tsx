@@ -407,26 +407,47 @@ export default function WidgetsSetupScreen() {
               <View style={styles.previewHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="receipt" size={16} color="#8B5CF6" />
-                  <Text style={styles.previewAppName}>{isAr ? 'الفواتير المستحقة' : 'Pending Bills'}</Text>
+                  <Text style={styles.previewAppName}>{isAr ? 'الفواتير والمصاريف المتكررة' : 'Pending & Recurring Bills'}</Text>
                 </View>
                 <View style={styles.liveBadge}>
                   <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
                 </View>
               </View>
 
-              <View style={{ marginTop: 8, gap: 6 }}>
+              <View style={{ marginTop: 6, gap: 6 }}>
                 <Text style={styles.previewLabel}>
-                  {isAr ? `لديك (${pendingRecurring.length}) فواتير وأقساط مستحقة` : `${pendingRecurring.length} pending recurring bills`}
+                  {isAr ? `إجمالي الفواتير والمصاريف المتكررة: (${pendingRecurring.length})` : `Total Recurring Bills: (${pendingRecurring.length})`}
                 </Text>
                 {pendingRecurring.length > 0 ? (
-                  <View style={{ backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.text }}>{pendingRecurring[0].description || pendingRecurring[0].category}</Text>
-                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.expense }}>{formatCurrency(pendingRecurring[0].amount)} {currencySymbol}</Text>
+                  <View style={{ gap: 6 }}>
+                    {pendingRecurring.slice(0, 2).map((item) => (
+                      <View key={item.id} style={{ backgroundColor: colors.surfaceAlt + '80', padding: 8, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                          <Ionicons name="sync-circle" size={18} color="#8B5CF6" />
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }} numberOfLines={1}>
+                            {item.description || item.category}
+                          </Text>
+                        </View>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.expense }}>
+                          {formatCurrency(item.amount)} {currencySymbol}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
                 ) : (
-                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.income }}>
-                    {isAr ? '✅ جميع الفواتير مدفوعة بالكامل' : '✅ All bills paid up to date'}
-                  </Text>
+                  <View style={{ backgroundColor: colors.surfaceAlt + '50', padding: 10, borderRadius: 12, alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                      {isAr ? '✅ لا توجد فواتير معلقة حالياً' : '✅ No pending bills right now'}
+                    </Text>
+                    <Pressable
+                      onPress={() => router.push('/add-recurring')}
+                      style={{ backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 2 }}
+                    >
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                        {isAr ? '+ إضافة معاملة متكررة' : '+ Add Recurring'}
+                      </Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
             </View>

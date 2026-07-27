@@ -162,18 +162,30 @@ export default function AddRecurringScreen() {
       Alert.alert(t.error, t.enterAmount);
       return;
     }
-    if (!selectedCategory) {
-      Alert.alert(t.error, t.selectCategory);
-      return;
+
+    // Auto default category if not selected by user
+    let catToSave = selectedCategory;
+    if (!catToSave) {
+      catToSave = isTransfer ? 'transfer' : (displayedCategories[0]?.id || 'bills');
+      setSelectedCategory(catToSave);
     }
-    const activeWalletId = sourceWalletId || selectedWallet?.id;
+
+    const activeWalletId = sourceWalletId || selectedWallet?.id || wallets[0]?.id;
     if (!activeWalletId) {
       Alert.alert(t.error, t.noWalletSelected);
       return;
     }
-    if (isTransfer && !toWalletId) {
-      Alert.alert(t.error, language === 'ar' ? 'الرجاء اختيار المحفظة المستهدفة' : 'Please select a target wallet');
-      return;
+
+    let targetWallet = isTransfer && toWalletId ? toWalletId : undefined;
+    if (isTransfer && !targetWallet) {
+      const other = wallets.find(w => w.id !== activeWalletId);
+      if (other) {
+        targetWallet = other.id;
+        setToWalletId(other.id);
+      } else {
+        Alert.alert(t.error, language === 'ar' ? 'الرجاء اختيار المحفظة المستهدفة' : 'Please select a target wallet');
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -182,15 +194,13 @@ export default function AddRecurringScreen() {
     const nextDueDate = new Date(selectedYear, selectedMonth, selectedDay);
     nextDueDate.setHours(9, 0, 0, 0); // Default run at 9:00 AM
 
-    const targetWallet = isTransfer && toWalletId ? toWalletId : undefined;
-
     const recurring: RecurringTransaction = {
       id: existingItem?.id || Crypto.randomUUID(),
       walletId: activeWalletId,
       toWalletId: targetWallet,
       type: targetWallet ? 'transfer' : type,
       amount: parseFloat(amount),
-      category: selectedCategory,
+      category: catToSave,
       description: description.trim(),
       frequency,
       nextDueDate: nextDueDate.toISOString(),
@@ -669,12 +679,12 @@ export default function AddRecurringScreen() {
         <View style={styles.fixedSaveFooter}>
           <Pressable
             onPress={handleSave}
-            disabled={isSaving || !amount || !selectedCategory}
+            disabled={isSaving || !amount}
             style={({ pressed }) => [
               styles.saveButton,
               {
                 backgroundColor: selectedColor || (type === 'expense' ? Colors.expense : Colors.income),
-                opacity: (isSaving || !amount || !selectedCategory) ? 0.5 : pressed ? 0.9 : 1,
+                opacity: (isSaving || !amount) ? 0.5 : pressed ? 0.9 : 1,
                 transform: [{ scale: pressed ? 0.98 : 1 }],
               },
             ]}
