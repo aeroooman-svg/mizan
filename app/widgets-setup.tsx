@@ -123,17 +123,28 @@ export default function WidgetsSetupScreen() {
     );
   };
 
+  const handleGoBack = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/settings');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header Bar */}
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={15}>
-          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+        <Pressable onPress={handleGoBack} style={styles.backBtn} hitSlop={15}>
+          <Ionicons name={isAr ? 'arrow-back' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>
-          {isAr ? '📱 ودجت الشاشة الرئيسية المتطورة' : '📱 Live Home Widgets Hub'}
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {isAr ? '📱 ودجت الشاشة الرئيسية' : '📱 Live Home Widgets'}
         </Text>
-        <View style={{ width: 44 }} />
+        <Pressable onPress={() => router.replace('/(tabs)')} style={styles.backBtn} hitSlop={15}>
+          <Ionicons name="close-circle-outline" size={24} color={colors.textSecondary} />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
