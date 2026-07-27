@@ -80,14 +80,26 @@ export default function RecurringListScreen() {
   // Financial calculations
   const totalRecurringIncome = useMemo(() => {
     return items
-      .filter(i => i.isActive && i.type === 'income')
-      .reduce((sum, i) => sum + i.amount, 0);
+      .filter(i => i.isActive !== false && i.type === 'income')
+      .reduce((sum, i) => {
+        let val = i.amount;
+        if (i.frequency === 'daily') val *= 30;
+        else if (i.frequency === 'weekly') val *= 4.33;
+        else if (i.frequency === 'yearly') val /= 12;
+        return sum + val;
+      }, 0);
   }, [items]);
 
   const totalRecurringExpenses = useMemo(() => {
     return items
-      .filter(i => i.isActive && i.type === 'expense')
-      .reduce((sum, i) => sum + i.amount, 0);
+      .filter(i => i.isActive !== false && (i.type === 'expense' || i.type === 'transfer'))
+      .reduce((sum, i) => {
+        let val = i.amount;
+        if (i.frequency === 'daily') val *= 30;
+        else if (i.frequency === 'weekly') val *= 4.33;
+        else if (i.frequency === 'yearly') val /= 12;
+        return sum + val;
+      }, 0);
   }, [items]);
 
   const totalMonthlyInstallments = useMemo(() => {

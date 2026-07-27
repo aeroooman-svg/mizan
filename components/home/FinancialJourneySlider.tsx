@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -66,6 +66,7 @@ export default function FinancialJourneySlider({
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [recurringItems, setRecurringItems] = useState<RecurringTransaction[]>([]);
+  const [showAllRecurring, setShowAllRecurring] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const isAr = language === 'ar';
@@ -75,7 +76,7 @@ export default function FinancialJourneySlider({
     getRecurringTransactions().then((items) => {
       if (isMounted) {
         if (selectedWalletId) {
-          setRecurringItems(items.filter(i => i.walletId === selectedWalletId));
+          setRecurringItems(items.filter(i => i.walletId === selectedWalletId || i.toWalletId === selectedWalletId));
         } else {
           setRecurringItems(items);
         }
@@ -83,6 +84,25 @@ export default function FinancialJourneySlider({
     });
     return () => { isMounted = false; };
   }, [selectedWalletId, walletTransactions]);
+
+  const recurringTotals = useMemo(() => {
+    let incomeTotal = 0;
+    let outflowTotal = 0;
+    recurringItems.forEach(item => {
+      if (item.isActive === false) return;
+      let amt = item.amount;
+      if (item.frequency === 'daily') amt *= 30;
+      else if (item.frequency === 'weekly') amt *= 4.33;
+      else if (item.frequency === 'yearly') amt /= 12;
+
+      if (item.type === 'income') {
+        incomeTotal += amt;
+      } else {
+        outflowTotal += amt;
+      }
+    });
+    return { incomeTotal, outflowTotal };
+  }, [recurringItems]);
 
   const totalSavedInGoals = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalOwed = debts
@@ -418,32 +438,84 @@ export default function FinancialJourneySlider({
               {isAr ? 'المعاملات المتكررة' : 'Recurring Transactions'}
             </Text>
             <Pressable onPress={() => router.push('/recurring-list')}>
-              <Text style={styles.cardAction}>{isAr ? 'عرض الكل' : 'View All'}</Text>
+              <Text style={styles.cardAction}>{isAr ? 'عرض الكل 📋' : 'View All 📋'}</Text>
             </Pressable>
           </View>
 
           {recurringItems.length > 0 ? (
-            <View style={styles.subsList}>
-              {recurringItems.slice(0, 3).map((item) => {
-                const cat = getCategoryById(item.category);
-                const name = item.description || (cat ? getCategoryName(cat.id, language) : item.category);
-                const iconName = cat?.icon || 'sync-outline';
-                return (
-                  <View key={item.id} style={styles.subItem}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
-                      <Ionicons name={iconName as any} size={18} color={item.type === 'income' ? colors.income : colors.primary} />
-                      <Text style={styles.subName} numberOfLines={1}>
-                        {name}
+            <View style={{ gap: 8 }}>
+              {/* Summary Header Row with Totals */}
+              <View style={{ backgroundColor: colors.surfaceAlt + '60', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                    {isAr ? '📥 دخل متكرر:' : '📥 Recurring Income:'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.income }}>
+                    +{formatCurrency(recurringTotals.incomeTotal, language)} {currencySymbol}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                    {isAr ? '📤 مصاريف وتحويلات:' : '📤 Outflows & Bills:'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.expense }}>
+                    -{formatCurrency(recurringTotals.outflowTotal, language)} {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Transactions List */}
+              <View style={styles.subsList}>
+                {(showAllRecurring ? recurringItems : recurringItems.slice(0, 3)).map((item) => {
+                  const cat = getCategoryById(item.category);
+                  const name = item.description || (cat ? getCategoryName(cat.id, language) : item.category);
+                  const iconName = item.icon || cat?.icon || 'sync-outline';
+                  const isInc = item.type === 'income';
+                  const itemColor = isInc ? colors.income : colors.expense;
+                  const prefix = isInc ? '+' : '-';
+
+                  return (
+                    <View key={item.id} style={styles.subItem}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: (item.color || itemColor) + '15', alignItems: 'center', justifyContent: 'center' }}>
+                          <MaterialIcons name={iconName as any} size={16} color={item.color || itemColor} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.subName} numberOfLines={1}>
+                            {name}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+                            {item.frequency === 'daily' ? (isAr ? 'يومي' : 'Daily') :
+                             item.frequency === 'weekly' ? (isAr ? 'أسبوعي' : 'Weekly') :
+                             item.frequency === 'yearly' ? (isAr ? 'سنوي' : 'Yearly') :
+                             (isAr ? 'شهري' : 'Monthly')}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: itemColor }}>
+                        {prefix}{formatCurrency(item.amount, language)} {currencySymbol}
                       </Text>
                     </View>
-                    <View style={[styles.subStatusBadge, { backgroundColor: item.isActive ? '#10B98115' : colors.surfaceAlt }]}>
-                      <Text style={[styles.subStatusText, { color: item.isActive ? '#10B981' : colors.textSecondary }]}>
-                        {formatCurrency(item.amount, language)} {currencySymbol}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
+
+              {/* Dropdown / Collapsible Expand Toggle */}
+              {recurringItems.length > 3 && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setShowAllRecurring(!showAllRecurring);
+                  }}
+                  style={{ alignItems: 'center', paddingTop: 4 }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                    {isAr
+                      ? (showAllRecurring ? 'عرض أقل 🔼' : `عرض باقي المعاملات المتكررة (${recurringItems.length - 3}) 🔽`)
+                      : (showAllRecurring ? 'Show Less 🔼' : `Show All (${recurringItems.length - 3}) 🔽`)}
+                  </Text>
+                </Pressable>
+              )}
             </View>
           ) : (
             <View style={styles.emptyCardContent}>
