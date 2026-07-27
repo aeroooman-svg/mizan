@@ -1,39 +1,91 @@
-// template
+import React, { useMemo } from "react";
 import { Link, Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "@/lib/ThemeContext";
+import { useLanguage } from "@/lib/LanguageContext";
 
 export default function NotFoundScreen() {
+  const { colors } = useTheme();
+  const { language } = useLanguage();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+
   return (
     <>
-      <Stack.Screen options={{ title: "Oops!" }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn&apos;t exist.</Text>
+        <View style={styles.iconCircle}>
+          <Ionicons name="compass-outline" size={56} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>
+          {language === 'ar' ? 'الصفحة غير موجودة' : 'Screen Not Found'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {language === 'ar' 
+            ? 'يبدو أن الصفحة التي تبحث عنها غير موجودة أو تم نقلها' 
+            : 'The page you are looking for does not exist or was moved'}
+        </Text>
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+        <Link href="/" asChild>
+          <Pressable style={({ pressed }) => [styles.button, pressed && { opacity: 0.85 }]}>
+            <Ionicons name="home-outline" size={20} color="#FFF" />
+            <Text style={styles.buttonText}>
+              {language === 'ar' ? 'العودة للشاشة الرئيسية' : 'Return to Home'}
+            </Text>
+          </Pressable>
         </Link>
       </View>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: 24,
+    backgroundColor: colors.background,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
   },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
+  subtitle: {
+    fontFamily: 'Cairo_400Regular',
     fontSize: 14,
-    color: "#2e78b7",
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 28,
+    maxWidth: 280,
+    lineHeight: 22,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+  },
+  buttonText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });

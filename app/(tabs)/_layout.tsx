@@ -90,9 +90,9 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
   return (
     <View style={styles.floatingBarContainer}>
       {Platform.OS === 'ios' ? (
-        <BlurView intensity={80} tint={theme === 'dark' ? 'dark' : 'light'} style={[StyleSheet.absoluteFill, { borderRadius: 33, overflow: 'hidden' }]} />
+        <BlurView intensity={80} tint={theme === 'light' ? 'light' : 'dark'} style={[StyleSheet.absoluteFill, { borderRadius: 33, overflow: 'hidden' }]} />
       ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderRadius: 33, overflow: 'hidden' }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface + 'EE', borderRadius: 33, overflow: 'hidden' }]} />
       )}
       
       <View style={styles.tabBarInner}>
@@ -176,8 +176,8 @@ export default function TabLayout() {
                   router.push('/add-transaction');
                 }}
               >
-                <View style={[styles.actionIconWrap, { backgroundColor: '#10B98115' }]}>
-                  <Ionicons name="cash-outline" size={24} color="#10B981" />
+                <View style={[styles.actionIconWrap, { backgroundColor: colors.incomeLight }]}>
+                  <Ionicons name="cash-outline" size={24} color={colors.primary} />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
@@ -187,7 +187,7 @@ export default function TabLayout() {
                     {language === 'ar' ? 'سجل مصروفاتك أو مداخيلك اليومية فوراً' : 'Log your daily income or expenses instantly'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
               </Pressable>
 
               <Pressable
@@ -197,8 +197,8 @@ export default function TabLayout() {
                   router.push('/add-recurring');
                 }}
               >
-                <View style={[styles.actionIconWrap, { backgroundColor: '#F59E0B15' }]}>
-                  <Ionicons name="repeat-outline" size={24} color="#F59E0B" />
+                <View style={[styles.actionIconWrap, { backgroundColor: colors.accent + '20' }]}>
+                  <Ionicons name="repeat-outline" size={24} color={colors.accent} />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
@@ -208,7 +208,7 @@ export default function TabLayout() {
                     {language === 'ar' ? 'سجل الاشتراكات الثابتة أو الفواتير الشهرية' : 'Log monthly subscriptions or bills'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
               </Pressable>
 
               <Pressable
@@ -218,7 +218,7 @@ export default function TabLayout() {
                   router.push('/add-wallet');
                 }}
               >
-                <View style={[styles.actionIconWrap, { backgroundColor: '#3B82F615' }]}>
+                <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                   <Ionicons name="wallet-outline" size={24} color="#3B82F6" />
                 </View>
                 <View style={styles.actionOptionInfo}>
@@ -229,7 +229,7 @@ export default function TabLayout() {
                     {language === 'ar' ? 'أضف بطاقة أو محفظة كاش جديدة لتتبعها' : 'Add a new bank card or cash wallet'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
               </Pressable>
             </View>
 
@@ -251,13 +251,13 @@ export default function TabLayout() {
 const getStyles = (colors: any) => StyleSheet.create({
   floatingBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 16,
+    bottom: Platform.OS === 'ios' ? 28 : 18,
     left: 16,
     right: 16,
     height: 66,
     borderRadius: 33,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder || 'rgba(255, 255, 255, 0.08)',
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -280,7 +280,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   tabLabel: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 2,
   },
   centerFab: {

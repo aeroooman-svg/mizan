@@ -34,9 +34,9 @@ import SmartSmsModal from '@/components/SmartSmsModal';
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 import { getBudgetsForWallet } from '@/lib/budgetStorage';
 import { predictCashflow, calculateHealthScore } from '@/lib/financialEngine';
-import { SavingsGoal } from '@/lib/goalStorage';
-import { Debt } from '@/lib/debtStorage';
-import { FinancialPlan } from '@/lib/planStorage';
+import { getGoals, SavingsGoal } from '@/lib/goalStorage';
+import { getDebts, Debt } from '@/lib/debtStorage';
+import { getFinancialPlan, FinancialPlan } from '@/lib/planStorage';
 import { RecurringTransaction } from '@/lib/recurringStorage';
 import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import FinancialHealthScore from '@/components/FinancialHealthScore';
@@ -49,7 +49,8 @@ import RemittanceTrackerWidget from '@/components/RemittanceTrackerWidget';
 import { getRemittancesForWallet, calculateRemittanceStats, RemittanceStats } from '@/lib/remittanceStorage';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getWidgetData } from '@/lib/widgetDataProvider';
-import { subscribeSyncStatus, SyncState } from '@/lib/syncService';
+import { subscribeSyncStatus, SyncState, getLoggedInUser } from '@/lib/syncService';
+import { syncAllSharedWallets } from '@/lib/sharingService';
 import WalletCarousel from '@/components/home/WalletCarousel';
 import ConsolidatedBalanceCard from '@/components/home/ConsolidatedBalanceCard';
 import HealthForecastRow from '@/components/home/HealthForecastRow';
@@ -224,16 +225,18 @@ export default function HomeScreen() {
     }
     loadRates();
 
+    const hasShared = wallets.some((w: any) => w.isShared);
+    if (!hasShared) return;
+
     const interval = setInterval(async () => {
       try {
-        const { syncAllSharedWallets } = await import('@/lib/sharingService');
         await syncAllSharedWallets();
         refresh();
       } catch (e) {}
-    }, 6000);
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, wallets]);
 
   const getWalletBalance = (walletId: string) => {
     const targetW = wallets.find(w => w.id === walletId);
@@ -295,11 +298,10 @@ export default function HomeScreen() {
   useEffect(() => {
     async function checkUser() {
       try {
-        const { getLoggedInUser } = await import('@/lib/syncService');
         const user = await getLoggedInUser();
         setCurrentUser(user);
       } catch (err) {
-        console.error('Error fetching logged in user:', err);
+        if (__DEV__) console.error('Error fetching logged in user:', err);
       }
     }
     checkUser();
@@ -308,9 +310,9 @@ export default function HomeScreen() {
   const loadExtraData = async () => {
     try {
       const [goalsData, debtsData, planData] = await Promise.all([
-        import('@/lib/goalStorage').then(m => m.getGoals()),
-        import('@/lib/debtStorage').then(m => m.getDebts()),
-        import('@/lib/planStorage').then(m => m.getFinancialPlan(selectedWallet?.id))
+        getGoals(),
+        getDebts(),
+        getFinancialPlan(selectedWallet?.id)
       ]);
       
       if (selectedWallet) {
@@ -323,7 +325,7 @@ export default function HomeScreen() {
         setPlan(planData);
       }
     } catch (err) {
-      console.error('Error loading extra homepage data:', err);
+      if (__DEV__) console.error('Error loading extra homepage data:', err);
     }
   };
 

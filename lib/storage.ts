@@ -91,9 +91,28 @@ export interface Transaction {
   note?: string;
 }
 
-const TRANSACTIONS_KEY = '@masarif_transactions';
-const WALLETS_KEY = '@masarif_wallets';
-const SELECTED_WALLET_KEY = '@masarif_selected_wallet';
+const TRANSACTIONS_KEY = '@mizan_transactions';
+const LEGACY_TRANSACTIONS_KEY = '@masarif_transactions';
+const WALLETS_KEY = '@mizan_wallets';
+const LEGACY_WALLETS_KEY = '@masarif_wallets';
+const SELECTED_WALLET_KEY = '@mizan_selected_wallet';
+const LEGACY_SELECTED_WALLET_KEY = '@masarif_selected_wallet';
+
+async function getItemWithFallback(primaryKey: string, legacyKey: string): Promise<string | null> {
+  try {
+    let val = await AsyncStorage.getItem(primaryKey);
+    if (!val) {
+      val = await AsyncStorage.getItem(legacyKey);
+      if (val) {
+        // Copy forward
+        await AsyncStorage.setItem(primaryKey, val);
+      }
+    }
+    return val;
+  } catch (e) {
+    return null;
+  }
+}
 
 async function tryApi<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
   try {
@@ -104,9 +123,9 @@ async function tryApi<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Prom
 }
 
 export async function getTransactions(): Promise<Transaction[]> {
-  const userId = await AsyncStorage.getItem('@masarif_user_id');
+  const userId = (await AsyncStorage.getItem('@mizan_user_id')) || (await AsyncStorage.getItem('@masarif_user_id'));
   if (!userId) {
-    const data = await AsyncStorage.getItem(TRANSACTIONS_KEY);
+    const data = await getItemWithFallback(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY);
     if (!data) return [];
     try {
       const raw = JSON.parse(data);

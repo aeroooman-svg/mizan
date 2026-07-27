@@ -22,7 +22,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function loadTheme() {
-      const stored = await AsyncStorage.getItem('@masarif_theme');
+      let stored = await AsyncStorage.getItem('@mizan_theme');
+      if (!stored) {
+        stored = await AsyncStorage.getItem('@masarif_theme');
+      }
       if (
         stored === 'light' ||
         stored === 'dark' ||
@@ -40,6 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = async (mode: ThemeMode) => {
     setThemeState(mode);
     setActiveThemeMode(mode);
+    await AsyncStorage.setItem('@mizan_theme', mode);
     await AsyncStorage.setItem('@masarif_theme', mode);
   };
 

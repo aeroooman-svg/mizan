@@ -167,11 +167,24 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
     outputRange: ['0%', '100%'],
   });
 
+  const { theme } = useTheme();
+
+  const bgColors: [string, string, string] = useMemo(() => {
+    if (theme === 'light') return ['#F8FAFC', '#E2E8F0', '#F1F5F9'];
+    if (theme === 'emerald') return ['#061B14', '#0C2B21', '#030F0B'];
+    if (theme === 'rose') return ['#0F0712', '#1C0E24', '#08040A'];
+    if (theme === 'midnight') return ['#0B0F19', '#161E2E', '#05070B'];
+    return ['#070B14', '#0D1424', '#05070B'];
+  }, [theme]);
+
+  const textColor = theme === 'light' ? '#0F172A' : '#FFFFFF';
+  const verseBoxBg = theme === 'light' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.07)';
+
   return (
-    <Animated.View style={[styles.container, { opacity: exitOpacity, transform: [{ scale: exitScale }] }]}>
+    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: exitOpacity, transform: [{ scale: exitScale }] }]}>
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#070B14', '#0D1424', '#05070B']}
+        colors={bgColors}
         style={StyleSheet.absoluteFill}
         start={{ x: 0.1, y: 0.1 }}
         end={{ x: 0.9, y: 0.9 }}
@@ -237,7 +250,7 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
           }
         ]}
       >
-        <Text style={styles.titleAr}>مِـيـزَان</Text>
+        <Text style={[styles.titleAr, { color: textColor }]}>مِـيـزَان</Text>
         <Text style={styles.titleEn}>MIZAN</Text>
         <Text style={styles.tagline}>إدارة مالية ذكية بلمسة واحدة</Text>
       </Animated.View>
@@ -252,8 +265,8 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
           }
         ]}
       >
-        <View style={styles.quranFrame}>
-          <Text style={styles.quranVerseText}>
+        <View style={[styles.quranFrame, { backgroundColor: verseBoxBg }]}>
+          <Text style={[styles.quranVerseText, { color: textColor }]}>
             ﴿ وَالَّذِينَ إِذَا أَنْفَقُوا لَمْ يُسْرِفُوا وَلَمْ يَقْتُرُوا وَكَانَ بَيْنَ ذَٰلِكَ قَوَامًا ﴾
           </Text>
           <Text style={styles.quranSurahText}>— سورة الفرقان (٦٧)</Text>
@@ -276,7 +289,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#090E17',
+    backgroundColor: colors.background,
   },
   content: {
     alignItems: 'center',
