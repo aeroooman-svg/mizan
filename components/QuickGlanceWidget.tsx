@@ -118,30 +118,7 @@ export default function QuickGlanceWidget({
 
         {/* Row 2: Large Prominent Action Buttons (Expense & Income Side-by-Side) */}
         <View style={styles.mainActionsRow}>
-          {/* Expense Button (مصروف) - Large */}
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/add-transaction?type=expense&prefillType=expense&isQuick=true');
-            }}
-            style={({ pressed }) => [
-              styles.bigActionButton,
-              styles.expenseBigBtn,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
-            ]}
-          >
-            <LinearGradient
-              colors={['#EF4444', '#DC2626']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.bigBtnGradient}
-            >
-              <Ionicons name="remove-circle" size={24} color="#FFF" />
-              <Text style={styles.bigBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
-            </LinearGradient>
-          </Pressable>
-
-          {/* Income Button (دخل) - Large */}
+          {/* Income Button (دخل) - Green Metallic */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -150,59 +127,51 @@ export default function QuickGlanceWidget({
             style={({ pressed }) => [
               styles.bigActionButton,
               styles.incomeBigBtn,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
             ]}
           >
             <LinearGradient
-              colors={['#10B981', '#059669']}
+              colors={['#10B981', '#059669', '#046C4E']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.bigBtnGradient}
             >
-              <Ionicons name="add-circle" size={24} color="#FFF" />
+              <View style={styles.btnIconWrap}>
+                <Ionicons name="add" size={22} color="#FFF" />
+              </View>
               <Text style={styles.bigBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
+            </LinearGradient>
+          </Pressable>
+
+          {/* Expense Button (مصروف) - Red Metallic */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/add-transaction?type=expense&prefillType=expense&isQuick=true');
+            }}
+            style={({ pressed }) => [
+              styles.bigActionButton,
+              styles.expenseBigBtn,
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
+            ]}
+          >
+            <LinearGradient
+              colors={['#EF4444', '#DC2626', '#991B1B']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.bigBtnGradient}
+            >
+              <View style={styles.btnIconWrap}>
+                <Ionicons name="remove" size={22} color="#FFF" />
+              </View>
+              <Text style={styles.bigBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
             </LinearGradient>
           </Pressable>
         </View>
 
-        {/* Divider */}
-        <View style={styles.lightDivider} />
-
-        {/* Row 4: Premium Quick Action Cards (مصاريف متكررة & الأقساط) */}
+        {/* Row 3: Premium Quick Action Cards (الأقساط & مصاريف متكررة) */}
         <View style={styles.quickActionPairRow}>
-          {/* Recurring Expenses Button */}
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push('/recurring-list' as any);
-            }}
-            style={({ pressed }) => [
-              styles.quickActionCard,
-              styles.recurringCard,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
-            ]}
-          >
-            <LinearGradient
-              colors={['#10B98118', '#10B98105']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardGradientBg}
-            />
-            <View style={styles.cardBorderGlow} />
-            <LinearGradient
-              colors={['#10B981', '#059669']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconCircle3D}
-            >
-              <Ionicons name="sync" size={16} color="#FFF" />
-            </LinearGradient>
-            <Text style={styles.quickActionCardText}>
-              {isAr ? 'مصاريف متكررة' : 'Recurring'}
-            </Text>
-          </Pressable>
-
-          {/* Installments Button */}
+          {/* Installments Button (الأقساط) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -211,27 +180,49 @@ export default function QuickGlanceWidget({
             style={({ pressed }) => [
               styles.quickActionCard,
               styles.installmentsCard,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
             ]}
           >
             <LinearGradient
-              colors={['#8B5CF618', '#8B5CF605']}
+              colors={['#2D1D4D', '#1B1133']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.cardGradientBg}
-            />
-            <View style={styles.cardBorderGlowPurple} />
-            <LinearGradient
-              colors={['#8B5CF6', '#6D28D9']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconCircle3D}
+              style={styles.quickCardGradient}
             >
-              <Ionicons name="card" size={16} color="#FFF" />
+              <View style={[styles.iconCircle3D, { backgroundColor: '#8B5CF6' }]}>
+                <Ionicons name="card" size={18} color="#FFF" />
+              </View>
+              <Text style={styles.quickActionCardText}>
+                {isAr ? 'الأقساط' : 'Installments'}
+              </Text>
             </LinearGradient>
-            <Text style={styles.quickActionCardText}>
-              {isAr ? 'الأقساط' : 'Installments'}
-            </Text>
+          </Pressable>
+
+          {/* Recurring Expenses Button (مصاريف متكررة) */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/recurring-list' as any);
+            }}
+            style={({ pressed }) => [
+              styles.quickActionCard,
+              styles.recurringCard,
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
+            ]}
+          >
+            <LinearGradient
+              colors={['#133732', '#0A211E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quickCardGradient}
+            >
+              <View style={[styles.iconCircle3D, { backgroundColor: '#10B981' }]}>
+                <Ionicons name="sync" size={18} color="#FFF" />
+              </View>
+              <Text style={styles.quickActionCardText}>
+                {isAr ? 'مصاريف متكررة' : 'Recurring'}
+              </Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </View>
@@ -334,11 +325,34 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  btnIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bigBtnText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#FFFFFF',
+  },
+  quickCardGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   lightDivider: {
     height: 1,
