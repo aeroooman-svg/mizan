@@ -522,9 +522,6 @@ export default function SettingsScreen() {
                 {[
                   { id: 'light', nameAr: 'نهاري / لايت', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F9FAFB' },
                   { id: 'dark', nameAr: 'ليلي / دارك', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
-                  { id: 'midnight', nameAr: 'أزرق الليل / ميدنايت', nameEn: 'Midnight', icon: 'sparkles-outline', primary: '#6366F1', bg: '#0B0F19' },
-                  { id: 'emerald', nameAr: 'الزمرد الأخضر', nameEn: 'Emerald', icon: 'leaf-outline', primary: '#059669', bg: '#061B14' },
-                  { id: 'rose', nameAr: 'الوردي الأنيق / روز', nameEn: 'Rose Gold', icon: 'flower-outline', primary: '#EC4899', bg: '#0F0712' },
                 ].map((t) => {
                   const isActive = theme === t.id;
                   return (
@@ -562,6 +559,23 @@ export default function SettingsScreen() {
               </View>
             </View>
 
+            {/* Home Widget Link (Moved here right below Theme) */}
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/widgets-setup' as any);
+              }}
+              style={({ pressed }) => [styles.menuRowItem, { marginTop: 4 }, pressed && { opacity: 0.7 }]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
+                <Text style={styles.menuRowText}>
+                  {isAr ? 'ودجت الشاشة الرئيسية (Widgets)' : 'Home Screen Widgets'}
+                </Text>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
+            </Pressable>
+
             {/* Primary Goal Selection */}
             <View style={styles.settingBlock}>
               <Text style={styles.settingBlockLabel}>{isAr ? 'الهدف المالي الرئيسي' : 'Primary Goal'}</Text>
@@ -590,23 +604,6 @@ export default function SettingsScreen() {
                 })}
               </View>
             </View>
-
-            {/* Home Widget Link */}
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/widgets-setup' as any);
-              }}
-              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
-                <Text style={styles.menuRowText}>
-                  {isAr ? 'ودجت الشاشة الرئيسية (Widgets)' : 'Home Screen Widgets'}
-                </Text>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
           </View>
 
           {/* Section 3: Security & Sharing */}

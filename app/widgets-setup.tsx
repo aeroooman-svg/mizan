@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
-import { formatCurrency, WALLET_COLORS } from '@/lib/categories';
+import { formatCurrency } from '@/lib/categories';
 import { getWidgetData, exportWidgetNativePayload } from '@/lib/widgetDataProvider';
 import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 import { getDebts, Debt } from '@/lib/debtStorage';
@@ -118,7 +118,7 @@ export default function WidgetsSetupScreen() {
     Alert.alert(
       isAr ? 'تمت المزامنة والحفظ الفوري 🟢' : 'Widget Synced & Saved Successfully',
       isAr
-        ? 'تمت مزامنة وتطبيق إعدادات جميع الويدجت المحددة تفاعلياً وفوراً على الصفحة الرئيسية وهاتفك!'
+        ? 'تمت مزامنة وتطبيق إعدادات جميع الويدجت التفاعلية فوراً على الصفحة الرئيسية وهاتفك!'
         : 'Live widget settings synced & saved successfully to home screen!'
     );
   };
@@ -127,7 +127,7 @@ export default function WidgetsSetupScreen() {
     <View style={styles.container}>
       {/* Header Bar */}
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={15}>
           <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
@@ -137,15 +137,17 @@ export default function WidgetsSetupScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Intro Card */}
+        {/* Intro Hero Card */}
         <View style={styles.infoCard}>
           <LinearGradient
-            colors={[colors.primary + '30', 'transparent']}
+            colors={[colors.primary + '25', 'transparent']}
             style={StyleSheet.absoluteFill}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
-          <Ionicons name="hardware-chip" size={34} color={colors.primary} />
+          <View style={styles.heroBadgeIcon}>
+            <Ionicons name="hardware-chip" size={28} color={colors.primary} />
+          </View>
           <Text style={styles.infoTitle}>
             {isAr ? 'تخصيص ومزامنة ودجت الهاتف الحي' : 'Live Interactive Phone Widgets'}
           </Text>
@@ -157,9 +159,13 @@ export default function WidgetsSetupScreen() {
         </View>
 
         {/* Section 1: Widget Type Selector */}
-        <Text style={styles.sectionTitle}>
-          {isAr ? '1. اختر نوع الويدجت للتخصيص والمعاينة:' : '1. Select Widget Type to Preview & Sync:'}
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Ionicons name="apps-outline" size={18} color={colors.primary} />
+          <Text style={styles.sectionTitle}>
+            {isAr ? '1. اختر نوع الويدجت للتخصيص:' : '1. Select Widget Type:'}
+          </Text>
+        </View>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeScroll}>
           {[
             { id: 'quick_glance', icon: 'flash', labelAr: 'اللمحة والعمليات', labelEn: 'Quick Glance', color: '#10B981' },
@@ -191,9 +197,13 @@ export default function WidgetsSetupScreen() {
         </ScrollView>
 
         {/* Section 2: Size Selector */}
-        <Text style={styles.sectionTitle}>
-          {isAr ? '2. حجم الويدجت (Widget Dimensions):' : '2. Select Widget Size:'}
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Ionicons name="resize-outline" size={18} color={colors.primary} />
+          <Text style={styles.sectionTitle}>
+            {isAr ? '2. حجم الويدجت (Dimensions):' : '2. Select Size:'}
+          </Text>
+        </View>
+
         <View style={styles.sizeSelectorRow}>
           {(['small', 'medium', 'large'] as const).map(sz => (
             <Pressable
@@ -217,13 +227,16 @@ export default function WidgetsSetupScreen() {
         </View>
 
         {/* Section 3: Dynamic Live Preview Box */}
-        <Text style={styles.sectionTitle}>
-          {isAr ? '3. معاينة الويدجت التفاعلية الحية:' : '3. Live Interactive Widget Preview:'}
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Ionicons name="eye-outline" size={18} color={colors.primary} />
+          <Text style={styles.sectionTitle}>
+            {isAr ? '3. معاينة الويدجت التفاعلية الحية:' : '3. Live Interactive Widget Preview:'}
+          </Text>
+        </View>
 
         <View style={[
           styles.widgetPreviewContainer,
-          selectedWidgetSize === 'small' && { width: 170, height: 160, alignSelf: 'center' },
+          selectedWidgetSize === 'small' && { width: 175, height: 165, alignSelf: 'center' },
           selectedWidgetSize === 'large' && { height: 260 },
         ]}>
           <LinearGradient
@@ -301,6 +314,9 @@ export default function WidgetsSetupScreen() {
                   <Ionicons name="trophy" size={16} color="#F59E0B" />
                   <Text style={styles.previewAppName}>{isAr ? 'هدف الادخار المالي' : 'Savings Goal Focus'}</Text>
                 </View>
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                </View>
               </View>
 
               {activeGoal ? (
@@ -330,6 +346,9 @@ export default function WidgetsSetupScreen() {
                   <Ionicons name="trending-up" size={16} color="#3B82F6" />
                   <Text style={styles.previewAppName}>{isAr ? 'تنبؤ السيولة القادمة' : 'Cashflow Forecast'}</Text>
                 </View>
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                </View>
               </View>
 
               <View style={{ marginTop: 8, gap: 4 }}>
@@ -351,6 +370,9 @@ export default function WidgetsSetupScreen() {
                   <Ionicons name="heart" size={16} color="#EC4899" />
                   <Text style={styles.previewAppName}>{isAr ? 'مؤشر الصحة المالية' : 'Health Score'}</Text>
                 </View>
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
+                </View>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
@@ -359,7 +381,7 @@ export default function WidgetsSetupScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                    {isAr ? 'وضع مالي ممتازممتازممتاز ممتاز' : 'Excellent Financial Health'}
+                    {isAr ? 'وضع مالي ممتاز' : 'Excellent Financial Health'}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
                     {isAr ? 'أنت تنفق أقل من 60% من دخلك' : 'Spending under 60% of income'}
@@ -375,6 +397,9 @@ export default function WidgetsSetupScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="receipt" size={16} color="#8B5CF6" />
                   <Text style={styles.previewAppName}>{isAr ? 'الفواتير المستحقة' : 'Pending Bills'}</Text>
+                </View>
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>🟢 LIVE</Text>
                 </View>
               </View>
 
@@ -477,17 +502,18 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
   },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
@@ -497,7 +523,7 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
-    gap: 16,
+    gap: 14,
   },
   infoCard: {
     backgroundColor: colors.surface,
@@ -508,6 +534,15 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary + '30',
     overflow: 'hidden',
+  },
+  heroBadgeIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary + '18',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   infoTitle: {
     fontFamily: 'Cairo_700Bold',
@@ -522,11 +557,16 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
   sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
     color: colors.text,
-    marginTop: 4,
   },
   typeScroll: {
     gap: 8,
