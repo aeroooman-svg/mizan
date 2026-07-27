@@ -33,8 +33,9 @@ export default function DebtsScreen() {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [activeTab, setActiveTab] = useState<'debt_to_me' | 'debt_to_others'>('debt_to_me');
   
-  // Add Debt Modal states
+  // Add / Edit Debt Modal states
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editingDebtId, setEditingDebtId] = useState<string | null>(null);
   const [personName, setPersonName] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -46,6 +47,15 @@ export default function DebtsScreen() {
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payWalletId, setPayWalletId] = useState(selectedWallet?.id || '');
+
+  // Helper for quick date chips
+  const setQuickDate = (days: number) => {
+    Haptics.selectionAsync();
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const dateStr = d.toISOString().split('T')[0];
+    setDueDate(dateStr);
+  };
 
   // Load debts
   const loadDebtsData = async () => {
@@ -70,50 +80,101 @@ export default function DebtsScreen() {
     const totalToOthers = debts
       .filter(d => d.type === 'debt_to_others' && d.status !== 'paid')
       .reduce((sum, d) => sum + (d.amount - d.paidAmount), 0);
-    return { totalToMe, totalToOthers };
+    const countToMe = debts.filter(d => d.type === 'debt_to_me' && d.status !== 'paid').length;
+    const countToOthers = debts.filter(d => d.type === 'debt_to_others' && d.status !== 'paid').length;
+    return { totalToMe, totalToOthers, countToMe, countToOthers };
   }, [debts]);
 
-  const handleAddDebt = async () => {
+  const openAddModal = () => {
+    setEditingDebtId(null);
+    setPersonName('');
+    setAmount('');
+    setDueDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Default 7 days
+    setDescription('');
+    setDebtWalletId(selectedWallet?.id || (wallets[0]?.id || ''));
+    setAddModalVisible(true);
+  };
+
+  const openEditModal = (debt: Debt) => {
+    Haptics.selectionAsync();
+    setEditingDebtId(debt.id);
+    setPersonName(debt.personName);
+    setAmount(debt.amount.toString());
+    setDueDate(debt.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    setDescription(debt.description || '');
+    setDebtWalletId(debt.walletId);
+    setAddModalVisible(true);
+  };
+
+  const handleSaveDebt = async () => {
     if (!personName.trim()) {
-      Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'يرجى إدخال اسم الشخص' : 'Please enter person\'s name');
+      Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى إدخال اسم الشخص' : 'Please enter person\'s name');
       return;
     }
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'يرجى إدخال مبلغ صحيح' : 'Please enter a valid amount');
+      Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى إدخال مبلغ صحيح' : 'Please enter a valid amount');
       return;
     }
     if (!debtWalletId) {
-      Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'يرجى اختيار محفظة' : 'Please select a wallet');
+      Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى اختيار محفظة' : 'Please select a wallet');
       return;
     }
 
-    const newDebt: Debt = {
-      id: Crypto.randomUUID(),
-      type: activeTab,
-      personName: personName.trim(),
-      amount: numAmount,
-      paidAmount: 0,
-      description: description.trim(),
-      dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // default 1 week
-      createdAt: new Date().toISOString(),
-      walletId: debtWalletId,
-      status: 'pending',
-    };
-    await saveDebt(newDebt);
-    if (newDebt.dueDate) {
-      await scheduleDebtReminder(
-        newDebt.id,
-        newDebt.personName,
-        newDebt.amount,
-        currencySymbol,
-        newDebt.dueDate,
-        newDebt.type === 'debt_to_me'
-      );
+    const finalDueDate = dueDate.trim() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    if (editingDebtId) {
+      // Edit existing debt
+      const existing = debts.find(d => d.id === editingDebtId);
+      if (existing) {
+        const updatedDebt: Debt = {
+          ...existing,
+          personName: personName.trim(),
+          amount: numAmount,
+          description: description.trim(),
+          dueDate: finalDueDate,
+          walletId: debtWalletId,
+          status: existing.paidAmount >= numAmount ? 'paid' : (existing.paidAmount > 0 ? 'partially_paid' : 'pending'),
+        };
+        await saveDebt(updatedDebt);
+        await scheduleDebtReminder(
+          updatedDebt.id,
+          updatedDebt.personName,
+          updatedDebt.amount - updatedDebt.paidAmount,
+          currencySymbol,
+          updatedDebt.dueDate,
+          updatedDebt.type === 'debt_to_me'
+        );
+      }
+    } else {
+      // Create new debt
+      const newDebt: Debt = {
+        id: Crypto.randomUUID(),
+        type: activeTab,
+        personName: personName.trim(),
+        amount: numAmount,
+        paidAmount: 0,
+        description: description.trim(),
+        dueDate: finalDueDate,
+        createdAt: new Date().toISOString(),
+        walletId: debtWalletId,
+        status: 'pending',
+      };
+      await saveDebt(newDebt);
+      if (newDebt.dueDate) {
+        await scheduleDebtReminder(
+          newDebt.id,
+          newDebt.personName,
+          newDebt.amount,
+          currencySymbol,
+          newDebt.dueDate,
+          newDebt.type === 'debt_to_me'
+        );
+      }
     }
+
     setAddModalVisible(false);
-    
-    // Reset fields
+    setEditingDebtId(null);
     setPersonName('');
     setAmount('');
     setDueDate('');
@@ -163,18 +224,24 @@ export default function DebtsScreen() {
     }
   };
 
-  const handleDeleteDebt = (id: string) => {
+  const handleDeleteDebt = (debt: Debt) => {
+    const isLoan = debt.type === 'debt_to_me';
+    const title = language === 'ar' ? (isLoan ? 'حذف السلفة' : 'حذف الدين') : 'Delete Record';
+    const msg = language === 'ar'
+      ? `هل أنت متأكد من حذف ${isLoan ? 'سلفة' : 'دين'} "${debt.personName}" بمبلغ ${formatCurrency(debt.amount)} ${currencySymbol}؟`
+      : `Are you sure you want to delete ${debt.personName}'s record?`;
+
     Alert.alert(
-      language === 'ar' ? 'حذف السجل' : 'Delete Record',
-      language === 'ar' ? 'هل أنت متأكد من حذف هذا الدين بالكامل؟' : 'Are you sure you want to delete this record?',
+      title,
+      msg,
       [
         { text: t.cancel, style: 'cancel' },
         { 
           text: t.delete, 
           style: 'destructive',
           onPress: async () => {
-            await deleteDebt(id);
-            await cancelDebtReminder(id);
+            await deleteDebt(debt.id);
+            await cancelDebtReminder(debt.id);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             loadDebtsData();
           }
@@ -186,7 +253,7 @@ export default function DebtsScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, zIndex: 10, elevation: 10 }]}>
+      <View style={[styles.headerRow, { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <Text style={styles.sheetTitle}>
           {language === 'ar' ? 'إدارة الديون والسلف' : 'Debts & Loans'}
         </Text>
@@ -207,7 +274,7 @@ export default function DebtsScreen() {
 
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
-        <View style={[styles.summaryCard, { borderColor: colors.income + '40' }]}>
+        <View style={[styles.summaryCard, { borderColor: colors.income + '40', backgroundColor: colors.surface }]}>
           <Text style={styles.summaryLabel}>
             {language === 'ar' ? 'مستحقات لي (سلف)' : 'Owed to Me'}
           </Text>
@@ -215,7 +282,7 @@ export default function DebtsScreen() {
             {formatCurrency(totals.totalToMe)} {currencySymbol}
           </Text>
         </View>
-        <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
+        <View style={[styles.summaryCard, { borderColor: colors.expense + '40', backgroundColor: colors.surface }]}>
           <Text style={styles.summaryLabel}>
             {language === 'ar' ? 'ديون عليّ (التزامات)' : 'Owed to Others'}
           </Text>
@@ -235,7 +302,7 @@ export default function DebtsScreen() {
           style={[styles.tabBtn, activeTab === 'debt_to_me' && styles.tabBtnActive]}
         >
           <Text style={[styles.tabText, activeTab === 'debt_to_me' && styles.tabTextActive]}>
-            {language === 'ar' ? 'سلف للآخرين (لي)' : 'Owed to Me'}
+            {language === 'ar' ? `سلف للآخرين (لي) (${totals.countToMe})` : `Owed to Me (${totals.countToMe})`}
           </Text>
         </Pressable>
         <Pressable
@@ -246,7 +313,7 @@ export default function DebtsScreen() {
           style={[styles.tabBtn, activeTab === 'debt_to_others' && styles.tabBtnActive]}
         >
           <Text style={[styles.tabText, activeTab === 'debt_to_others' && styles.tabTextActive]}>
-            {language === 'ar' ? 'ديون عليّ (للآخرين)' : 'Owed to Others'}
+            {language === 'ar' ? `ديون عليّ (للآخرين) (${totals.countToOthers})` : `Owed to Others (${totals.countToOthers})`}
           </Text>
         </Pressable>
       </View>
@@ -256,7 +323,7 @@ export default function DebtsScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={48} color={colors.textTertiary} />
             <Text style={styles.emptyText}>
-              {language === 'ar' ? 'لا توجد التزامات نشطة حالياً' : 'No active debts found'}
+              {language === 'ar' ? 'لا توجد التزامات نشطة في القائمة' : 'No active debts found'}
             </Text>
           </View>
         ) : (
@@ -268,13 +335,16 @@ export default function DebtsScreen() {
             return (
               <View key={debt.id} style={styles.debtCard}>
                 <View style={styles.debtCardHeader}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.debtPerson}>{debt.personName}</Text>
                     {debt.description ? (
                       <Text style={styles.debtDesc}>{debt.description}</Text>
                     ) : null}
                   </View>
+
+                  {/* Actions Row: Edit, Pay, Delete */}
                   <View style={styles.actionsRow}>
+                    {/* Pay Button */}
                     {debt.status !== 'paid' && (
                       <Pressable
                         onPress={() => {
@@ -285,13 +355,26 @@ export default function DebtsScreen() {
                           setPayModalVisible(true);
                         }}
                         style={styles.payIconBtn}
+                        hitSlop={6}
                       >
                         <Ionicons name="card-outline" size={18} color={colors.primary} />
                       </Pressable>
                     )}
+
+                    {/* Edit Button (Pencil Icon) */}
                     <Pressable
-                      onPress={() => handleDeleteDebt(debt.id)}
+                      onPress={() => openEditModal(debt)}
+                      style={styles.editIconBtn}
+                      hitSlop={6}
+                    >
+                      <Ionicons name="create-outline" size={18} color={colors.accent || '#F59E0B'} />
+                    </Pressable>
+
+                    {/* Delete Button (Trash Icon) */}
+                    <Pressable
+                      onPress={() => handleDeleteDebt(debt)}
                       style={styles.deleteIconBtn}
+                      hitSlop={6}
                     >
                       <Ionicons name="trash-outline" size={18} color={colors.expense} />
                     </Pressable>
@@ -302,7 +385,7 @@ export default function DebtsScreen() {
                 <View style={styles.progressContainer}>
                   <View style={styles.progressLabelRow}>
                     <Text style={styles.progressLabel}>
-                      {language === 'ar' ? 'مسدد:' : 'Paid:'} {formatCurrency(debt.paidAmount)} / {formatCurrency(debt.amount)}
+                      {language === 'ar' ? 'مسدد:' : 'Paid:'} {formatCurrency(debt.paidAmount)} / {formatCurrency(debt.amount)} {currencySymbol}
                     </Text>
                     <Text style={[styles.statusBadge, 
                       debt.status === 'paid' && styles.statusPaid,
@@ -337,28 +420,27 @@ export default function DebtsScreen() {
       {/* Floating Add Button */}
       <Pressable
         onPress={() => {
-          Haptics.selectionAsync();
           if (wallets.length === 0) {
-            Alert.alert(language === 'ar' ? 'تنبيه' : 'Warning', language === 'ar' ? 'يجب إنشاء محفظة أولاً' : 'Please create a wallet first');
+            Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يجب إنشاء محفظة أولاً' : 'Please create a wallet first');
             return;
           }
-          setDebtWalletId(selectedWallet?.id || wallets[0].id);
-          setAddModalVisible(true);
+          openAddModal();
         }}
         style={styles.floatingAddBtn}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
 
-      {/* Add Debt Modal */}
+      {/* Add / Edit Debt Modal */}
       <Modal visible={addModalVisible} animationType="slide" transparent>
         <View style={styles.modalBg}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {activeTab === 'debt_to_me' 
-                  ? (language === 'ar' ? 'إضافة سلفة جديدة للآخرين' : 'Add Loan') 
-                  : (language === 'ar' ? 'إضافة دين جديد عليّ' : 'Add Debt')}
+                {editingDebtId 
+                  ? (activeTab === 'debt_to_me' ? (language === 'ar' ? 'تعديل بيانات السلفة' : 'Edit Loan') : (language === 'ar' ? 'تعديل بيانات الدين' : 'Edit Debt'))
+                  : (activeTab === 'debt_to_me' ? (language === 'ar' ? 'إضافة سلفة جديدة للآخرين' : 'Add Loan') : (language === 'ar' ? 'إضافة دين جديد عليّ' : 'Add Debt'))
+                }
               </Text>
               <Pressable onPress={() => setAddModalVisible(false)} hitSlop={15}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
@@ -370,7 +452,7 @@ export default function DebtsScreen() {
                 <Text style={styles.formLabel}>{language === 'ar' ? 'الاسم الشخصي' : 'Person Name'}</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder={language === 'ar' ? 'اسم الشخص...' : 'Name...'}
+                  placeholder={language === 'ar' ? 'اسم الشخص أو الجهة...' : 'Name...'}
                   placeholderTextColor={colors.textTertiary}
                   value={personName}
                   onChangeText={setPersonName}
@@ -378,7 +460,7 @@ export default function DebtsScreen() {
               </View>
 
               <View style={styles.formField}>
-                <Text style={styles.formLabel}>{t.amount}</Text>
+                <Text style={styles.formLabel}>{t.amount} ({currencySymbol})</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="0.00"
@@ -389,11 +471,33 @@ export default function DebtsScreen() {
                 />
               </View>
 
+              {/* Simplified Date Selection Section */}
               <View style={styles.formField}>
-                <Text style={styles.formLabel}>{language === 'ar' ? 'تاريخ الاستحقاق (YYYY-MM-DD)' : 'Due Date'}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={styles.formLabel}>{language === 'ar' ? 'تاريخ الاستحقاق' : 'Due Date'}</Text>
+                  <Text style={styles.dateHelper}>{dueDate || (language === 'ar' ? 'غير محدد' : 'Not set')}</Text>
+                </View>
+
+                {/* Quick Date Choice Chips */}
+                <View style={styles.quickDateChipsRow}>
+                  <Pressable style={styles.quickDateChip} onPress={() => setQuickDate(7)}>
+                    <Text style={styles.quickDateChipText}>{language === 'ar' ? '⚡ بعد أسبوع' : '⚡ 1 Week'}</Text>
+                  </Pressable>
+                  <Pressable style={styles.quickDateChip} onPress={() => setQuickDate(14)}>
+                    <Text style={styles.quickDateChipText}>{language === 'ar' ? '⚡ أسبوعين' : '⚡ 2 Weeks'}</Text>
+                  </Pressable>
+                  <Pressable style={styles.quickDateChip} onPress={() => setQuickDate(30)}>
+                    <Text style={styles.quickDateChipText}>{language === 'ar' ? '⚡ بعد شهر' : '⚡ 1 Month'}</Text>
+                  </Pressable>
+                  <Pressable style={styles.quickDateChip} onPress={() => setQuickDate(90)}>
+                    <Text style={styles.quickDateChipText}>{language === 'ar' ? '⚡ 3 أشهر' : '⚡ 3 Months'}</Text>
+                  </Pressable>
+                </View>
+
+                {/* Direct TextInput formatted date */}
                 <TextInput
-                  style={styles.modalInput}
-                  placeholder="2026-07-20"
+                  style={[styles.modalInput, { marginTop: 8 }]}
+                  placeholder="YYYY-MM-DD"
                   placeholderTextColor={colors.textTertiary}
                   value={dueDate}
                   onChangeText={setDueDate}
@@ -433,10 +537,12 @@ export default function DebtsScreen() {
               </View>
 
               <Pressable
-                onPress={handleAddDebt}
+                onPress={handleSaveDebt}
                 style={[styles.saveBtn, { backgroundColor: activeTab === 'debt_to_me' ? colors.income : colors.expense }]}
               >
-                <Text style={styles.saveBtnText}>{t.save}</Text>
+                <Text style={styles.saveBtnText}>
+                  {editingDebtId ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : t.save}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -638,10 +744,39 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.primary + '12',
   },
+  editIconBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: (colors.accent || '#F59E0B') + '15',
+  },
   deleteIconBtn: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: colors.expense + '12',
+  },
+  quickDateChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  quickDateChip: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.borderLight || colors.border,
+  },
+  quickDateChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.primary,
+  },
+  dateHelper: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.primary,
   },
   progressContainer: {
     marginTop: 14,
