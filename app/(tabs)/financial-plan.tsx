@@ -28,6 +28,8 @@ import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import { FinancialPlan, getFinancialPlan, saveFinancialPlan, deleteFinancialPlan, KakeiboBudgets, KakeiboReflection } from '@/lib/planStorage';
 import { getGoals } from '@/lib/goalStorage';
 import { getDebts } from '@/lib/debtStorage';
+import { getRecurringTransactions, RecurringTransaction } from '@/lib/recurringStorage';
+import { getInstallmentPlans, InstallmentPlan } from '@/lib/installmentStorage';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import Methodology3DSelector from '@/components/Methodology3DSelector';
 
@@ -82,6 +84,18 @@ export default function FinancialPlanScreen() {
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustIncome, setAdjustIncome] = useState('');
   const [adjustExpense, setAdjustExpense] = useState('');
+
+  // Form & Integration States
+  const [goalName, setGoalName] = useState('');
+  const [durationYears, setDurationYears] = useState(1);
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [monthlyExpense, setMonthlyExpense] = useState('');
+  const [savingsGoal, setSavingsGoal] = useState('');
+
+  const [goals, setGoals] = useState<any[]>([]);
+  const [debts, setDebts] = useState<any[]>([]);
+  const [recurringList, setRecurringList] = useState<RecurringTransaction[]>([]);
+  const [installmentList, setInstallmentList] = useState<InstallmentPlan[]>([]);
 
   // Single Month Target Override State
   const [singleMonthModalOpen, setSingleMonthModalOpen] = useState(false);
@@ -315,31 +329,27 @@ export default function FinancialPlanScreen() {
     );
   };
 
-
-  const [goalName, setGoalName] = useState('');
-  const [durationYears, setDurationYears] = useState(1);
-  const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [monthlyExpense, setMonthlyExpense] = useState('');
-  const [savingsGoal, setSavingsGoal] = useState('');
-
-  const [goals, setGoals] = useState<any[]>([]);
-  const [debts, setDebts] = useState<any[]>([]);
-
   const walletId = selectedWallet?.id;
 
   useEffect(() => {
     async function loadExtraData() {
       try {
-        const [goalsData, debtsData] = await Promise.all([
+        const [goalsData, debtsData, recData, instData] = await Promise.all([
           getGoals(),
           getDebts(),
+          getRecurringTransactions(),
+          getInstallmentPlans(),
         ]);
         if (walletId) {
           setGoals(goalsData.filter((g: any) => g.walletId === walletId));
           setDebts(debtsData.filter((d: any) => d.walletId === walletId));
+          setRecurringList(recData.filter((r: any) => (r.walletId === walletId || r.toWalletId === walletId) && r.isActive));
+          setInstallmentList(instData.filter((i: any) => (i.walletId === walletId || i.toWalletId === walletId) && i.remainingMonths > 0));
         } else {
           setGoals(goalsData);
           setDebts(debtsData);
+          setRecurringList(recData.filter((r: any) => r.isActive));
+          setInstallmentList(instData.filter((i: any) => i.remainingMonths > 0));
         }
       } catch (err) {
         console.error('Error loading plan integration data:', err);
@@ -347,6 +357,23 @@ export default function FinancialPlanScreen() {
     }
     loadExtraData();
   }, [walletId, walletTransactions.length]);
+
+  const totalRecurringMonthly = useMemo(() => {
+    return recurringList.reduce((sum, r) => {
+      if (r.type !== 'expense') return sum;
+      let monthlyVal = r.amount;
+      if (r.frequency === 'daily') monthlyVal = r.amount * 30;
+      else if (r.frequency === 'weekly') monthlyVal = r.amount * 4.33;
+      else if (r.frequency === 'yearly') monthlyVal = r.amount / 12;
+      return sum + monthlyVal;
+    }, 0);
+  }, [recurringList]);
+
+  const totalInstallmentsMonthly = useMemo(() => {
+    return installmentList.reduce((sum, inst) => sum + (inst.monthlyAmount || 0), 0);
+  }, [installmentList]);
+
+  const totalFixedCommitments = totalRecurringMonthly + totalInstallmentsMonthly;
 
   const formatTranslation = (template: string, replacements: Record<string, string>) => {
     let res = template;
@@ -358,7 +385,7 @@ export default function FinancialPlanScreen() {
 
   const averageMonthlyData = useMemo(() => {
     if (!walletTransactions || walletTransactions.length === 0) {
-      return { avgIncome: 0, avgExpense: 0 };
+      return { avgIncome: 0, avgExpense: 0, hasCompletedMonths: false };
     }
     
     const now = new Date();
@@ -385,7 +412,8 @@ export default function FinancialPlanScreen() {
     });
 
     const keys = Object.keys(monthlyGroups);
-    if (keys.length === 0) return { avgIncome: 0, avgExpense: 0 };
+    const hasCompleted = keys.some(k => !monthlyGroups[k].isCurrentMonth);
+    if (keys.length === 0) return { avgIncome: 0, avgExpense: 0, hasCompletedMonths: false };
 
     let totalInc = 0;
     let totalExp = 0;
@@ -394,8 +422,7 @@ export default function FinancialPlanScreen() {
     keys.forEach(key => {
       const group = monthlyGroups[key];
       if (group.isCurrentMonth) {
-        // If current month is the ONLY month, project it, otherwise ignore it for a more stable average of completed months
-        if (keys.length === 1) {
+        if (!hasCompleted) {
           const currentDay = now.getDate();
           const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
           const factor = lastDay / Math.max(1, currentDay);
@@ -410,7 +437,7 @@ export default function FinancialPlanScreen() {
       }
     });
 
-    if (monthsCount === 0) return { avgIncome: 0, avgExpense: 0 };
+    if (monthsCount === 0) return { avgIncome: 0, avgExpense: 0, hasCompletedMonths: false };
 
     return {
       avgIncome: totalInc / monthsCount,
@@ -696,6 +723,45 @@ export default function FinancialPlanScreen() {
             />
           </View>
         </View>
+
+        {/* Auto-Sync Recurring Expenses & Installments Banner */}
+        {totalFixedCommitments > 0 && (
+          <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '30', gap: 6, marginVertical: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, gap: 2, paddingRight: 8 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                  {language === 'ar' ? '💳 الالتزامات والأقساط الثابتة المكتشفة' : '💳 Detected Recurring Bills & Installments'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                  {language === 'ar'
+                    ? `إجمالي فواتيرك المتكررة والأقساط: ${formatCurrency(totalFixedCommitments)} ${currencySymbol}`
+                    : `Total recurring bills & card installments: ${formatCurrency(totalFixedCommitments)} ${currencySymbol}`}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setMonthlyExpense(Math.round(totalFixedCommitments).toString());
+                }}
+                style={({ pressed }) => [{
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  opacity: pressed ? 0.8 : 1,
+                }]}
+              >
+                <Ionicons name="sync" size={14} color="#FFF" />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
+                  {language === 'ar' ? 'مزامنة الخطة ⚡' : 'Auto-Sync ⚡'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {!isKakeiboEnabledForm ? (
           /* Standard Monthly Expense Input for 50/30/20 Rule */
@@ -988,8 +1054,15 @@ export default function FinancialPlanScreen() {
     const C = 2 * Math.PI * R;
     const progressLength = (progressPercent / 100) * C;
 
-    const { avgIncome, avgExpense } = averageMonthlyData;
-    const avgSaving = avgIncome - avgExpense;
+    const { avgIncome, avgExpense, hasCompletedMonths } = averageMonthlyData;
+    const rawAvgSaving = avgIncome - avgExpense;
+
+    // Realistic capped monthly saving rate:
+    // If no completed past months exist OR if rawAvgSaving > plan.monthlyIncome, fallback to plan.monthlySaving!
+    const maxPossibleSaving = plan.monthlyIncome > 0 ? plan.monthlyIncome : (avgIncome > 0 ? avgIncome : 999999);
+    const avgSaving = (!hasCompletedMonths || rawAvgSaving > maxPossibleSaving || rawAvgSaving <= 0)
+      ? (plan.monthlySaving > 0 ? plan.monthlySaving : Math.max(1, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0)))
+      : Math.min(maxPossibleSaving, rawAvgSaving);
 
     const getInsights = () => {
       const insights = [];
@@ -1720,9 +1793,15 @@ export default function FinancialPlanScreen() {
               <Text style={styles.integrationValue}>{formatCurrency(walletNetBalance)} {sym}</Text>
             </View>
             <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار' : 'Saved in Savings Jars'}</Text>
+              <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار والأهداف' : 'Saved in Savings Jars & Goals'}</Text>
               <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
             </View>
+            {totalFixedCommitments > 0 && (
+              <View style={styles.integrationRow}>
+                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المصاريف المتكررة والأقساط الشهري' : 'Monthly Bills & Installments'}</Text>
+                <Text style={[styles.integrationValue, { color: Colors.expense }]}>{formatCurrency(totalFixedCommitments)} {sym}</Text>
+              </View>
+            )}
             {unpaidDebts > 0 && (
               <View style={styles.integrationRow}>
                 <Text style={styles.integrationLabel}>{language === 'ar' ? 'ديون والتزامات معلقة (عليّ)' : 'Outstanding Debts (I owe)'}</Text>
