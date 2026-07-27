@@ -618,25 +618,6 @@ export default function HomeScreen() {
           onWalletMenu={() => selectedWallet && handleEditWallet(selectedWallet)}
         />
 
-        {/* Quick Glance Widget */}
-        {widgetConfig.showQuickGlance !== false && (
-          <QuickGlanceWidget
-            data={getWidgetData(
-              transactions,
-              wallets,
-              selectedWallet,
-              healthScore,
-              budgets,
-              currencySymbol,
-            )}
-            goals={goals}
-            debts={debts}
-            totalConsolidatedBalance={totalConsolidatedBalance}
-            language={language as 'ar' | 'en'}
-            onAddPress={() => router.push('/add-transaction')}
-          />
-        )}
-
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
           walletPending={walletPending}
