@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import Colors from '@/constants/colors';
 import { Wallet, Transaction } from '@/lib/storage';
 import { formatCurrency } from '@/lib/categories';
+import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 
 interface WalletCarouselProps {
   wallets: Wallet[];
@@ -51,6 +52,18 @@ export default function WalletCarousel({
   const styles = getStyles(colors, cardWidth, cardGap);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    async function loadRates() {
+      try {
+        const r = await getExchangeRates();
+        setRates(r);
+      } catch (e) {}
+    }
+    loadRates();
+  }, []);
 
   useEffect(() => {
     if (selectedWallet && scrollRef.current) {
@@ -92,7 +105,11 @@ export default function WalletCarousel({
             .reduce((sum, t) => sum + t.amount, 0);
           const transferIn = transactions
             .filter((t) => t.type === 'transfer' && t.toWalletId === wallet.id)
-            .reduce((sum, t) => sum + t.amount, 0);
+            .reduce((sum, t) => {
+              const fromW = wallets.find((w) => w.id === t.walletId);
+              const fromCurrency = fromW ? fromW.currency : wallet.currency;
+              return sum + convertAmount(t.amount, fromCurrency, wallet.currency, rates);
+            }, 0);
           const transferOut = transactions
             .filter((t) => t.type === 'transfer' && t.walletId === wallet.id)
             .reduce((sum, t) => sum + t.amount, 0);

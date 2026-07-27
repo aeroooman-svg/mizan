@@ -30,6 +30,7 @@ import { setCustomCategoriesInMemory, getCategoryById } from './categories';
 import { sendImmediateNotification } from './NotificationService';
 import * as Haptics from 'expo-haptics';
 import { getLoggedInUser, syncWithCloud } from './syncService';
+import { getExchangeRates, convertAmount } from './currencyApi';
 
 interface TransactionContextValue {
   transactions: Transaction[];
@@ -228,12 +229,31 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     });
   }, [walletTransactions, currentMonth, currentYear]);
 
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    async function loadRates() {
+      try {
+        const r = await getExchangeRates();
+        setRates(r);
+      } catch (e) {}
+    }
+    loadRates();
+  }, []);
+
   const totalIncome = useMemo(() => {
     if (!selectedWallet) return 0;
     return monthlyTransactions
       .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === selectedWallet.id))
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [monthlyTransactions, selectedWallet]);
+      .reduce((sum, t) => {
+        if (t.type === 'transfer' && t.toWalletId === selectedWallet.id) {
+          const fromW = wallets.find(w => w.id === t.walletId);
+          const fromCurrency = fromW ? fromW.currency : selectedWallet.currency;
+          return sum + convertAmount(t.amount, fromCurrency, selectedWallet.currency, rates);
+        }
+        return sum + t.amount;
+      }, 0);
+  }, [monthlyTransactions, selectedWallet, wallets, rates]);
 
   const totalExpense = useMemo(() => {
     if (!selectedWallet) return 0;
@@ -248,8 +268,15 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     if (!selectedWallet) return 0;
     return walletTransactions
       .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === selectedWallet.id))
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [walletTransactions, selectedWallet]);
+      .reduce((sum, t) => {
+        if (t.type === 'transfer' && t.toWalletId === selectedWallet.id) {
+          const fromW = wallets.find(w => w.id === t.walletId);
+          const fromCurrency = fromW ? fromW.currency : selectedWallet.currency;
+          return sum + convertAmount(t.amount, fromCurrency, selectedWallet.currency, rates);
+        }
+        return sum + t.amount;
+      }, 0);
+  }, [walletTransactions, selectedWallet, wallets, rates]);
 
   const allTimeExpense = useMemo(() => {
     if (!selectedWallet) return 0;

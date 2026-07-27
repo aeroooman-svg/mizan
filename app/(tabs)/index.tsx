@@ -236,13 +236,23 @@ export default function HomeScreen() {
   }, [refresh]);
 
   const getWalletBalance = (walletId: string) => {
+    const targetW = wallets.find(w => w.id === walletId);
+    if (!targetW) return 0;
+
     const walletTxns = transactions.filter(t => 
       t.walletId === walletId || 
       (t.type === 'transfer' && t.toWalletId === walletId)
     );
     const income = walletTxns
       .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === walletId))
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => {
+        if (t.type === 'transfer' && t.toWalletId === walletId) {
+          const fromW = wallets.find(w => w.id === t.walletId);
+          const fromCurrency = fromW ? fromW.currency : targetW.currency;
+          return sum + convertAmount(t.amount, fromCurrency, targetW.currency, rates);
+        }
+        return sum + t.amount;
+      }, 0);
     const expense = walletTxns
       .filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === walletId))
       .reduce((sum, t) => sum + t.amount, 0);

@@ -28,6 +28,8 @@ import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
+import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+
 type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
@@ -40,6 +42,17 @@ export default function TransactionsScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    async function loadRates() {
+      try {
+        const r = await getExchangeRates();
+        setRates(r);
+      } catch (e) {}
+    }
+    loadRates();
+  }, []);
 
   // Grouped Categories for filtering
   const allCategoriesForFilter = useMemo(() => {
@@ -332,10 +345,17 @@ export default function TransactionsScreen() {
       ? { icon: 'swap-horiz', color: isIncomingTransfer ? '#3b82f6' : '#94a3b8' } 
       : getCategoryById(item.category);
 
+    const fromWallet = isIncomingTransfer ? wallets.find(w => w.id === item.walletId) : null;
+    const fromCurrency = fromWallet ? fromWallet.currency : null;
+    const isCrossCurrency = isIncomingTransfer && fromCurrency && selectedWallet?.currency && fromCurrency !== selectedWallet.currency;
+    const displayAmount = isCrossCurrency
+      ? convertAmount(item.amount, fromCurrency, selectedWallet?.currency || 'USD', rates)
+      : item.amount;
+
     let categoryName = getCategoryName(item.category, language);
     if (isTransfer) {
       if (isIncomingTransfer) {
-        const fromWalletName = wallets.find(w => w.id === item.walletId)?.name || '';
+        const fromWalletName = fromWallet?.name || '';
         categoryName = language === 'ar' ? `تحويل من ${fromWalletName}` : `Transfer from ${fromWalletName}`;
       } else {
         const toWalletName = wallets.find(w => w.id === item.toWalletId)?.name || '';
@@ -366,6 +386,13 @@ export default function TransactionsScreen() {
               <Text style={styles.transactionDesc} numberOfLines={1}>{item.description}</Text>
             ) : null}
           </View>
+          {isCrossCurrency && (
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textTertiary, textAlign: 'left', marginTop: 1 }}>
+              {language === 'ar' 
+                ? `(المبلغ الأصلي: ${formatCurrency(item.amount)} ${fromCurrency} بسعر الصرف اللحظي)`
+                : `(Original: ${formatCurrency(item.amount)} ${fromCurrency} at live rate)`}
+            </Text>
+          )}
         </View>
 
         <View style={styles.transactionRight}>
@@ -380,7 +407,7 @@ export default function TransactionsScreen() {
             {isTransfer 
               ? (isIncomingTransfer ? '+' : '-') 
               : (item.type === 'income' ? '+' : '-')}
-            {formatCurrency(item.amount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+            {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
           </Text>
         </View>
         <MaterialIcons name="chevron-right" size={16} color={colors.textTertiary} style={styles.chevron} />
