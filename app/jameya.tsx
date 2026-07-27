@@ -41,18 +41,19 @@ export default function JameyaScreen() {
   // Action Confirmation Modals
   const [payingItem, setPayingItem] = useState<Jameya | null>(null);
   const [payoutTarget, setPayoutTarget] = useState<{ item: Jameya; month?: number } | null>(null);
+  const [deductCurrentInstallment, setDeductCurrentInstallment] = useState(false);
   const [deletingItem, setDeletingItem] = useState<Jameya | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
-  const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [singleShareAmount, setSingleShareAmount] = useState(''); // قيمة الاسم/السهم الواحد (مثلاً 100)
   const [sharesCount, setSharesCount] = useState('1'); // '0.5' | '1' | '2' | '3'
-  const [totalMonths, setTotalMonths] = useState('10');
+  const [totalMonths, setTotalMonths] = useState('8'); // إجمالي أسماء/أشهر الجمعية
   const [startMonth, setStartMonth] = useState(new Date().toISOString().substring(0, 7));
   const [walletId, setWalletId] = useState(selectedWallet?.id || wallets[0]?.id || '');
   
-  // Array of payout months corresponding to sharesCount (e.g. ['2', '7'] for 2 shares)
+  // Array of payout months corresponding to sharesCount (e.g. ['5', '8'] for 2 shares)
   const [payoutMonthsInputs, setPayoutMonthsInputs] = useState<string[]>(['1']);
 
   useEffect(() => {
@@ -110,9 +111,9 @@ export default function JameyaScreen() {
     Haptics.selectionAsync();
     setEditingJameya(null);
     setName('');
-    setMonthlyAmount('');
+    setSingleShareAmount('');
     setSharesCount('1');
-    setTotalMonths('10');
+    setTotalMonths('8');
     setPayoutMonthsInputs(['1']);
     setStartMonth(new Date().toISOString().substring(0, 7));
     setWalletId(selectedWallet?.id || wallets[0]?.id || '');
@@ -123,8 +124,10 @@ export default function JameyaScreen() {
     Haptics.selectionAsync();
     setEditingJameya(item);
     setName(item.name);
-    setMonthlyAmount(item.monthlyAmount.toString());
+    
     const count = item.sharesCount || 1;
+    const shareVal = item.singleShareAmount || (item.monthlyAmount / count);
+    setSingleShareAmount(shareVal.toString());
     setSharesCount(count.toString());
     setTotalMonths(item.totalMonths.toString());
     
@@ -138,23 +141,29 @@ export default function JameyaScreen() {
     setModalVisible(true);
   };
 
+  // Live computed values for modal
+  const computedSingleShareVal = parseFloat(singleShareAmount) || 0;
+  const computedSharesCountVal = parseFloat(sharesCount) || 1;
+  const computedTotalMonthsVal = parseInt(totalMonths, 10) || 1;
+
+  const computedMonthlyTotalPay = computedSingleShareVal * computedSharesCountVal;
+  const computedPotPerShare = computedSingleShareVal * computedTotalMonthsVal;
+  const computedTotalJameyaPayout = computedPotPerShare * computedSharesCountVal;
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال اسم الجمعية' : 'Please enter association name');
       return;
     }
-    const numMonthly = parseFloat(monthlyAmount);
-    if (isNaN(numMonthly) || numMonthly <= 0) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال قسط شهري صحيح' : 'Please enter a valid monthly amount');
+    if (computedSingleShareVal <= 0) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال قيمة صحيحة لـ مبلغ الاسم/السهم الواحد' : 'Please enter a valid share amount');
       return;
     }
-    const numShares = parseFloat(sharesCount);
-    if (isNaN(numShares) || numShares <= 0) {
+    if (computedSharesCountVal <= 0) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أسهم/أسماء صحيح' : 'Please enter a valid shares count');
       return;
     }
-    const numTotalMonths = parseInt(totalMonths, 10);
-    if (isNaN(numTotalMonths) || numTotalMonths <= 0) {
+    if (computedTotalMonthsVal <= 0) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أشهر صحيح' : 'Please enter valid total months');
       return;
     }
@@ -163,10 +172,10 @@ export default function JameyaScreen() {
     const parsedPayoutMonths: number[] = [];
     for (let i = 0; i < payoutMonthsInputs.length; i++) {
       const val = parseInt(payoutMonthsInputs[i], 10);
-      if (isNaN(val) || val < 1 || val > numTotalMonths) {
+      if (isNaN(val) || val < 1 || val > computedTotalMonthsVal) {
         Alert.alert(
           isAr ? 'خطأ في شهر القبض' : 'Payout Month Error',
-          isAr ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${numTotalMonths}` : `Payout month #${i + 1} must be between 1 and ${numTotalMonths}`
+          isAr ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${computedTotalMonthsVal}` : `Payout month #${i + 1} must be between 1 and ${computedTotalMonthsVal}`
         );
         return;
       }
@@ -182,9 +191,10 @@ export default function JameyaScreen() {
       await saveJameya({
         id: editingJameya?.id,
         name: name.trim(),
-        monthlyAmount: numMonthly,
-        sharesCount: numShares,
-        totalMonths: numTotalMonths,
+        singleShareAmount: computedSingleShareVal,
+        sharesCount: computedSharesCountVal,
+        monthlyAmount: computedMonthlyTotalPay,
+        totalMonths: computedTotalMonthsVal,
         payoutMonth: parsedPayoutMonths[0] || 1,
         payoutMonths: parsedPayoutMonths,
         receivedPayoutMonths: editingJameya ? editingJameya.receivedPayoutMonths : [],
@@ -225,10 +235,16 @@ export default function JameyaScreen() {
     if (!payoutTarget || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const res = await receiveJameyaPayout(payoutTarget.item.id, addTransaction, payoutTarget.month);
+      const res = await receiveJameyaPayout(
+        payoutTarget.item.id,
+        addTransaction,
+        payoutTarget.month,
+        deductCurrentInstallment
+      );
       if (res) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPayoutTarget(null);
+        setDeductCurrentInstallment(false);
         loadJameyas();
       } else {
         Alert.alert(isAr ? 'ملاحظة' : 'Notice', isAr ? 'تم استلام مبلغ هذا الدور سابقاً' : 'Payout already received');
@@ -324,7 +340,7 @@ export default function JameyaScreen() {
             <MaterialCommunityIcons name="account-group" size={56} color={colors.textSecondary} style={{ opacity: 0.4 }} />
             <Text style={styles.emptyTitle}>{isAr ? 'لا توجد جمعيات نشطة حالياً' : 'No Active Associations'}</Text>
             <Text style={styles.emptySubtitle}>
-              {isAr ? 'انقر على (+) لإضافة جمعية جديدة بأي عدد من الأسماء والشهور بسهولة' : 'Tap (+) to add a new association with any shares and months'}
+              {isAr ? 'انقر على (+) لإضافة جمعية جديدة وتتبع أقساطها وشهور قبضها بسهولة' : 'Tap (+) to add a new association and track monthly payouts'}
             </Text>
             <Pressable style={styles.createButton} onPress={handleOpenAdd}>
               <Text style={styles.createButtonText}>{isAr ? '+ إضافة جمعية' : '+ Add Association'}</Text>
@@ -332,9 +348,11 @@ export default function JameyaScreen() {
           </View>
         ) : (
           activeJameyas.map((item) => {
-            const potAmount = item.monthlyAmount * item.totalMonths;
-            const progress = item.paidMonthsCount / item.totalMonths;
             const shares = item.sharesCount || 1;
+            const singleVal = item.singleShareAmount || (item.monthlyAmount / shares);
+            const potPerShare = singleVal * item.totalMonths;
+            const totalPotAll = potPerShare * shares;
+            const progress = item.paidMonthsCount / item.totalMonths;
             const payoutMonthsList = item.payoutMonths && item.payoutMonths.length > 0
               ? item.payoutMonths
               : [item.payoutMonth || 1];
@@ -352,6 +370,9 @@ export default function JameyaScreen() {
                         <Text style={styles.cardTitle}>{item.name}</Text>
                         {renderSharesBadge(shares)}
                       </View>
+                      <Text style={styles.cardSubtitle}>
+                        {isAr ? `قيمة الاسم: ${formatCurrency(singleVal)} ${currencySymbol}` : `Share Val: ${formatCurrency(singleVal)}`}
+                      </Text>
                     </View>
                   </View>
 
@@ -368,12 +389,12 @@ export default function JameyaScreen() {
                 {/* Pot & Monthly Stats */}
                 <View style={styles.statsRow}>
                   <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>{isAr ? 'القسط الشهري' : 'Monthly Pay'}</Text>
+                    <Text style={styles.statLabel}>{isAr ? 'إجمالي قسطك' : 'Monthly Pay'}</Text>
                     <Text style={styles.statValue}>{formatCurrency(item.monthlyAmount)} {currencySymbol}</Text>
                   </View>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>{isAr ? 'إجمالي القبض' : 'Total Pot'}</Text>
-                    <Text style={[styles.statValue, { color: colors.income }]}>{formatCurrency(potAmount)} {currencySymbol}</Text>
+                    <Text style={[styles.statValue, { color: colors.income }]}>{formatCurrency(totalPotAll)} {currencySymbol}</Text>
                   </View>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>{isAr ? 'المسدد' : 'Paid'}</Text>
@@ -389,7 +410,11 @@ export default function JameyaScreen() {
                 </View>
 
                 {/* Payout Months Badges & Collection Buttons */}
-                <Text style={styles.payoutSectionTitle}>{isAr ? 'مواعيد وشهور الاستحقاق (القبض):' : 'Payout Schedule:'}</Text>
+                <Text style={styles.payoutSectionTitle}>
+                  {isAr
+                    ? `مواعيد الاستحقاق (قبض ${formatCurrency(potPerShare)} ${currencySymbol} لكل اسم):`
+                    : `Payout Schedule (${formatCurrency(potPerShare)} per share):`}
+                </Text>
                 <View style={styles.payoutMonthsRow}>
                   {payoutMonthsList.map((mNum, idx) => {
                     const isReceived = receivedList.includes(mNum);
@@ -419,7 +444,7 @@ export default function JameyaScreen() {
                           ]}
                         >
                           {payoutMonthsList.length > 1 ? (isAr ? `الاسم ${idx + 1}: الشهر ${mNum}` : `Slot ${idx + 1}: Month ${mNum}`) : (isAr ? `الشهر الـ ${mNum}` : `Month ${mNum}`)}
-                          {isReceived ? (isAr ? ' (تم القبض)' : ' (Done)') : (isAr ? ' (قبض الآن)' : ' (Receive)')}
+                          {isReceived ? (isAr ? ' (تم القبض 🟢)' : ' (Done)') : (isAr ? ' (قبض الآن 💰)' : ' (Receive)')}
                         </Text>
                       </Pressable>
                     );
@@ -429,8 +454,8 @@ export default function JameyaScreen() {
                 {/* Action Buttons */}
                 <View style={styles.actionsRow}>
                   <Pressable style={styles.payMonthButton} onPress={() => setPayingItem(item)}>
-                    <Ionicons name="wallet-outline" size={16} color="#FFF" />
-                    <Text style={styles.payMonthButtonText}>{isAr ? 'دفع قسط الشهر الحالي' : 'Pay This Month'}</Text>
+                    <MaterialCommunityIcons name="piggy-bank-outline" size={18} color={colors.background} />
+                    <Text style={styles.payMonthButtonText}>{isAr ? 'تسديد قسط هذا الشهر (ادخار)' : 'Pay This Month (Savings)'}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -477,7 +502,7 @@ export default function JameyaScreen() {
               <Text style={styles.inputLabel}>{isAr ? 'اسم الجمعية / المجموعة' : 'Association Name'}</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder={isAr ? 'مثال: جمعية الأصدقاء، جمعية العائلة' : 'e.g. Friends ROSCA'}
+                placeholder={isAr ? 'مثال: جمعية الأصدقاء، جمعية الساير' : 'e.g. Al-Sayer ROSCA'}
                 placeholderTextColor={colors.textSecondary}
                 value={name}
                 onChangeText={setName}
@@ -509,22 +534,22 @@ export default function JameyaScreen() {
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'إجمالي قسطك الشهري' : 'Your Monthly Pay'}</Text>
+                  <Text style={styles.inputLabel}>{isAr ? 'مبلغ الاسم/السهم الواحد' : 'Single Share Value'}</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="1000"
+                    placeholder="100"
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="numeric"
-                    value={monthlyAmount}
-                    onChangeText={setMonthlyAmount}
+                    value={singleShareAmount}
+                    onChangeText={setSingleShareAmount}
                   />
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>{isAr ? 'عدد أشهر الجمعية' : 'Total Months'}</Text>
+                  <Text style={styles.inputLabel}>{isAr ? 'إجمالي أسماء/أشهر الجمعية' : 'Total Months / Members'}</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="10"
+                    placeholder="8"
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="numeric"
                     value={totalMonths}
@@ -549,7 +574,7 @@ export default function JameyaScreen() {
                       </Text>
                       <TextInput
                         style={[styles.textInput, { flex: 1, paddingVertical: 8 }]}
-                        placeholder={isAr ? `ترتيب الشهر (مثلاً ${idx + 2})` : `Month index (e.g. ${idx + 2})`}
+                        placeholder={isAr ? `ترتيب الشهر (مثلاً ${idx === 0 ? 5 : 8})` : `Month index (e.g. ${idx === 0 ? 5 : 8})`}
                         placeholderTextColor={colors.textSecondary}
                         keyboardType="numeric"
                         value={val}
@@ -564,18 +589,26 @@ export default function JameyaScreen() {
                 </View>
               </View>
 
-              {/* Calculated Pot Preview */}
-              {monthlyAmount && totalMonths ? (
+              {/* Live Auto-Calculated Pot Preview */}
+              {computedSingleShareVal > 0 && computedTotalMonthsVal > 0 ? (
                 <View style={styles.potPreviewBox}>
-                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي مبلغ القبض الصافي الخاص بك:' : 'Your Total Pot Payout:'}</Text>
-                  <Text style={styles.potPreviewValue}>
-                    {formatCurrency((parseFloat(monthlyAmount) || 0) * (parseInt(totalMonths, 10) || 0))} {currencySymbol}
-                  </Text>
-                  {payoutMonthsInputs.length > 1 && (
-                    <Text style={{ fontSize: 11, color: colors.primary, marginTop: 2 }}>
-                      {isAr ? `(كل اسم يقبض ${formatCurrency(((parseFloat(monthlyAmount) || 0) * (parseInt(totalMonths, 10) || 0)) / payoutMonthsInputs.length)} ${currencySymbol} في شهره)` : ''}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
+                    <Text style={styles.potPreviewLabel}>{isAr ? 'قسطك الشهري الإجمالي:' : 'Your Total Monthly Pay:'}</Text>
+                    <Text style={[styles.potPreviewLabel, { color: colors.text, fontWeight: '700' }]}>
+                      {formatCurrency(computedMonthlyTotalPay)} {currencySymbol}
                     </Text>
-                  )}
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
+                    <Text style={styles.potPreviewLabel}>{isAr ? 'مبلغ قبض كل اسم في شهره:' : 'Payout per share:'}</Text>
+                    <Text style={[styles.potPreviewLabel, { color: colors.income, fontWeight: '700' }]}>
+                      {formatCurrency(computedPotPerShare)} {currencySymbol}
+                    </Text>
+                  </View>
+                  <View style={{ height: 1, backgroundColor: colors.border, width: '100%', marginVertical: 6 }} />
+                  <Text style={styles.potPreviewLabel}>{isAr ? 'إجمالي ما ستقبضه من الجمعية كاملاً:' : 'Your Total Association Payout:'}</Text>
+                  <Text style={styles.potPreviewValue}>
+                    {formatCurrency(computedTotalJameyaPayout)} {currencySymbol}
+                  </Text>
                 </View>
               ) : null}
 
@@ -608,19 +641,19 @@ export default function JameyaScreen() {
         <Modal visible transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.confirmBox}>
-              <MaterialCommunityIcons name="wallet-plus" size={40} color={colors.primary} />
-              <Text style={styles.confirmTitle}>{isAr ? 'تسديد قسط هذا الشهر' : 'Pay Monthly Installment'}</Text>
+              <MaterialCommunityIcons name="piggy-bank" size={42} color={colors.primary} />
+              <Text style={styles.confirmTitle}>{isAr ? 'تسديد قسط الجمعية (ادخار)' : 'Save Monthly Installment'}</Text>
               <Text style={styles.confirmText}>
                 {isAr
-                  ? `سيتم تسجيل قسط بمقدار (${formatCurrency(payingItem.monthlyAmount)} ${currencySymbol}) وتخصم من المحفظة المرتبطة.`
-                  : `Will record an installment expense of (${formatCurrency(payingItem.monthlyAmount)} ${currencySymbol}).`}
+                  ? `سيتم اقتطاع مبلغ (${formatCurrency(payingItem.monthlyAmount)} ${currencySymbol}) وتصنيفه كـ "ادخار جمعية" لحفظ كفايتك وتنمية أصولك دون زيادات وهمية في المصاريف الاستهلاكية.`
+                  : `Will record a savings allocation of (${formatCurrency(payingItem.monthlyAmount)} ${currencySymbol}).`}
               </Text>
               <View style={styles.confirmActions}>
                 <Pressable style={styles.cancelBtn} onPress={() => setPayingItem(null)}>
                   <Text style={styles.cancelBtnText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
                 </Pressable>
                 <Pressable style={styles.confirmBtn} onPress={handleConfirmPayMonth} disabled={isSubmitting}>
-                  <Text style={styles.confirmBtnText}>{isAr ? 'تأكيد التسديد' : 'Confirm Pay'}</Text>
+                  <Text style={styles.confirmBtnText}>{isAr ? 'تأكيد الاقتطاع الادخاري' : 'Confirm Savings'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -632,7 +665,7 @@ export default function JameyaScreen() {
         <Modal visible transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.confirmBox}>
-              <MaterialCommunityIcons name="cash-fast" size={40} color="#0D7C66" />
+              <MaterialCommunityIcons name="cash-fast" size={42} color="#0D7C66" />
               <Text style={styles.confirmTitle}>
                 {isAr
                   ? `قبض دور الجمعية ${payoutTarget.month ? '(الشهر الـ ' + payoutTarget.month + ')' : ''}`
@@ -640,11 +673,40 @@ export default function JameyaScreen() {
               </Text>
               <Text style={styles.confirmText}>
                 {isAr
-                  ? `سيتم تسجيل مضاف كـ "دخل" بمبلغ (${formatCurrency(
-                      (payoutTarget.item.monthlyAmount * payoutTarget.item.totalMonths) / (payoutTarget.item.sharesCount || 1)
-                    )} ${currencySymbol}) يضاف فوراً لرصيد محفظتك!`
-                  : `Will record an income transaction of pot payout.`}
+                  ? `حصيلة قبض هذا الدور هي (${formatCurrency(
+                      ((payoutTarget.item.singleShareAmount || (payoutTarget.item.monthlyAmount / (payoutTarget.item.sharesCount || 1))) * payoutTarget.item.totalMonths)
+                    )} ${currencySymbol}). اختبر كيفية تسجيلها بالمحفظة:`
+                  : `Pot payout amount.`}
               </Text>
+
+              {/* Net vs Gross Payout Option Selector */}
+              <View style={{ width: '100%', marginVertical: 12, gap: 8 }}>
+                <Pressable
+                  style={[styles.payoutOptionBox, !deductCurrentInstallment && styles.payoutOptionBoxActive]}
+                  onPress={() => setDeductCurrentInstallment(false)}
+                >
+                  <Ionicons name={!deductCurrentInstallment ? 'radio-button-on' : 'radio-button-off'} size={18} color={!deductCurrentInstallment ? colors.primary : colors.textSecondary} />
+                  <Text style={styles.payoutOptionText}>
+                    {isAr ? 'قبض الحصيلة الكاملة للأعضاء' : 'Full Pot'} (
+                    {formatCurrency(((payoutTarget.item.singleShareAmount || (payoutTarget.item.monthlyAmount / (payoutTarget.item.sharesCount || 1))) * payoutTarget.item.totalMonths))} {currencySymbol})
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.payoutOptionBox, deductCurrentInstallment && styles.payoutOptionBoxActive]}
+                  onPress={() => setDeductCurrentInstallment(true)}
+                >
+                  <Ionicons name={deductCurrentInstallment ? 'radio-button-on' : 'radio-button-off'} size={18} color={deductCurrentInstallment ? colors.primary : colors.textSecondary} />
+                  <Text style={styles.payoutOptionText}>
+                    {isAr ? 'قبض الصافي فقط بعد استقطاع حصتك' : 'Net Pot'} (
+                    {formatCurrency(
+                      ((payoutTarget.item.singleShareAmount || (payoutTarget.item.monthlyAmount / (payoutTarget.item.sharesCount || 1))) * payoutTarget.item.totalMonths) -
+                      (payoutTarget.item.singleShareAmount || (payoutTarget.item.monthlyAmount / (payoutTarget.item.sharesCount || 1)))
+                    )} {currencySymbol})
+                  </Text>
+                </Pressable>
+              </View>
+
               <View style={styles.confirmActions}>
                 <Pressable style={styles.cancelBtn} onPress={() => setPayoutTarget(null)}>
                   <Text style={styles.cancelBtnText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
@@ -834,7 +896,7 @@ function getStyles(colors: any) {
       gap: 6,
       backgroundColor: colors.text,
       paddingHorizontal: 14,
-      paddingVertical: 9,
+      paddingVertical: 10,
       borderRadius: 10,
       flex: 1,
       justifyContent: 'center',
@@ -889,5 +951,17 @@ function getStyles(colors: any) {
     cancelBtnText: { color: colors.textSecondary, fontWeight: '600' },
     confirmBtn: { flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
     confirmBtnText: { color: '#FFF', fontWeight: '700' },
+    payoutOptionBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.background,
+      padding: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    payoutOptionBoxActive: { borderColor: colors.primary, backgroundColor: `${colors.primary}10` },
+    payoutOptionText: { fontSize: 12, color: colors.text, fontWeight: '600', flex: 1 },
   });
 }

@@ -3,18 +3,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface Jameya {
   id: string;
   name: string;
-  monthlyAmount: number; // إجمالي القسط الشهري الخاص بالمستخدم
-  totalMonths: number;
+  monthlyAmount: number; // إجمالي القسط الشهري الخاص بالمستخدم (مثلاً 200)
+  singleShareAmount?: number; // قيمة الاسم/السهم الواحد في الجمعية (مثلاً 100)
+  totalMonths: number; // إجمالي عدد أسماء/أشهر الجمعية (مثلاً 8)
   payoutMonth: number; // For backward compatibility
-  payoutMonths?: number[]; // قائمة شهور القبض (مثلاً [2, 7] لمن يشارك باسمين)
-  receivedPayoutMonths?: number[]; // قائمة الشهور التي تم قبضها بالفعل (مثلاً [2])
+  payoutMonths?: number[]; // قائمة شهور القبض (مثلاً [5, 8] لمن يشارك باسمين)
+  receivedPayoutMonths?: number[]; // قائمة الشهور التي تم قبضها بالفعل (مثلاً [5])
   startMonth: string; // YYYY-MM
   paidMonthsCount: number;
   isPayoutReceived: boolean;
   walletId: string;
   createdAt: string;
   lastPaidMonth?: string; // YYYY-MM
-  sharesCount?: number; // عدد الأسهم/الأسماء (مثلاً 1، 2، 0.5)
+  sharesCount?: number; // عدد الأسهم/الأسماء التي يشارك بها المستخدم (مثلاً 2، 1، 0.5)
 }
 
 const JAMEYAS_KEY = '@masarif_jameyas';
@@ -24,13 +25,18 @@ export async function getJameyas(): Promise<Jameya[]> {
     const data = await AsyncStorage.getItem(JAMEYAS_KEY);
     if (!data) return [];
     const list: Jameya[] = JSON.parse(data);
-    // Self-healing migration for existing data missing payoutMonths
-    return list.map(j => ({
-      ...j,
-      payoutMonths: j.payoutMonths && j.payoutMonths.length > 0 ? j.payoutMonths : [j.payoutMonth || 1],
-      receivedPayoutMonths: j.receivedPayoutMonths || (j.isPayoutReceived ? (j.payoutMonths || [j.payoutMonth || 1]) : []),
-      sharesCount: j.sharesCount || 1,
-    }));
+    // Self-healing migration for existing data
+    return list.map(j => {
+      const sharesCount = j.sharesCount || 1;
+      const singleShareAmount = j.singleShareAmount || (j.monthlyAmount / sharesCount);
+      return {
+        ...j,
+        sharesCount,
+        singleShareAmount,
+        payoutMonths: j.payoutMonths && j.payoutMonths.length > 0 ? j.payoutMonths : [j.payoutMonth || 1],
+        receivedPayoutMonths: j.receivedPayoutMonths || (j.isPayoutReceived ? (j.payoutMonths || [j.payoutMonth || 1]) : []),
+      };
+    });
   } catch (e) {
     console.error('Error loading Jameyas:', e);
     return [];
@@ -47,9 +53,17 @@ export async function saveJameya(jameya: Omit<Jameya, 'id' | 'createdAt'> & { id
       ? jameya.payoutMonths
       : [jameya.payoutMonth || 1];
 
+    const sharesCount = jameya.sharesCount || 1;
+    const singleShareAmount = jameya.singleShareAmount || (jameya.monthlyAmount / sharesCount);
+    // Ensure monthlyAmount aligns: monthlyAmount = singleShareAmount * sharesCount
+    const monthlyAmount = jameya.singleShareAmount ? (jameya.singleShareAmount * sharesCount) : jameya.monthlyAmount;
+
     const newJameya: Jameya = {
       ...jameya,
       id,
+      monthlyAmount,
+      singleShareAmount,
+      sharesCount,
       payoutMonth: payoutMonths[0] || 1,
       payoutMonths,
       receivedPayoutMonths: jameya.receivedPayoutMonths || [],
@@ -110,13 +124,13 @@ export async function payJameyaMonth(
 
     const newPaidCount = item.paidMonthsCount + 1;
 
-    // Add expense transaction for this month's installment
+    // Add savings transaction for this month's installment
     await addTransactionFn({
       id: `jam_tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       amount: item.monthlyAmount,
       type: 'expense',
-      category: 'other_expense',
-      description: `قسط جمعية: ${item.name} (${newPaidCount}/${item.totalMonths})`,
+      category: 'jameya_savings',
+      description: `ادخار قسط جمعية: ${item.name} (${newPaidCount}/${item.totalMonths})`,
       date: now,
       createdAt: now,
       walletId: item.walletId,
@@ -139,7 +153,8 @@ export async function payJameyaMonth(
 export async function receiveJameyaPayout(
   id: string,
   addTransactionFn: (tx: any) => Promise<any>,
-  specificMonth?: number
+  specificMonth?: number,
+  deductCurrentInstallment: boolean = false
 ): Promise<boolean> {
   try {
     const list = await getJameyas();
@@ -148,21 +163,25 @@ export async function receiveJameyaPayout(
 
     const item = list[index];
     const sharesCount = item.sharesCount || 1;
+    const singleShareAmount = item.singleShareAmount || (item.monthlyAmount / sharesCount);
     const payoutMonths = item.payoutMonths || [item.payoutMonth || 1];
     const receivedPayoutMonths = item.receivedPayoutMonths || [];
 
-    let potAmount = 0;
+    // Full pot value for 1 share = singleShareAmount * totalMonths (e.g. 100 * 8 = 800)
+    let potAmountForOneShare = singleShareAmount * item.totalMonths;
     let targetMonth = specificMonth;
 
     if (targetMonth !== undefined) {
       if (receivedPayoutMonths.includes(targetMonth)) return false;
-      // Portion of pot for 1 share/turn
-      const totalPotAllShares = item.monthlyAmount * item.totalMonths;
-      potAmount = totalPotAllShares / sharesCount;
     } else {
       if (item.isPayoutReceived) return false;
-      potAmount = item.monthlyAmount * item.totalMonths;
+      potAmountForOneShare = item.monthlyAmount * item.totalMonths;
     }
+
+    // If user selected net payout (deducting current month's installment share of 100)
+    const finalAmountToRecord = deductCurrentInstallment
+      ? Math.max(0, potAmountForOneShare - singleShareAmount)
+      : potAmountForOneShare;
 
     const now = new Date().toISOString();
     const descSuffix = targetMonth ? ` (دور الشهر الـ ${targetMonth})` : '';
@@ -170,7 +189,7 @@ export async function receiveJameyaPayout(
     // Add Income transaction for the payout pot
     await addTransactionFn({
       id: `jam_payout_tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      amount: potAmount,
+      amount: finalAmountToRecord,
       type: 'income',
       category: 'other_income',
       description: `قبض جمعية: ${item.name}${descSuffix}`,

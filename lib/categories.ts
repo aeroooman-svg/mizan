@@ -21,6 +21,7 @@ export const expenseCategories: Category[] = [
   { id: 'rent', name: 'Rent', nameAr: 'إيجار', icon: 'home', iconFamily: 'MaterialIcons', color: '#8D6E63' },
   { id: 'phone', name: 'Phone', nameAr: 'هاتف', icon: 'phone-android', iconFamily: 'MaterialIcons', color: '#26A69A' },
   { id: 'clothes', name: 'Clothes', nameAr: 'ملابس', icon: 'checkroom', iconFamily: 'MaterialIcons', color: '#EC407A' },
+  { id: 'jameya_savings', name: 'Jameya Savings', nameAr: 'ادخار جمعية', icon: 'account-balance', iconFamily: 'MaterialIcons', color: '#0D7C66' },
   { id: 'other_expense', name: 'Other', nameAr: 'أخرى', icon: 'more-horiz', iconFamily: 'MaterialIcons', color: '#78909C' },
 ];
 
