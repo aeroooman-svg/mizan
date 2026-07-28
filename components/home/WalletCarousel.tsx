@@ -166,25 +166,30 @@ export default function WalletCarousel({
                 pressed && { transform: [{ scale: 0.97 }] },
               ]}
             >
-              <View style={[cardDesignStyle, { 
-                paddingHorizontal: 0, 
-                paddingVertical: 0, 
-                borderRadius: 24, 
-                overflow: 'hidden',
-                borderWidth: 2,
-                borderColor: '#34D399',
-                shadowColor: '#10B981',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.4,
-                shadowRadius: 12,
-                elevation: 10,
-              }]}>
-                <LinearGradient
-                  colors={['#0A382D', '#041F19', '#02120E']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]}
-                />
+              <View style={[cardDesignStyle, { paddingHorizontal: 0, paddingVertical: 0, borderRadius: 22, overflow: 'hidden' }]}>
+                {cardStyle === 'classic' && (
+                  <LinearGradient
+                    colors={[wallet.color, '#060B18']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
+                  />
+                )}
+                {cardStyle === 'glass' &&
+                  (Platform.OS === 'ios' ? (
+                    <BlurView
+                      intensity={35}
+                      tint="dark"
+                      style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        StyleSheet.absoluteFillObject,
+                        { backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 22 },
+                      ]}
+                    />
+                  ))}
 
                 <View style={{ flex: 1, justifyContent: 'space-between', padding: 18 }}>
                   {/* Top Header Row */}
@@ -192,23 +197,66 @@ export default function WalletCarousel({
                     style={{
                       flexDirection: 'row',
                       justifyContent: 'space-between',
-                      alignItems: 'center',
+                      alignItems: 'flex-start',
                     }}
                   >
-                    {/* Wallet Name / ID on Top-Left */}
-                    <Text
-                      style={{
-                        fontFamily: 'Cairo_700Bold',
-                        fontSize: 22,
-                        color: '#FFFFFF',
-                        textAlign: 'left',
-                      }}
-                      numberOfLines={1}
-                    >
-                      {wallet.name}
-                    </Text>
-
-                    {/* Top-Right: 3-dots Pill + Golden Wallet Icon */}
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_700Bold',
+                          fontSize: 24,
+                          color: textColor,
+                          textAlign: 'left',
+                          lineHeight: 30,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {wallet.name.toUpperCase()}
+                      </Text>
+                      {wallet.sharedWith && (
+                        <Pressable
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            router.push(`/share-wallet?walletId=${wallet.id}` as any);
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                            alignSelf: 'flex-start',
+                            marginTop: 4,
+                          }}
+                        >
+                          <Ionicons name="people" size={12} color="#10B981" />
+                          <Text
+                            style={{
+                              fontFamily: 'Cairo_700Bold',
+                              fontSize: 9,
+                              color: '#10B981',
+                            }}
+                          >
+                            {(() => {
+                              try {
+                                const members = JSON.parse(wallet.sharedWith);
+                                if (Array.isArray(members)) {
+                                  const names = members.map((m) => m.username).join(', ');
+                                  return language === 'ar'
+                                    ? `مشترك: ${names}`
+                                    : `Shared: ${names}`;
+                                }
+                              } catch (e) {}
+                              return language === 'ar'
+                                ? `مشترك مع ${wallet.sharedWith}`
+                                : `Shared: ${wallet.sharedWith}`;
+                            })()}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Pressable
                         onPress={() => {
@@ -217,35 +265,25 @@ export default function WalletCarousel({
                         }}
                         hitSlop={10}
                         style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                          borderRadius: 14,
-                          borderWidth: 1,
-                          borderColor: 'rgba(255, 255, 255, 0.2)',
+                          padding: 6,
+                          backgroundColor: 'rgba(255,255,255,0.18)',
+                          borderRadius: 10,
                         }}
                       >
-                        <Ionicons name="ellipsis-vertical" size={16} color="#FFFFFF" />
+                        <Ionicons name="ellipsis-vertical" size={16} color={textColor} />
                       </Pressable>
-
-                      <View
-                        style={{
-                          padding: 8,
-                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: 'rgba(255, 255, 255, 0.15)',
-                        }}
-                      >
-                        <Ionicons name="wallet" size={20} color="#FBBF24" />
-                      </View>
+                      <MaterialIcons
+                        name={(wallet.icon as any) || 'account-balance-wallet'}
+                        size={24}
+                        color={textColor}
+                      />
                     </View>
                   </View>
 
                   {/* Middle Card Row: Available Balance on Left + Larger Health Score Ring on Right */}
                   <View
                     style={{
-                      marginTop: 16,
+                      marginTop: 14,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -256,10 +294,12 @@ export default function WalletCarousel({
                       <Text
                         style={{
                           fontFamily: 'Cairo_600SemiBold',
-                          fontSize: 13,
-                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: 12,
+                          color: textSecondaryColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
                           textAlign: 'left',
-                          marginBottom: 4,
+                          marginBottom: 2,
                         }}
                       >
                         {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
@@ -267,48 +307,47 @@ export default function WalletCarousel({
                       <Text
                         style={{
                           fontFamily: 'Cairo_700Bold',
-                          fontSize: 32,
-                          color: '#FFFFFF',
-                          lineHeight: 40,
+                          fontSize: 34,
+                          color: textColor,
+                          lineHeight: 42,
                           textAlign: 'left',
                         }}
                         numberOfLines={1}
                       >
                         {walletBalance >= 0 ? '' : '-'}
                         {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                        <Text style={{ fontSize: 16, fontFamily: 'Cairo_600SemiBold', color: 'rgba(255, 255, 255, 0.85)' }}>
+                        <Text style={{ fontSize: 18, fontFamily: 'Cairo_600SemiBold' }}>
                           {wallet.currency}
                         </Text>
                       </Text>
                     </View>
 
-                    {/* Circular Financial Health Gauge Badge */}
-                    <View style={{ alignItems: 'center', gap: 4 }}>
+                    {/* Circular Financial Health Gauge Badge (Repositioned to right side of card body) */}
+                    <View style={{ alignItems: 'center', gap: 2 }}>
                       <View
                         style={{
-                          width: 62,
-                          height: 62,
-                          borderRadius: 31,
+                          width: 54,
+                          height: 54,
+                          borderRadius: 27,
                           borderWidth: 3,
-                          borderColor: '#34D399',
-                          backgroundColor: 'rgba(5, 40, 30, 0.85)',
+                          borderColor: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444',
+                          backgroundColor: 'rgba(0, 0, 0, 0.32)',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          shadowColor: '#34D399',
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.6,
-                          shadowRadius: 10,
-                          elevation: 6,
+                          shadowColor: healthScore >= 80 ? '#10B981' : '#F59E0B',
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.5,
+                          shadowRadius: 8,
                         }}
                       >
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: '#FFFFFF', lineHeight: 22 }}>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFFFFF', lineHeight: 20 }}>
                           {healthScore}
                         </Text>
-                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: 'rgba(255, 255, 255, 0.8)', marginTop: -2 }}>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: 'rgba(255, 255, 255, 0.8)', marginTop: -3 }}>
                           %
                         </Text>
                       </View>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#34D399' }}>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444' }}>
                         {language === 'ar' ? (healthScore >= 80 ? 'ممتاز' : 'جيد') : (healthScore >= 80 ? 'Excellent' : 'Good')}
                       </Text>
                     </View>

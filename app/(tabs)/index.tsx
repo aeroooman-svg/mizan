@@ -58,7 +58,6 @@ import PendingRecurringSection from '@/components/home/PendingRecurringSection';
 import ActivePlanSection from '@/components/home/ActivePlanSection';
 import GoalsDebtsSections from '@/components/home/GoalsDebtsSections';
 import FinancialJourneySlider from '@/components/home/FinancialJourneySlider';
-import MizanLuxuryHomeScreen from '@/components/home/MizanLuxuryHomeScreen';
 import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 
@@ -607,16 +606,97 @@ export default function HomeScreen() {
         }
         contentContainerStyle={{ paddingBottom: 140 }}
       >
-        {/* Mizan Luxury Emerald Glassmorphic Home Dashboard */}
-        <MizanLuxuryHomeScreen
+        {/* Top Header Bar with Menu and Settings */}
+        <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsMenuOpen(true);
+            }}
+            style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="menu-outline" size={24} color={colors.text} />
+          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.topBarTitle, { color: colors.text }]}>MIZAN</Text>
+            <View style={[
+              styles.syncStatusBadge,
+              { backgroundColor: syncState === 'synced' ? 'rgba(16, 185, 129, 0.2)' : syncState === 'syncing' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)' }
+            ]}>
+              <View style={[
+                styles.syncStatusDot,
+                { backgroundColor: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#3B82F6' : '#F59E0B' }
+              ]} />
+              <Text style={[
+                styles.syncStatusText,
+                { color: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#60A5FA' : '#FBBF24' }
+              ]}>
+                {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') :
+                 syncState === 'syncing' ? (language === 'ar' ? 'جاري المزامنة...' : 'Syncing...') :
+                 (language === 'ar' ? 'محلي' : 'Local')}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/notifications');
+              }}
+              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              {unreadNotifCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings');
+              }}
+              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.text} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* 3D Bank Credit Cards Carousel */}
+        <WalletCarousel
+          wallets={wallets}
           selectedWallet={selectedWallet}
-          totalBalance={totalConsolidatedBalance}
-          healthScore={healthScore}
-          syncState={syncState}
+          transactions={transactions}
+          currentUser={currentUser}
           language={language as 'ar' | 'en'}
-          onOpenMenu={() => setIsMenuOpen(true)}
-          onWalletMenu={() => selectedWallet && handleEditWallet(selectedWallet)}
+          colors={colors}
+          healthScore={healthScore}
+          onSelectWallet={selectWallet}
+          onEditWallet={handleEditWallet}
+          onDeleteWallet={handleDeleteWallet}
+          onAddWallet={handleAddWallet}
         />
+
+        {/* Quick Glance Widget */}
+        {widgetConfig.showQuickGlance !== false && (
+          <QuickGlanceWidget
+            data={getWidgetData(
+              transactions,
+              wallets,
+              selectedWallet,
+              healthScore,
+              budgets,
+              currencySymbol,
+            )}
+            goals={goals}
+            debts={debts}
+            totalConsolidatedBalance={totalConsolidatedBalance}
+            language={language as 'ar' | 'en'}
+            onAddPress={() => router.push('/add-transaction')}
+          />
+        )}
 
         {/* Pending Recurring Bills Confirmation Widget */}
         <PendingRecurringSection
