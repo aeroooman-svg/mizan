@@ -375,12 +375,15 @@ export default function FinancialPlanScreen() {
   }, [recurringList]);
 
   const totalInstallmentsMonthly = useMemo(() => {
-    const instSum = installmentList.reduce((sum, inst) => sum + (inst.monthlyAmount || 0), 0);
-    const jamSum = jameyaList.reduce((sum, jam) => sum + (jam.monthlyAmount || 0), 0);
-    return instSum + jamSum;
-  }, [installmentList, jameyaList]);
+    return installmentList.reduce((sum, inst) => sum + (inst.monthlyAmount || 0), 0);
+  }, [installmentList]);
 
-  const totalFixedCommitments = totalRecurringMonthly + totalInstallmentsMonthly;
+  const totalJameyaMonthly = useMemo(() => {
+    return jameyaList.reduce((sum, jam) => sum + (jam.monthlyAmount || 0), 0);
+  }, [jameyaList]);
+
+  const totalConsumerCommitments = totalRecurringMonthly + totalInstallmentsMonthly;
+  const totalFixedCommitments = totalConsumerCommitments + totalJameyaMonthly;
 
   const formatTranslation = (template: string, replacements: Record<string, string>) => {
     let res = template;
@@ -1788,10 +1791,20 @@ export default function FinancialPlanScreen() {
               <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار والأهداف' : 'Saved in Savings Jars & Goals'}</Text>
               <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
             </View>
-            {totalFixedCommitments > 0 && (
+            {totalJameyaMonthly > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المصاريف المتكررة والأقساط الشهري' : 'Monthly Bills & Installments'}</Text>
-                <Text style={[styles.integrationValue, { color: Colors.expense }]}>{formatCurrency(totalFixedCommitments)} {sym}</Text>
+                <Text style={[styles.integrationLabel, { color: '#10B981' }]}>
+                  🎁 {language === 'ar' ? 'ادخار وتنمية الجمعيات (ROSCA)' : 'ROSCA Jameya Savings Asset'}
+                </Text>
+                <Text style={[styles.integrationValue, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
+                  +{formatCurrency(totalJameyaMonthly)} {sym}
+                </Text>
+              </View>
+            )}
+            {totalConsumerCommitments > 0 && (
+              <View style={styles.integrationRow}>
+                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المصاريف المتكررة والأقساط الاستهلاكية' : 'Monthly Bills & Card Installments'}</Text>
+                <Text style={[styles.integrationValue, { color: colors.textSecondary }]}>{formatCurrency(totalConsumerCommitments)} {sym}</Text>
               </View>
             )}
             {unpaidDebts > 0 && (
