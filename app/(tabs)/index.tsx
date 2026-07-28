@@ -539,57 +539,214 @@ export default function HomeScreen() {
 
   if (!isLoading && wallets.length === 0) {
     return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={[Colors.primary, Colors.primaryLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 16 }]}
+      <LinearGradient
+        colors={theme === 'dark' ? ['#070B14', '#0D1424', '#05070B'] : ['#F8FAFC', '#F1F5F9', '#E2E8F0']}
+        style={styles.container}
+        start={{ x: 0.1, y: 0.1 }}
+        end={{ x: 0.9, y: 0.9 }}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 60, flexGrow: 1 }}
         >
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greeting}>{dayName}، {currentDay} {currentMonth} {currentYear}</Text>
+          {/* Consistent Top Header Bar */}
+          <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
+            <Pressable 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsMenuOpen(true);
+              }}
+              style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="menu-outline" size={24} color={colors.text} />
+            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.topBarTitle, { color: colors.text }]}>MIZAN</Text>
+              <View style={[
+                styles.syncStatusBadge,
+                { backgroundColor: syncState === 'synced' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)' }
+              ]}>
+                <View style={[
+                  styles.syncStatusDot,
+                  { backgroundColor: syncState === 'synced' ? '#10B981' : '#F59E0B' }
+                ]} />
+                <Text style={[
+                  styles.syncStatusText,
+                  { color: syncState === 'synced' ? '#10B981' : '#FBBF24' }
+                ]}>
+                  {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') : (language === 'ar' ? 'محلي' : 'Local')}
+                </Text>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/notifications');
-                }}
-                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Pressable 
+                onPress={() => router.push('/notifications')}
+                style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
               >
-                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.85)" />
+                <Ionicons name="notifications-outline" size={24} color={colors.text} />
                 {unreadNotifCount > 0 && (
                   <View style={styles.notifBadge}>
                     <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
                   </View>
                 )}
               </Pressable>
-              <Pressable
+              <Pressable 
                 onPress={() => router.push('/settings')}
-                style={({ pressed }) => [styles.settingsBtn, { opacity: pressed ? 0.8 : 1 }]}
+                style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
               >
-                <Ionicons name="settings-sharp" size={20} color="rgba(255,255,255,0.85)" />
+                <Ionicons name="settings-sharp" size={22} color={colors.text} />
               </Pressable>
             </View>
           </View>
-        </LinearGradient>
-        <View style={styles.welcomeEmpty}>
-          <MaterialIcons name="account-balance-wallet" size={64} color={Colors.primary} />
-          <Text style={styles.welcomeTitle}>{t.welcomeTitle || (language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN')}</Text>
-          <Text style={styles.welcomeSubtitle}>{t.welcomeSubtitle || (language === 'ar' ? 'ابدأ بإضافة محفظتك الأولى لتتبع مصاريفك' : 'Start by adding your first wallet to track expenses')}</Text>
-          <Pressable
-            onPress={handleAddWallet}
-            style={({ pressed }) => [
-              styles.welcomeButton,
-              { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
-            ]}
-          >
-            <Ionicons name="add" size={22} color="#fff" />
-            <Text style={styles.welcomeButtonText}>{t.newWallet}</Text>
-          </Pressable>
-        </View>
-      </View>
+
+          {/* Hero Welcome Card */}
+          <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
+            <LinearGradient
+              colors={['#0D7C66', '#10B981']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: 24,
+                padding: 24,
+                alignItems: 'center',
+                shadowColor: '#10B981',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.35,
+                shadowRadius: 20,
+                elevation: 10,
+              }}
+            >
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                  borderWidth: 2,
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                }}
+              >
+                <MaterialIcons name="account-balance-wallet" size={44} color="#FFF" />
+              </View>
+
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
+                {language === 'ar' ? 'مرحباً بك في مِيزان 💎' : 'Welcome to MIZAN 💎'}
+              </Text>
+              
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.92)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 24 }}>
+                {language === 'ar'
+                  ? 'مساعدك المالي الذكي لإدارة مصاريفك ومحافظك بالعملات المختلفة بسهولة وأمان تكتفي به عن الطرق القديمة.'
+                  : 'Your intelligent multi-currency financial assistant to track expenses and manage wallets effortlessly.'}
+              </Text>
+
+              {/* Primary Action Button: Add First Wallet */}
+              <Pressable
+                onPress={handleAddWallet}
+                style={({ pressed }) => [{
+                  width: '100%',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#FFF',
+                  borderRadius: 16,
+                  paddingVertical: 16,
+                  gap: 10,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  elevation: 4,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                }]}
+              >
+                <Ionicons name="add-circle" size={24} color="#0D7C66" />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#0D7C66' }}>
+                  {language === 'ar' ? 'إنشاء محفظتك الأولى الآن 🚀' : 'Create Your First Wallet 🚀'}
+                </Text>
+              </Pressable>
+
+              {/* Secondary Action: Join Shared Wallet */}
+              <Pressable
+                onPress={() => router.push('/join-wallet')}
+                style={({ pressed }) => [{
+                  marginTop: 12,
+                  width: '100%',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.3)',
+                  opacity: pressed ? 0.8 : 1,
+                }]}
+              >
+                <Ionicons name="people-outline" size={20} color="#FFF" />
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 14, color: '#FFF' }}>
+                  {language === 'ar' ? 'أو الانضمام لمحفظة مشتركة عبر كود 🔗' : 'Or Join Shared Wallet via Code 🔗'}
+                </Text>
+              </Pressable>
+            </LinearGradient>
+          </View>
+
+          {/* Quick Feature Highlights Cards */}
+          <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.text, textAlign: 'left', marginBottom: 2 }}>
+              {language === 'ar' ? 'لماذا تختار مِيزان؟ 🌟' : 'Why Choose MIZAN? 🌟'}
+            </Text>
+
+            {/* Feature 1: Multi-Currency */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#10B98118', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="card-outline" size={22} color="#10B981" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? 'تعدد المحافظ والعملات 🪙' : 'Multi-Currency Wallets 🪙'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {language === 'ar' ? 'إدارة مصاريفك بالدينار، الجنيه، الدولار، والريال مع تحويل فوري حقيقي.' : 'Manage wallets in KWD, EGP, USD, SAR with live conversion.'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 2: Smart SMS & AI */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#6366F118', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="sparkles-outline" size={22} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? 'أتمتة ذكية ومسح الفواتير 🤖' : 'Smart Automation & Scan 🤖'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {language === 'ar' ? 'قراءة رسائل البنك تلقائياً ومسح الفواتير بالذكاء الاصطناعي.' : 'Auto bank SMS parsing and OCR receipt scanning.'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 3: Zakat & 50/30/20 Plan */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="calculator-outline" size={22} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? 'حاسبة الزكاة والتخطيط المالي 🕌' : 'Zakat & Financial Plan 🕌'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {language === 'ar' ? 'حساب زكاة المال بدقة شرعية وضبط الميزانية بقاعدة 50/30/20.' : 'Calculate Zakat and plan budgets with 50/30/20 rule.'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     );
   }
 
