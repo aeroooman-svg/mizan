@@ -8,7 +8,10 @@ import {
   Platform,
   Modal,
   useWindowDimensions,
+  TextInput,
 } from 'react-native';
+import { useTransactions } from '@/lib/TransactionContext';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -51,6 +54,9 @@ export default function WalletCarousel({
   const cardGap = 24;
   const styles = getStyles(colors, cardWidth, cardGap);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
+  const [adjustWallet, setAdjustWallet] = useState<Wallet | null>(null);
+  const [targetBalanceInput, setTargetBalanceInput] = useState('');
+  const { updateWallet, refresh } = useTransactions();
   const scrollRef = useRef<ScrollView>(null);
 
   const [rates, setRates] = useState<Record<string, number>>({});
@@ -64,6 +70,37 @@ export default function WalletCarousel({
     }
     loadRates();
   }, []);
+
+  const handleOpenAdjustModal = (w: Wallet, currentBal: number) => {
+    Haptics.selectionAsync();
+    setAdjustWallet(w);
+    setTargetBalanceInput(currentBal.toFixed(2));
+  };
+
+  const handleSaveAdjustedBalance = async () => {
+    if (!adjustWallet) return;
+    const targetAmount = parseFloat(normalizeAmountInput(targetBalanceInput)) || 0;
+    
+    // Calculate net transactions for this wallet
+    const income = transactions.filter((t) => t.type === 'income' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
+    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
+    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === adjustWallet.id).reduce((sum, t) => {
+      const fromW = wallets.find((w) => w.id === t.walletId);
+      const fromCurrency = fromW ? fromW.currency : adjustWallet.currency;
+      return sum + convertAmount(t.amount, fromCurrency, adjustWallet.currency, rates);
+    }, 0);
+    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
+
+    const netTxns = income + transferIn - expense - transferOut;
+    const newInitialBalance = targetAmount - netTxns;
+
+    const updated = { ...adjustWallet, initialBalance: newInitialBalance };
+    await updateWallet(updated);
+    try { await refresh(); } catch {}
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAdjustWallet(null);
+  };
 
   useEffect(() => {
     if (selectedWallet && scrollRef.current) {
@@ -291,19 +328,23 @@ export default function WalletCarousel({
                   >
                     {/* Available Balance */}
                     <View style={{ flex: 1, alignItems: 'flex-start', marginRight: 12 }}>
-                      <Text
-                        style={{
-                          fontFamily: 'Cairo_600SemiBold',
-                          fontSize: 12,
-                          color: textSecondaryColor,
-                          textTransform: 'uppercase',
-                          letterSpacing: 0.5,
-                          textAlign: 'left',
-                          marginBottom: 2,
-                        }}
+                      <Pressable
+                        onPress={() => handleOpenAdjustModal(wallet, walletBalance)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}
                       >
-                        {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
-                      </Text>
+                        <Text
+                          style={{
+                            fontFamily: 'Cairo_600SemiBold',
+                            fontSize: 12,
+                            color: textSecondaryColor,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                            textAlign: 'left',
+                          }}
+                        >
+                          {language === 'ar' ? 'الرصيد المتاح ✏️' : 'Available Balance ✏️'}
+                        </Text>
+                      </Pressable>
                       <Text
                         style={{
                           fontFamily: 'Cairo_700Bold',
@@ -475,6 +516,49 @@ export default function WalletCarousel({
                     <Ionicons name="close" size={22} color={colors.textSecondary} />
                   </Pressable>
                 </View>
+
+                {/* Quick Option: Direct Balance Adjustment */}
+                <Pressable
+                  onPress={() => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    // Calculate current balance for actionWallet
+                    const income = transactions.filter((t) => t.type === 'income' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
+                    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
+                    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === w.id).reduce((sum, t) => {
+                      const fromW = wallets.find((wObj) => wObj.id === t.walletId);
+                      const fromCurrency = fromW ? fromW.currency : w.currency;
+                      return sum + convertAmount(t.amount, fromCurrency, w.currency, rates);
+                    }, 0);
+                    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
+                    const curBal = (w.initialBalance || 0) + income + transferIn - expense - transferOut;
+
+                    handleOpenAdjustModal(w, curBal);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: colors.primary + '18',
+                    borderColor: colors.primary + '40',
+                    borderWidth: 1,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Ionicons name="cash-outline" size={20} color={colors.primary} />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: colors.primary,
+                    }}
+                  >
+                    {language === 'ar' ? 'تعديل الرصيد المتاح يدوياً ✏️' : 'Quick Adjust Balance ✏️'}
+                  </Text>
+                </Pressable>
 
                 {/* Option 1: Edit Wallet */}
                 <Pressable
@@ -648,6 +732,97 @@ export default function WalletCarousel({
                       : 'Delete Wallet & All Data'}
                   </Text>
                 </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Direct Balance Adjustment Modal */}
+      <Modal
+        visible={!!adjustWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setAdjustWallet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setAdjustWallet(null)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {adjustWallet && (
+              <>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="create-outline" size={20} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                        {language === 'ar' ? 'تعديل الرصيد المتاح يدوياً' : 'Edit Available Balance'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary }}>
+                        {adjustWallet.name} ({adjustWallet.currency})
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setAdjustWallet(null)} hitSlop={12}>
+                    <Ionicons name="close" size={22} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 20 }}>
+                  {language === 'ar'
+                    ? `أدخل المبلغ الإجمالي الفعلي الموجود بحوزتك الآن في محفظة "${adjustWallet.name}". سيتم تعديل رصيد المحفظة المتاح فوراً دون المساس بمعاملاتك التاريخية.`
+                    : `Enter the actual total balance you currently hold in "${adjustWallet.name}".`}
+                </Text>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.text }}>
+                    {language === 'ar' ? `الرصيد الفعلي الآن (${adjustWallet.currency}):` : `Actual Balance Now (${adjustWallet.currency}):`}
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.surfaceAlt,
+                      color: colors.text,
+                      borderRadius: 14,
+                      padding: 14,
+                      fontSize: 22,
+                      fontFamily: 'Cairo_700Bold',
+                      borderWidth: 1.5,
+                      borderColor: colors.primary,
+                      textAlign: 'right',
+                    }}
+                    value={targetBalanceInput}
+                    onChangeText={setTargetBalanceInput}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={colors.textTertiary}
+                    autoFocus
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                  <Pressable
+                    onPress={() => setAdjustWallet(null)}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
+                  >
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', color: colors.textSecondary }}>
+                      {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleSaveAdjustedBalance}
+                    style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}
+                  >
+                    <Text style={{ fontFamily: 'Cairo_700Bold', color: '#FFF' }}>
+                      {language === 'ar' ? 'حفظ الرصيد الجديد 💾' : 'Save New Balance 💾'}
+                    </Text>
+                  </Pressable>
+                </View>
               </>
             )}
           </Pressable>

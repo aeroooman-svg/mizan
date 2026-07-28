@@ -120,13 +120,8 @@ export default function RecurringListScreen() {
       const instCurrency = instW ? instW.currency : targetCurrency;
       return sum + convertAmount(i.monthlyAmount || 0, instCurrency, targetCurrency, rates);
     }, 0);
-    const jamSum = jameyas.reduce((sum, j) => {
-      const jamW = wallets.find(w => w.id === j.walletId);
-      const jamCurrency = jamW ? jamW.currency : targetCurrency;
-      return sum + convertAmount(j.monthlyAmount || 0, jamCurrency, targetCurrency, rates);
-    }, 0);
-    return instSum + jamSum;
-  }, [installments, jameyas, selectedWallet, wallets, rates]);
+    return instSum;
+  }, [installments, selectedWallet, wallets, rates]);
 
   const totalCommitments = totalRecurringExpenses + totalMonthlyInstallments;
   const freeNetCashflow = totalRecurringIncome - totalCommitments;
