@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { getOrCreateShareCode, syncSharedWalletByCode } from '@/lib/sharingService';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AddWalletScreen() {
@@ -52,6 +53,7 @@ export default function AddWalletScreen() {
   const [shareWithUser, setShareWithUser] = useState('');
 
   const [excludeFromTotal, setExcludeFromTotal] = useState(false);
+  const [initialBalance, setInitialBalance] = useState('');
 
   useEffect(() => {
     if (existingWallet) {
@@ -61,6 +63,7 @@ export default function AddWalletScreen() {
       setSelectedColor(existingWallet.color || '#0D7C66');
       setCardStyle(existingWallet.cardStyle || 'classic');
       setExcludeFromTotal(Boolean(existingWallet.excludeFromTotal));
+      setInitialBalance(existingWallet.initialBalance ? existingWallet.initialBalance.toString() : '');
       if (existingWallet.sharedWith) {
         setIsShared(true);
         setShareWithUser(existingWallet.sharedWith);
@@ -90,6 +93,8 @@ export default function AddWalletScreen() {
 
     const sharedWithJson = sharedMembersList ? JSON.stringify(sharedMembersList) : undefined;
 
+    const initialBalNum = parseFloat(normalizeAmountInput(initialBalance)) || 0;
+
     if (isEditing && existingWallet) {
       let code = existingWallet.shareCode;
       if (isShared) {
@@ -106,6 +111,7 @@ export default function AddWalletScreen() {
         shareCode: isShared ? code : existingWallet.shareCode,
         sharedWith: sharedWithJson,
         excludeFromTotal,
+        initialBalance: initialBalNum,
       };
       await updateWallet(updated);
 
@@ -142,7 +148,8 @@ export default function AddWalletScreen() {
       selectedColor,
       cardStyle,
       sharedWithJson,
-      excludeFromTotal
+      excludeFromTotal,
+      initialBalNum
     );
 
     if (isShared) {
@@ -266,7 +273,7 @@ export default function AddWalletScreen() {
                   { fontFamily: 'Cairo_700Bold', fontSize: 26, color: '#fff', lineHeight: 32 },
                   cardStyle === 'minimal' && { color: selectedColor }
                 ]} numberOfLines={1}>
-                  0.00 <Text style={{ fontSize: 13, fontFamily: 'Cairo_600SemiBold' }}>{currency}</Text>
+                  {(parseFloat(normalizeAmountInput(initialBalance)) || 0).toFixed(2)} <Text style={{ fontSize: 13, fontFamily: 'Cairo_600SemiBold' }}>{currency}</Text>
                 </Text>
               </View>
 
@@ -313,6 +320,26 @@ export default function AddWalletScreen() {
               placeholderTextColor={Colors.textTertiary}
               value={name}
               onChangeText={setName}
+            />
+          </View>
+
+          {/* Initial Balance Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>
+              {language === 'ar' ? `الرصيد الافتتاحي / المبلغ القديم (${currency})` : `Initial Balance / Pre-existing Funds (${currency})`}
+            </Text>
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginBottom: 6 }}>
+              {language === 'ar'
+                ? '💡 أدخل المبلغ الموجود معك سابقاً في هذه المحفظة (لا يُحسب كـ "دخل جديد")'
+                : '💡 Enter pre-existing funds in this wallet (not counted as new monthly income)'}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0.00"
+              placeholderTextColor={Colors.textTertiary}
+              value={initialBalance}
+              onChangeText={setInitialBalance}
+              keyboardType="decimal-pad"
             />
           </View>
 

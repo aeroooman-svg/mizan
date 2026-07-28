@@ -1936,7 +1936,8 @@ export default function FinancialPlanScreen() {
               const actualMonthExpense = monthTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
               const actualMonthSaving = actualMonthIncome - actualMonthExpense;
               const hasActualData = monthTx.length > 0;
-              const cumulativeSavings = (plannedSaving) * (i + 1);
+              const initialWalletBalance = selectedWallet?.initialBalance || 0;
+              const cumulativeSavings = initialWalletBalance + (plannedSaving * (i + 1));
 
               return (
                 <Pressable
@@ -2005,15 +2006,25 @@ export default function FinancialPlanScreen() {
                         )}
                       </View>
 
-                      <Text style={[styles.timelineAmount, { color: colors.textSecondary, fontSize: 11, fontFamily: 'Cairo_600SemiBold' }]}>
-                        {language === 'ar' ? 'المخطط:' : 'Planned:'} <Text style={{ color: '#10B981', fontFamily: 'Cairo_700Bold' }}>+{formatCurrency(plannedSaving)} {sym}</Text> (دخل: {formatCurrency(plannedInc)} | صرف: {formatCurrency(plannedExp)})
-                      </Text>
+                      {/* Simplified Clean Savings Summary */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                            {language === 'ar' ? 'المخطط:' : 'Planned:'}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: plannedSaving >= 0 ? '#10B981' : '#EF4444' }}>
+                            {plannedSaving >= 0 ? '+' : ''}{formatCurrency(plannedSaving)} {sym}
+                          </Text>
+                        </View>
 
-                      {(isPast || isCurrent) && hasActualData && (
-                        <Text style={[styles.timelineActual, { color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444', fontSize: 10, fontFamily: 'Cairo_600SemiBold' }]}>
-                          {language === 'ar' ? 'الفعلي الواقعي:' : 'Actual:'} {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
-                        </Text>
-                      )}
+                        {(isPast || isCurrent) && hasActualData && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: actualMonthSaving >= 0 ? '#10B98115' : '#EF444415', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444' }}>
+                              {language === 'ar' ? 'الفعلي:' : 'Actual:'} {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   </View>
 

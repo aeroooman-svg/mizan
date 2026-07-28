@@ -113,7 +113,7 @@ export default function WalletCarousel({
           const transferOut = transactions
             .filter((t) => t.type === 'transfer' && t.walletId === wallet.id)
             .reduce((sum, t) => sum + t.amount, 0);
-          const walletBalance = income + transferIn - expense - transferOut;
+          const walletBalance = (wallet.initialBalance || 0) + income + transferIn - expense - transferOut;
 
           const cardStyle = wallet.cardStyle || 'classic';
 

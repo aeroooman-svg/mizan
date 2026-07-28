@@ -42,7 +42,8 @@ export default function RecurringListScreen() {
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { t, language } = useLanguage();
   const isAr = language === 'ar';
-  const { currencySymbol, selectedWallet, wallets } = useTransactions();
+  const { currencySymbol, selectedWallet, wallets, refresh } = useTransactions();
+  const [rates, setRates] = useState<Record<string, number>>({});
   
   const [items, setItems] = useState<RecurringTransaction[]>([]);
   const [installments, setInstallments] = useState<InstallmentPlan[]>([]);
@@ -54,6 +55,10 @@ export default function RecurringListScreen() {
   const [targetTotalInput, setTargetTotalInput] = useState('500');
   const [selectedMonths, setSelectedMonths] = useState(12);
   const [goalTitle, setGoalTitle] = useState('');
+
+  useEffect(() => {
+    import('@/lib/currencyApi').then(m => m.getExchangeRates()).then(r => setRates(r)).catch(() => {});
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -108,10 +113,20 @@ export default function RecurringListScreen() {
   }, [items]);
 
   const totalMonthlyInstallments = useMemo(() => {
-    const instSum = installments.reduce((sum, i) => sum + (i.monthlyAmount || 0), 0);
-    const jamSum = jameyas.reduce((sum, j) => sum + (j.monthlyAmount || 0), 0);
+    const targetCurrency = selectedWallet?.currency || 'EGP';
+    const { convertAmount } = require('@/lib/currencyApi');
+    const instSum = installments.reduce((sum, i) => {
+      const instW = wallets.find(w => w.id === i.walletId);
+      const instCurrency = instW ? instW.currency : targetCurrency;
+      return sum + convertAmount(i.monthlyAmount || 0, instCurrency, targetCurrency, rates);
+    }, 0);
+    const jamSum = jameyas.reduce((sum, j) => {
+      const jamW = wallets.find(w => w.id === j.walletId);
+      const jamCurrency = jamW ? jamW.currency : targetCurrency;
+      return sum + convertAmount(j.monthlyAmount || 0, jamCurrency, targetCurrency, rates);
+    }, 0);
     return instSum + jamSum;
-  }, [installments, jameyas]);
+  }, [installments, jameyas, selectedWallet, wallets, rates]);
 
   const totalCommitments = totalRecurringExpenses + totalMonthlyInstallments;
   const freeNetCashflow = totalRecurringIncome - totalCommitments;
@@ -184,20 +199,31 @@ export default function RecurringListScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const catName = getCategoryName(categoryId, language);
     const displayName = description ? `${catName} (${description})` : catName;
+    const confirmMsg = isAr ? `هل تريد حذف المعاملة المتكررة "${displayName}"؟` : `Delete recurring transaction "${displayName}"?`;
     
+    const performDelete = async () => {
+      await deleteRecurringTransaction(id);
+      await loadData();
+      try { refresh(); } catch {}
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) {
+        performDelete();
+      }
+      return;
+    }
+
     Alert.alert(
       t.deletePlan,
-      isAr ? `هل تريد حذف المعاملة المتكررة "${displayName}"؟` : `Delete recurring transaction "${displayName}"?`,
+      confirmMsg,
       [
         { text: t.cancel, style: 'cancel' },
         {
           text: t.delete,
           style: 'destructive',
-          onPress: async () => {
-            await deleteRecurringTransaction(id);
-            loadData();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          },
+          onPress: performDelete,
         },
       ]
     );
@@ -249,6 +275,13 @@ export default function RecurringListScreen() {
             <Text style={[styles.summaryVal, { color: colors.expense }]}>
               -{formatCurrency(totalCommitments)} {currencySymbol}
             </Text>
+            {totalMonthlyInstallments > 0 && (
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary, marginTop: 2 }}>
+                {isAr
+                  ? `(ثابت: ${formatCurrency(totalRecurringExpenses)} | أقساط: ${formatCurrency(totalMonthlyInstallments)})`
+                  : `(Rec: ${formatCurrency(totalRecurringExpenses)} | Inst: ${formatCurrency(totalMonthlyInstallments)})`}
+              </Text>
+            )}
           </View>
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>{isAr ? 'فائض حر صافي' : 'Net Free Surplus'}</Text>

@@ -259,7 +259,7 @@ export default function HomeScreen() {
     const expense = walletTxns
       .filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === walletId))
       .reduce((sum, t) => sum + t.amount, 0);
-    return income - expense;
+    return (targetW.initialBalance || 0) + income - expense;
   };
 
   const walletPending = useMemo(() => {

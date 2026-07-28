@@ -841,18 +841,9 @@ export default function SettingsScreen() {
             </View>
 
             <Pressable
-              onPress={async () => {
+              onPress={() => {
                 safeHaptic.selection();
-                try {
-                  await WebBrowser.openBrowserAsync('https://mizan-app.com/privacy-policy');
-                } catch (e) {
-                  Alert.alert(
-                    isAr ? 'سياسة الخصوصية' : 'Privacy Policy',
-                    isAr 
-                      ? 'جميع بياناتك المالية محفوظة بنسبة 100% محلياً على جهازك ولا نطلع عليها مطلقاً.' 
-                      : 'All your financial data is stored 100% locally on your device securely.'
-                  );
-                }
+                router.push('/privacy-policy' as any);
               }}
               style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
             >
