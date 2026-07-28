@@ -1028,7 +1028,8 @@ export default function FinancialPlanScreen() {
     const unpaidLoans = debts.filter(d => d.type === 'debt_to_me' && d.status !== 'paid').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
     const walletNetBalance = allTimeIncome - allTimeExpense;
     
-    const actualSavings = walletNetBalance + totalSavedInGoals - unpaidDebts + unpaidLoans;
+    const totalJameyaAccumulatedSavings = jameyaList.reduce((sum, j) => sum + ((j.paidMonthsCount || 0) * (j.monthlyAmount || 0)), 0);
+    const actualSavings = walletNetBalance + totalSavedInGoals + totalJameyaAccumulatedSavings - unpaidDebts + unpaidLoans;
     
     const isCompleted = plan.savingsGoal > 0
       ? actualSavings >= plan.savingsGoal
@@ -1682,151 +1683,91 @@ export default function FinancialPlanScreen() {
           ) : null;
         })()}
 
-        {/* Monthly Financial Metrics Dashboard */}
-        <View style={{ gap: 12, marginVertical: 8 }}>
-          {/* Card 1: Income */}
-          <View style={styles.metricCard}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.metricIconWrap, { backgroundColor: colors.income + '12' }]}>
-                  <Ionicons name="trending-up" size={18} color={colors.income} />
-                </View>
-                <Text style={styles.metricTitle}>{t.monthlyIncome}</Text>
-              </View>
-            </View>
-            <Text style={[styles.metricValueText, { marginTop: 8, textAlign: 'left' }]}>
-              {formatCurrency(totalIncome)} / {formatCurrency(plan.monthlyIncome)} {sym}
-            </Text>
-            <View style={{ height: 6, backgroundColor: colors.surfaceAlt, borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
-              <View style={{ height: 6, width: `${Math.min(100, plan.monthlyIncome > 0 ? Math.round((totalIncome / plan.monthlyIncome) * 100) : 0)}%`, backgroundColor: colors.income, borderRadius: 3 }} />
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-              <Text style={styles.progressNoteText}>{language === 'ar' ? 'الفعلي للشهر الحالي' : 'Actual for current month'}</Text>
-              <Text style={styles.progressNoteText}>
-                {plan.monthlyIncome > 0 ? Math.round((totalIncome / plan.monthlyIncome) * 100) : 0}%
-              </Text>
-            </View>
-          </View>
-
-          {/* Card 2: Expenses */}
-          <View style={styles.metricCard}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.metricIconWrap, { backgroundColor: colors.expense + '12' }]}>
-                  <Ionicons name="trending-down" size={18} color={colors.expense} />
-                </View>
-                <Text style={styles.metricTitle}>{t.monthlyExpense}</Text>
-              </View>
-            </View>
-            <Text style={[styles.metricValueText, { marginTop: 8, textAlign: 'left' }]}>
-              {formatCurrency(totalExpense)} / {formatCurrency(plan.monthlyExpense)} {sym}
-            </Text>
-            {(() => {
-              const pct = plan.monthlyExpense > 0 ? Math.round((totalExpense / plan.monthlyExpense) * 100) : 0;
-              const isOver = totalExpense > plan.monthlyExpense;
-              return (
-                <>
-                  <View style={{ height: 6, backgroundColor: colors.surfaceAlt, borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
-                    <View style={{ height: 6, width: `${Math.min(100, pct)}%`, backgroundColor: isOver ? colors.expense : '#F59E0B', borderRadius: 3 }} />
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                    <Text style={styles.progressNoteText}>
-                      {isOver 
-                        ? (language === 'ar' ? '⚠️ تجاوزت الحد المسموح!' : '⚠️ Exceeded planned limit!') 
-                        : (language === 'ar' ? 'منفق من الميزانية' : 'Spent of budget')}
-                    </Text>
-                    <Text style={[styles.progressNoteText, isOver && { color: colors.expense, fontFamily: 'Cairo_700Bold' }]}>
-                      {pct}%
-                    </Text>
-                  </View>
-                </>
-              );
-            })()}
-          </View>
-
-          {/* Card 3: Savings Progress */}
-          <View style={styles.metricCard}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.metricIconWrap, { backgroundColor: colors.primary + '12' }]}>
-                  <Ionicons name="gift-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.metricTitle}>{language === 'ar' ? 'إجمالي المدخرات الفعلية' : 'Total Cumulative Savings'}</Text>
-              </View>
-            </View>
-            <Text style={[styles.metricValueText, { marginTop: 8, textAlign: 'left' }]}>
-              {formatCurrency(Math.max(0, actualSavings))} / {formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)} {sym}
-            </Text>
-            <View style={{ height: 6, backgroundColor: colors.surfaceAlt, borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
-              <View style={{ height: 6, width: `${Math.min(100, progressPercent)}%`, backgroundColor: isCompleted ? colors.accent : (isOnTrack ? colors.income : colors.expense), borderRadius: 3 }} />
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-              <Text style={styles.progressNoteText}>
-                {isCompleted 
-                  ? (language === 'ar' ? 'الهدف مكتمل 🏆' : 'Goal Achieved 🏆') 
-                  : `${monthsRemaining} ${language === 'ar' ? 'شهر متبقي' : 'months remaining'}`}
-              </Text>
-              <Text style={styles.progressNoteText}>
-                {Math.round(progressPercent)}%
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Smart Integration Breakdown Card */}
+        {/* Streamlined Unified Financial Performance & Solvency Integration Card */}
         <View style={styles.integrationCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-            <Ionicons name="link" size={18} color={Colors.primary} />
-            <Text style={styles.integrationTitle}>
-              {language === 'ar' ? 'الربط الذكي ومكونات المحفظة' : 'Smart Wallet Integration Breakdown'}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="stats-chart" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.integrationTitle}>
+                {language === 'ar' ? 'الربط الذكي وملاءة الادخار' : 'Smart Solvency & Performance'}
+              </Text>
+            </View>
           </View>
-          
-          <View style={{ gap: 8 }}>
+
+          {/* 3-Pillar KPI Overview Row */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{t.monthlyIncome}</Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>+{formatCurrency(totalIncome)} {sym}</Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyIncome)}` : `Plan: ${formatCurrency(plan.monthlyIncome)}`}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{t.monthlyExpense}</Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > plan.monthlyExpense ? colors.expense : colors.text }} numberOfLines={1}>-{formatCurrency(totalExpense)} {sym}</Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyExpense)}` : `Plan: ${formatCurrency(plan.monthlyExpense)}`}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{language === 'ar' ? 'الصافي الفعلي' : 'Net Saved'}</Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.primary }} numberOfLines={1}>+{formatCurrency(actualSavings)} {sym}</Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `الهدف: ${formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)}` : `Goal: ${formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)}`}</Text>
+            </View>
+          </View>
+
+          {/* Solvency Breakdown List */}
+          <View style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
             <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{language === 'ar' ? 'رصيد المحفظة النقدي' : 'Wallet Cash Balance'}</Text>
+              <Text style={styles.integrationLabel}>{language === 'ar' ? 'رصيد المحفظة النقدي المتاح' : 'Wallet Cash Balance'}</Text>
               <Text style={styles.integrationValue}>{formatCurrency(walletNetBalance)} {sym}</Text>
             </View>
-            <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار والأهداف' : 'Saved in Savings Jars & Goals'}</Text>
-              <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
-            </View>
-            {totalJameyaMonthly > 0 && (
+
+            {totalSavedInGoals > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={[styles.integrationLabel, { color: '#10B981' }]}>
-                  🎁 {language === 'ar' ? 'ادخار وتنمية الجمعيات (ROSCA)' : 'ROSCA Jameya Savings Asset'}
+                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار والأهداف' : 'Saved in Savings Jars & Goals'}</Text>
+                <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
+              </View>
+            )}
+
+            {totalJameyaAccumulatedSavings > 0 && (
+              <View style={styles.integrationRow}>
+                <Text style={[styles.integrationLabel, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
+                  🤝 {language === 'ar' ? 'ادخار وتنمية الجمعيات (ROSCA Asset)' : 'ROSCA Jameya Savings Asset'}
                 </Text>
                 <Text style={[styles.integrationValue, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
-                  +{formatCurrency(totalJameyaMonthly)} {sym}
+                  +{formatCurrency(totalJameyaAccumulatedSavings)} {sym}
                 </Text>
               </View>
             )}
+
             {totalConsumerCommitments > 0 && (
               <View style={styles.integrationRow}>
                 <Text style={styles.integrationLabel}>{language === 'ar' ? 'المصاريف المتكررة والأقساط الاستهلاكية' : 'Monthly Bills & Card Installments'}</Text>
                 <Text style={[styles.integrationValue, { color: colors.textSecondary }]}>{formatCurrency(totalConsumerCommitments)} {sym}</Text>
               </View>
             )}
+
             {unpaidDebts > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'ديون والتزامات معلقة (عليّ)' : 'Outstanding Debts (I owe)'}</Text>
+                <Text style={styles.integrationLabel}>{language === 'ar' ? 'ديون معلقة (عليّ)' : 'Outstanding Debts'}</Text>
                 <Text style={[styles.integrationValue, { color: Colors.expense }]}>-{formatCurrency(unpaidDebts)} {sym}</Text>
               </View>
             )}
+
             {unpaidLoans > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'قروض معلقة للاسترداد (لي)' : 'Outstanding Loans (Owed to me)'}</Text>
+                <Text style={styles.integrationLabel}>{language === 'ar' ? 'قروض مستردة (لي)' : 'Loans Owed to Me'}</Text>
                 <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(unpaidLoans)} {sym}</Text>
               </View>
             )}
-            
+
             <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }} />
-            
+
             <View style={styles.integrationRow}>
-              <Text style={[styles.integrationLabel, { fontFamily: 'Cairo_700Bold', color: Colors.text }]}>
-                {language === 'ar' ? 'الصافي الادخاري التراكمي' : 'Net Integrated Savings'}
+              <Text style={[styles.integrationLabel, { fontFamily: 'Cairo_700Bold', color: Colors.text, fontSize: 13 }]}>
+                {language === 'ar' ? 'إجمالي الصافي الادخاري المتصل' : 'Net Integrated Savings'}
               </Text>
-              <Text style={[styles.integrationValue, { fontFamily: 'Cairo_700Bold', color: Colors.primary }]}>
+              <Text style={[styles.integrationValue, { fontFamily: 'Cairo_700Bold', color: Colors.primary, fontSize: 15 }]}>
                 {formatCurrency(actualSavings)} {sym}
               </Text>
             </View>
