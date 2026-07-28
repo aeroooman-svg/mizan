@@ -342,7 +342,7 @@ export default function WalletCarousel({
                             textAlign: 'left',
                           }}
                         >
-                          {language === 'ar' ? 'الرصيد المتاح ✏️' : 'Available Balance ✏️'}
+                          {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
                         </Text>
                       </Pressable>
                       <Text
