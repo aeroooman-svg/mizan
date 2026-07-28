@@ -19,125 +19,98 @@ export default function Methodology3DSelector({
   const { language } = useLanguage();
   const isAr = language === 'ar';
 
-  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'emerald' || theme === 'rose';
-
   return (
-    <View style={styles.outerContainer}>
-      <View style={[styles.cardGrid, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9', borderColor: colors.border }]}>
-        
-        {/* Option 1: Digital 50/30/20 Rule */}
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{
+        fontFamily: 'Cairo_700Bold',
+        fontSize: 13,
+        color: colors.text,
+        marginBottom: 8,
+        textAlign: 'left',
+      }}>
+        {isAr ? 'منهجية التخطيط والادخار' : 'Planning Methodology'}
+      </Text>
+
+      <View style={{
+        flexDirection: 'row',
+        backgroundColor: colors.surfaceAlt,
+        borderRadius: 16,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 6,
+      }}>
+        {/* Option 1: Standard 50/30/20 */}
         <Pressable
           onPress={() => {
             Haptics.selectionAsync().catch(() => {});
             onSelectMode(false);
           }}
-          style={({ pressed }) => [
-            styles.cardPressable,
-            pressed && { transform: [{ scale: 0.98 }] },
-          ]}
+          style={({ pressed }) => [{
+            flex: 1,
+            paddingVertical: 12,
+            paddingHorizontal: 8,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 6,
+            backgroundColor: !isKakeiboMode ? '#10B981' : 'transparent',
+            opacity: pressed ? 0.85 : 1,
+          }]}
         >
-          {!isKakeiboMode ? (
-            <LinearGradient
-              colors={['#10B981', '#059669']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.activeCard, styles.shadow3dGreen]}
-            >
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.icon3dCircle}>
-                  <Ionicons name="pie-chart" size={20} color="#10B981" />
-                </View>
-                <View style={styles.badge3d}>
-                  <Text style={styles.badge3dText}>50/30/20</Text>
-                </View>
-              </View>
-
-              <Text style={styles.activeTitle}>
-                {isAr ? '📊 الخطة الرقمية' : '📊 Standard 50/30/20'}
-              </Text>
-              <Text style={styles.activeSub}>
-                {isAr ? 'حساب تلقائي للنسب والميزانيات' : 'Automated income breakdown'}
-              </Text>
-
-              <View style={styles.activeIndicator}>
-                <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-                <Text style={styles.activeIndicatorText}>{isAr ? 'مُفعّل' : 'Active'}</Text>
-              </View>
-            </LinearGradient>
-          ) : (
-            <View style={[styles.inactiveCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-              <View style={styles.cardHeaderRow}>
-                <View style={[styles.icon3dCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                  <Ionicons name="pie-chart-outline" size={20} color="#10B981" />
-                </View>
-              </View>
-              <Text style={[styles.inactiveTitle, { color: colors.text }]}>
-                {isAr ? 'الخطة الرقمية' : 'Standard 50/30/20'}
-              </Text>
-              <Text style={[styles.inactiveSub, { color: colors.textSecondary }]}>
-                {isAr ? 'نسب مئوية جاهزة' : 'Fixed percentages'}
-              </Text>
-            </View>
-          )}
+          <Ionicons name="pie-chart" size={16} color={!isKakeiboMode ? '#FFF' : colors.textSecondary} />
+          <Text style={{
+            fontFamily: 'Cairo_700Bold',
+            fontSize: 12,
+            color: !isKakeiboMode ? '#FFF' : colors.textSecondary,
+          }}>
+            {isAr ? 'الخطة الرقمية 50/30/20' : 'Standard 50/30/20'}
+          </Text>
         </Pressable>
 
-        {/* Option 2: Japanese Kakeibo Method */}
+        {/* Option 2: Japanese Kakeibo */}
         <Pressable
           onPress={() => {
             Haptics.selectionAsync().catch(() => {});
             onSelectMode(true);
           }}
-          style={({ pressed }) => [
-            styles.cardPressable,
-            pressed && { transform: [{ scale: 0.98 }] },
-          ]}
+          style={({ pressed }) => [{
+            flex: 1,
+            paddingVertical: 12,
+            paddingHorizontal: 8,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 6,
+            backgroundColor: isKakeiboMode ? '#8B5CF6' : 'transparent',
+            opacity: pressed ? 0.85 : 1,
+          }]}
         >
-          {isKakeiboMode ? (
-            <LinearGradient
-              colors={['#8B5CF6', '#6366F1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.activeCard, styles.shadow3dPurple]}
-            >
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.icon3dCirclePurple}>
-                  <Ionicons name="sparkles" size={20} color="#8B5CF6" />
-                </View>
-                <View style={styles.badge3dPurple}>
-                  <Text style={styles.badge3dText}>KAKEIBO</Text>
-                </View>
-              </View>
-
-              <Text style={styles.activeTitle}>
-                {isAr ? '🧘‍♂️ المنهج الياباني' : '🧘‍♂️ Japanese Kakeibo'}
-              </Text>
-              <Text style={styles.activeSub}>
-                {isAr ? 'الوعي السلوكي والركائز الـ 4' : '4 Pillars & Mindful Ring'}
-              </Text>
-
-              <View style={styles.activeIndicator}>
-                <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-                <Text style={styles.activeIndicatorText}>{isAr ? 'مُفعّل' : 'Active'}</Text>
-              </View>
-            </LinearGradient>
-          ) : (
-            <View style={[styles.inactiveCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
-              <View style={styles.cardHeaderRow}>
-                <View style={[styles.icon3dCirclePurple, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
-                  <Ionicons name="sparkles-outline" size={20} color="#8B5CF6" />
-                </View>
-              </View>
-              <Text style={[styles.inactiveTitle, { color: colors.text }]}>
-                {isAr ? 'المنهج الياباني' : 'Japanese Kakeibo'}
-              </Text>
-              <Text style={[styles.inactiveSub, { color: colors.textSecondary }]}>
-                {isAr ? 'تأمل سلوكي ودائرة وعي' : 'Mindfulness & 4 Pillars'}
-              </Text>
-            </View>
-          )}
+          <Ionicons name="sparkles" size={16} color={isKakeiboMode ? '#FFF' : colors.textSecondary} />
+          <Text style={{
+            fontFamily: 'Cairo_700Bold',
+            fontSize: 12,
+            color: isKakeiboMode ? '#FFF' : colors.textSecondary,
+          }}>
+            {isAr ? 'المنهج الياباني Kakeibo' : 'Japanese Kakeibo'}
+          </Text>
         </Pressable>
-
       </View>
+
+      <Text style={{
+        fontFamily: 'Cairo_400Regular',
+        fontSize: 11,
+        color: colors.textSecondary,
+        marginTop: 6,
+        textAlign: 'left',
+        paddingHorizontal: 4,
+      }}>
+        {isKakeiboMode
+          ? (isAr ? '🧘‍♂️ تقسيم سلوكي للمصاريف إلى 4 أركان (احتياجات، رغبات، تعليم، طوارئ) لتنمية الوعي المالي.' : '🧘‍♂️ Mindful 4-pillars behavioral budgeting for higher financial discipline.')
+          : (isAr ? '📊 توزيع رقمي تلقائي: 50% للأساسيات، 30% للرغبات، و20% للادخار المباشر.' : '📊 Automated percentage allocation: 50% Needs, 30% Wants, 20% Savings.')}
+      </Text>
     </View>
   );
 }

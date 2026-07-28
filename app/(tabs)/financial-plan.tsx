@@ -633,116 +633,116 @@ export default function FinancialPlanScreen() {
 
   const renderForm = () => {
     const textAlign = language === 'ar' ? 'right' as const : 'left' as const;
+    const calcIncome = parseFloat(monthlyIncome) || 0;
+    const calcExpense = parseFloat(monthlyExpense) || 0;
+    const calcSaving = calcIncome - calcExpense;
+
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Active Wallet Banner Indicator */}
-        {selectedWallet && (
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            backgroundColor: (selectedWallet.color || colors.primary) + '12',
-            borderWidth: 1,
-            borderColor: (selectedWallet.color || colors.primary) + '35',
-            borderRadius: 16,
-            padding: 14,
-            marginBottom: 16,
-          }}>
-            <View style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
-              backgroundColor: (selectedWallet.color || colors.primary) + '22',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Ionicons name="wallet" size={20} color={selectedWallet.color || colors.primary} />
+        {/* Step 1: Goal Name & Duration Card */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 20,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: 14,
+          gap: 12,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="flag" size={18} color={colors.primary} />
             </View>
-            <View style={{ flex: 1, gap: 2, alignItems: 'flex-start' }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
-                {language === 'ar' ? `الخطة المخصصة لـ: ${selectedWallet.name}` : `Plan configured for: ${selectedWallet.name}`}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary, textAlign: 'left' }}>
-                {language === 'ar' ? `رصيد المحفظة المتاح: ${formatCurrency(allTimeIncome - allTimeExpense)} ${currencySymbol}` : `Current Available Balance: ${formatCurrency(allTimeIncome - allTimeExpense)} ${currencySymbol}`}
-              </Text>
-            </View>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+              {language === 'ar' ? '1. هدف الخطة ومدتها' : '1. Goal & Duration'}
+            </Text>
           </View>
-        )}
 
-        {/* Creation 3D Methodology Choice */}
-        <Methodology3DSelector
-          isKakeiboMode={isKakeiboEnabledForm}
-          onSelectMode={(isKakeibo) => setIsKakeiboEnabledForm(isKakeibo)}
-        />
-
-        <View style={styles.section}>
-          <Text style={styles.label}>{t.savingsGoal}</Text>
-          <TextInput
-            style={[styles.input, { textAlign }]}
-            placeholder={t.goalPlaceholder}
-            placeholderTextColor={Colors.textTertiary}
-            value={goalName}
-            onChangeText={setGoalName}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>{t.planDuration}</Text>
-          <View style={styles.durationRow}>
-            {[1, 2, 3, 5].map(y => (
-              <Pressable
-                key={y}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setDurationYears(y);
-                }}
-                style={[
-                  styles.durationChip,
-                  durationYears === y && styles.durationChipActive,
-                ]}
-              >
-                <Text style={[styles.durationText, durationYears === y && styles.durationTextActive]}>
-                  {y} {y === 1 ? t.year : t.years}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>{t.monthlyIncome}</Text>
-          <View style={styles.inputWithCurrency}>
-            <View style={styles.inputCurrencyTag}>
-              <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
-            </View>
+          <View>
+            <Text style={styles.label}>{t.savingsGoal}</Text>
             <TextInput
-              style={styles.currencyInput}
-              placeholder="0"
+              style={[styles.input, { textAlign }]}
+              placeholder={t.goalPlaceholder}
               placeholderTextColor={Colors.textTertiary}
-              keyboardType="decimal-pad"
-              value={monthlyIncome}
-              onChangeText={(text) => setMonthlyIncome(normalizeAmountInput(text))}
-              textAlign="right"
+              value={goalName}
+              onChangeText={setGoalName}
             />
           </View>
+
+          <View>
+            <Text style={styles.label}>{t.planDuration}</Text>
+            <View style={styles.durationRow}>
+              {[1, 2, 3, 5].map(y => (
+                <Pressable
+                  key={y}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setDurationYears(y);
+                  }}
+                  style={[
+                    styles.durationChip,
+                    durationYears === y && styles.durationChipActive,
+                  ]}
+                >
+                  <Text style={[styles.durationText, durationYears === y && styles.durationTextActive]}>
+                    {y} {y === 1 ? t.year : t.years}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
         </View>
 
-        {/* Auto-Sync Recurring Expenses & Installments Banner */}
-        {totalFixedCommitments > 0 && (
-          <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '30', gap: 6, marginVertical: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2, paddingRight: 8 }}>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
-                  {language === 'ar' ? '💳 الالتزامات والأقساط الثابتة المكتشفة' : '💳 Detected Recurring Bills & Installments'}
+        {/* Step 2: Income & Financial Solvency Card */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 20,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: 14,
+          gap: 12,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#10B98115', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="wallet-outline" size={18} color="#10B981" />
+            </View>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+              {language === 'ar' ? '2. الدخل والملاءة المالية' : '2. Income & Revenue'}
+            </Text>
+          </View>
+
+          <View>
+            <Text style={styles.label}>{t.monthlyIncome}</Text>
+            <View style={styles.inputWithCurrency}>
+              <View style={styles.inputCurrencyTag}>
+                <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
+              </View>
+              <TextInput
+                style={styles.currencyInput}
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                keyboardType="decimal-pad"
+                value={monthlyIncome}
+                onChangeText={(text) => setMonthlyIncome(normalizeAmountInput(text))}
+                textAlign="right"
+              />
+            </View>
+          </View>
+
+          {/* Auto-Sync Commitment Banner */}
+          {totalFixedCommitments > 0 && (
+            <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '30', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, paddingRight: 8, gap: 2, alignItems: 'flex-start' }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? '💳 أقساط والتزامات مكتشفة' : '💳 Detected Recurring Bills'}
                 </Text>
-                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
-                  {language === 'ar'
-                    ? `إجمالي فواتيرك المتكررة والأقساط: ${formatCurrency(totalFixedCommitments)} ${currencySymbol}`
-                    : `Total recurring bills & card installments: ${formatCurrency(totalFixedCommitments)} ${currencySymbol}`}
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+                  {formatCurrency(totalFixedCommitments)} {currencySymbol}
                 </Text>
               </View>
               <Pressable
@@ -763,17 +763,187 @@ export default function FinancialPlanScreen() {
               >
                 <Ionicons name="sync" size={14} color="#FFF" />
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
-                  {language === 'ar' ? 'مزامنة الخطة ⚡' : 'Auto-Sync ⚡'}
+                  {language === 'ar' ? 'مزامنة ⚡' : 'Sync ⚡'}
                 </Text>
               </Pressable>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
-        {!isKakeiboEnabledForm ? (
-          /* Standard Monthly Expense Input for 50/30/20 Rule */
-          <View style={styles.section}>
-            <Text style={styles.label}>{t.monthlyExpense}</Text>
+        {/* Step 3: Methodology & Expense Breakdown Card */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 20,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: 14,
+          gap: 12,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#8B5CF615', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="pie-chart-outline" size={18} color="#8B5CF6" />
+              </View>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                {language === 'ar' ? '3. منهجية تقسيم المصاريف' : '3. Expense Methodology'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Creation Methodology Choice */}
+          <Methodology3DSelector
+            isKakeiboMode={isKakeiboEnabledForm}
+            onSelectMode={(isKakeibo) => setIsKakeiboEnabledForm(isKakeibo)}
+          />
+
+          {!isKakeiboEnabledForm ? (
+            /* Standard Monthly Expense Input */
+            <View>
+              <Text style={styles.label}>{t.monthlyExpense}</Text>
+              <View style={styles.inputWithCurrency}>
+                <View style={styles.inputCurrencyTag}>
+                  <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
+                </View>
+                <TextInput
+                  style={styles.currencyInput}
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="decimal-pad"
+                  value={monthlyExpense}
+                  onChangeText={(text) => setMonthlyExpense(normalizeAmountInput(text))}
+                  textAlign="right"
+                />
+              </View>
+            </View>
+          ) : (
+            /* Japanese Kakeibo 4 Pillars Form Breakdown */
+            <View style={{ gap: 12, backgroundColor: colors.surfaceAlt + '60', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
+                🌸 {language === 'ar' ? 'الأركان اليابانية الأربعة (كاكيبو)' : '4 Japanese Kakeibo Pillars'}
+              </Text>
+
+              {/* Pillar 1: Survival */}
+              <View>
+                <Text style={[styles.label, { color: '#10B981', fontSize: 11, marginBottom: 4 }]}>
+                  {language === 'ar' ? '1. الضروريات الأساسية (طعام، إيجار، فواتير)' : '1. Survival (Food, Rent, Bills)'}
+                </Text>
+                <View style={styles.inputWithCurrency}>
+                  <View style={[styles.inputCurrencyTag, { backgroundColor: '#10B98115' }]}>
+                    <Text style={[styles.inputCurrencyText, { color: '#10B981' }]}>{currencySymbol}</Text>
+                  </View>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="0"
+                    placeholderTextColor={Colors.textTertiary}
+                    keyboardType="decimal-pad"
+                    value={kakeiboSurvivalInput}
+                    onChangeText={(text) => {
+                      const clean = normalizeAmountInput(text);
+                      setKakeiboSurvivalInput(clean);
+                      const s = parseFloat(clean) || 0;
+                      const w = parseFloat(kakeiboWantsInput) || 0;
+                      const c = parseFloat(kakeiboCultureInput) || 0;
+                      const e = parseFloat(kakeiboExtraInput) || 0;
+                      setMonthlyExpense((s + w + c + e).toString());
+                    }}
+                    textAlign="right"
+                  />
+                </View>
+              </View>
+
+              {/* Pillar 2: Wants */}
+              <View>
+                <Text style={[styles.label, { color: '#F59E0B', fontSize: 11, marginBottom: 4 }]}>
+                  {language === 'ar' ? '2. الرغبات والتسلية (مطاعم، تسوق)' : '2. Wants (Restaurants, Shopping)'}
+                </Text>
+                <View style={styles.inputWithCurrency}>
+                  <View style={[styles.inputCurrencyTag, { backgroundColor: '#F59E0B15' }]}>
+                    <Text style={[styles.inputCurrencyText, { color: '#F59E0B' }]}>{currencySymbol}</Text>
+                  </View>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="0"
+                    placeholderTextColor={Colors.textTertiary}
+                    keyboardType="decimal-pad"
+                    value={kakeiboWantsInput}
+                    onChangeText={(text) => {
+                      const clean = normalizeAmountInput(text);
+                      setKakeiboWantsInput(clean);
+                      const s = parseFloat(kakeiboSurvivalInput) || 0;
+                      const w = parseFloat(clean) || 0;
+                      const c = parseFloat(kakeiboCultureInput) || 0;
+                      const e = parseFloat(kakeiboExtraInput) || 0;
+                      setMonthlyExpense((s + w + c + e).toString());
+                    }}
+                    textAlign="right"
+                  />
+                </View>
+              </View>
+
+              {/* Pillar 3: Culture */}
+              <View>
+                <Text style={[styles.label, { color: '#3B82F6', fontSize: 11, marginBottom: 4 }]}>
+                  {language === 'ar' ? '3. الثقافة والتطوير (كتب، رياضة، دورات)' : '3. Culture & Growth (Books, Sports)'}
+                </Text>
+                <View style={styles.inputWithCurrency}>
+                  <View style={[styles.inputCurrencyTag, { backgroundColor: '#3B82F615' }]}>
+                    <Text style={[styles.inputCurrencyText, { color: '#3B82F6' }]}>{currencySymbol}</Text>
+                  </View>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="0"
+                    placeholderTextColor={Colors.textTertiary}
+                    keyboardType="decimal-pad"
+                    value={kakeiboCultureInput}
+                    onChangeText={(text) => {
+                      const clean = normalizeAmountInput(text);
+                      setKakeiboCultureInput(clean);
+                      const s = parseFloat(kakeiboSurvivalInput) || 0;
+                      const w = parseFloat(kakeiboWantsInput) || 0;
+                      const c = parseFloat(clean) || 0;
+                      const e = parseFloat(kakeiboExtraInput) || 0;
+                      setMonthlyExpense((s + w + c + e).toString());
+                    }}
+                    textAlign="right"
+                  />
+                </View>
+              </View>
+
+              {/* Pillar 4: Extra */}
+              <View>
+                <Text style={[styles.label, { color: '#EC4899', fontSize: 11, marginBottom: 4 }]}>
+                  {language === 'ar' ? '4. المفاجآت والطوارئ (علاج، صيانة)' : '4. Unexpected Extra (Repairs, Medical)'}
+                </Text>
+                <View style={styles.inputWithCurrency}>
+                  <View style={[styles.inputCurrencyTag, { backgroundColor: '#EC489915' }]}>
+                    <Text style={[styles.inputCurrencyText, { color: '#EC4899' }]}>{currencySymbol}</Text>
+                  </View>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="0"
+                    placeholderTextColor={Colors.textTertiary}
+                    keyboardType="decimal-pad"
+                    value={kakeiboExtraInput}
+                    onChangeText={(text) => {
+                      const clean = normalizeAmountInput(text);
+                      setKakeiboExtraInput(clean);
+                      const s = parseFloat(kakeiboSurvivalInput) || 0;
+                      const w = parseFloat(kakeiboWantsInput) || 0;
+                      const c = parseFloat(kakeiboCultureInput) || 0;
+                      const e = parseFloat(clean) || 0;
+                      setMonthlyExpense((s + w + c + e).toString());
+                    }}
+                    textAlign="right"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Savings Target Goal Field */}
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.label}>{t.savingsGoal} ({currencySymbol})</Text>
             <View style={styles.inputWithCurrency}>
               <View style={styles.inputCurrencyTag}>
                 <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
@@ -783,230 +953,45 @@ export default function FinancialPlanScreen() {
                 placeholder="0"
                 placeholderTextColor={Colors.textTertiary}
                 keyboardType="decimal-pad"
-                value={monthlyExpense}
-                onChangeText={(text) => setMonthlyExpense(normalizeAmountInput(text))}
+                value={savingsGoal}
+                onChangeText={(text) => setSavingsGoal(normalizeAmountInput(text))}
                 textAlign="right"
               />
             </View>
           </View>
-        ) : (
-          /* Japanese Kakeibo 4 Pillars Form Breakdown */
-          <View style={{ gap: 14, marginVertical: 6, backgroundColor: colors.surfaceAlt + '60', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + '30' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Ionicons name="sparkles" size={18} color={colors.primary} />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                {language === 'ar' ? 'توزيع المصاريف على الأركان اليابانية الأربعة (كاكيبو)' : 'Japanese Kakeibo 4 Pillars Breakdown'}
-              </Text>
-            </View>
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', lineHeight: 16, marginTop: -4 }}>
-              {language === 'ar'
-                ? 'في منهج كاكيبو، يتم تقسيم الميزانية لتفهم نيتك وسلوكك المالي بدلاً من الإنفاق العشوائي:'
-                : 'In Kakeibo, expenses are split by intention to master your financial mindfulness:'}
-            </Text>
-
-            {/* Pillar 1: Survival Needs */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <Ionicons name="home-outline" size={14} color="#10B981" />
-                <Text style={[styles.label, { color: '#10B981', marginBottom: 0 }]}>
-                  {language === 'ar' ? '1. الضروريات والاحتياجات الأساسية (طعام، سكن، مواصلات)' : '1. Must-haves / Survival (Food, Rent, Bills)'}
-                </Text>
-              </View>
-              <View style={styles.inputWithCurrency}>
-                <View style={[styles.inputCurrencyTag, { backgroundColor: '#10B98115' }]}>
-                  <Text style={[styles.inputCurrencyText, { color: '#10B981' }]}>{currencySymbol}</Text>
-                </View>
-                <TextInput
-                  style={styles.currencyInput}
-                  placeholder="0"
-                  placeholderTextColor={Colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  value={kakeiboSurvivalInput}
-                  onChangeText={(text) => {
-                    const clean = normalizeAmountInput(text);
-                    setKakeiboSurvivalInput(clean);
-                    const s = parseFloat(clean) || 0;
-                    const w = parseFloat(kakeiboWantsInput) || 0;
-                    const c = parseFloat(kakeiboCultureInput) || 0;
-                    const e = parseFloat(kakeiboExtraInput) || 0;
-                    setMonthlyExpense((s + w + c + e).toString());
-                  }}
-                  textAlign="right"
-                />
-              </View>
-            </View>
-
-            {/* Pillar 2: Optional Wants */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <Ionicons name="fast-food-outline" size={14} color="#F59E0B" />
-                <Text style={[styles.label, { color: '#F59E0B', marginBottom: 0 }]}>
-                  {language === 'ar' ? '2. الرغبات والتسلية (مطاعم، تسوق، ترفيه)' : '2. Optional Wants (Restaurants, Shopping)'}
-                </Text>
-              </View>
-              <View style={styles.inputWithCurrency}>
-                <View style={[styles.inputCurrencyTag, { backgroundColor: '#F59E0B15' }]}>
-                  <Text style={[styles.inputCurrencyText, { color: '#F59E0B' }]}>{currencySymbol}</Text>
-                </View>
-                <TextInput
-                  style={styles.currencyInput}
-                  placeholder="0"
-                  placeholderTextColor={Colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  value={kakeiboWantsInput}
-                  onChangeText={(text) => {
-                    const clean = normalizeAmountInput(text);
-                    setKakeiboWantsInput(clean);
-                    const s = parseFloat(kakeiboSurvivalInput) || 0;
-                    const w = parseFloat(clean) || 0;
-                    const c = parseFloat(kakeiboCultureInput) || 0;
-                    const e = parseFloat(kakeiboExtraInput) || 0;
-                    setMonthlyExpense((s + w + c + e).toString());
-                  }}
-                  textAlign="right"
-                />
-              </View>
-            </View>
-
-            {/* Pillar 3: Culture & Self Growth */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <Ionicons name="book-outline" size={14} color="#3B82F6" />
-                <Text style={[styles.label, { color: '#3B82F6', marginBottom: 0 }]}>
-                  {language === 'ar' ? '3. الثقافة والتطوير (كتب، رياضة، دورات، هدايا)' : '3. Culture & Growth (Books, Sports, Courses)'}
-                </Text>
-              </View>
-              <View style={styles.inputWithCurrency}>
-                <View style={[styles.inputCurrencyTag, { backgroundColor: '#3B82F615' }]}>
-                  <Text style={[styles.inputCurrencyText, { color: '#3B82F6' }]}>{currencySymbol}</Text>
-                </View>
-                <TextInput
-                  style={styles.currencyInput}
-                  placeholder="0"
-                  placeholderTextColor={Colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  value={kakeiboCultureInput}
-                  onChangeText={(text) => {
-                    const clean = normalizeAmountInput(text);
-                    setKakeiboCultureInput(clean);
-                    const s = parseFloat(kakeiboSurvivalInput) || 0;
-                    const w = parseFloat(kakeiboWantsInput) || 0;
-                    const c = parseFloat(clean) || 0;
-                    const e = parseFloat(kakeiboExtraInput) || 0;
-                    setMonthlyExpense((s + w + c + e).toString());
-                  }}
-                  textAlign="right"
-                />
-              </View>
-            </View>
-
-            {/* Pillar 4: Unexpected Extras */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <Ionicons name="flash-outline" size={14} color="#EC4899" />
-                <Text style={[styles.label, { color: '#EC4899', marginBottom: 0 }]}>
-                  {language === 'ar' ? '4. المفاجآت والطوارئ (علاج، صيانة استثنائية)' : '4. Unexpected Extra (Repairs, Emergencies)'}
-                </Text>
-              </View>
-              <View style={styles.inputWithCurrency}>
-                <View style={[styles.inputCurrencyTag, { backgroundColor: '#EC489915' }]}>
-                  <Text style={[styles.inputCurrencyText, { color: '#EC4899' }]}>{currencySymbol}</Text>
-                </View>
-                <TextInput
-                  style={styles.currencyInput}
-                  placeholder="0"
-                  placeholderTextColor={Colors.textTertiary}
-                  keyboardType="decimal-pad"
-                  value={kakeiboExtraInput}
-                  onChangeText={(text) => {
-                    const clean = normalizeAmountInput(text);
-                    setKakeiboExtraInput(clean);
-                    const s = parseFloat(kakeiboSurvivalInput) || 0;
-                    const w = parseFloat(kakeiboWantsInput) || 0;
-                    const c = parseFloat(kakeiboCultureInput) || 0;
-                    const e = parseFloat(clean) || 0;
-                    setMonthlyExpense((s + w + c + e).toString());
-                  }}
-                  textAlign="right"
-                />
-              </View>
-            </View>
-
-            {/* Total Auto Calculated Expenses Display */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginTop: 4 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
-                {language === 'ar' ? 'إجمالي الميزانية الموزعة:' : 'Total Calculated Kakeibo Expense:'}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.primary }}>
-                {formatCurrency(parseFloat(monthlyExpense) || 0)} {currencySymbol}
-              </Text>
-            </View>
-
-            {/* Monthly Kakeibo Behavioral Pledge Input */}
-            <View style={{ gap: 6, marginTop: 4 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
-                ✍️ {language === 'ar' ? 'التعهد السلوكي الشرفي للشهر:' : 'Monthly Kakeibo Behavioral Pledge:'}
-              </Text>
-              <TextInput
-                style={[styles.input, { textAlign, fontSize: 12, height: 42, backgroundColor: colors.surface }]}
-                placeholder={language === 'ar' ? 'مثال: سأقلل من الطلبات الخارجية وتناول الطعام بالخارج هذا الشهر...' : 'e.g. I pledge to reduce dining out this month...'}
-                placeholderTextColor={Colors.textTertiary}
-                value={refQ4}
-                onChangeText={setRefQ4}
-              />
-            </View>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.label}>{t.savingsGoal} ({currencySymbol})</Text>
-          <View style={styles.inputWithCurrency}>
-            <View style={styles.inputCurrencyTag}>
-              <Text style={styles.inputCurrencyText}>{currencySymbol}</Text>
-            </View>
-            <TextInput
-              style={styles.currencyInput}
-              placeholder="0"
-              placeholderTextColor={Colors.textTertiary}
-              keyboardType="decimal-pad"
-              value={savingsGoal}
-              onChangeText={(text) => setSavingsGoal(normalizeAmountInput(text))}
-              textAlign="right"
-            />
-          </View>
         </View>
 
-        {(parseFloat(monthlyIncome) || 0) > 0 && (
-          <View style={styles.previewCard}>
-            <Text style={styles.previewTitle}>{t.monthlySaving}</Text>
-            <Text style={[
-              styles.previewAmount,
-              { color: ((parseFloat(monthlyIncome) || 0) - (parseFloat(monthlyExpense) || 0)) >= 0 ? Colors.income : Colors.expense },
-            ]}>
-              {formatCurrency((parseFloat(monthlyIncome) || 0) - (parseFloat(monthlyExpense) || 0))} {currencySymbol}
+        {/* Live Savings Projection Card */}
+        {calcIncome > 0 && (
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: 20,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: calcSaving >= 0 ? Colors.income + '40' : Colors.expense + '40',
+            marginBottom: 16,
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+              {t.monthlySaving}
             </Text>
-            <Text style={styles.previewSub}>
-              {t.totalSavings}: {formatCurrency(((parseFloat(monthlyIncome) || 0) - (parseFloat(monthlyExpense) || 0)) * durationYears * 12)} {currencySymbol}
+            <Text style={{
+              fontFamily: 'Cairo_700Bold',
+              fontSize: 22,
+              color: calcSaving >= 0 ? Colors.income : Colors.expense,
+            }}>
+              {calcSaving >= 0 ? '+' : ''}{formatCurrency(calcSaving)} {currencySymbol}
+            </Text>
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+              {t.totalSavings}: <Text style={{ fontFamily: 'Cairo_700Bold', color: colors.text }}>
+                {formatCurrency(calcSaving * durationYears * 12)} {currencySymbol}
+              </Text> ({durationYears} {durationYears === 1 ? t.year : t.years})
             </Text>
           </View>
         )}
 
-        <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surfaceAlt, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginVertical: 12 }]}>
-          <View style={{ flex: 1, gap: 4, paddingRight: 10, alignItems: 'flex-start' }}>
-            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-              {language === 'ar' ? 'تفعيل ميزانية كاميهيبو اليابانية' : 'Enable Japanese Kakeibo Budget'}
-            </Text>
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary, textAlign: 'left', lineHeight: 14 }}>
-              {language === 'ar' ? 'تقسيم ذكي للمصاريف إلى الاحتياجات، الرغبات، التعليم، والطوارئ بشكل منظم.' : 'Organize expenses into Needs, Wants, Culture, and Extra pillars.'}
-            </Text>
-          </View>
-          <Switch
-            value={isKakeiboEnabledForm}
-            onValueChange={setIsKakeiboEnabledForm}
-            trackColor={{ false: colors.border, true: colors.primary }}
-          />
-        </View>
-
+        {/* Submit Primary CTA Button */}
         <Pressable
           onPress={handleCreate}
           style={({ pressed }) => [
@@ -1017,7 +1002,7 @@ export default function FinancialPlanScreen() {
             },
           ]}
         >
-          <Ionicons name="checkmark" size={22} color="#fff" />
+          <Ionicons name="checkmark-circle" size={22} color="#fff" />
           <Text style={styles.saveText}>{t.createPlan}</Text>
         </Pressable>
       </ScrollView>
@@ -2119,15 +2104,15 @@ export default function FinancialPlanScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.sheetTitle}>{t.financialPlan}</Text>
             {selectedWallet && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedWallet.color || colors.primary }} />
-                <Ionicons name="wallet" size={14} color={selectedWallet.color || colors.primary} />
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-                  {language === 'ar' ? `المحفظة الخاصة بالخطة: ${selectedWallet.name}` : `Plan Wallet: ${selectedWallet.name}`}
+                <Ionicons name="wallet-outline" size={13} color={selectedWallet.color || colors.primary} />
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                  {language === 'ar' ? `المحفظة المحددة: ${selectedWallet.name}` : `Wallet: ${selectedWallet.name}`}
                 </Text>
               </View>
             )}
