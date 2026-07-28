@@ -396,19 +396,32 @@ export default function TransactionsScreen() {
         </View>
 
         <View style={styles.transactionRight}>
-          <Text style={[
-            styles.transactionAmount, 
-            { 
-              color: isTransfer 
-                ? (isIncomingTransfer ? '#3b82f6' : '#94a3b8') 
-                : (item.type === 'income' ? colors.income : colors.expense) 
-            }
-          ]}>
-            {isTransfer 
-              ? (isIncomingTransfer ? '+' : '-') 
-              : (item.type === 'income' ? '+' : '-')}
-            {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
-          </Text>
+          {item.category === 'jameya_savings' ? (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={[styles.transactionAmount, { color: '#0D7C66' }]}>
+                {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+              </Text>
+              <View style={{ backgroundColor: '#0D7C6615', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
+                <Text style={{ color: '#0D7C66', fontFamily: 'Cairo_700Bold', fontSize: 9 }}>
+                  {language === 'ar' ? 'ادخار مالي' : 'Savings'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={[
+              styles.transactionAmount, 
+              { 
+                color: isTransfer 
+                  ? (isIncomingTransfer ? '#3b82f6' : '#94a3b8') 
+                  : (item.type === 'income' ? colors.income : colors.expense) 
+              }
+            ]}>
+              {isTransfer 
+                ? (isIncomingTransfer ? '+' : '-') 
+                : (item.type === 'income' ? '+' : '-')}
+              {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+            </Text>
+          )}
         </View>
         <MaterialIcons name="chevron-right" size={16} color={colors.textTertiary} style={styles.chevron} />
       </Pressable>

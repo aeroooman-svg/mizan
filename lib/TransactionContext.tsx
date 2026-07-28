@@ -259,7 +259,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const totalExpense = useMemo(() => {
     if (!selectedWallet) return 0;
     return monthlyTransactions
-      .filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && t.walletId === selectedWallet.id))
       .reduce((sum, t) => sum + t.amount, 0);
   }, [monthlyTransactions, selectedWallet]);
 

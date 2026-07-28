@@ -136,7 +136,7 @@ export default function StatsScreen() {
         .reduce((s, t) => s + t.amount, 0);
 
       const expense = txns
-        .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
         .reduce((s, t) => s + t.amount, 0);
 
       const savings = income - expense;
@@ -170,7 +170,7 @@ export default function StatsScreen() {
   }, [yearlyMonthsData]);
 
   const categoryStats = useMemo((): CategoryStat[] => {
-    const filtered = monthlyTransactions.filter(t => t.type === viewType);
+    const filtered = monthlyTransactions.filter(t => t.type === viewType && t.category !== 'jameya_savings');
     const total = filtered.reduce((sum, t) => sum + t.amount, 0);
     const catMap = new Map<string, number>();
 
@@ -214,7 +214,7 @@ export default function StatsScreen() {
       data.push({
         day: d,
         income: dayTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-        expense: dayTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+        expense: dayTxns.filter(t => t.type === 'expense' && t.category !== 'jameya_savings').reduce((s, t) => s + t.amount, 0),
       });
     }
     return data;
@@ -230,11 +230,11 @@ export default function StatsScreen() {
     });
 
     const currentMonthExpense = monthlyTransactions
-      .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
       .reduce((s, t) => s + t.amount, 0);
 
     const prevMonthExpense = prevMonthTxns
-      .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
       .reduce((s, t) => s + t.amount, 0);
 
     const currentMonthIncome = monthlyTransactions
