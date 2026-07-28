@@ -1,7 +1,11 @@
 {
-  "buildCommand": "npx expo export -p web",
+  "buildCommand": "npx expo export -p web && cp privacy-policy.html dist/privacy-policy.html",
   "outputDirectory": "dist",
   "rewrites": [
+    {
+      "source": "/privacy-policy.html",
+      "destination": "/privacy-policy.html"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
