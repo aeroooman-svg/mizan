@@ -21,6 +21,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { formatCurrency } from '@/lib/categories';
 import { getDebts, saveDebt, deleteDebt, recordDebtPayment, Debt } from '@/lib/debtStorage';
 import { scheduleDebtReminder, cancelDebtReminder } from '@/lib/NotificationService';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -47,6 +48,9 @@ export default function DebtsScreen() {
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payWalletId, setPayWalletId] = useState(selectedWallet?.id || '');
+
+  // Delete Confirm Modal state
+  const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
   // Helper for quick date chips
   const setQuickDate = (days: number) => {
@@ -225,29 +229,8 @@ export default function DebtsScreen() {
   };
 
   const handleDeleteDebt = (debt: Debt) => {
-    const isLoan = debt.type === 'debt_to_me';
-    const title = language === 'ar' ? (isLoan ? 'حذف السلفة' : 'حذف الدين') : 'Delete Record';
-    const msg = language === 'ar'
-      ? `هل أنت متأكد من حذف ${isLoan ? 'سلفة' : 'دين'} "${debt.personName}" بمبلغ ${formatCurrency(debt.amount)} ${currencySymbol}؟`
-      : `Are you sure you want to delete ${debt.personName}'s record?`;
-
-    Alert.alert(
-      title,
-      msg,
-      [
-        { text: t.cancel, style: 'cancel' },
-        { 
-          text: t.delete, 
-          style: 'destructive',
-          onPress: async () => {
-            await deleteDebt(debt.id);
-            await cancelDebtReminder(debt.id);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            loadDebtsData();
-          }
-        }
-      ]
-    );
+    Haptics.selectionAsync();
+    setDeletingDebt(debt);
   };
 
   return (
@@ -614,6 +597,31 @@ export default function DebtsScreen() {
           </View>
         </View>
       </Modal>
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        visible={!!deletingDebt}
+        title={language === 'ar' ? (deletingDebt?.type === 'debt_to_me' ? 'حذف السلفة' : 'حذف الدين') : 'Delete Record'}
+        message={
+          deletingDebt
+            ? (language === 'ar'
+                ? `هل أنت متأكد من حذف ${deletingDebt.type === 'debt_to_me' ? 'سلفة' : 'دين'} "${deletingDebt.personName}" بمبلغ ${formatCurrency(deletingDebt.amount)} ${currencySymbol}؟`
+                : `Are you sure you want to delete ${deletingDebt.personName}'s record?`)
+            : ''
+        }
+        confirmText={language === 'ar' ? 'حذف' : 'Delete'}
+        cancelText={language === 'ar' ? 'إلغاء' : 'Cancel'}
+        isDestructive
+        onConfirm={async () => {
+          if (deletingDebt) {
+            await deleteDebt(deletingDebt.id);
+            await cancelDebtReminder(deletingDebt.id);
+            setDeletingDebt(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            loadDebtsData();
+          }
+        }}
+        onCancel={() => setDeletingDebt(null)}
+      />
     </View>
   );
 }
