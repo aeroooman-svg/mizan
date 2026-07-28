@@ -49,7 +49,7 @@ interface TransactionContextValue {
   addTransaction: (transaction: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
-  addWallet: (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string) => Promise<Wallet>;
+  addWallet: (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string, excludeFromTotal?: boolean) => Promise<Wallet>;
   updateWallet: (updatedWallet: Wallet) => Promise<void>;
   removeWallet: (id: string) => Promise<void>;
   selectWallet: (id: string) => Promise<void>;
@@ -442,11 +442,11 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     triggerLiveSync();
   }, [triggerLiveSync]);
 
-  const addWallet = useCallback(async (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string): Promise<Wallet> => {
+  const addWallet = useCallback(async (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string, excludeFromTotal?: boolean): Promise<Wallet> => {
     let userId: string | undefined = undefined;
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const stored = await AsyncStorage.getItem('@masarif_user_id');
+      const stored = await AsyncStorage.getItem('@mizan_user_id') || await AsyncStorage.getItem('@masarif_user_id');
       if (stored) userId = stored;
     } catch (e) {}
 
@@ -460,6 +460,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
       userId,
       sharedWith,
+      excludeFromTotal,
     };
     await saveWalletToStorage(wallet);
     setWallets(prev => [...prev, wallet]);

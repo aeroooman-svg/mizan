@@ -574,6 +574,49 @@ export default function WalletCarousel({
                   </Text>
                 </Pressable>
 
+                {/* Option 3.5: Toggle Exclude from Total */}
+                <Pressable
+                  onPress={async () => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    const updated = { ...w, excludeFromTotal: !w.excludeFromTotal };
+                    try {
+                      const { updateWalletInStorage } = require('@/lib/storage');
+                      await updateWalletInStorage(updated);
+                    } catch (e) {}
+                    if (onEditWallet) {
+                      onEditWallet(updated);
+                    }
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 14,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceAlt + '60',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Ionicons
+                    name={actionWallet.excludeFromTotal ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={actionWallet.excludeFromTotal ? "#F59E0B" : colors.primary}
+                  />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: colors.text,
+                    }}
+                  >
+                    {language === 'ar'
+                      ? (actionWallet.excludeFromTotal ? 'تضمين في الإجمالي الشامل' : 'استبعاد من الإجمالي الشامل')
+                      : (actionWallet.excludeFromTotal ? 'Include in Consolidated Total' : 'Exclude from Consolidated Total')}
+                  </Text>
+                </Pressable>
+
                 {/* Option 4: Delete Wallet */}
                 <Pressable
                   onPress={() => {

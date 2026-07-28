@@ -410,12 +410,14 @@ export default function HomeScreen() {
 
   const totalConsolidatedBalance = useMemo(() => {
     if (!selectedWallet) return 0;
-    if (Object.keys(rates).length === 0) return selectedWalletBalance;
     
     let total = 0;
     wallets.forEach(w => {
+      if (w.excludeFromTotal) return; // Exclude wallet if setting enabled
       const bal = getWalletBalance(w.id);
-      const converted = convertAmount(bal, w.currency, selectedWallet.currency, rates);
+      const converted = Object.keys(rates).length > 0 
+        ? convertAmount(bal, w.currency, selectedWallet.currency, rates)
+        : bal;
       total += converted;
     });
     return total;

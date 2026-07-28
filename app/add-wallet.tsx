@@ -51,6 +51,8 @@ export default function AddWalletScreen() {
   const [isShared, setIsShared] = useState(false);
   const [shareWithUser, setShareWithUser] = useState('');
 
+  const [excludeFromTotal, setExcludeFromTotal] = useState(false);
+
   useEffect(() => {
     if (existingWallet) {
       setName(existingWallet.name || '');
@@ -58,6 +60,7 @@ export default function AddWalletScreen() {
       setSelectedIcon(existingWallet.icon || 'account-balance-wallet');
       setSelectedColor(existingWallet.color || '#0D7C66');
       setCardStyle(existingWallet.cardStyle || 'classic');
+      setExcludeFromTotal(Boolean(existingWallet.excludeFromTotal));
       if (existingWallet.sharedWith) {
         setIsShared(true);
         setShareWithUser(existingWallet.sharedWith);
@@ -102,6 +105,7 @@ export default function AddWalletScreen() {
         cardStyle,
         shareCode: isShared ? code : existingWallet.shareCode,
         sharedWith: sharedWithJson,
+        excludeFromTotal,
       };
       await updateWallet(updated);
 
@@ -137,7 +141,8 @@ export default function AddWalletScreen() {
       selectedIcon,
       selectedColor,
       cardStyle,
-      sharedWithJson
+      sharedWithJson,
+      excludeFromTotal
     );
 
     if (isShared) {
@@ -373,6 +378,39 @@ export default function AddWalletScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+          </View>
+
+          {/* Exclude from Consolidated Financial Picture Toggle */}
+          <View style={[styles.section, {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.surface,
+            padding: 16,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            marginBottom: 16,
+          }]}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                {language === 'ar' ? 'استبعاد من إجمالي الوضع المالي' : 'Exclude from Total Net Worth'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2, textAlign: 'left', lineHeight: 16 }}>
+                {language === 'ar'
+                  ? 'عند التفعيل، لن يدخل رصيد هذه المحفظة في الإجمالي الشامل لـ "الصورة الكاملة للوضع المالي"'
+                  : 'Exclude this wallet balance from consolidated total'}
+              </Text>
+            </View>
+            <Switch
+              value={excludeFromTotal}
+              onValueChange={(val) => {
+                Haptics.selectionAsync();
+                setExcludeFromTotal(val);
+              }}
+              trackColor={{ false: colors.border, true: colors.primary + '80' }}
+              thumbColor={excludeFromTotal ? colors.primary : '#F4F3F4'}
+            />
           </View>
 
           <View style={styles.section}>

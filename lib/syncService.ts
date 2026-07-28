@@ -2,10 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from './query-client';
 import { Wallet, Transaction } from './storage';
 
-const TRANSACTIONS_KEY = '@masarif_transactions';
-const WALLETS_KEY = '@masarif_wallets';
-const USER_ID_KEY = '@masarif_user_id';
-const LAST_SYNC_KEY = '@masarif_last_sync_time';
+const TRANSACTIONS_KEY = '@mizan_transactions';
+const LEGACY_TRANSACTIONS_KEY = '@masarif_transactions';
+const WALLETS_KEY = '@mizan_wallets';
+const LEGACY_WALLETS_KEY = '@masarif_wallets';
+const USER_ID_KEY = '@mizan_user_id';
+const LEGACY_USER_ID_KEY = '@masarif_user_id';
+const LAST_SYNC_KEY = '@mizan_last_sync_time';
 
 export type SyncState = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
 
@@ -33,7 +36,7 @@ function updateSyncState(newState: SyncState) {
 
 export async function syncWithCloud(): Promise<SyncData | null> {
   try {
-    const userId = await AsyncStorage.getItem(USER_ID_KEY);
+    const userId = (await AsyncStorage.getItem(USER_ID_KEY)) || (await AsyncStorage.getItem(LEGACY_USER_ID_KEY));
     if (!userId) {
       updateSyncState('idle');
       return null; // Local-only mode
@@ -41,9 +44,15 @@ export async function syncWithCloud(): Promise<SyncData | null> {
 
     updateSyncState('syncing');
 
-    // 1. Load local data to sync up
-    const localWalletsData = await AsyncStorage.getItem(WALLETS_KEY);
-    const localTxnsData = await AsyncStorage.getItem(TRANSACTIONS_KEY);
+    // 1. Load local data with fallback
+    let localWalletsData = await AsyncStorage.getItem(WALLETS_KEY);
+    if (!localWalletsData) {
+      localWalletsData = await AsyncStorage.getItem(LEGACY_WALLETS_KEY);
+    }
+    let localTxnsData = await AsyncStorage.getItem(TRANSACTIONS_KEY);
+    if (!localTxnsData) {
+      localTxnsData = await AsyncStorage.getItem(LEGACY_TRANSACTIONS_KEY);
+    }
 
     const localWallets: Wallet[] = localWalletsData ? JSON.parse(localWalletsData) : [];
     const localTxns: Transaction[] = localTxnsData ? JSON.parse(localTxnsData) : [];
@@ -116,9 +125,13 @@ export async function syncWithCloud(): Promise<SyncData | null> {
       console.warn('Cloud Relay post notice:', cloudPostErr);
     }
 
-    // C. Save merged dataset locally
-    await AsyncStorage.setItem(WALLETS_KEY, JSON.stringify(mergedWallets));
-    await AsyncStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(mergedTxns));
+    // C. Save merged dataset locally to primary & legacy keys for 100% data durability
+    const walletsJson = JSON.stringify(mergedWallets);
+    const txnsJson = JSON.stringify(mergedTxns);
+    await AsyncStorage.setItem(WALLETS_KEY, walletsJson);
+    await AsyncStorage.setItem(LEGACY_WALLETS_KEY, walletsJson);
+    await AsyncStorage.setItem(TRANSACTIONS_KEY, txnsJson);
+    await AsyncStorage.setItem(LEGACY_TRANSACTIONS_KEY, txnsJson);
 
     // D. Automatically Sync All Shared Wallets Live
     try {
