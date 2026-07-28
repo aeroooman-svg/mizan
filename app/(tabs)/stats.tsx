@@ -296,7 +296,11 @@ export default function StatsScreen() {
   }, [monthlyTransactions]);
 
   const monthlyExpense = useMemo(() => {
-    return monthlyTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    return monthlyTransactions.filter(t => t.type === 'expense' && t.category !== 'jameya_savings').reduce((s, t) => s + t.amount, 0);
+  }, [monthlyTransactions]);
+
+  const monthlyJameyaSavings = useMemo(() => {
+    return monthlyTransactions.filter(t => t.category === 'jameya_savings').reduce((s, t) => s + t.amount, 0);
   }, [monthlyTransactions]);
 
   const totalAmount = viewType === 'expense' ? monthlyExpense : monthlyIncome;
@@ -757,6 +761,31 @@ export default function StatsScreen() {
                   {formatCurrency(monthlyExpense)} <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
                 </Text>
               </View>
+
+              {monthlyJameyaSavings > 0 && (
+                <View style={[
+                  styles.overviewCard, 
+                  { 
+                    shadowColor: '#0D7C66', 
+                    shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 }
+                  }
+                ]}>
+                  {Platform.OS === 'ios' && (
+                    <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+                  )}
+                  <View style={styles.overviewRow}>
+                    <View style={[styles.overviewIconWrap, { backgroundColor: '#0D7C6615' }]}>
+                      <Ionicons name="gift-outline" size={16} color="#0D7C66" />
+                    </View>
+                    <Text style={styles.overviewLabel}>{language === 'ar' ? 'ادخار جمعيات' : 'ROSCA Savings'}</Text>
+                  </View>
+                  <Text style={[styles.overviewValue, { color: '#0D7C66' }]} numberOfLines={1}>
+                    +{formatCurrency(monthlyJameyaSavings)} <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
+                  </Text>
+                </View>
+              )}
             </View>
 
         {/* Main Chart Section */}
