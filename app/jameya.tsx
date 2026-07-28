@@ -44,6 +44,7 @@ export default function JameyaScreen() {
   const [deductCurrentInstallment, setDeductCurrentInstallment] = useState(false);
   const [deletingItem, setDeletingItem] = useState<Jameya | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -110,6 +111,7 @@ export default function JameyaScreen() {
   const handleOpenAdd = () => {
     Haptics.selectionAsync();
     setEditingJameya(null);
+    setFormError(null);
     setName('');
     setSingleShareAmount('');
     setSharesCount('1');
@@ -123,6 +125,7 @@ export default function JameyaScreen() {
   const handleOpenEdit = (item: Jameya) => {
     Haptics.selectionAsync();
     setEditingJameya(item);
+    setFormError(null);
     setName(item.name);
     
     const count = item.sharesCount || 1;
@@ -151,20 +154,29 @@ export default function JameyaScreen() {
   const computedTotalJameyaPayout = computedPotPerShare * computedSharesCountVal;
 
   const handleSave = async () => {
+    setFormError(null);
     if (!name.trim()) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال اسم الجمعية' : 'Please enter association name');
+      const err = isAr ? 'يرجى إدخال اسم الجمعية' : 'Please enter association name';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
       return;
     }
     if (computedSingleShareVal <= 0) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال قيمة صحيحة لـ مبلغ الاسم/السهم الواحد' : 'Please enter a valid share amount');
+      const err = isAr ? 'يرجى إدخال قيمة صحيحة لـ مبلغ الاسم/السهم الواحد' : 'Please enter a valid share amount';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
       return;
     }
     if (computedSharesCountVal <= 0) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أسهم/أسماء صحيح' : 'Please enter a valid shares count');
+      const err = isAr ? 'يرجى إدخال عدد أسهم/أسماء صحيح' : 'Please enter a valid shares count';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
       return;
     }
     if (computedTotalMonthsVal <= 0) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى إدخال عدد أشهر صحيح' : 'Please enter valid total months');
+      const err = isAr ? 'يرجى إدخال عدد أشهر صحيح' : 'Please enter valid total months';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
       return;
     }
 
@@ -173,17 +185,21 @@ export default function JameyaScreen() {
     for (let i = 0; i < payoutMonthsInputs.length; i++) {
       const val = parseInt(payoutMonthsInputs[i], 10);
       if (isNaN(val) || val < 1 || val > computedTotalMonthsVal) {
-        Alert.alert(
-          isAr ? 'خطأ في شهر القبض' : 'Payout Month Error',
-          isAr ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${computedTotalMonthsVal}` : `Payout month #${i + 1} must be between 1 and ${computedTotalMonthsVal}`
-        );
+        const err = isAr
+          ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${computedTotalMonthsVal}`
+          : `Payout month #${i + 1} must be between 1 and ${computedTotalMonthsVal}`;
+        setFormError(err);
+        if (Platform.OS !== 'web') Alert.alert(isAr ? 'خطأ في شهر القبض' : 'Payout Month Error', err);
         return;
       }
       parsedPayoutMonths.push(val);
     }
 
-    if (!walletId) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى اختيار محفظة' : 'Please select a wallet');
+    const targetWalletId = walletId || selectedWallet?.id || (wallets[0]?.id || '');
+    if (!targetWalletId) {
+      const err = isAr ? 'يرجى اختيار محفظة مرتبطة' : 'Please select a wallet';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
       return;
     }
 
@@ -201,14 +217,17 @@ export default function JameyaScreen() {
         startMonth: startMonth || new Date().toISOString().substring(0, 7),
         paidMonthsCount: editingJameya ? editingJameya.paidMonthsCount : 0,
         isPayoutReceived: editingJameya ? editingJameya.isPayoutReceived : false,
-        walletId,
+        walletId: targetWalletId,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setFormError(null);
       setModalVisible(false);
       loadJameyas();
     } catch (e) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل حفظ الجمعية' : 'Failed to save association');
+      const err = isAr ? 'فشل حفظ الجمعية' : 'Failed to save association';
+      setFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'خطأ' : 'Error', err);
     }
   };
 
@@ -498,7 +517,7 @@ export default function JameyaScreen() {
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
               <Text style={styles.inputLabel}>{isAr ? 'اسم الجمعية / المجموعة' : 'Association Name'}</Text>
               <TextInput
                 style={styles.textInput}
@@ -627,6 +646,14 @@ export default function JameyaScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
+
+              {formError ? (
+                <View style={{ backgroundColor: '#EF444415', borderWidth: 1, borderColor: '#EF444450', borderRadius: 12, padding: 10, marginTop: 12, alignItems: 'center' }}>
+                  <Text style={{ color: '#EF4444', fontFamily: 'Cairo_700Bold', fontSize: 13, textAlign: 'center' }}>
+                    ⚠️ {formError}
+                  </Text>
+                </View>
+              ) : null}
 
               <Pressable style={styles.saveBtn} onPress={handleSave}>
                 <Text style={styles.saveBtnText}>{isAr ? 'حفظ الجمعية' : 'Save Association'}</Text>

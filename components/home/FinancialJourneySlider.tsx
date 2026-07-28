@@ -21,6 +21,8 @@ import { RemittanceStats } from '@/lib/remittanceStorage';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
 import { getRecurringTransactions, RecurringTransaction } from '@/lib/recurringStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface FinancialJourneySliderProps {
   plan: FinancialPlan | null;
@@ -71,6 +73,8 @@ export default function FinancialJourneySlider({
   const scrollRef = useRef<ScrollView>(null);
   const isAr = language === 'ar';
 
+  const [jameyaItems, setJameyaItems] = useState<Jameya[]>([]);
+
   useEffect(() => {
     let isMounted = true;
     getRecurringTransactions().then((items) => {
@@ -82,8 +86,26 @@ export default function FinancialJourneySlider({
         }
       }
     });
+    getJameyas().then((list) => {
+      if (isMounted) {
+        if (selectedWalletId) {
+          setJameyaItems(list.filter(j => j.walletId === selectedWalletId));
+        } else {
+          setJameyaItems(list);
+        }
+      }
+    });
     return () => { isMounted = false; };
   }, [selectedWalletId, walletTransactions]);
+
+  const totalJameyaSavings = useMemo(() => {
+    return jameyaItems.reduce((sum, j) => {
+      const sharesCount = j.sharesCount || 1;
+      const singleShareVal = j.singleShareAmount || (j.monthlyAmount / sharesCount);
+      const paidForOneShare = singleShareVal * j.paidMonthsCount;
+      return sum + (paidForOneShare * sharesCount);
+    }, 0);
+  }, [jameyaItems]);
 
   const recurringTotals = useMemo(() => {
     let incomeTotal = 0;
@@ -112,7 +134,7 @@ export default function FinancialJourneySlider({
     .filter((d) => d.type === 'debt_to_me' && d.status !== 'paid')
     .reduce((s, d) => s + (d.amount - (d.paidAmount || 0)), 0);
 
-  const totalNetSavings = totalConsolidatedBalance + totalSavedInGoals - totalOwed + totalCollect;
+  const totalNetSavings = totalConsolidatedBalance + totalSavedInGoals + totalJameyaSavings - totalOwed + totalCollect;
 
   const totalGoalSaved = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalGoalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
@@ -287,6 +309,19 @@ export default function FinancialJourneySlider({
                   </View>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
                     +{formatCurrency(totalSavedInGoals, language)} {currencySymbol}
+                  </Text>
+                </Pressable>
+
+                {/* ROSCA Jameya Savings */}
+                <Pressable onPress={() => router.push('/jameya' as any)} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MaterialCommunityIcons name="piggy-bank" size={13} color="#0D7C66" />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                      {isAr ? `مدفوعات الجمعيات (ادخار ${jameyaItems.length}):` : `ROSCA Savings (${jameyaItems.length}):`}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#0D7C66' }}>
+                    +{formatCurrency(totalJameyaSavings, language)} {currencySymbol}
                   </Text>
                 </Pressable>
 

@@ -18,11 +18,18 @@ export interface Jameya {
   sharesCount?: number; // عدد الأسهم/الأسماء التي يشارك بها المستخدم (مثلاً 2، 1، 0.5)
 }
 
-const JAMEYAS_KEY = '@masarif_jameyas';
+const JAMEYAS_KEY = '@mizan_jameyas';
+const LEGACY_JAMEYAS_KEY = '@masarif_jameyas';
 
 export async function getJameyas(): Promise<Jameya[]> {
   try {
-    const data = await AsyncStorage.getItem(JAMEYAS_KEY);
+    let data = await AsyncStorage.getItem(JAMEYAS_KEY);
+    if (!data) {
+      data = await AsyncStorage.getItem(LEGACY_JAMEYAS_KEY);
+      if (data) {
+        await AsyncStorage.setItem(JAMEYAS_KEY, data);
+      }
+    }
     if (!data) return [];
     const list: Jameya[] = JSON.parse(data);
     // Self-healing migration for existing data
@@ -77,7 +84,9 @@ export async function saveJameya(jameya: Omit<Jameya, 'id' | 'createdAt'> & { id
       list.unshift(newJameya);
     }
 
-    await AsyncStorage.setItem(JAMEYAS_KEY, JSON.stringify(list));
+    const jsonStr = JSON.stringify(list);
+    await AsyncStorage.setItem(JAMEYAS_KEY, jsonStr);
+    await AsyncStorage.setItem(LEGACY_JAMEYAS_KEY, jsonStr);
     return newJameya;
   } catch (e) {
     console.error('Error saving Jameya:', e);
