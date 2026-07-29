@@ -58,7 +58,7 @@ export default function FinancialPlanScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const { selectedWallet, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense, walletTransactions } = useTransactions();
+  const { selectedWallet, wallets, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense, walletTransactions } = useTransactions();
   const { t, language } = useLanguage();
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
@@ -1026,7 +1026,9 @@ export default function FinancialPlanScreen() {
     const totalSavedInGoals = goals.reduce((sum, g) => sum + (g.savedAmount || 0), 0);
     const unpaidDebts = debts.filter(d => d.type === 'debt_to_others' && d.status !== 'paid').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
     const unpaidLoans = debts.filter(d => d.type === 'debt_to_me' && d.status !== 'paid').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
-    const walletNetBalance = allTimeIncome - allTimeExpense;
+    const walletNetBalance = selectedWallet
+      ? selectedWallet.balance
+      : (wallets || []).reduce((sum, w) => sum + (w.balance || 0), 0);
     
     const totalJameyaAccumulatedSavings = jameyaList.reduce((sum, j) => sum + ((j.paidMonthsCount || 0) * (j.monthlyAmount || 0)), 0);
     const actualSavings = walletNetBalance + totalSavedInGoals + totalJameyaAccumulatedSavings - unpaidDebts + unpaidLoans;
@@ -1691,12 +1693,12 @@ export default function FinancialPlanScreen() {
                 <Ionicons name="stats-chart" size={18} color={colors.primary} />
               </View>
               <Text style={styles.integrationTitle}>
-                {language === 'ar' ? 'الربط الذكي وملاءة الادخار' : 'Smart Solvency & Performance'}
+                {language === 'ar' ? 'ملاءة الأصول والأداء الفعلي' : 'Financial Assets & Performance'}
               </Text>
             </View>
           </View>
 
-          {/* 3-Pillar KPI Overview Row */}
+          {/* 3-Pillar Monthly Cash Flow KPI Overview */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{t.monthlyIncome}</Text>
@@ -1709,16 +1711,18 @@ export default function FinancialPlanScreen() {
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyExpense)}` : `Plan: ${formatCurrency(plan.monthlyExpense)}`}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{language === 'ar' ? 'الصافي الفعلي' : 'Net Saved'}</Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.primary }} numberOfLines={1}>+{formatCurrency(actualSavings)} {sym}</Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `الهدف: ${formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)}` : `Goal: ${formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)}`}</Text>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{language === 'ar' ? 'الصافي الشهري' : 'Monthly Net'}</Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
+                {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)} {sym}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `الهدف: ${formatCurrency(plan.monthlySaving)}` : `Target: ${formatCurrency(plan.monthlySaving)}`}</Text>
             </View>
           </View>
 
-          {/* Solvency Breakdown List */}
+          {/* Solvency & Net Integrated Assets Breakdown List */}
           <View style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
             <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{language === 'ar' ? 'رصيد المحفظة النقدي المتاح' : 'Wallet Cash Balance'}</Text>
+              <Text style={styles.integrationLabel}>{language === 'ar' ? 'رصيد المحفظة النقدي المتاح' : 'Available Wallet Balance'}</Text>
               <Text style={styles.integrationValue}>{formatCurrency(walletNetBalance)} {sym}</Text>
             </View>
 
@@ -1732,7 +1736,7 @@ export default function FinancialPlanScreen() {
             {totalJameyaAccumulatedSavings > 0 && (
               <View style={styles.integrationRow}>
                 <Text style={[styles.integrationLabel, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
-                  🤝 {language === 'ar' ? 'ادخار وتنمية الجمعيات (ROSCA Asset)' : 'ROSCA Jameya Savings Asset'}
+                  🤝 {language === 'ar' ? 'مدفوعات ومدخرات الجمعيات' : 'Jameya Savings Asset'}
                 </Text>
                 <Text style={[styles.integrationValue, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
                   +{formatCurrency(totalJameyaAccumulatedSavings)} {sym}
@@ -1765,7 +1769,7 @@ export default function FinancialPlanScreen() {
 
             <View style={styles.integrationRow}>
               <Text style={[styles.integrationLabel, { fontFamily: 'Cairo_700Bold', color: Colors.text, fontSize: 13 }]}>
-                {language === 'ar' ? 'إجمالي الصافي الادخاري المتصل' : 'Net Integrated Savings'}
+                {language === 'ar' ? 'إجمالي الصافي الادخاري الشامل (الأصول المتاحة)' : 'Total Net Savings Assets'}
               </Text>
               <Text style={[styles.integrationValue, { fontFamily: 'Cairo_700Bold', color: Colors.primary, fontSize: 15 }]}>
                 {formatCurrency(actualSavings)} {sym}
