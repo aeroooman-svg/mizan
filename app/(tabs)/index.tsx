@@ -878,22 +878,18 @@ export default function HomeScreen() {
             >
               <View
                 style={{
-                  width: 90,
-                  height: 90,
+                  width: 100,
+                  height: 100,
                   borderRadius: 24,
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 16,
-                  borderWidth: 2,
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
                   overflow: 'hidden',
-                  padding: 8,
                 }}
               >
                 <Image
                   source={require('../../assets/images/icon.png')}
-                  style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                  style={{ width: '100%', height: '100%', borderRadius: 24 }}
                   resizeMode="contain"
                 />
               </View>
