@@ -212,7 +212,7 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
         </View>
       </Animated.View>
 
-      {/* Animated Text Section */}
+      {/* Tagline Section */}
       <Animated.View 
         style={[
           styles.textContainer, 
@@ -222,8 +222,6 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
           }
         ]}
       >
-        <Text style={[styles.titleAr, { color: textColor }]}>مِـيـزَان</Text>
-        <Text style={styles.titleEn}>MIZAN</Text>
         <Text style={styles.tagline}>إدارة مالية ذكية بلمسة واحدة</Text>
       </Animated.View>
 
@@ -269,20 +267,14 @@ const getStyles = (colors: any) => StyleSheet.create({
     zIndex: 2,
   },
   logoWrapper: {
-    width: 160,
-    height: 160,
+    width: 220,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 32,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 8,
+    width: 200,
+    height: 200,
   },
   ambientGlow: {
     position: 'absolute',
