@@ -230,7 +230,7 @@ export default function QuickGlanceWidget({
               <Ionicons name="card" size={16} color="#FFF" />
             </LinearGradient>
             <Text style={styles.quickActionCardText}>
-              {isAr ? 'الأقساط' : 'Installments'}
+              {isAr ? 'أقساط وجمعيات' : 'Installments & ROSCA'}
             </Text>
           </Pressable>
         </View>

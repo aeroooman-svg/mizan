@@ -246,9 +246,9 @@ export default function RecurringListScreen() {
         />
         <View style={styles.summaryHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="stats-chart" size={18} color={colors.primary} />
+            <Ionicons name="repeat-outline" size={20} color={colors.primary} />
             <Text style={styles.summaryTitle}>
-              {isAr ? 'رؤية السيولة والتعهدات الشهرية' : 'Monthly Commitments & Cashflow'}
+              {isAr ? 'الملخص الشهري للمعاملات المتكررة' : 'Monthly Recurring Summary'}
             </Text>
           </View>
           {selectedWallet?.name && (
@@ -265,26 +265,50 @@ export default function RecurringListScreen() {
               +{formatCurrency(totalRecurringIncome)} {currencySymbol}
             </Text>
           </View>
+
           <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{isAr ? 'التزامات وأقساط' : 'Bills & Installments'}</Text>
+            <Text style={styles.summaryLabel}>{isAr ? 'فواتير واشتراكات' : 'Recurring Bills'}</Text>
             <Text style={[styles.summaryVal, { color: colors.expense }]}>
-              -{formatCurrency(totalCommitments)} {currencySymbol}
+              -{formatCurrency(totalRecurringExpenses)} {currencySymbol}
             </Text>
-            {totalMonthlyInstallments > 0 && (
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary, marginTop: 2 }}>
-                {isAr
-                  ? `(ثابت: ${formatCurrency(totalRecurringExpenses)} | أقساط: ${formatCurrency(totalMonthlyInstallments)})`
-                  : `(Rec: ${formatCurrency(totalRecurringExpenses)} | Inst: ${formatCurrency(totalMonthlyInstallments)})`}
-              </Text>
-            )}
           </View>
+
           <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{isAr ? 'فائض حر صافي' : 'Net Free Surplus'}</Text>
-            <Text style={[styles.summaryVal, { color: freeNetCashflow >= 0 ? '#3B82F6' : colors.expense }]}>
-              {formatCurrency(freeNetCashflow)} {currencySymbol}
+            <Text style={styles.summaryLabel}>{isAr ? 'فائض المعاملات المتكررة' : 'Recurring Surplus'}</Text>
+            <Text style={[styles.summaryVal, { color: (totalRecurringIncome - totalRecurringExpenses) >= 0 ? '#3B82F6' : colors.expense }]}>
+              {formatCurrency(totalRecurringIncome - totalRecurringExpenses)} {currencySymbol}
             </Text>
           </View>
         </View>
+
+        {/* Shortcut to Installments & ROSCA Screen */}
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.push('/installments' as any);
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: colors.primary + '12',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.primary + '30',
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Ionicons name="card-outline" size={16} color={colors.primary} />
+            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }}>
+              {isAr
+                ? 'ملاحظة: لإدارة الأقساط والجمعيات والالتزامات، انتقل لقسم "أقساط وجمعيات"'
+                : 'Note: For Installments & ROSCA management, go to "Installments & ROSCA"'}
+            </Text>
+          </View>
+          <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={16} color={colors.primary} />
+        </Pressable>
 
         {/* Auto Savings Goal Button */}
         <Pressable

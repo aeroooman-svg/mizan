@@ -12,8 +12,8 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -26,26 +26,62 @@ import {
   deleteInstallmentPlan,
   payInstallmentMonth,
 } from '@/lib/installmentStorage';
+import {
+  Jameya,
+  getJameyas,
+  saveJameya,
+  deleteJameya,
+  payJameyaMonth,
+  receiveJameyaPayout,
+} from '@/lib/jameyaStorage';
 
-export default function InstallmentsScreen() {
+interface InstallmentsScreenProps {
+  initialTab?: 'installments' | 'jameya';
+}
+
+export default function InstallmentsScreen({ initialTab }: InstallmentsScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { language } = useLanguage();
   const isAr = language === 'ar';
   const { selectedWallet, wallets, addTransaction, totalIncome, refresh } = useTransactions();
+  const params = useLocalSearchParams<{ tab?: string }>();
 
+  const [activeTab, setActiveTab] = useState<'installments' | 'jameya'>(
+    initialTab || (params.tab === 'jameya' ? 'jameya' : 'installments')
+  );
+
+  // Sync tab if param changes externally
+  useEffect(() => {
+    if (params.tab === 'jameya' || params.tab === 'installments') {
+      setActiveTab(params.tab);
+    }
+  }, [params.tab]);
+
+  // Data States
   const [plans, setPlans] = useState<InstallmentPlan[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [jameyas, setJameyas] = useState<Jameya[]>([]);
 
-  // Custom Modals State (replaces ugly browser window.confirm / Alert)
+  // Modal Visibility States
+  const [installmentModalVisible, setInstallmentModalVisible] = useState(false);
+  const [jameyaModalVisible, setJameyaModalVisible] = useState(false);
+
+  // Installments Custom Confirmation Modals State
   const [payingPlan, setPayingPlan] = useState<InstallmentPlan | null>(null);
   const [deletingPlan, setDeletingPlan] = useState<InstallmentPlan | null>(null);
   const [isSubmittingPay, setIsSubmittingPay] = useState(false);
 
-  // New Plan Calculation Mode: 'total_and_months' | 'monthly_and_months'
-  const [calcMode, setCalcMode] = useState<'total_and_months' | 'monthly_and_months'>('total_and_months');
+  // Jameya Custom Confirmation Modals State
+  const [editingJameya, setEditingJameya] = useState<Jameya | null>(null);
+  const [payingJameyaItem, setPayingJameyaItem] = useState<Jameya | null>(null);
+  const [jameyaPayoutTarget, setJameyaPayoutTarget] = useState<{ item: Jameya; month?: number } | null>(null);
+  const [deductCurrentInstallment, setDeductCurrentInstallment] = useState(false);
+  const [deletingJameyaItem, setDeletingJameyaItem] = useState<Jameya | null>(null);
+  const [isSubmittingJameya, setIsSubmittingJameya] = useState(false);
+  const [jameyaFormError, setJameyaFormError] = useState<string | null>(null);
 
-  // Form State
+  // Installment Form State
+  const [calcMode, setCalcMode] = useState<'total_and_months' | 'monthly_and_months'>('total_and_months');
   const [title, setTitle] = useState('');
   const [totalAmountInput, setTotalAmountInput] = useState('');
   const [monthlyAmountInput, setMonthlyAmountInput] = useState('');
@@ -53,31 +89,59 @@ export default function InstallmentsScreen() {
   const [provider, setProvider] = useState<InstallmentPlan['provider']>('valu');
   const [dueDay, setDueDay] = useState('5');
   const [category, setCategory] = useState('other');
-
-  // Wallet selection & Auto-transfer states
   const [sourceWalletId, setSourceWalletId] = useState<string>(selectedWallet?.id || wallets[0]?.id || '');
   const [isTransfer, setIsTransfer] = useState(false);
   const [toWalletId, setToWalletId] = useState<string>('');
+
+  // Jameya Form State
+  const [jameyaName, setJameyaName] = useState('');
+  const [jameyaSingleShareAmount, setJameyaSingleShareAmount] = useState('');
+  const [jameyaSharesCount, setJameyaSharesCount] = useState('1');
+  const [jameyaTotalMonths, setJameyaTotalMonths] = useState('8');
+  const [jameyaStartMonth, setJameyaStartMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [jameyaWalletId, setJameyaWalletId] = useState(selectedWallet?.id || wallets[0]?.id || '');
+  const [jameyaPayoutMonthsInputs, setJameyaPayoutMonthsInputs] = useState<string[]>(['1']);
 
   useEffect(() => {
     if (selectedWallet && !sourceWalletId) {
       setSourceWalletId(selectedWallet.id);
     }
+    if (selectedWallet && !jameyaWalletId) {
+      setJameyaWalletId(selectedWallet.id);
+    }
   }, [selectedWallet]);
 
-  const loadPlans = useCallback(async () => {
-    const data = await getInstallmentPlans();
-    setPlans(data);
+  // Adjust Jameya payout months inputs array when shares count changes
+  useEffect(() => {
+    const count = Math.max(1, Math.floor(parseFloat(jameyaSharesCount) || 1));
+    setJameyaPayoutMonthsInputs(prev => {
+      const next = [...prev];
+      while (next.length < count) {
+        next.push((next.length + 1).toString());
+      }
+      return next.slice(0, count);
+    });
+  }, [jameyaSharesCount]);
+
+  // Data Loading
+  const loadData = useCallback(async () => {
+    const [instData, jamData] = await Promise.all([
+      getInstallmentPlans(),
+      getJameyas(),
+    ]);
+    setPlans(instData);
+    setJameyas(jamData);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadPlans();
-    }, [loadPlans])
+      loadData();
+    }, [loadData])
   );
 
-  const currency = selectedWallet?.currency || 'KWD';
+  const currency = selectedWallet?.currency || 'EGP';
 
+  // --- Computed Metrics for Installments ---
   const activePlans = useMemo(() => plans.filter(p => p.remainingMonths > 0), [plans]);
   const completedPlans = useMemo(() => plans.filter(p => p.remainingMonths === 0), [plans]);
 
@@ -91,19 +155,16 @@ export default function InstallmentsScreen() {
     [activePlans]
   );
 
-  // --- Smart Financial Impact Calculation ---
   // Obligation Ratio (% of monthly income consumed by installments)
   const monthlyIncomeBase = totalIncome && totalIncome > 0 ? totalIncome : 1000;
   const obligationRatio = Math.round((totalMonthlyCommitment / monthlyIncomeBase) * 100);
 
-  // Safety level indicator
   const safetyLevel = useMemo(() => {
     if (obligationRatio <= 20) return { label: isAr ? 'نطاق آمن ممتاز 🟢' : 'Excellent Safe Range 🟢', color: '#10B981', bg: '#10B98115' };
     if (obligationRatio <= 35) return { label: isAr ? 'استقطاع متوسط ⚠️' : 'Moderate Deduction ⚠️', color: '#F59E0B', bg: '#F59E0B15' };
     return { label: isAr ? 'ضغط مالي مرتفع 🚨' : 'High Financial Stress 🚨', color: '#EF4444', bg: '#EF444415' };
   }, [obligationRatio, isAr]);
 
-  // Freedom Date Calculation (When max remaining installment completes)
   const maxMonthsLeft = useMemo(() => {
     if (activePlans.length === 0) return 0;
     return Math.max(...activePlans.map(p => p.remainingMonths));
@@ -116,7 +177,21 @@ export default function InstallmentsScreen() {
     return target.toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
   }, [maxMonthsLeft, isAr]);
 
-  // --- Live Calculator Preview inside Add Modal ---
+  // --- Computed Metrics for Jameya ---
+  const activeJameyas = useMemo(() => jameyas.filter(j => j.paidMonthsCount < j.totalMonths), [jameyas]);
+  const completedJameyas = useMemo(() => jameyas.filter(j => j.paidMonthsCount >= j.totalMonths), [jameyas]);
+
+  const totalJameyaMonthlyCommitment = useMemo(
+    () => activeJameyas.reduce((sum, j) => sum + j.monthlyAmount, 0),
+    [activeJameyas]
+  );
+
+  const totalJameyaExpectedPayout = useMemo(
+    () => jameyas.filter(j => !j.isPayoutReceived).reduce((sum, j) => sum + (j.monthlyAmount * j.totalMonths), 0),
+    [jameyas]
+  );
+
+  // Live Calculator Preview inside Add Installment Modal
   const calculatedValues = useMemo(() => {
     const monthsNum = parseInt(totalMonths, 10) || 1;
     if (calcMode === 'total_and_months') {
@@ -130,19 +205,75 @@ export default function InstallmentsScreen() {
     }
   }, [calcMode, totalAmountInput, monthlyAmountInput, totalMonths]);
 
-  // Next Due Date Preview for Form
-  const nextDueDatePreview = useMemo(() => {
-    const day = parseInt(dueDay, 10) || 5;
-    const now = new Date();
-    let target = new Date(now.getFullYear(), now.getMonth(), day);
-    if (now.getDate() > day) {
-      target.setMonth(target.getMonth() + 1);
-    }
-    return target.toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-  }, [dueDay, isAr]);
+  // Live Calculated Pot Preview inside Jameya Modal
+  const computedSingleShareVal = parseFloat(jameyaSingleShareAmount) || 0;
+  const computedSharesCountVal = parseFloat(jameyaSharesCount) || 1;
+  const computedTotalMonthsVal = parseInt(jameyaTotalMonths, 10) || 1;
+  const computedMonthlyTotalPay = computedSingleShareVal * computedSharesCountVal;
+  const computedPotPerShare = computedSingleShareVal * computedTotalMonthsVal;
+  const computedTotalJameyaPayout = computedPotPerShare * computedSharesCountVal;
 
-  // --- Handlers ---
-  const handleAddPlan = async () => {
+  // Handlers
+  const handleBack = () => {
+    Haptics.selectionAsync();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
+  const handleOpenAdd = () => {
+    Haptics.selectionAsync();
+    if (activeTab === 'installments') {
+      setTitle('');
+      setTotalAmountInput('');
+      setMonthlyAmountInput('');
+      setTotalMonths('6');
+      setDueDay('5');
+      setInstallmentModalVisible(true);
+    } else {
+      handleOpenAddJameya();
+    }
+  };
+
+  const handleOpenAddJameya = () => {
+    Haptics.selectionAsync();
+    setEditingJameya(null);
+    setJameyaFormError(null);
+    setJameyaName('');
+    setJameyaSingleShareAmount('');
+    setJameyaSharesCount('1');
+    setJameyaTotalMonths('8');
+    setJameyaPayoutMonthsInputs(['1']);
+    setJameyaStartMonth(new Date().toISOString().substring(0, 7));
+    setJameyaWalletId(selectedWallet?.id || wallets[0]?.id || '');
+    setJameyaModalVisible(true);
+  };
+
+  const handleOpenEditJameya = (item: Jameya) => {
+    Haptics.selectionAsync();
+    setEditingJameya(item);
+    setJameyaFormError(null);
+    setJameyaName(item.name);
+
+    const count = item.sharesCount || 1;
+    const shareVal = item.singleShareAmount || (item.monthlyAmount / count);
+    setJameyaSingleShareAmount(shareVal.toString());
+    setJameyaSharesCount(count.toString());
+    setJameyaTotalMonths(item.totalMonths.toString());
+
+    const pm = item.payoutMonths && item.payoutMonths.length > 0
+      ? item.payoutMonths.map(n => n.toString())
+      : [(item.payoutMonth || 1).toString()];
+    setJameyaPayoutMonthsInputs(pm);
+
+    setJameyaStartMonth(item.startMonth);
+    setJameyaWalletId(item.walletId);
+    setJameyaModalVisible(true);
+  };
+
+  const handleAddInstallmentPlan = async () => {
     if (!title.trim()) {
       Alert.alert(isAr ? 'تنبيه' : 'Warning', isAr ? 'يرجى إدخال اسم القسط / المنتج' : 'Please enter item title');
       return;
@@ -178,12 +309,89 @@ export default function InstallmentsScreen() {
     setMonthlyAmountInput('');
     setTotalMonths('6');
     setDueDay('5');
-    setModalVisible(false);
-    await loadPlans();
+    setInstallmentModalVisible(false);
+    await loadData();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handleConfirmPay = async () => {
+  const handleSaveJameya = async () => {
+    setJameyaFormError(null);
+    if (!jameyaName.trim()) {
+      const err = isAr ? 'يرجى إدخال اسم الجمعية' : 'Please enter association name';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
+      return;
+    }
+    if (computedSingleShareVal <= 0) {
+      const err = isAr ? 'يرجى إدخال قيمة صحيحة لـ مبلغ الاسم/السهم الواحد' : 'Please enter a valid share amount';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
+      return;
+    }
+    if (computedSharesCountVal <= 0) {
+      const err = isAr ? 'يرجى إدخال عدد أسهم/أسماء صحيح' : 'Please enter a valid shares count';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
+      return;
+    }
+    if (computedTotalMonthsVal <= 0) {
+      const err = isAr ? 'يرجى إدخال عدد أشهر صحيح' : 'Please enter valid total months';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
+      return;
+    }
+
+    const parsedPayoutMonths: number[] = [];
+    for (let i = 0; i < jameyaPayoutMonthsInputs.length; i++) {
+      const val = parseInt(jameyaPayoutMonthsInputs[i], 10);
+      if (isNaN(val) || val < 1 || val > computedTotalMonthsVal) {
+        const err = isAr
+          ? `شهر القبض رقم (${i + 1}) يجب أن يكون برقم بين 1 و ${computedTotalMonthsVal}`
+          : `Payout month #${i + 1} must be between 1 and ${computedTotalMonthsVal}`;
+        setJameyaFormError(err);
+        if (Platform.OS !== 'web') Alert.alert(isAr ? 'خطأ في شهر القبض' : 'Payout Month Error', err);
+        return;
+      }
+      parsedPayoutMonths.push(val);
+    }
+
+    const targetWalletId = jameyaWalletId || selectedWallet?.id || (wallets[0]?.id || '');
+    if (!targetWalletId) {
+      const err = isAr ? 'يرجى اختيار محفظة مرتبطة' : 'Please select a wallet';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'تنبيه' : 'Notice', err);
+      return;
+    }
+
+    try {
+      await saveJameya({
+        id: editingJameya?.id,
+        name: jameyaName.trim(),
+        singleShareAmount: computedSingleShareVal,
+        sharesCount: computedSharesCountVal,
+        monthlyAmount: computedMonthlyTotalPay,
+        totalMonths: computedTotalMonthsVal,
+        payoutMonth: parsedPayoutMonths[0] || 1,
+        payoutMonths: parsedPayoutMonths,
+        receivedPayoutMonths: editingJameya ? editingJameya.receivedPayoutMonths : [],
+        startMonth: jameyaStartMonth || new Date().toISOString().substring(0, 7),
+        paidMonthsCount: editingJameya ? editingJameya.paidMonthsCount : 0,
+        isPayoutReceived: editingJameya ? editingJameya.isPayoutReceived : false,
+        walletId: targetWalletId,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setJameyaFormError(null);
+      setJameyaModalVisible(false);
+      await loadData();
+    } catch (e) {
+      const err = isAr ? 'فشل حفظ الجمعية' : 'Failed to save association';
+      setJameyaFormError(err);
+      if (Platform.OS !== 'web') Alert.alert(isAr ? 'خطأ' : 'Error', err);
+    }
+  };
+
+  const handleConfirmPayInstallment = async () => {
     if (!payingPlan || isSubmittingPay) return;
     setIsSubmittingPay(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -191,7 +399,7 @@ export default function InstallmentsScreen() {
       const res = await payInstallmentMonth(payingPlan.id, addTransaction);
       if (res.success) {
         await refresh();
-        await loadPlans();
+        await loadData();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err) {
@@ -202,12 +410,68 @@ export default function InstallmentsScreen() {
     }
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeleteInstallment = async () => {
     if (!deletingPlan) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await deleteInstallmentPlan(deletingPlan.id);
-    await loadPlans();
+    await loadData();
     setDeletingPlan(null);
+  };
+
+  const handleConfirmPayJameyaMonth = async () => {
+    if (!payingJameyaItem || isSubmittingJameya) return;
+    setIsSubmittingJameya(true);
+    try {
+      const res = await payJameyaMonth(payingJameyaItem.id, addTransaction);
+      if (res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setPayingJameyaItem(null);
+        await loadData();
+      } else {
+        Alert.alert(isAr ? 'ملاحظة' : 'Notice', isAr ? 'تم سداد جميع أقساط هذه الجمعية بالفعل' : 'All installments paid for this association');
+      }
+    } catch (e) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ أثناء تسجيل القسط' : 'Error recording payment');
+    } finally {
+      setIsSubmittingJameya(false);
+    }
+  };
+
+  const handleConfirmReceiveJameyaPayout = async () => {
+    if (!jameyaPayoutTarget || isSubmittingJameya) return;
+    setIsSubmittingJameya(true);
+    try {
+      const res = await receiveJameyaPayout(
+        jameyaPayoutTarget.item.id,
+        addTransaction,
+        jameyaPayoutTarget.month,
+        deductCurrentInstallment
+      );
+      if (res) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setJameyaPayoutTarget(null);
+        setDeductCurrentInstallment(false);
+        await loadData();
+      } else {
+        Alert.alert(isAr ? 'ملاحظة' : 'Notice', isAr ? 'تم استلام مبلغ هذا الدور سابقاً' : 'Payout already received');
+      }
+    } catch (e) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ أثناء تسجيل القبض' : 'Error recording payout');
+    } finally {
+      setIsSubmittingJameya(false);
+    }
+  };
+
+  const handleConfirmDeleteJameya = async () => {
+    if (!deletingJameyaItem) return;
+    try {
+      await deleteJameya(deletingJameyaItem.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setDeletingJameyaItem(null);
+      await loadData();
+    } catch (e) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل الحذف' : 'Failed to delete');
+    }
   };
 
   const getProviderIcon = (prov: InstallmentPlan['provider']) => {
@@ -268,7 +532,6 @@ export default function InstallmentsScreen() {
     }
   };
 
-  // Urgent Alert status header calculation
   const urgentStats = useMemo(() => {
     let overdueCount = 0;
     let dueSoonCount = 0;
@@ -282,18 +545,23 @@ export default function InstallmentsScreen() {
     return { overdueCount, dueSoonCount };
   }, [activePlans]);
 
-  const handleBack = () => {
-    Haptics.selectionAsync();
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+  const renderSharesBadge = (shares: number = 1) => {
+    let label = isAr ? 'اسم واحد (سهم)' : '1 Share';
+    if (shares === 0.5) label = isAr ? 'نصف اسم (0.5 سهم)' : '0.5 Share';
+    else if (shares === 2) label = isAr ? 'اسمين (2 سهم)' : '2 Shares';
+    else if (shares > 2) label = isAr ? `${shares} أسماء (أسهم)` : `${shares} Shares`;
+
+    return (
+      <View style={styles.sharesBadge}>
+        <MaterialCommunityIcons name="ticket-account" size={13} color={colors.primary} />
+        <Text style={styles.sharesBadgeText}>{label}</Text>
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Top Header Bar */}
       <View style={styles.headerBar}>
         <Pressable onPress={handleBack} style={styles.backBtn} hitSlop={15}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -301,247 +569,459 @@ export default function InstallmentsScreen() {
         <Text style={styles.headerTitle}>
           {isAr ? '💳 أقساط وجمعيات' : '💳 Installments & Associations'}
         </Text>
-        <Pressable onPress={() => setModalVisible(true)} style={styles.addBtn} hitSlop={8}>
+        <Pressable onPress={handleOpenAdd} style={styles.addBtn} hitSlop={8}>
           <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Quick Nav Bar between Installments & Jameya */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-          <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.primary }}>
-            <Ionicons name="card-outline" size={18} color="#FFF" />
-            <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>{isAr ? 'الأقساط والكروت' : 'Installments'}</Text>
+        {/* Unified Segment Switcher Tab Bar */}
+        <View style={styles.segmentContainer}>
+          <Pressable
+            style={[styles.segmentBtn, activeTab === 'installments' && styles.segmentBtnActive]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setActiveTab('installments');
+            }}
+          >
+            <Ionicons
+              name="card-outline"
+              size={18}
+              color={activeTab === 'installments' ? '#FFF' : colors.textSecondary}
+            />
+            <Text style={[styles.segmentText, activeTab === 'installments' && styles.segmentTextActive]}>
+              {isAr ? 'الأقساط والكروت' : 'Installments & Cards'}
+            </Text>
+            {activePlans.length > 0 && (
+              <View style={[styles.badgeCount, activeTab === 'installments' && { backgroundColor: '#FFFFFF33' }]}>
+                <Text style={[styles.badgeCountText, activeTab === 'installments' && { color: '#FFF' }]}>
+                  {activePlans.length}
+                </Text>
+              </View>
+            )}
           </Pressable>
 
-          <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }} onPress={() => router.push('/jameya' as any)}>
-            <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-            <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 13 }}>{isAr ? 'الجمعيات' : 'Associations (ROSCA)'}</Text>
+          <Pressable
+            style={[styles.segmentBtn, activeTab === 'jameya' && styles.segmentBtnActive]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setActiveTab('jameya');
+            }}
+          >
+            <Ionicons
+              name="people-outline"
+              size={18}
+              color={activeTab === 'jameya' ? '#FFF' : colors.textSecondary}
+            />
+            <Text style={[styles.segmentText, activeTab === 'jameya' && styles.segmentTextActive]}>
+              {isAr ? 'الجمعيات' : 'Associations'}
+            </Text>
+            {activeJameyas.length > 0 && (
+              <View style={[styles.badgeCount, activeTab === 'jameya' && { backgroundColor: '#FFFFFF33' }]}>
+                <Text style={[styles.badgeCountText, activeTab === 'jameya' && { color: '#FFF' }]}>
+                  {activeJameyas.length}
+                </Text>
+              </View>
+            )}
           </Pressable>
         </View>
 
-        {/* Urgent Due Date Alert Header Banner */}
-        {urgentStats.overdueCount > 0 ? (
-          <View style={[styles.urgentBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
-            <Ionicons name="alert-circle" size={22} color="#EF4444" />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.urgentBannerTitle, { color: '#EF4444' }]}>
-                {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط مستحق السداد فوراً!` : `Alert: You have ${urgentStats.overdueCount} overdue installment(s)!`}
-              </Text>
-              <Text style={styles.urgentBannerSub}>
-                {isAr ? 'سارع بالسداد لتجنب غرامات التأخير وحماية رصيدك الائتماني' : 'Pay now to avoid late fees'}
-              </Text>
-            </View>
-          </View>
-        ) : urgentStats.dueSoonCount > 0 ? (
-          <View style={[styles.urgentBanner, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B40' }]}>
-            <Ionicons name="time-outline" size={22} color="#F59E0B" />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.urgentBannerTitle, { color: '#F59E0B' }]}>
-                {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
-              </Text>
-              <Text style={styles.urgentBannerSub}>
-                {isAr ? 'راجع موعد الاستحقاق لتوفير السيولة المناسبة بالسيارة أو المحفظة' : 'Check due dates to prepare cashflow'}
-              </Text>
-            </View>
-          </View>
-        ) : activePlans.length > 0 ? (
-          <View style={[styles.urgentBanner, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
-            <Ionicons name="checkmark-circle-outline" size={22} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.urgentBannerTitle, { color: colors.primary }]}>
-                {isAr ? 'وضعك ممتاز! تم سداد جميع أقساط هذا الشهر بنجاح 🎉' : 'All clear! Paid for this month 🎉'}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {/* Summary Metric Cards */}
-        <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
-            <Ionicons name="trending-down" size={22} color={colors.expense} />
-            <Text style={styles.summaryLabel}>
-              {isAr ? 'إجمالي المتبقي عليك' : 'Total Debt Remaining'}
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.expense }]}>
-              {formatCurrency(totalRemainingDebt)} {currency}
-            </Text>
-          </View>
-
-          <View style={[styles.summaryCard, { borderColor: colors.primary + '40' }]}>
-            <Ionicons name="calendar" size={22} color={colors.primary} />
-            <Text style={styles.summaryLabel}>
-              {isAr ? 'الالتزام الشهري' : 'Monthly Obligation'}
-            </Text>
-            <Text style={[styles.summaryValue, { color: colors.primary }]}>
-              {formatCurrency(totalMonthlyCommitment)} {currency}
-            </Text>
-          </View>
-        </View>
-
-        {/* Smart Savings & Portfolio Plan Impact Card */}
-        {totalMonthlyCommitment > 0 && (
-          <View style={styles.savingsImpactCard}>
-            <View style={styles.savingsImpactHeader}>
-              <Ionicons name="sparkles" size={20} color={colors.primary} />
-              <Text style={styles.savingsImpactTitle}>
-                {isAr ? 'التحليل الذكي لأثر الأقساط على المحفظة والادخار' : 'Smart Portfolio & Savings Impact'}
-              </Text>
-              <View style={[styles.safetyBadge, { backgroundColor: safetyLevel.bg }]}>
-                <Text style={[styles.safetyBadgeText, { color: safetyLevel.color }]}>
-                  {safetyLevel.label}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.impactMetricsGrid}>
-              <View style={styles.impactMetricBox}>
-                <Text style={styles.impactMetricLabel}>{isAr ? 'نسبة الاستقطاع من الدخل:' : 'Income Obligation Ratio:'}</Text>
-                <Text style={[styles.impactMetricValue, { color: safetyLevel.color }]}>
-                  {obligationRatio}% {isAr ? 'من دخلك الشهري' : 'of monthly income'}
-                </Text>
-              </View>
-
-              {freedomDateFormatted && (
-                <View style={styles.impactMetricBox}>
-                  <Text style={styles.impactMetricLabel}>{isAr ? 'تاريخ التحرر المالي التام:' : 'Full Freedom Date:'}</Text>
-                  <Text style={[styles.impactMetricValue, { color: colors.primary }]}>
-                    {freedomDateFormatted}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.savingsImpactSub}>
-              {isAr
-                ? `تستقطع الأقساط ${formatCurrency(totalMonthlyCommitment)} ${currency} شهرياً. عند الانتهاء منها بـ ${freedomDateFormatted || 'الموعد'} سينتعش رصيدك المتاح وسيمكنك توجيهه لمشروعك أوالتحويل المباشر لحصالات التوفير!`
-                : `Your monthly obligation of ${formatCurrency(totalMonthlyCommitment)} ${currency} reduces your savings buffer. Once fully settled by ${freedomDateFormatted || 'schedule'}, this amount directly boosts your savings jars!`}
-            </Text>
-          </View>
-        )}
-
-        {/* Active Plans Section */}
-        <Text style={styles.sectionTitle}>
-          {isAr ? `الأقساط والالتزامات النشطة (${activePlans.length})` : `Active Installments (${activePlans.length})`}
-        </Text>
-
-        {activePlans.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="checkmark-circle-outline" size={48} color={colors.primary} />
-            <Text style={styles.emptyTitle}>
-              {isAr ? 'لا توجد أقساط نشطة حالياً' : 'No Active Installments'}
-            </Text>
-            <Text style={styles.emptySub}>
-              {isAr
-                ? 'اضغط على زر الإضافة (+) لإدراج أقساط Valu أو تابي أو البطاقات الائتمانية بسهولة'
-                : 'Tap (+) to add Valu, Tabby, Tamara or Credit Card installments'}
-            </Text>
-          </View>
-        ) : (
-          activePlans.map(plan => {
-            const status = getDueStatus(plan);
-            const progress = (plan.totalMonths - plan.remainingMonths) / plan.totalMonths;
-            const paidMonths = plan.totalMonths - plan.remainingMonths;
-
-            return (
-              <View key={plan.id} style={styles.planCard}>
-                <View style={styles.planHeader}>
-                  <View style={styles.providerBadge}>
-                    <Ionicons name={getProviderIcon(plan.provider) as any} size={16} color={colors.primary} />
-                    <Text style={styles.providerText}>{getProviderName(plan.provider)}</Text>
-                  </View>
-
-                  <Pressable onPress={() => setDeletingPlan(plan)} hitSlop={15} style={styles.deleteBtn}>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  </Pressable>
-                </View>
-
-                <Text style={styles.planTitle}>{plan.title}</Text>
-
-                {/* Progress bar */}
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressBar, { width: `${Math.round(progress * 100)}%` }]} />
-                </View>
-
-                <View style={styles.planMetaRow}>
-                  <Text style={styles.planMetaText}>
-                    {isAr
-                      ? `تم سداد ${paidMonths} من أصل ${plan.totalMonths} شهر (متبقي ${plan.remainingMonths})`
-                      : `${paidMonths} of ${plan.totalMonths} paid (${plan.remainingMonths} left)`}
-                  </Text>
-                  <Text style={styles.planDueText}>
-                    {isAr ? `يوم ${plan.dueDay || 5} شهرياً` : `Due day ${plan.dueDay || 5}`}
-                  </Text>
-                </View>
-
-                {/* Due Status Reminder Badge */}
-                <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
-                  <Text style={[styles.statusBadgeText, { color: status.color }]}>
-                    {status.text}
-                  </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.planFooter}>
-                  <View>
-                    <Text style={styles.monthlyLabel}>
-                      {isAr ? 'القسط الشهري:' : 'Monthly:'}
-                    </Text>
-                    <Text style={styles.monthlyValue}>
-                      {formatCurrency(plan.monthlyAmount)} {currency}
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    onPress={() => setPayingPlan(plan)}
-                    disabled={status.isPaid}
-                    style={[
-                      styles.payBtn,
-                      status.isPaid && { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-                    ]}
-                  >
-                    <Ionicons
-                      name={status.isPaid ? 'checkmark-circle' : 'wallet-outline'}
-                      size={16}
-                      color={status.isPaid ? colors.primary : '#FFF'}
-                    />
-                    <Text style={[styles.payBtnText, status.isPaid && { color: colors.primary }]}>
-                      {status.isPaid
-                        ? (isAr ? 'تم سداد هذا الشهر' : 'Paid This Month')
-                        : (isAr ? 'سداد قسط الشهر الآن' : 'Pay This Month')}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          })
-        )}
-
-        {/* Completed Plans */}
-        {completedPlans.length > 0 && (
+        {/* --- TAB 1: INSTALLMENTS CONTENT --- */}
+        {activeTab === 'installments' ? (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
-              {isAr ? `الأقساط المكتملة (${completedPlans.length})` : `Completed (${completedPlans.length})`}
-            </Text>
-            {completedPlans.map(plan => (
-              <View key={plan.id} style={[styles.planCard, { opacity: 0.65 }]}>
-                <View style={styles.planHeader}>
-                  <Text style={styles.planTitle}>{plan.title}</Text>
-                  <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+            {/* Urgent Alert Banner */}
+            {urgentStats.overdueCount > 0 ? (
+              <View style={[styles.urgentBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
+                <Ionicons name="alert-circle" size={22} color="#EF4444" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.urgentBannerTitle, { color: '#EF4444' }]}>
+                    {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط مستحق السداد فوراً!` : `Alert: You have ${urgentStats.overdueCount} overdue installment(s)!`}
+                  </Text>
+                  <Text style={styles.urgentBannerSub}>
+                    {isAr ? 'سارع بالسداد لتجنب غرامات التأخير وحماية رصيدك الائتماني' : 'Pay now to avoid late fees'}
+                  </Text>
                 </View>
-                <Text style={styles.planMetaText}>
-                  {isAr
-                    ? `تم سداد إجمالي ${formatCurrency(plan.totalAmount)} ${currency} بالكامل 🏆`
-                    : `Fully paid total ${formatCurrency(plan.totalAmount)} ${currency} 🏆`}
+              </View>
+            ) : urgentStats.dueSoonCount > 0 ? (
+              <View style={[styles.urgentBanner, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B40' }]}>
+                <Ionicons name="time-outline" size={22} color="#F59E0B" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.urgentBannerTitle, { color: '#F59E0B' }]}>
+                    {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
+                  </Text>
+                  <Text style={styles.urgentBannerSub}>
+                    {isAr ? 'راجع موعد الاستحقاق لتوفير السيولة المناسبة بالسيارة أو المحفظة' : 'Check due dates to prepare cashflow'}
+                  </Text>
+                </View>
+              </View>
+            ) : activePlans.length > 0 ? (
+              <View style={[styles.urgentBanner, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+                <Ionicons name="checkmark-circle-outline" size={22} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.urgentBannerTitle, { color: colors.primary }]}>
+                    {isAr ? 'وضعك ممتاز! تم سداد جميع أقساط هذا الشهر بنجاح 🎉' : 'All clear! Paid for this month 🎉'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Summary Grid (2 Metric Cards Side-by-Side) */}
+            <View style={styles.summaryRow}>
+              <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
+                <Ionicons name="trending-down" size={22} color={colors.expense} />
+                <Text style={styles.summaryLabel}>
+                  {isAr ? 'إجمالي المتبقي عليك' : 'Total Debt Remaining'}
+                </Text>
+                <Text style={[styles.summaryValue, { color: colors.expense }]}>
+                  {formatCurrency(totalRemainingDebt)} {currency}
                 </Text>
               </View>
-            ))}
+
+              <View style={[styles.summaryCard, { borderColor: colors.primary + '40' }]}>
+                <Ionicons name="calendar" size={22} color={colors.primary} />
+                <Text style={styles.summaryLabel}>
+                  {isAr ? 'الالتزام الشهري' : 'Monthly Obligation'}
+                </Text>
+                <Text style={[styles.summaryValue, { color: colors.primary }]}>
+                  {formatCurrency(totalMonthlyCommitment)} {currency}
+                </Text>
+              </View>
+            </View>
+
+            {/* Portfolio Impact Card */}
+            {totalMonthlyCommitment > 0 && (
+              <View style={styles.savingsImpactCard}>
+                <View style={styles.savingsImpactHeader}>
+                  <Ionicons name="sparkles" size={20} color={colors.primary} />
+                  <Text style={styles.savingsImpactTitle}>
+                    {isAr ? 'التحليل الذكي لأثر الأقساط على المحفظة والادخار' : 'Smart Portfolio & Savings Impact'}
+                  </Text>
+                  <View style={[styles.safetyBadge, { backgroundColor: safetyLevel.bg }]}>
+                    <Text style={[styles.safetyBadgeText, { color: safetyLevel.color }]}>
+                      {safetyLevel.label}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.impactMetricsGrid}>
+                  <View style={styles.impactMetricBox}>
+                    <Text style={styles.impactMetricLabel}>{isAr ? 'نسبة الاستقطاع من الدخل:' : 'Income Obligation Ratio:'}</Text>
+                    <Text style={[styles.impactMetricValue, { color: safetyLevel.color }]}>
+                      {obligationRatio}% {isAr ? 'من دخلك الشهري' : 'of monthly income'}
+                    </Text>
+                  </View>
+
+                  {freedomDateFormatted && (
+                    <View style={styles.impactMetricBox}>
+                      <Text style={styles.impactMetricLabel}>{isAr ? 'تاريخ التحرر المالي التام:' : 'Full Freedom Date:'}</Text>
+                      <Text style={[styles.impactMetricValue, { color: colors.primary }]}>
+                        {freedomDateFormatted}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Active Plans List */}
+            <Text style={styles.sectionTitle}>
+              {isAr ? `الأقساط والالتزامات النشطة (${activePlans.length})` : `Active Installments (${activePlans.length})`}
+            </Text>
+
+            {activePlans.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="card-outline" size={48} color={colors.primary} />
+                <Text style={styles.emptyTitle}>
+                  {isAr ? 'لا توجد أقساط نشطة حالياً' : 'No Active Installments'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {isAr
+                    ? 'اضغط على زر الإضافة (+) لإدراج أقساط Valu أو تابي أو البطاقات الائتمانية بسهولة'
+                    : 'Tap (+) to add Valu, Tabby, Tamara or Credit Card installments'}
+                </Text>
+                <Pressable style={styles.primaryActionBtn} onPress={handleOpenAdd}>
+                  <Ionicons name="add" size={18} color="#FFF" />
+                  <Text style={styles.primaryActionBtnText}>
+                    {isAr ? 'إضافة قسط جديد' : 'Add Installment'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              activePlans.map(plan => {
+                const status = getDueStatus(plan);
+                const progress = (plan.totalMonths - plan.remainingMonths) / plan.totalMonths;
+                const paidMonths = plan.totalMonths - plan.remainingMonths;
+
+                return (
+                  <View key={plan.id} style={styles.planCard}>
+                    <View style={styles.planHeader}>
+                      <View style={styles.providerBadge}>
+                        <Ionicons name={getProviderIcon(plan.provider) as any} size={16} color={colors.primary} />
+                        <Text style={styles.providerText}>{getProviderName(plan.provider)}</Text>
+                      </View>
+
+                      <Pressable onPress={() => setDeletingPlan(plan)} hitSlop={15} style={styles.deleteBtn}>
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </Pressable>
+                    </View>
+
+                    <Text style={styles.planTitle}>{plan.title}</Text>
+
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressBar, { width: `${Math.round(progress * 100)}%` }]} />
+                    </View>
+
+                    <View style={styles.planMetaRow}>
+                      <Text style={styles.planMetaText}>
+                        {isAr
+                          ? `تم سداد ${paidMonths} من أصل ${plan.totalMonths} شهر (متبقي ${plan.remainingMonths})`
+                          : `${paidMonths} of ${plan.totalMonths} paid (${plan.remainingMonths} left)`}
+                      </Text>
+                      <Text style={styles.planDueText}>
+                        {isAr ? `يوم ${plan.dueDay || 5} شهرياً` : `Due day ${plan.dueDay || 5}`}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
+                      <Text style={[styles.statusBadgeText, { color: status.color }]}>
+                        {status.text}
+                      </Text>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.planFooter}>
+                      <View>
+                        <Text style={styles.monthlyLabel}>{isAr ? 'القسط الشهري:' : 'Monthly:'}</Text>
+                        <Text style={styles.monthlyValue}>
+                          {formatCurrency(plan.monthlyAmount)} {currency}
+                        </Text>
+                      </View>
+
+                      <Pressable
+                        onPress={() => setPayingPlan(plan)}
+                        disabled={status.isPaid}
+                        style={[
+                          styles.payBtn,
+                          status.isPaid && { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
+                        ]}
+                      >
+                        <Ionicons
+                          name={status.isPaid ? 'checkmark-circle' : 'wallet-outline'}
+                          size={16}
+                          color={status.isPaid ? colors.primary : '#FFF'}
+                        />
+                        <Text style={[styles.payBtnText, status.isPaid && { color: colors.primary }]}>
+                          {status.isPaid
+                            ? (isAr ? 'تم سداد هذا الشهر' : 'Paid This Month')
+                            : (isAr ? 'سداد قسط الشهر الآن' : 'Pay This Month')}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Completed Plans */}
+            {completedPlans.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                  {isAr ? `الأقساط المكتملة (${completedPlans.length})` : `Completed (${completedPlans.length})`}
+                </Text>
+                {completedPlans.map(plan => (
+                  <View key={plan.id} style={[styles.planCard, { opacity: 0.65 }]}>
+                    <View style={styles.planHeader}>
+                      <Text style={styles.planTitle}>{plan.title}</Text>
+                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                    </View>
+                    <Text style={styles.planMetaText}>
+                      {isAr
+                        ? `تم سداد إجمالي ${formatCurrency(plan.totalAmount)} ${currency} بالكامل 🏆`
+                        : `Fully paid total ${formatCurrency(plan.totalAmount)} ${currency} 🏆`}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </>
+        ) : (
+          /* --- TAB 2: JAMEYA (ASSOCIATIONS) CONTENT --- */
+          <>
+            {/* Summary Grid (2 Metric Cards Side-by-Side - Matching Installments!) */}
+            <View style={styles.summaryRow}>
+              <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
+                <MaterialCommunityIcons name="piggy-bank-outline" size={22} color={colors.expense} />
+                <Text style={styles.summaryLabel}>
+                  {isAr ? 'التزام الجمعيات الشهري' : 'Monthly Jameya Commitment'}
+                </Text>
+                <Text style={[styles.summaryValue, { color: colors.expense }]}>
+                  {formatCurrency(totalJameyaMonthlyCommitment)} {currency}
+                </Text>
+              </View>
+
+              <View style={[styles.summaryCard, { borderColor: colors.income + '40' }]}>
+                <Ionicons name="cash-outline" size={22} color={colors.income} />
+                <Text style={styles.summaryLabel}>
+                  {isAr ? 'مبالغ متوقع قبضها' : 'Pending Payouts'}
+                </Text>
+                <Text style={[styles.summaryValue, { color: colors.income }]}>
+                  {formatCurrency(totalJameyaExpectedPayout)} {currency}
+                </Text>
+              </View>
+            </View>
+
+            {/* Active Associations Section Title */}
+            <Text style={styles.sectionTitle}>
+              {isAr ? `الجمعيات الجارية (${activeJameyas.length})` : `Active Associations (${activeJameyas.length})`}
+            </Text>
+
+            {activeJameyas.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <MaterialCommunityIcons name="account-group" size={48} color={colors.primary} />
+                <Text style={styles.emptyTitle}>
+                  {isAr ? 'لا توجد جمعيات نشطة حالياً' : 'No Active Associations'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {isAr
+                    ? 'انقر على زر الإضافة (+) لإضافة جمعية جديدة وتتبع أقساطها وشهور قبضها بسهولة'
+                    : 'Tap (+) to add a new association and track monthly payouts'}
+                </Text>
+                <Pressable style={styles.primaryActionBtn} onPress={handleOpenAddJameya}>
+                  <Ionicons name="add" size={18} color="#FFF" />
+                  <Text style={styles.primaryActionBtnText}>
+                    {isAr ? 'إضافة جمعية جديدة' : 'Add Association'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              activeJameyas.map((item) => {
+                const shares = item.sharesCount || 1;
+                const singleVal = item.singleShareAmount || (item.monthlyAmount / shares);
+                const potPerShare = singleVal * item.totalMonths;
+                const totalPotAll = potPerShare * shares;
+                const progress = item.paidMonthsCount / item.totalMonths;
+                const payoutMonthsList = item.payoutMonths && item.payoutMonths.length > 0
+                  ? item.payoutMonths
+                  : [item.payoutMonth || 1];
+                const receivedList = item.receivedPayoutMonths || [];
+
+                return (
+                  <View key={item.id} style={styles.planCard}>
+                    <View style={styles.planHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' }}>
+                        <Text style={styles.planTitle}>{item.name}</Text>
+                        {renderSharesBadge(shares)}
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Pressable onPress={() => handleOpenEditJameya(item)} hitSlop={12} style={styles.deleteBtn}>
+                          <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+                        </Pressable>
+                        <Pressable onPress={() => setDeletingJameyaItem(item)} hitSlop={12} style={styles.deleteBtn}>
+                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {/* Stats Grid */}
+                    <View style={styles.jameyaStatsGrid}>
+                      <View style={styles.jameyaStatBox}>
+                        <Text style={styles.jameyaStatLabel}>{isAr ? 'إجمالي قسطك' : 'Monthly Pay'}</Text>
+                        <Text style={styles.jameyaStatValue}>{formatCurrency(item.monthlyAmount)} {currency}</Text>
+                      </View>
+                      <View style={styles.jameyaStatBox}>
+                        <Text style={styles.jameyaStatLabel}>{isAr ? 'إجمالي القبض' : 'Total Pot'}</Text>
+                        <Text style={[styles.jameyaStatValue, { color: colors.income }]}>{formatCurrency(totalPotAll)} {currency}</Text>
+                      </View>
+                      <View style={styles.jameyaStatBox}>
+                        <Text style={styles.jameyaStatLabel}>{isAr ? 'المسدد' : 'Paid'}</Text>
+                        <Text style={styles.jameyaStatValue}>{item.paidMonthsCount} / {item.totalMonths} {isAr ? 'أشهر' : 'mos'}</Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Track */}
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressBar, { width: `${Math.min(100, progress * 100)}%` }]} />
+                    </View>
+
+                    {/* Payout Schedule Section */}
+                    <Text style={styles.payoutSectionTitle}>
+                      {isAr
+                        ? `مواعيد الاستحقاق (قبض ${formatCurrency(potPerShare)} ${currency} لكل اسم):`
+                        : `Payout Schedule (${formatCurrency(potPerShare)} ${currency} per share):`}
+                    </Text>
+                    <View style={styles.payoutMonthsRow}>
+                      {payoutMonthsList.map((mNum, idx) => {
+                        const isReceived = receivedList.includes(mNum);
+                        const isCurrentTurn = item.paidMonthsCount + 1 >= mNum;
+
+                        return (
+                          <Pressable
+                            key={`${mNum}_${idx}`}
+                            disabled={isReceived}
+                            style={[
+                              styles.payoutMonthChip,
+                              isReceived && styles.payoutMonthChipReceived,
+                              !isReceived && isCurrentTurn && styles.payoutMonthChipCurrent,
+                            ]}
+                            onPress={() => setJameyaPayoutTarget({ item, month: mNum })}
+                          >
+                            <Ionicons
+                              name={isReceived ? 'checkmark-circle' : isCurrentTurn ? 'cash' : 'time-outline'}
+                              size={14}
+                              color={isReceived ? colors.primary : isCurrentTurn ? '#FFF' : colors.textSecondary}
+                            />
+                            <Text
+                              style={[
+                                styles.payoutMonthChipText,
+                                isReceived && styles.payoutMonthChipTextReceived,
+                                !isReceived && isCurrentTurn && styles.payoutMonthChipTextCurrent,
+                              ]}
+                            >
+                              {payoutMonthsList.length > 1 ? (isAr ? `الاسم ${idx + 1}: الشهر ${mNum}` : `Slot ${idx + 1}: Month ${mNum}`) : (isAr ? `الشهر الـ ${mNum}` : `Month ${mNum}`)}
+                              {isReceived ? (isAr ? ' (تم القبض 🟢)' : ' (Done)') : (isAr ? ' (قبض الآن 💰)' : ' (Receive)')}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <Pressable style={styles.payJameyaMonthBtn} onPress={() => setPayingJameyaItem(item)}>
+                      <MaterialCommunityIcons name="piggy-bank-outline" size={18} color="#FFF" />
+                      <Text style={styles.payJameyaMonthBtnText}>{isAr ? 'تسديد قسط هذا الشهر (ادخار)' : 'Pay This Month (Savings)'}</Text>
+                    </Pressable>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Completed Associations */}
+            {completedJameyas.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                  {isAr ? `الجمعيات المكتملة (${completedJameyas.length})` : `Completed Associations (${completedJameyas.length})`}
+                </Text>
+                {completedJameyas.map((item) => (
+                  <View key={item.id} style={[styles.planCard, { opacity: 0.65 }]}>
+                    <View style={styles.planHeader}>
+                      <Text style={styles.planTitle}>{item.name}</Text>
+                      <View style={styles.badgeSuccess}>
+                        <Ionicons name="checkmark-done-circle" size={16} color={colors.primary} />
+                        <Text style={styles.badgeSuccessText}>{isAr ? 'مكتملة بالكامل' : 'Fully Completed'}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
       </ScrollView>
 
-      {/* --- CUSTOM MODAL 1: Confirm Payment Modal --- */}
+      {/* --- CUSTOM MODAL: Confirm Installment Payment --- */}
       {payingPlan && (
         <Modal transparent visible animationType="fade" onRequestClose={() => setPayingPlan(null)}>
           <View style={styles.customModalOverlay}>
@@ -583,7 +1063,7 @@ export default function InstallmentsScreen() {
 
                 <Pressable
                   style={[styles.customModalBtn, styles.customModalBtnConfirm]}
-                  onPress={handleConfirmPay}
+                  onPress={handleConfirmPayInstallment}
                   disabled={isSubmittingPay}
                 >
                   <Text style={styles.customModalBtnConfirmText}>
@@ -596,7 +1076,7 @@ export default function InstallmentsScreen() {
         </Modal>
       )}
 
-      {/* --- CUSTOM MODAL 2: Delete Plan Modal --- */}
+      {/* --- CUSTOM MODAL: Delete Installment Plan --- */}
       {deletingPlan && (
         <Modal transparent visible animationType="fade" onRequestClose={() => setDeletingPlan(null)}>
           <View style={styles.customModalOverlay}>
@@ -625,7 +1105,7 @@ export default function InstallmentsScreen() {
 
                 <Pressable
                   style={[styles.customModalBtn, { backgroundColor: '#EF4444' }]}
-                  onPress={handleConfirmDelete}
+                  onPress={handleConfirmDeleteInstallment}
                 >
                   <Text style={styles.customModalBtnConfirmText}>{isAr ? 'حذف الخطة' : 'Delete Plan'}</Text>
                 </Pressable>
@@ -635,8 +1115,8 @@ export default function InstallmentsScreen() {
         </Modal>
       )}
 
-      {/* --- Add Plan Modal --- */}
-      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+      {/* --- Add Installment Modal --- */}
+      <Modal visible={installmentModalVisible} animationType="slide" transparent onRequestClose={() => setInstallmentModalVisible(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
@@ -646,7 +1126,7 @@ export default function InstallmentsScreen() {
               <Text style={styles.modalTitle}>
                 {isAr ? 'إضافة قسط / التزام جديد' : 'Add Installment Plan'}
               </Text>
-              <Pressable onPress={() => setModalVisible(false)} hitSlop={15}>
+              <Pressable onPress={() => setInstallmentModalVisible(false)} hitSlop={15}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </Pressable>
             </View>
@@ -657,7 +1137,6 @@ export default function InstallmentsScreen() {
               contentContainerStyle={{ gap: 14, paddingBottom: Platform.OS === 'ios' ? 30 : 15 }}
               style={{ maxHeight: Dimensions.get('window').height * 0.75 }}
             >
-              {/* Form item title */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{isAr ? 'اسم القسط / المنتج' : 'Title / Item Name'}</Text>
                 <TextInput
@@ -693,68 +1172,6 @@ export default function InstallmentsScreen() {
                     );
                   })}
                 </ScrollView>
-              </View>
-
-              {/* Auto-Transfer to Target / Shared Wallet */}
-              <View style={styles.formGroup}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    const nextVal = !isTransfer;
-                    setIsTransfer(nextVal);
-                    if (nextVal && !toWalletId) {
-                      const other = wallets.find(w => w.id !== (sourceWalletId || selectedWallet?.id));
-                      if (other) setToWalletId(other.id);
-                    }
-                  }}
-                  style={styles.toggleRow}
-                >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={styles.toggleLabel}>
-                      {isAr ? 'تحويل تلقائي لمحفظة أخرى (أو مشتركة)' : 'Auto-transfer to target/shared wallet'}
-                    </Text>
-                    <Text style={styles.toggleSub}>
-                      {isAr 
-                        ? 'تُخصم من المحفظة المصدر وتُضاف للمحفظة المستهدفة عند سداد القسط.' 
-                        : 'Deducted from source wallet and added to target wallet when paid.'}
-                    </Text>
-                  </View>
-                  <View style={[
-                    styles.customSwitch,
-                    isTransfer ? { backgroundColor: colors.primary, alignItems: 'flex-end' } : { backgroundColor: colors.surfaceAlt, alignItems: 'flex-start', borderWidth: 1, borderColor: colors.border }
-                  ]}>
-                    <View style={styles.customSwitchCircle} />
-                  </View>
-                </Pressable>
-
-                {isTransfer && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={styles.label}>{isAr ? 'المحفظة المستهدفة (إلى)' : 'Target Wallet (To)'}</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-                      {wallets.filter(w => w.id !== (sourceWalletId || selectedWallet?.id)).map(w => {
-                        const isSelected = toWalletId === w.id;
-                        return (
-                          <Pressable
-                            key={w.id}
-                            onPress={() => {
-                              Haptics.selectionAsync();
-                              setToWalletId(w.id);
-                            }}
-                            style={[
-                              styles.walletChip,
-                              isSelected && { backgroundColor: w.color + '22', borderColor: w.color, borderWidth: 2 }
-                            ]}
-                          >
-                            <MaterialCommunityIcons name={w.icon as any} size={16} color={w.color} />
-                            <Text style={[styles.walletChipText, isSelected && { color: w.color, fontFamily: 'Cairo_700Bold' }]}>
-                              {w.name} {w.sharedWith ? (isAr ? '🤝 (مشتركة)' : '🤝 (Shared)') : ''}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                )}
               </View>
 
               {/* Calculator Mode Switcher Toggle */}
@@ -825,95 +1242,339 @@ export default function InstallmentsScreen() {
                 </View>
               </View>
 
-              {/* Calculator Live Preview Box */}
-              <View style={styles.calcPreviewBox}>
-                <Ionicons name="calculator-outline" size={18} color={colors.primary} />
-                <Text style={styles.calcPreviewText}>
-                  {isAr
-                    ? `إجمالي المبلغ: ${formatCurrency(calculatedValues.total)} ${currency} | القسط: ${formatCurrency(calculatedValues.monthly)} ${currency} × ${calculatedValues.months} شهر`
-                    : `Total: ${formatCurrency(calculatedValues.total)} ${currency} | Monthly: ${formatCurrency(calculatedValues.monthly)} ${currency} for ${calculatedValues.months} mos`}
-                </Text>
+              {/* Calculation Preview Box */}
+              <View style={styles.previewBox}>
+                <Text style={styles.previewTitle}>{isAr ? '💡 المعاينة والملخص الآلي:' : '💡 Live Calculation Summary:'}</Text>
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>{isAr ? 'المبلغ الإجمالي:' : 'Total Amount:'}</Text>
+                  <Text style={styles.previewVal}>{formatCurrency(calculatedValues.total)} {currency}</Text>
+                </View>
+                <View style={styles.previewRow}>
+                  <Text style={styles.previewLabel}>{isAr ? 'القسط الشهري الخصم:' : 'Monthly Payment:'}</Text>
+                  <Text style={[styles.previewVal, { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
+                    {formatCurrency(calculatedValues.monthly)} {currency} / شهر
+                  </Text>
+                </View>
               </View>
 
-              {/* Flexible Due Day Selector Pills & Preview */}
+              {/* Provider Selection */}
               <View style={styles.formGroup}>
-                <Text style={styles.label}>{isAr ? 'تاريخ الاستحقاق الشهري' : 'Monthly Due Day'}</Text>
-                
-                {/* Day Quick Presets */}
-                <View style={styles.dayPresetsRow}>
+                <Text style={styles.label}>{isAr ? 'جهة التقسيط / النظام' : 'Provider / Type'}</Text>
+                <View style={styles.providerGrid}>
                   {[
-                    { day: '1', label: isAr ? '1 (بداية الشهر)' : '1 (Start)' },
-                    { day: '5', label: '5' },
-                    { day: '10', label: '10' },
-                    { day: '15', label: isAr ? '15 (المنتصف)' : '15 (Mid)' },
-                    { day: '25', label: isAr ? '25 (الراتب)' : '25 (Salary)' },
-                    { day: '30', label: isAr ? '30 (النهاية)' : '30 (End)' },
-                  ].map(preset => (
+                    { id: 'valu', name: 'Valu (فاليو)', icon: 'flash-outline' },
+                    { id: 'tabby', name: 'Tabby (تابي)', icon: 'card-outline' },
+                    { id: 'tamara', name: 'Tamara (تمارا)', icon: 'cart-outline' },
+                    { id: 'bank_card', name: isAr ? 'بطاقة بنكية' : 'Bank Card', icon: 'card-sharp' },
+                    { id: 'other', name: isAr ? 'تقسيط آخر' : 'Other', icon: 'calendar-outline' },
+                  ].map(item => (
                     <Pressable
-                      key={preset.day}
-                      onPress={() => setDueDay(preset.day)}
+                      key={item.id}
+                      onPress={() => setProvider(item.id as any)}
                       style={[
-                        styles.dayPresetPill,
-                        dueDay === preset.day && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        styles.providerChip,
+                        provider === item.id && styles.providerChipActive,
                       ]}
                     >
+                      <Ionicons
+                        name={item.icon as any}
+                        size={16}
+                        color={provider === item.id ? colors.primary : colors.textSecondary}
+                      />
                       <Text
                         style={[
-                          styles.dayPresetText,
-                          dueDay === preset.day && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
+                          styles.providerChipText,
+                          provider === item.id && styles.providerChipTextActive,
                         ]}
                       >
-                        {preset.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {/* Custom numeric input */}
-                <TextInput
-                  style={[styles.input, isAr ? styles.inputAr : styles.inputEn, { marginTop: 6 }]}
-                  placeholder={isAr ? 'أو أدخل يوم محدد (1-31)' : 'Or enter day (1-31)'}
-                  keyboardType="number-pad"
-                  placeholderTextColor={colors.textTertiary}
-                  value={dueDay}
-                  onChangeText={setDueDay}
-                />
-
-                <Text style={styles.dueDatePreviewNote}>
-                  🗓️ {isAr ? `تاريخ أول استحقاق قادم: ${nextDueDatePreview}` : `Next due date: ${nextDueDatePreview}`}
-                </Text>
-              </View>
-
-              {/* Provider selector */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>{isAr ? 'الجهة / موفر الخدمة' : 'Provider'}</Text>
-                <View style={styles.providerOptions}>
-                  {(['valu', 'tabby', 'tamara', 'bank_card', 'other'] as const).map(p => (
-                    <Pressable
-                      key={p}
-                      onPress={() => setProvider(p)}
-                      style={[
-                        styles.providerOption,
-                        provider === p && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-                      ]}
-                    >
-                      <Text style={[styles.providerOptionText, provider === p && { color: colors.primary }]}>
-                        {getProviderName(p)}
+                        {item.name}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
-              <Pressable onPress={handleAddPlan} style={styles.submitBtn}>
-                <Text style={styles.submitBtnText}>
-                  {isAr ? 'حفظ وتفعيل القسط' : 'Save & Activate'}
-                </Text>
+              {/* Submit Button */}
+              <Pressable style={styles.submitBtn} onPress={handleAddInstallmentPlan}>
+                <Text style={styles.submitBtnText}>{isAr ? 'إضافة الخطة وتفعيل التتبع' : 'Add Installment Plan'}</Text>
               </Pressable>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* --- Add/Edit Jameya Modal --- */}
+      <Modal visible={jameyaModalVisible} animationType="slide" transparent onRequestClose={() => setJameyaModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingJameya ? (isAr ? 'تعديل الجمعية' : 'Edit Association') : (isAr ? 'إضافة جمعية جديدة' : 'Add Association')}
+              </Text>
+              <Pressable onPress={() => setJameyaModalVisible(false)} hitSlop={15}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14, paddingBottom: 30 }} style={{ maxHeight: Dimensions.get('window').height * 0.75 }}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{isAr ? 'اسم الجمعية / المجموعة' : 'Association Name'}</Text>
+                <TextInput
+                  style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                  placeholder={isAr ? 'مثال: جمعية الأصدقاء، جمعية الساير' : 'e.g. Friends ROSCA'}
+                  placeholderTextColor={colors.textTertiary}
+                  value={jameyaName}
+                  onChangeText={setJameyaName}
+                />
+              </View>
+
+              {/* Shares Count Quick Select */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{isAr ? 'عدد الأسماء / الأسهم التي تشارك بها:' : 'Participation Shares/Names:'}</Text>
+                <View style={styles.sharesChipsRow}>
+                  {[
+                    { label: isAr ? '0.5 (نصف اسم)' : '0.5 Share', val: '0.5' },
+                    { label: isAr ? '1 (اسم واحد)' : '1 Share', val: '1' },
+                    { label: isAr ? '2 (اسمين)' : '2 Shares', val: '2' },
+                    { label: isAr ? '3 (3 أسماء)' : '3 Shares', val: '3' },
+                  ].map((chip) => (
+                    <Pressable
+                      key={chip.val}
+                      style={[styles.shareChip, jameyaSharesCount === chip.val && styles.shareChipActive]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setJameyaSharesCount(chip.val);
+                      }}
+                    >
+                      <Text style={[styles.shareChipText, jameyaSharesCount === chip.val && styles.shareChipTextActive]}>
+                        {chip.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>{isAr ? 'مبلغ الاسم/السهم الواحد' : 'Single Share Value'}</Text>
+                  <TextInput
+                    style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                    placeholder="100"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="numeric"
+                    value={jameyaSingleShareAmount}
+                    onChangeText={setJameyaSingleShareAmount}
+                  />
+                </View>
+
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>{isAr ? 'إجمالي الأشهر/الأعضاء' : 'Total Months / Members'}</Text>
+                  <TextInput
+                    style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                    placeholder="8"
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="numeric"
+                    value={jameyaTotalMonths}
+                    onChangeText={setJameyaTotalMonths}
+                  />
+                </View>
+              </View>
+
+              {/* Dynamic Payout Months Inputs */}
+              <View style={styles.previewBox}>
+                <Text style={styles.previewTitle}>
+                  {isAr
+                    ? `شهور ترتيب قبضك (${jameyaPayoutMonthsInputs.length} ${jameyaPayoutMonthsInputs.length > 1 ? 'شهور لـ ' + jameyaPayoutMonthsInputs.length + ' أسماء' : 'شهر'})`
+                    : `Payout Months (${jameyaPayoutMonthsInputs.length} slots)`}
+                </Text>
+                
+                <View style={{ gap: 8, marginTop: 6 }}>
+                  {jameyaPayoutMonthsInputs.map((val, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.previewLabel}>
+                        {jameyaPayoutMonthsInputs.length > 1 ? (isAr ? `الاسم الـ ${idx + 1}:` : `Slot #${idx + 1}:`) : (isAr ? 'ترتيب القبض:' : 'Payout Turn:')}
+                      </Text>
+                      <TextInput
+                        style={[styles.input, { flex: 1, paddingVertical: 6 }]}
+                        placeholder={isAr ? `ترتيب الشهر (مثلاً ${idx === 0 ? 5 : 8})` : `Month index (e.g. ${idx === 0 ? 5 : 8})`}
+                        placeholderTextColor={colors.textTertiary}
+                        keyboardType="numeric"
+                        value={val}
+                        onChangeText={(txt) => {
+                          const updated = [...jameyaPayoutMonthsInputs];
+                          updated[idx] = txt;
+                          setJameyaPayoutMonthsInputs(updated);
+                        }}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Live Auto-Calculated Pot Preview */}
+              {computedSingleShareVal > 0 && computedTotalMonthsVal > 0 ? (
+                <View style={styles.previewBox}>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>{isAr ? 'قسطك الشهري الإجمالي:' : 'Your Total Monthly Pay:'}</Text>
+                    <Text style={[styles.previewVal, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
+                      {formatCurrency(computedMonthlyTotalPay)} {currency}
+                    </Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>{isAr ? 'مبلغ قبض كل اسم في شهره:' : 'Payout per share:'}</Text>
+                    <Text style={[styles.previewVal, { color: colors.income, fontFamily: 'Cairo_700Bold' }]}>
+                      {formatCurrency(computedPotPerShare)} {currency}
+                    </Text>
+                  </View>
+                  <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 6 }} />
+                  <Text style={styles.previewLabel}>{isAr ? 'إجمالي ما ستقبضه من الجمعية كاملاً:' : 'Your Total Association Payout:'}</Text>
+                  <Text style={[styles.previewVal, { color: colors.primary, fontFamily: 'Cairo_700Bold', fontSize: 16 }]}>
+                    {formatCurrency(computedTotalJameyaPayout)} {currency}
+                  </Text>
+                </View>
+              ) : null}
+
+              {jameyaFormError ? (
+                <View style={{ backgroundColor: '#EF444415', borderWidth: 1, borderColor: '#EF444450', borderRadius: 12, padding: 10 }}>
+                  <Text style={{ color: '#EF4444', fontFamily: 'Cairo_700Bold', fontSize: 13, textAlign: 'center' }}>
+                    ⚠️ {jameyaFormError}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Pressable style={styles.submitBtn} onPress={handleSaveJameya}>
+                <Text style={styles.submitBtnText}>{isAr ? 'حفظ الجمعية وتفعيل التتبع' : 'Save Association'}</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* --- CUSTOM MODAL: Pay Jameya Month --- */}
+      {payingJameyaItem && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.customModalOverlay}>
+            <View style={styles.customModalCard}>
+              <View style={styles.customModalIconCircle}>
+                <MaterialCommunityIcons name="piggy-bank" size={32} color={colors.primary} />
+              </View>
+
+              <Text style={styles.customModalTitle}>
+                {isAr ? 'تسديد قسط الجمعية (ادخار)' : 'Save Monthly Installment'}
+              </Text>
+
+              <Text style={styles.customModalSubDetail}>
+                {isAr
+                  ? `سيتم اقتطاع مبلغ (${formatCurrency(payingJameyaItem.monthlyAmount)} ${currency}) وتصنيفه كـ "ادخار جمعية" لحفظ كفايتك وتنمية أصولك.`
+                  : `Will record a savings allocation of (${formatCurrency(payingJameyaItem.monthlyAmount)} ${currency}).`}
+              </Text>
+
+              <View style={styles.customModalActionsRow}>
+                <Pressable style={[styles.customModalBtn, styles.customModalBtnCancel]} onPress={() => setPayingJameyaItem(null)}>
+                  <Text style={styles.customModalBtnCancelText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
+                </Pressable>
+
+                <Pressable style={[styles.customModalBtn, styles.customModalBtnConfirm]} onPress={handleConfirmPayJameyaMonth} disabled={isSubmittingJameya}>
+                  <Text style={styles.customModalBtnConfirmText}>{isAr ? 'تأكيد الاقتطاع الادخاري 💰' : 'Confirm Savings 💰'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* --- CUSTOM MODAL: Receive Jameya Payout --- */}
+      {jameyaPayoutTarget && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.customModalOverlay}>
+            <View style={styles.customModalCard}>
+              <View style={[styles.customModalIconCircle, { backgroundColor: colors.income + '15' }]}>
+                <MaterialCommunityIcons name="cash-fast" size={32} color={colors.income} />
+              </View>
+
+              <Text style={styles.customModalTitle}>
+                {isAr
+                  ? `قبض دور الجمعية ${jameyaPayoutTarget.month ? '(الشهر الـ ' + jameyaPayoutTarget.month + ')' : ''}`
+                  : 'Receive Association Pot'}
+              </Text>
+
+              <Text style={styles.customModalSubDetail}>
+                {isAr
+                  ? `حصيلة قبض هذا الدور هي (${formatCurrency(
+                      ((jameyaPayoutTarget.item.singleShareAmount || (jameyaPayoutTarget.item.monthlyAmount / (jameyaPayoutTarget.item.sharesCount || 1))) * jameyaPayoutTarget.item.totalMonths)
+                    )} ${currency}). اختر كيفية تسجيلها بالمحفظة:`
+                  : `Pot payout amount.`}
+              </Text>
+
+              {/* Net vs Gross Payout Option Selector */}
+              <View style={{ width: '100%', marginVertical: 10, gap: 8 }}>
+                <Pressable
+                  style={[styles.payoutOptionBox, !deductCurrentInstallment && styles.payoutOptionBoxActive]}
+                  onPress={() => setDeductCurrentInstallment(false)}
+                >
+                  <Ionicons name={!deductCurrentInstallment ? 'radio-button-on' : 'radio-button-off'} size={18} color={!deductCurrentInstallment ? colors.primary : colors.textSecondary} />
+                  <Text style={styles.payoutOptionText}>
+                    {isAr ? 'قبض الحصيلة الكاملة للأعضاء' : 'Full Pot'} (
+                    {formatCurrency(((jameyaPayoutTarget.item.singleShareAmount || (jameyaPayoutTarget.item.monthlyAmount / (jameyaPayoutTarget.item.sharesCount || 1))) * jameyaPayoutTarget.item.totalMonths))} {currency})
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.payoutOptionBox, deductCurrentInstallment && styles.payoutOptionBoxActive]}
+                  onPress={() => setDeductCurrentInstallment(true)}
+                >
+                  <Ionicons name={deductCurrentInstallment ? 'radio-button-on' : 'radio-button-off'} size={18} color={deductCurrentInstallment ? colors.primary : colors.textSecondary} />
+                  <Text style={styles.payoutOptionText}>
+                    {isAr ? 'قبض الصافي فقط بعد استقطاع حصتك' : 'Net Pot'} (
+                    {formatCurrency(
+                      ((jameyaPayoutTarget.item.singleShareAmount || (jameyaPayoutTarget.item.monthlyAmount / (jameyaPayoutTarget.item.sharesCount || 1))) * jameyaPayoutTarget.item.totalMonths) -
+                      (jameyaPayoutTarget.item.singleShareAmount || (jameyaPayoutTarget.item.monthlyAmount / (jameyaPayoutTarget.item.sharesCount || 1)))
+                    )} {currency})
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.customModalActionsRow}>
+                <Pressable style={[styles.customModalBtn, styles.customModalBtnCancel]} onPress={() => setJameyaPayoutTarget(null)}>
+                  <Text style={styles.customModalBtnCancelText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
+                </Pressable>
+
+                <Pressable style={[styles.customModalBtn, { backgroundColor: colors.income }]} onPress={handleConfirmReceiveJameyaPayout} disabled={isSubmittingJameya}>
+                  <Text style={styles.customModalBtnConfirmText}>{isAr ? 'تأكيد الاستلام 🎉' : 'Confirm Payout 🎉'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* --- CUSTOM MODAL: Delete Jameya Item --- */}
+      {deletingJameyaItem && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.customModalOverlay}>
+            <View style={styles.customModalCard}>
+              <View style={[styles.customModalIconCircle, { backgroundColor: '#EF444415' }]}>
+                <Ionicons name="trash-outline" size={28} color="#EF4444" />
+              </View>
+
+              <Text style={styles.customModalTitle}>{isAr ? 'حذف الجمعية' : 'Delete Association'}</Text>
+              <Text style={styles.customModalSubDetail}>
+                {isAr ? `هل أنت تأكد من حذف جمعية "${deletingJameyaItem.name}"؟` : `Are you sure you want to delete "${deletingJameyaItem.name}"?`}
+              </Text>
+
+              <View style={styles.customModalActionsRow}>
+                <Pressable style={[styles.customModalBtn, styles.customModalBtnCancel]} onPress={() => setDeletingJameyaItem(null)}>
+                  <Text style={styles.customModalBtnCancelText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
+                </Pressable>
+
+                <Pressable style={[styles.customModalBtn, { backgroundColor: '#EF4444' }]} onPress={handleConfirmDeleteJameya}>
+                  <Text style={styles.customModalBtnConfirmText}>{isAr ? 'حذف الجمعية' : 'Delete Association'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -928,44 +1589,89 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 52 : 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 17,
+    color: colors.text,
   },
   addBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.primary,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: colors.text,
+    justifyContent: 'center',
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+    gap: 16,
   },
+
+  /* Segment Switcher Tab Bar */
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 16,
+    padding: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  segmentBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  segmentText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  segmentTextActive: {
+    fontFamily: 'Cairo_700Bold',
+    color: '#FFFFFF',
+  },
+  badgeCount: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeCountText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    color: colors.primary,
+  },
+
+  /* Urgent Banner */
   urgentBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 16,
   },
   urgentBannerTitle: {
     fontFamily: 'Cairo_700Bold',
@@ -975,68 +1681,71 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
     color: colors.textSecondary,
+    marginTop: 2,
   },
+
+  /* Summary Metrics Grid (2 Side-by-Side Cards) */
   summaryRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
   },
   summaryCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    gap: 4,
+    gap: 6,
   },
   summaryLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
     color: colors.textSecondary,
   },
   summaryValue: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 16,
   },
+
+  /* Portfolio Impact Card */
   savingsImpactCard: {
     backgroundColor: colors.surface,
     borderRadius: 18,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: colors.primary + '30',
-    marginBottom: 20,
+    borderColor: colors.border,
     gap: 10,
   },
   savingsImpactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     flexWrap: 'wrap',
+    gap: 6,
   },
   savingsImpactTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
-    flex: 1,
   },
   safetyBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   safetyBadgeText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 10,
+    fontSize: 11,
   },
   impactMetricsGrid: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    padding: 10,
   },
   impactMetricBox: {
     flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 10,
     gap: 2,
   },
   impactMetricLabel: {
@@ -1048,93 +1757,63 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 12,
   },
-  savingsImpactSub: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-    lineHeight: 17,
-  },
+
+  /* Cards List */
   sectionTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
     color: colors.text,
-    marginBottom: 12,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  emptyTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: colors.text,
-  },
-  emptySub: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
   },
   planCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: 10,
   },
   planHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
   },
   providerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.primary + '15',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
   },
   providerText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.text,
+    fontSize: 12,
+    color: colors.primary,
   },
   deleteBtn: {
     padding: 4,
   },
   planTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 16,
     color: colors.text,
-    marginBottom: 10,
   },
   progressTrack: {
-    height: 6,
+    height: 8,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 10,
   },
   progressBar: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 3,
+    borderRadius: 4,
   },
   planMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   planMetaText: {
     fontFamily: 'Cairo_400Regular',
@@ -1143,110 +1822,439 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   planDueText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.primary,
+    fontSize: 12,
+    color: colors.text,
   },
   statusBadge: {
-    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    marginBottom: 10,
+    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   statusBadgeText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
+    fontSize: 12,
   },
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: 8,
   },
   planFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   monthlyLabel: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
   monthlyValue: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 16,
     color: colors.text,
   },
   payBtn: {
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
   },
   payBtnText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFF',
   },
 
-  // --- Custom Modals Styles ---
-  customModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  customModalCard: {
-    width: '100%',
-    maxWidth: 380,
+  /* Empty State */
+  emptyCard: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    gap: 14,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
+    gap: 8,
   },
-  customModalIconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  customModalTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 18,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  customModalDetailsBox: {
-    width: '100%',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    gap: 6,
-  },
-  customModalItemName: {
+  emptyTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 16,
     color: colors.text,
   },
+  emptySub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  primaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  primaryActionBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#FFF',
+  },
+
+  /* Jameya Specific Card Elements */
+  sharesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  sharesBadgeText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.primary,
+  },
+  jameyaStatsGrid: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 10,
+    justifyContent: 'space-between',
+  },
+  jameyaStatBox: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  jameyaStatLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  jameyaStatValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  payoutSectionTitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  payoutMonthsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  payoutMonthChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  payoutMonthChipReceived: {
+    backgroundColor: colors.primary + '18',
+    borderColor: colors.primary + '40',
+  },
+  payoutMonthChipCurrent: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  payoutMonthChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  payoutMonthChipTextReceived: {
+    color: colors.primary,
+    fontFamily: 'Cairo_700Bold',
+  },
+  payoutMonthChipTextCurrent: {
+    color: '#FFF',
+    fontFamily: 'Cairo_700Bold',
+  },
+  payJameyaMonthBtn: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  payJameyaMonthBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#FFF',
+  },
+  badgeSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  badgeSuccessText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.primary,
+  },
+
+  /* Modals Layout */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    gap: 14,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: colors.text,
+  },
+  formGroup: {
+    gap: 6,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  label: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.text,
+  },
+  input: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 14,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputAr: {
+    textAlign: 'right',
+  },
+  inputEn: {
+    textAlign: 'left',
+  },
+  calcModeSwitchRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  calcModeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  calcModeBtnActive: {
+    backgroundColor: colors.surface,
+  },
+  calcModeBtnText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  calcModeBtnTextActive: {
+    color: colors.primary,
+    fontFamily: 'Cairo_700Bold',
+  },
+  previewBox: {
+    backgroundColor: colors.primary + '12',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    gap: 4,
+  },
+  previewTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.primary,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  previewLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  previewVal: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.text,
+  },
+  providerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  providerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  providerChipActive: {
+    backgroundColor: colors.primary + '18',
+    borderColor: colors.primary,
+  },
+  providerChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  providerChipTextActive: {
+    color: colors.primary,
+    fontFamily: 'Cairo_700Bold',
+  },
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  walletChipText: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    color: colors.text,
+  },
+  sharesChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  shareChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shareChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  shareChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  shareChipTextActive: {
+    color: '#FFF',
+    fontFamily: 'Cairo_700Bold',
+  },
+  submitBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  submitBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#FFF',
+  },
+
+  /* Custom Alert/Action Modals */
+  customModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  customModalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 20,
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  customModalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customModalTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  customModalDetailsBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 14,
+    padding: 12,
+    width: '100%',
+    alignItems: 'center',
+    gap: 4,
+  },
+  customModalItemName: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+  },
   customModalAmount: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 22,
+    fontSize: 20,
     color: colors.primary,
   },
   customModalSubDetail: {
@@ -1263,20 +2271,19 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   customModalRemainingDetail: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
   },
   customModalActionsRow: {
     flexDirection: 'row',
     gap: 10,
     width: '100%',
-    marginTop: 6,
+    marginTop: 4,
   },
   customModalBtn: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
   },
   customModalBtnCancel: {
@@ -1284,225 +2291,37 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  customModalBtnCancelText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.text,
+  },
   customModalBtnConfirm: {
     backgroundColor: colors.primary,
   },
-  customModalBtnCancelText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   customModalBtnConfirmText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFF',
   },
-
-  // --- Add Modal Styles ---
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    gap: 14,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  modalTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: colors.text,
-  },
-  calcModeSwitchRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    padding: 4,
-    gap: 4,
-  },
-  calcModeBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  calcModeBtnActive: {
-    backgroundColor: colors.surface,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  calcModeBtnText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  calcModeBtnTextActive: {
-    fontFamily: 'Cairo_700Bold',
-    color: colors.primary,
-  },
-  formGroup: {
-    gap: 6,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  label: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'left',
-  },
-  input: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    height: 44,
-    fontFamily: 'Cairo_400Regular',
-    color: colors.text,
-    fontSize: 14,
-  },
-  inputAr: { textAlign: 'right' },
-  inputEn: { textAlign: 'left' },
-  calcPreviewBox: {
+  payoutOptionBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.primary + '12',
     padding: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
-  },
-  calcPreviewText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.text,
-    flex: 1,
-  },
-  dayPresetsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  dayPresetPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  dayPresetText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.textSecondary,
+  payoutOptionBoxActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '12',
   },
-  dueDatePreviewNote: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.primary,
-    marginTop: 2,
-  },
-  providerOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  providerOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  providerOptionText: {
+  payoutOptionText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    color: colors.textSecondary,
-  },
-  submitBtn: {
-    backgroundColor: colors.primary,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  submitBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: '#FFF',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceAlt,
-    padding: 14,
-    borderRadius: 16,
-    gap: 12,
-  },
-  toggleLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
     color: colors.text,
-    textAlign: 'left',
-  },
-  toggleSub: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'left',
-    lineHeight: 16,
-  },
-  customSwitch: {
-    width: 46,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: 'center',
-    padding: 3,
-  },
-  customSwitchCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.text,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  walletChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
-  },
-  walletChipText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.textSecondary,
+    flex: 1,
   },
 });
