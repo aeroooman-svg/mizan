@@ -755,8 +755,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 160, flexGrow: 1 }}
         >
-          {/* Consistent Top Header Bar */}
-          <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
+          <View style={styles.topHeaderBar}>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -805,98 +804,133 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Hero Welcome Card */}
-          <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
+          <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={{ width: 160, height: 160 }}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={{ paddingHorizontal: 16 }}>
             <LinearGradient
-              colors={['#0D7C66', '#10B981']}
+              colors={['#0A382A', '#052219']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
                 borderRadius: 24,
-                padding: 24,
-                alignItems: 'center',
+                padding: 20,
+                borderWidth: 1.5,
+                borderColor: 'rgba(16, 185, 129, 0.3)',
                 shadowColor: '#10B981',
                 shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.35,
+                shadowOpacity: 0.25,
                 shadowRadius: 20,
-                elevation: 10,
+                elevation: 8,
               }}
             >
-              <View
-                style={{
-                  width: 150,
-                  height: 150,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <Image
-                  source={require('../../assets/images/icon.png')}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="contain"
-                />
+              {/* Card Top Title Row */}
+              <View style={{ flexDirection: language === 'ar' ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: '#FFF', textAlign: language === 'ar' ? 'left' : 'right' }}>
+                    {language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)', textAlign: language === 'ar' ? 'left' : 'right' }}>
+                    {language === 'ar' ? 'ملخص الوضع المالي المباشر' : 'Your Financial Status'}
+                  </Text>
+                </View>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="wallet" size={20} color="#10B981" />
+                </View>
               </View>
 
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
-                {language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN'}
-              </Text>
+              {/* Inner Metrics Grid */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                {/* Net Worth Sub-card */}
+                <View style={{ flex: 1, backgroundColor: '#041D16', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'left' }}>
+                    {language === 'ar' ? 'صافي القيمة / الرصيد' : 'Net Worth'}
+                  </Text>
+                  <Ionicons name="trending-up" size={18} color="#10B981" style={{ marginVertical: 4 }} />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#FFF', textAlign: 'left' }}>
+                    0.000 {currencySymbol}
+                  </Text>
+                </View>
 
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.92)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 24 }}>
-                {language === 'ar'
-                  ? 'مساعدك المالي الذكي لإدارة مصاريفك ومحافظك بالعملات المختلفة بسهولة وأمان.'
-                  : 'Your intelligent multi-currency financial assistant to track expenses and manage wallets effortlessly.'}
-              </Text>
+                {/* Monthly Spending Sub-card */}
+                <View style={{ flex: 1, backgroundColor: '#041D16', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'left' }}>
+                    {language === 'ar' ? 'مصروف الشهر' : 'Monthly Spending'}
+                  </Text>
+                  <Ionicons name="pie-chart-outline" size={18} color="#F59E0B" style={{ marginVertical: 4 }} />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#FFF', textAlign: 'left' }}>
+                    0.000 {currencySymbol}
+                  </Text>
+                </View>
+              </View>
 
-              {/* Primary Action Button: Add First Wallet */}
-              <Pressable
-                onPress={handleAddWallet}
-                style={({ pressed }) => [{
-                  width: '100%',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#FFF',
-                  borderRadius: 16,
-                  paddingVertical: 16,
-                  gap: 10,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 8,
-                  elevation: 4,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                }]}
-              >
-                <Ionicons name="add-circle" size={24} color="#0D7C66" />
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#0D7C66' }}>
-                  {language === 'ar' ? 'إنشاء محفظتك الأولى' : 'Create Your First Wallet'}
-                </Text>
-              </Pressable>
+              {/* Savings Goal Bar Sub-card */}
+              <View style={{ backgroundColor: '#041D16', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+                    {language === 'ar' ? 'هدف الادخار الأهم' : 'Savings Goal'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>72%</Text>
+                </View>
+                <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, marginTop: 6, overflow: 'hidden' }}>
+                  <View style={{ width: '72%', height: '100%', backgroundColor: '#10B981', borderRadius: 3 }} />
+                </View>
+              </View>
 
-              {/* Secondary Action: Join Shared Wallet */}
-              <Pressable
-                onPress={() => router.push('/join-wallet')}
-                style={({ pressed }) => [{
-                  marginTop: 12,
-                  width: '100%',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  gap: 8,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.3)',
-                  opacity: pressed ? 0.8 : 1,
-                }]}
-              >
-                <Ionicons name="people-outline" size={20} color="#FFF" />
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 14, color: '#FFF' }}>
-                  {language === 'ar' ? 'الانضمام لمحفظة مشتركة عبر كود' : 'Join Shared Wallet via Code'}
-                </Text>
-              </Pressable>
+              {/* Action Buttons */}
+              <View style={{ gap: 10 }}>
+                <Pressable
+                  onPress={handleAddWallet}
+                  style={({ pressed }) => [{
+                    width: '100%',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#10B981',
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    gap: 8,
+                    shadowColor: '#10B981',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  }]}
+                >
+                  <Ionicons name="add-circle" size={22} color="#FFF" />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#FFF' }}>
+                    {language === 'ar' ? 'إنشاء محفظتك الأولى' : 'Create Your First Wallet'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push('/join-wallet')}
+                  style={({ pressed }) => [{
+                    width: '100%',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    borderRadius: 16,
+                    paddingVertical: 12,
+                    gap: 8,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.2)',
+                    opacity: pressed ? 0.8 : 1,
+                  }]}
+                >
+                  <Ionicons name="people-outline" size={18} color="#FFF" />
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: '#FFF' }}>
+                    {language === 'ar' ? 'الانضمام عبر كود مشاركة' : 'Join Shared Wallet via Code'}
+                  </Text>
+                </Pressable>
+              </View>
             </LinearGradient>
           </View>
 
