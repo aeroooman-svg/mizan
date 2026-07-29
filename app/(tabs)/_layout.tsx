@@ -1,7 +1,7 @@
 import { Tabs, useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View, Text, Pressable, Modal } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
@@ -99,7 +99,7 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
         {renderTab(0)}
         {renderTab(1)}
         
-        {/* Center Glowing Action Button */}
+        {/* Center Glowing Action Button with Balance Scale Emblem */}
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -114,7 +114,7 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
             colors={[colors.primary, colors.primaryDark]}
             style={styles.centerFabGradient}
           >
-            <Ionicons name="add" size={28} color="#fff" />
+            <MaterialCommunityIcons name="scale-balance" size={26} color="#fff" />
           </LinearGradient>
         </Pressable>
 

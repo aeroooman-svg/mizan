@@ -878,18 +878,24 @@ export default function HomeScreen() {
             >
               <View
                 style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  width: 90,
+                  height: 90,
+                  borderRadius: 24,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 16,
                   borderWidth: 2,
                   borderColor: 'rgba(255, 255, 255, 0.3)',
+                  overflow: 'hidden',
+                  padding: 8,
                 }}
               >
-                <MaterialIcons name="account-balance-wallet" size={44} color="#FFF" />
+                <Image
+                  source={require('../../assets/images/icon.png')}
+                  style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                  resizeMode="contain"
+                />
               </View>
 
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
