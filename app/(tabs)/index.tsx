@@ -531,11 +531,101 @@ export default function HomeScreen() {
     });
   };
 
-  const now = new Date();
-  const dayName = t.days[now.getDay()];
-  const currentDay = now.getDate();
-  const currentMonth = t.months[now.getMonth()];
-  const currentYear = now.getFullYear();
+  const renderMenuDrawer = () => (
+    <Modal
+      visible={isMenuOpen}
+      animationType="fade"
+      transparent
+      onRequestClose={() => setIsMenuOpen(false)}
+    >
+      <Pressable style={styles.drawerOverlay} onPress={() => setIsMenuOpen(false)}>
+        <Pressable style={styles.drawerSheet} onPress={(e) => e.stopPropagation()}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.drawerHeader}>
+              <View style={styles.drawerLogoWrap}>
+                <MaterialIcons name="account-balance-wallet" size={32} color={colors.primary} />
+              </View>
+              <Text style={styles.drawerAppName}>MIZAN</Text>
+              <Text style={styles.drawerVersion}>{language === 'ar' ? 'الإصدار 1.0.0' : 'Version 1.0.0'}</Text>
+            </View>
+
+            <View style={styles.drawerDivider} />
+
+            <ScrollView style={styles.drawerLinksContainer} showsVerticalScrollIndicator={false}>
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); handleAddWallet(); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'إنشاء محفظة جديدة' : 'Add New Wallet'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/join-wallet'); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="people-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'الانضمام لمحفظة مشتركة' : 'Join Shared Wallet'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/zakat-calculator'); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="calculator-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'حاسبة الزكاة الشرعية' : 'Zakat Calculator'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/debts'); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="card-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'إدارة الديون والقروض' : 'Debt Manager'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/savings-goals'); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="flag-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'أهداف الادخار' : 'Savings Goals'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/jameya' as any); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="wallet-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'ادخار الجمعيات (ROSCA)' : 'ROSCA Savings'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/settings' as any); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="settings-outline" size={20} color={colors.text} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'الإعدادات والأمان' : 'Settings & Security'}</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => { setIsMenuOpen(false); router.push('/privacy-policy' as any); }}
+                style={styles.drawerLinkBtn}
+              >
+                <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+
+          <Pressable onPress={() => setIsMenuOpen(false)} style={styles.drawerCloseBtn}>
+            <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+            <Text style={styles.drawerCloseText}>{language === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 
   if (!isLoading && wallets.length === 0) {
     return (
@@ -547,7 +637,7 @@ export default function HomeScreen() {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 60, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 160, flexGrow: 1 }}
         >
           {/* Consistent Top Header Bar */}
           <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
@@ -633,12 +723,12 @@ export default function HomeScreen() {
               </View>
 
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
-                {language === 'ar' ? 'مرحباً بك في مِيزان 💎' : 'Welcome to MIZAN 💎'}
+                {language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN'}
               </Text>
               
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.92)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 24 }}>
                 {language === 'ar'
-                  ? 'مساعدك المالي الذكي لإدارة مصاريفك ومحافظك بالعملات المختلفة بسهولة وأمان تكتفي به عن الطرق القديمة.'
+                  ? 'مساعدك المالي الذكي لإدارة مصاريفك ومحافظك بالعملات المختلفة بسهولة وأمان.'
                   : 'Your intelligent multi-currency financial assistant to track expenses and manage wallets effortlessly.'}
               </Text>
 
@@ -664,7 +754,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="add-circle" size={24} color="#0D7C66" />
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#0D7C66' }}>
-                  {language === 'ar' ? 'إنشاء محفظتك الأولى الآن 🚀' : 'Create Your First Wallet 🚀'}
+                  {language === 'ar' ? 'إنشاء محفظتك الأولى' : 'Create Your First Wallet'}
                 </Text>
               </Pressable>
 
@@ -688,7 +778,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="people-outline" size={20} color="#FFF" />
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 14, color: '#FFF' }}>
-                  {language === 'ar' ? 'أو الانضمام لمحفظة مشتركة عبر كود 🔗' : 'Or Join Shared Wallet via Code 🔗'}
+                  {language === 'ar' ? 'الانضمام لمحفظة مشتركة عبر كود' : 'Join Shared Wallet via Code'}
                 </Text>
               </Pressable>
             </LinearGradient>
@@ -697,7 +787,7 @@ export default function HomeScreen() {
           {/* Quick Feature Highlights Cards */}
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.text, textAlign: 'left', marginBottom: 2 }}>
-              {language === 'ar' ? 'لماذا تختار مِيزان؟ 🌟' : 'Why Choose MIZAN? 🌟'}
+              {language === 'ar' ? 'لماذا تختار مِيزان؟' : 'Why Choose MIZAN?'}
             </Text>
 
             {/* Feature 1: Multi-Currency */}
@@ -707,7 +797,7 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'تعدد المحافظ والعملات 🪙' : 'Multi-Currency Wallets 🪙'}
+                  {language === 'ar' ? 'تعدد المحافظ والعملات' : 'Multi-Currency Wallets'}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
                   {language === 'ar' ? 'إدارة مصاريفك بالدينار، الجنيه، الدولار، والريال مع تحويل فوري حقيقي.' : 'Manage wallets in KWD, EGP, USD, SAR with live conversion.'}
@@ -722,7 +812,7 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'أتمتة ذكية ومسح الفواتير 🤖' : 'Smart Automation & Scan 🤖'}
+                  {language === 'ar' ? 'أتمتة ذكية ومسح الفواتير' : 'Smart Automation & Scan'}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
                   {language === 'ar' ? 'قراءة رسائل البنك تلقائياً ومسح الفواتير بالذكاء الاصطناعي.' : 'Auto bank SMS parsing and OCR receipt scanning.'}
@@ -737,7 +827,7 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'حاسبة الزكاة والتخطيط المالي 🕌' : 'Zakat & Financial Plan 🕌'}
+                  {language === 'ar' ? 'حاسبة الزكاة والتخطيط المالي' : 'Zakat & Financial Plan'}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
                   {language === 'ar' ? 'حساب زكاة المال بدقة شرعية وضبط الميزانية بقاعدة 50/30/20.' : 'Calculate Zakat and plan budgets with 50/30/20 rule.'}
@@ -746,6 +836,8 @@ export default function HomeScreen() {
             </View>
           </View>
         </ScrollView>
+
+        {renderMenuDrawer()}
       </LinearGradient>
     );
   }
@@ -1238,6 +1330,8 @@ export default function HomeScreen() {
         onConfirm={confirmModalState.onConfirm}
         onCancel={() => setConfirmModalState(prev => ({ ...prev, visible: false }))}
       />
+
+      {renderMenuDrawer()}
     </LinearGradient>
   );
 }
