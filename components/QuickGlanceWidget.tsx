@@ -197,7 +197,11 @@ export default function QuickGlanceWidget({
             >
               <Ionicons name="sync" size={16} color="#FFF" />
             </LinearGradient>
-            <Text style={styles.quickActionCardText}>
+            <Text
+              style={styles.quickActionCardText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {isAr ? 'مصاريف متكررة' : 'Recurring'}
             </Text>
           </Pressable>
@@ -229,8 +233,12 @@ export default function QuickGlanceWidget({
             >
               <Ionicons name="card" size={16} color="#FFF" />
             </LinearGradient>
-            <Text style={styles.quickActionCardText}>
-              {isAr ? 'أقساط وجمعيات' : 'Installments & ROSCA'}
+            <Text
+              style={styles.quickActionCardText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {isAr ? 'أقساط وجمعيات' : 'Installments & Savings'}
             </Text>
           </Pressable>
         </View>
@@ -394,9 +402,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     borderRadius: 16,
     backgroundColor: colors.surfaceAlt + '60',
     borderWidth: 1,
@@ -427,9 +435,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     borderRadius: 16,
   },
   iconCircle3D: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -440,8 +448,9 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   quickActionCardText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
+    fontSize: 12,
     color: colors.text,
+    flexShrink: 1,
   },
   fullPictureToggle: {
     flexDirection: 'row',

@@ -34,7 +34,7 @@ export default function PrivacyPolicyScreen() {
 
   const handleEmailSupport = () => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-    Linking.openURL('mailto:support@mizan-app.com');
+    Linking.openURL('mailto:aeroooman@gmail.com');
   };
 
   return (
@@ -171,7 +171,7 @@ export default function PrivacyPolicyScreen() {
             <Text style={styles.supportTitle}>
               {isAr ? 'الدعم الفني واستفسارات الخصوصية' : 'Support & Privacy Queries'}
             </Text>
-            <Text style={styles.supportEmail}>support@mizan-app.com</Text>
+            <Text style={styles.supportEmail}>aeroooman@gmail.com</Text>
           </View>
           <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={16} color={colors.textSecondary} />
         </Pressable>
