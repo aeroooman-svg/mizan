@@ -534,96 +534,266 @@ export default function HomeScreen() {
   const renderMenuDrawer = () => (
     <Modal
       visible={isMenuOpen}
-      animationType="fade"
       transparent
+      animationType="fade"
       onRequestClose={() => setIsMenuOpen(false)}
     >
-      <Pressable style={styles.drawerOverlay} onPress={() => setIsMenuOpen(false)}>
-        <Pressable style={styles.drawerSheet} onPress={(e) => e.stopPropagation()}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.drawerHeader}>
-              <View style={styles.drawerLogoWrap}>
-                <MaterialIcons name="account-balance-wallet" size={32} color={colors.primary} />
-              </View>
-              <Text style={styles.drawerAppName}>MIZAN</Text>
-              <Text style={styles.drawerVersion}>{language === 'ar' ? 'الإصدار 1.0.0' : 'Version 1.0.0'}</Text>
-            </View>
-
-            <View style={styles.drawerDivider} />
-
-            <ScrollView style={styles.drawerLinksContainer} showsVerticalScrollIndicator={false}>
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); handleAddWallet(); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'إنشاء محفظة جديدة' : 'Add New Wallet'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/join-wallet'); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="people-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'الانضمام لمحفظة مشتركة' : 'Join Shared Wallet'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/zakat-calculator'); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="calculator-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'حاسبة الزكاة الشرعية' : 'Zakat Calculator'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/debts'); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="card-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'إدارة الديون والقروض' : 'Debt Manager'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/savings-goals'); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="flag-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'أهداف الادخار' : 'Savings Goals'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/jameya' as any); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="wallet-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'ادخار الجمعيات (ROSCA)' : 'ROSCA Savings'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/settings' as any); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="settings-outline" size={20} color={colors.text} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'الإعدادات والأمان' : 'Settings & Security'}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => { setIsMenuOpen(false); router.push('/privacy-policy' as any); }}
-                style={styles.drawerLinkBtn}
-              >
-                <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
-                <Text style={styles.drawerLinkText}>{language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Text>
-              </Pressable>
-            </ScrollView>
+      <View style={[styles.drawerOverlay, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
+        <Pressable 
+          style={styles.drawerBackdrop} 
+          onPress={() => setIsMenuOpen(false)} 
+        />
+        <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
+          <View style={styles.drawerHeader}>
+            <Image 
+              source={require('../../assets/images/icon.png')} 
+              style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }} 
+              resizeMode="contain"
+            />
+            <Text style={styles.drawerAppName}>MIZAN</Text>
+            <Text style={[styles.drawerVersion, { color: '#14B8A6', fontFamily: 'Cairo_600SemiBold' }]}>مِيزان</Text>
+            <Text style={styles.drawerVersion}>v1.0.0</Text>
           </View>
+
+          <View style={styles.drawerDivider} />
+
+          <ScrollView 
+            style={{ flex: 1, marginVertical: 8 }} 
+            contentContainerStyle={{ gap: 8 }} 
+            showsVerticalScrollIndicator={false}
+          >
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/challenges' as any);
+              }}
+            >
+              <Ionicons name="trophy-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/recurring-list' as any);
+              }}
+            >
+              <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'المصاريف والفواتير المتكررة' : 'Recurring Subscriptions'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/(tabs)/financial-plan' as any);
+              }}
+            >
+              <Ionicons name="flag-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'الخطة المالية الذكية' : 'Smart Financial Plan'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/debts' as any);
+              }}
+            >
+              <Ionicons name="people-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'الديون والسلف الشخصية' : 'Personal Debts & Loans'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/jameya' as any);
+              }}
+            >
+              <Ionicons name="people-circle-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'الجمعيات والالتزامات' : 'Savings Associations (ROSCA)'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/savings-goals' as any);
+              }}
+            >
+              <Ionicons name="heart-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'أهداف الادخار وحصالة الفكة' : 'Savings & Piggy Goals'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/ai-advisor' as any);
+              }}
+            >
+              <Ionicons name="sparkles-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'مستشار الذكاء الاصطناعي' : 'AI Financial Advisor'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/zakat-calculator' as any);
+              }}
+            >
+              <Ionicons name="calculator-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'حساب الزكاة والصدقات' : 'Zakat & Charity Calculator'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setIsRemittanceModalOpen(true);
+              }}
+            >
+              <Ionicons name="paper-plane-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'إرسال حوالة للبيت' : 'Send Family Remittance'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                if (selectedWallet) {
+                  router.push(`/share-wallet?walletId=${selectedWallet.id}` as any);
+                } else {
+                  Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى اختيار محفظة أولاً' : 'Select a wallet first');
+                }
+              }}
+            >
+              <Ionicons name="share-social-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'مشاركة المحفظة الحالية' : 'Share Current Wallet'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/join-wallet' as any);
+              }}
+            >
+              <Ionicons name="link-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/envelope-budget' as any);
+              }}
+            >
+              <Ionicons name="mail-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budgeting'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setIsCurrencyConverterOpen(true);
+              }}
+            >
+              <Ionicons name="repeat-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'محول العملات الحي' : 'Live Currency Converter'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/import-statement' as any);
+              }}
+            >
+              <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'الربط البنكي واستيراد الكشوفات' : 'Bank Sync & Statement Import'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/widgets-setup' as any);
+              }}
+            >
+              <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'ودجت الشاشة الرئيسية والقفل' : 'Live Home & Lock Screen Widgets'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/(tabs)/stats' as any);
+              }}
+            >
+              <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'تحليل الميزانية والرسوم' : 'Budget Analytics'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/settings' as any);
+              }}
+            >
+              <Ionicons name="settings-outline" size={22} color={Colors.primary} />
+              <Text style={styles.drawerLinkText}>
+                {language === 'ar' ? 'إعدادات التطبيق والأمان' : 'App Settings & Security'}
+              </Text>
+            </Pressable>
+          </ScrollView>
 
           <Pressable onPress={() => setIsMenuOpen(false)} style={styles.drawerCloseBtn}>
             <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
             <Text style={styles.drawerCloseText}>{language === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}</Text>
           </Pressable>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 
