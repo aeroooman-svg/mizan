@@ -1026,9 +1026,7 @@ export default function FinancialPlanScreen() {
     const totalSavedInGoals = goals.reduce((sum, g) => sum + (g.savedAmount || 0), 0);
     const unpaidDebts = debts.filter(d => d.type === 'debt_to_others' && d.status !== 'paid').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
     const unpaidLoans = debts.filter(d => d.type === 'debt_to_me' && d.status !== 'paid').reduce((sum, d) => sum + (d.amount - (d.paidAmount || 0)), 0);
-    const walletNetBalance = selectedWallet
-      ? selectedWallet.balance
-      : (wallets || []).reduce((sum, w) => sum + (w.balance || 0), 0);
+    const walletNetBalance = (selectedWallet?.initialBalance || 0) + allTimeIncome - allTimeExpense;
     
     const totalJameyaAccumulatedSavings = jameyaList.reduce((sum, j) => sum + ((j.paidMonthsCount || 0) * (j.monthlyAmount || 0)), 0);
     const actualSavings = walletNetBalance + totalSavedInGoals + totalJameyaAccumulatedSavings - unpaidDebts + unpaidLoans;
