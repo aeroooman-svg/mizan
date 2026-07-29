@@ -579,32 +579,6 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => {
                 setIsMenuOpen(false);
-                router.push('/recurring-list' as any);
-              }}
-            >
-              <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'المصاريف والفواتير المتكررة' : 'Recurring Subscriptions'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/(tabs)/financial-plan' as any);
-              }}
-            >
-              <Ionicons name="flag-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'الخطة المالية الذكية' : 'Smart Financial Plan'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
                 router.push('/debts' as any);
               }}
             >
@@ -752,38 +726,12 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => {
                 setIsMenuOpen(false);
-                router.push('/widgets-setup' as any);
+                router.push('/privacy-policy' as any);
               }}
             >
-              <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
+              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'ودجت الشاشة الرئيسية والقفل' : 'Live Home & Lock Screen Widgets'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/(tabs)/stats' as any);
-              }}
-            >
-              <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'تحليل الميزانية والرسوم' : 'Budget Analytics'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/settings' as any);
-              }}
-            >
-              <Ionicons name="settings-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'إعدادات التطبيق والأمان' : 'App Settings & Security'}
+                {language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}
               </Text>
             </Pressable>
           </ScrollView>

@@ -559,22 +559,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Home Widget Link (Moved here right below Theme) */}
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/widgets-setup' as any);
-              }}
-              style={({ pressed }) => [styles.menuRowItem, { marginTop: 4 }, pressed && { opacity: 0.7 }]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
-                <Text style={styles.menuRowText}>
-                  {isAr ? 'ودجت الشاشة الرئيسية (Widgets)' : 'Home Screen Widgets'}
-                </Text>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
 
             {/* Primary Goal Selection */}
             <View style={styles.settingBlock}>
