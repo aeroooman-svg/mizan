@@ -448,6 +448,55 @@ export default function TransactionsScreen() {
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{t.transactions}</Text>
+
+          {/* Smart Entry Actions: Receipt Scan & Statement Import */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push('/scan-receipt' as any);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#F59E0B18',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#F59E0B40',
+              }}
+            >
+              <Ionicons name="camera-outline" size={14} color="#F59E0B" />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#F59E0B' }}>
+                {language === 'ar' ? 'فاتورة' : 'Scan'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push('/import-statement' as any);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: colors.primary + '18',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: colors.primary + '40',
+              }}
+            >
+              <Ionicons name="document-text-outline" size={14} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                {language === 'ar' ? 'كشف حساب' : 'Statement'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Wallet Selector Row */}

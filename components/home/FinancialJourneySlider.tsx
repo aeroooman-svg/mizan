@@ -173,7 +173,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex(activeIndex === 0 ? 5 : activeIndex - 1);
+              scrollToIndex(activeIndex === 0 ? 3 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -191,7 +191,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex((activeIndex + 1) % 6);
+              scrollToIndex((activeIndex + 1) % 4);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -218,7 +218,7 @@ export default function FinancialJourneySlider({
         onMomentumScrollEnd={(e) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const idx = Math.round(offsetX / (cardWidth + cardGap));
-          if (idx !== activeIndex && idx >= 0 && idx <= 5) {
+          if (idx !== activeIndex && idx >= 0 && idx <= 3) {
             setActiveIndex(idx);
           }
         }}
@@ -469,61 +469,7 @@ export default function FinancialJourneySlider({
           )}
         </View>
 
-        {/* CARD 2: قارئ الفواتير بالذكاء الاصطناعي (فاتورة) */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'فاتورة (مسح أوتوماتيكي)' : 'Receipt Scanner AI'}
-            </Text>
-            <Pressable onPress={() => router.push('/scan-receipt')}>
-              <Text style={styles.cardAction}>{isAr ? 'افتح المسح' : 'Scan'}</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.emptyCardContent}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="receipt" size={24} color="#F59E0B" />
-            </View>
-            <Text style={styles.emptyCardText}>
-              {isAr ? 'التقط صورة أي فاتورة لاستخراج البيانات أوتوماتيكياً' : 'Snap a photo of any receipt to auto-extract transaction'}
-            </Text>
-            <Pressable
-              onPress={() => router.push('/scan-receipt')}
-              style={styles.cardBtn}
-            >
-              <Text style={styles.cardBtnText}>{isAr ? '📷 مسح فاتورة' : '📷 Scan Receipt'}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* CARD 3: كشف حساب (استيراد بنكي) */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'كشف حساب (استيراد)' : 'Bank Statement'}
-            </Text>
-            <Pressable onPress={() => router.push('/import-statement' as any)}>
-              <Text style={styles.cardAction}>{isAr ? 'استيراد' : 'Import'}</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.emptyCardContent}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#3B82F618', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="document-text" size={24} color="#3B82F6" />
-            </View>
-            <Text style={styles.emptyCardText}>
-              {isAr ? 'رفع وتفريغ كشف الحساب البنكي بتنسيقات متعددة' : 'Upload and extract bank statements seamlessly'}
-            </Text>
-            <Pressable
-              onPress={() => router.push('/import-statement' as any)}
-              style={styles.cardBtn}
-            >
-              <Text style={styles.cardBtnText}>{isAr ? '📄 رفع كشف حساب' : '📄 Import Statement'}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* CARD 4: المعاملات المتكررة الفعليه */}
+        {/* CARD 3: المعاملات المتكررة الفعليه */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
@@ -666,7 +612,7 @@ export default function FinancialJourneySlider({
 
       {/* Pagination Dots */}
       <View style={styles.paginationDots}>
-        {[0, 1, 2, 3, 4, 5].map((idx) => (
+        {[0, 1, 2, 3].map((idx) => (
           <Pressable
             key={idx}
             onPress={() => scrollToIndex(idx)}
