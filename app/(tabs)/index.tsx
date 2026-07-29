@@ -545,11 +545,21 @@ export default function HomeScreen() {
         />
         <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
           <View style={styles.drawerHeader}>
-            <Image
-              source={require('../../assets/images/icon.png')}
-              style={{ width: 84, height: 84, borderRadius: 20, marginBottom: 8 }}
-              resizeMode="contain"
-            />
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 20,
+                overflow: 'hidden',
+                marginBottom: 8,
+              }}
+            >
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                resizeMode="cover"
+              />
+            </View>
             <Text style={styles.drawerVersion}>v1.0.0</Text>
           </View>
 
@@ -804,12 +814,27 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 10 }}>
-            <Image
-              source={require('../../assets/images/icon.png')}
-              style={{ width: 160, height: 160 }}
-              resizeMode="contain"
-            />
+          {/* Top Center Logo Emblem */}
+          <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 14 }}>
+            <View
+              style={{
+                width: 150,
+                height: 150,
+                borderRadius: 30,
+                overflow: 'hidden',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.4,
+                shadowRadius: 12,
+                elevation: 8,
+              }}
+            >
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{ width: '100%', height: '100%', borderRadius: 30 }}
+                resizeMode="cover"
+              />
+            </View>
           </View>
 
           <View style={{ paddingHorizontal: 16 }}>
