@@ -547,11 +547,9 @@ export default function HomeScreen() {
           <View style={styles.drawerHeader}>
             <Image
               source={require('../../assets/images/icon.png')}
-              style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }}
+              style={{ width: 84, height: 84, borderRadius: 20, marginBottom: 8 }}
               resizeMode="contain"
             />
-            <Text style={styles.drawerAppName}>MIZAN</Text>
-            <Text style={[styles.drawerVersion, { color: '#14B8A6', fontFamily: 'Cairo_600SemiBold' }]}>مِيزان</Text>
             <Text style={styles.drawerVersion}>v1.0.0</Text>
           </View>
 
@@ -826,18 +824,23 @@ export default function HomeScreen() {
             >
               <View
                 style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: 24,
+                  width: 140,
+                  height: 140,
+                  borderRadius: 28,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 16,
                   overflow: 'hidden',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 10,
+                  elevation: 6,
                 }}
               >
                 <Image
                   source={require('../../assets/images/icon.png')}
-                  style={{ width: '100%', height: '100%', borderRadius: 24 }}
+                  style={{ width: '100%', height: '100%', borderRadius: 28 }}
                   resizeMode="contain"
                 />
               </View>
