@@ -164,7 +164,7 @@ export default function FinancialJourneySlider({
         <View style={styles.titleRow}>
           <Ionicons name="sparkles" size={18} color="#F59E0B" />
           <Text style={styles.sliderTitle}>
-            {isAr ? 'رحلتي المالية' : 'Financial Journey'}
+            {isAr ? 'رؤيتك المالية والادخار 🎯' : 'Financial & Savings Outlook 🎯'}
           </Text>
         </View>
 
@@ -366,50 +366,107 @@ export default function FinancialJourneySlider({
             )}
           </ScrollView>
         </View>
-        {/* CARD 1: الأهداف المالية وحصالة الادخار */}
+
+        {/* CARD 2: الأهداف المالية وحصالة الادخار المبتكرة */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'الأهداف المالية' : 'Savings Goals'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="trophy" size={18} color="#F59E0B" />
+              <Text style={styles.cardTitle}>
+                {isAr ? 'أهداف الادخار والحصالات' : 'Savings Goals & Jars'}
+              </Text>
+            </View>
             <Pressable onPress={() => router.push('/savings-goals')}>
-              <Text style={styles.cardAction}>{isAr ? 'إدارة' : 'Manage'}</Text>
+              <Text style={styles.cardAction}>{isAr ? 'إدارة ⚙️' : 'Manage ⚙️'}</Text>
             </Pressable>
           </View>
 
-          <View style={styles.goalContentRow}>
-            <View style={styles.svgRingContainer}>
-              <Svg width={76} height={76}>
-                <Circle cx={38} cy={38} r={30} fill="none" stroke={colors.border} strokeWidth={6} />
-                <Circle
-                  cx={38}
-                  cy={38}
-                  r={30}
-                  fill="none"
-                  stroke="#F59E0B"
-                  strokeWidth={6}
-                  strokeDasharray={`${(goalProgress / 100) * 2 * Math.PI * 30} ${2 * Math.PI * 30}`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 38 38)"
-                />
-              </Svg>
-              <View style={styles.svgCenterText}>
-                <Text style={styles.svgPctText}>{goalProgress}%</Text>
-              </View>
-            </View>
+          {goals.length > 0 ? (
+            <View style={{ gap: 10 }}>
+              <View style={styles.goalContentRow}>
+                <View style={styles.svgRingContainer}>
+                  <Svg width={72} height={72}>
+                    <Circle cx={36} cy={36} r={28} fill="none" stroke={colors.border} strokeWidth={6} />
+                    <Circle
+                      cx={36}
+                      cy={36}
+                      r={28}
+                      fill="none"
+                      stroke="#F59E0B"
+                      strokeWidth={6}
+                      strokeDasharray={`${(goalProgress / 100) * 2 * Math.PI * 28} ${2 * Math.PI * 28}`}
+                      strokeLinecap="round"
+                      transform="rotate(-90 36 36)"
+                    />
+                  </Svg>
+                  <View style={styles.svgCenterText}>
+                    <Text style={styles.svgPctText}>{goalProgress}%</Text>
+                  </View>
+                </View>
 
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.goalCountText}>
-                {isAr ? `إجمالي الأهداف: ${goals.length}` : `Total Goals: ${goals.length}`}
-              </Text>
-              <Text style={styles.goalSavedSub}>
-                {formatCurrency(totalGoalSaved, language)} {currencySymbol}
-              </Text>
-              <Text style={styles.goalTargetSub}>
-                {isAr ? `المستهدف: ${formatCurrency(totalGoalTarget, language)}` : `Target: ${formatCurrency(totalGoalTarget, language)}`}
-              </Text>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.goalCountText}>
+                    {isAr ? `تم توفير بـ ${goals.length} حصالات:` : `Saved in ${goals.length} Jars:`}
+                  </Text>
+                  <Text style={styles.goalSavedSub}>
+                    {formatCurrency(totalGoalSaved, language)} {currencySymbol}
+                  </Text>
+                  <Text style={styles.goalTargetSub}>
+                    {isAr ? `إجمالي المستهدف: ${formatCurrency(totalGoalTarget, language)}` : `Target: ${formatCurrency(totalGoalTarget, language)}`}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Nearest Active Goal Preview Bar */}
+              {goals[0] && (
+                <Pressable
+                  onPress={() => router.push('/savings-goals')}
+                  style={{
+                    backgroundColor: colors.surfaceAlt,
+                    padding: 8,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    gap: 4,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }} numberOfLines={1}>
+                      🎯 {goals[0].name}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#F59E0B' }}>
+                      {Math.min(100, Math.round((goals[0].savedAmount / goals[0].targetAmount) * 100))}%
+                    </Text>
+                  </View>
+                  <View style={{ height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' }}>
+                    <View
+                      style={{
+                        height: '100%',
+                        width: `${Math.min(100, Math.round((goals[0].savedAmount / goals[0].targetAmount) * 100))}%`,
+                        backgroundColor: '#F59E0B',
+                        borderRadius: 2,
+                      }}
+                    />
+                  </View>
+                </Pressable>
+              )}
             </View>
-          </View>
+          ) : (
+            <View style={styles.emptyCardContent}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="trophy-outline" size={22} color="#F59E0B" />
+              </View>
+              <Text style={styles.emptyCardText}>
+                {isAr ? 'لا توجد أهداف ادخار مفعلة بعد' : 'No savings goals created yet'}
+              </Text>
+              <Pressable
+                onPress={() => router.push('/savings-goals')}
+                style={styles.cardBtn}
+              >
+                <Text style={styles.cardBtnText}>{isAr ? '+ إنشاء هدف ادخار' : '+ New Goal'}</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* CARD 2: قارئ الفواتير بالذكاء الاصطناعي (فاتورة) */}
