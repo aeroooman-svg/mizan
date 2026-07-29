@@ -173,7 +173,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex(activeIndex === 0 ? 3 : activeIndex - 1);
+              scrollToIndex(activeIndex === 0 ? 1 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -191,7 +191,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex((activeIndex + 1) % 4);
+              scrollToIndex((activeIndex + 1) % 2);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -218,7 +218,7 @@ export default function FinancialJourneySlider({
         onMomentumScrollEnd={(e) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const idx = Math.round(offsetX / (cardWidth + cardGap));
-          if (idx !== activeIndex && idx >= 0 && idx <= 3) {
+          if (idx !== activeIndex && idx >= 0 && idx <= 1) {
             setActiveIndex(idx);
           }
         }}
@@ -468,151 +468,11 @@ export default function FinancialJourneySlider({
             </View>
           )}
         </View>
-
-        {/* CARD 3: المعاملات المتكررة الفعليه */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'المعاملات المتكررة' : 'Recurring Transactions'}
-            </Text>
-            <Pressable onPress={() => router.push('/recurring-list')}>
-              <Text style={styles.cardAction}>{isAr ? 'عرض الكل 📋' : 'View All 📋'}</Text>
-            </Pressable>
-          </View>
-
-          {recurringItems.length > 0 ? (
-            <View style={{ gap: 8 }}>
-              {/* Summary Header Row with Totals */}
-              <View style={{ backgroundColor: colors.surfaceAlt + '60', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {isAr ? '📥 دخل متكرر:' : '📥 Recurring Income:'}
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.income }}>
-                    +{formatCurrency(recurringTotals.incomeTotal, language)} {currencySymbol}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {isAr ? '📤 مصاريف وتحويلات:' : '📤 Outflows & Bills:'}
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.expense }}>
-                    -{formatCurrency(recurringTotals.outflowTotal, language)} {currencySymbol}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Transactions List */}
-              <View style={styles.subsList}>
-                {(showAllRecurring ? recurringItems : recurringItems.slice(0, 3)).map((item) => {
-                  const cat = getCategoryById(item.category);
-                  const name = item.description || (cat ? getCategoryName(cat.id, language) : item.category);
-                  const iconName = item.icon || cat?.icon || 'sync-outline';
-                  const isInc = item.type === 'income';
-                  const itemColor = isInc ? colors.income : colors.expense;
-                  const prefix = isInc ? '+' : '-';
-
-                  return (
-                    <View key={item.id} style={styles.subItem}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, overflow: 'hidden' }}>
-                        <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: (item.color || itemColor) + '15', alignItems: 'center', justifyContent: 'center' }}>
-                          <MaterialIcons name={iconName as any} size={16} color={item.color || itemColor} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.subName} numberOfLines={1}>
-                            {name}
-                          </Text>
-                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                            {item.frequency === 'daily' ? (isAr ? 'يومي' : 'Daily') :
-                             item.frequency === 'weekly' ? (isAr ? 'أسبوعي' : 'Weekly') :
-                             item.frequency === 'yearly' ? (isAr ? 'سنوي' : 'Yearly') :
-                             (isAr ? 'شهري' : 'Monthly')}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: itemColor }}>
-                        {prefix}{formatCurrency(item.amount, language)} {currencySymbol}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-
-              {/* Dropdown / Collapsible Expand Toggle */}
-              {recurringItems.length > 3 && (
-                <Pressable
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setShowAllRecurring(!showAllRecurring);
-                  }}
-                  style={{ alignItems: 'center', paddingTop: 4 }}
-                >
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                    {isAr
-                      ? (showAllRecurring ? 'عرض أقل 🔼' : `عرض باقي المعاملات المتكررة (${recurringItems.length - 3}) 🔽`)
-                      : (showAllRecurring ? 'Show Less 🔼' : `Show All (${recurringItems.length - 3}) 🔽`)}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          ) : (
-            <View style={styles.emptyCardContent}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="sync" size={22} color={colors.primary} />
-              </View>
-              <Text style={styles.emptyCardText}>
-                {isAr ? 'لا توجد معاملات متكررة مضافة بعد' : 'No recurring transactions scheduled yet'}
-              </Text>
-              <Pressable
-                onPress={() => router.push('/add-recurring')}
-                style={styles.cardBtn}
-              >
-                <Text style={styles.cardBtnText}>{isAr ? '+ إضافة معاملة' : '+ Add Recurring'}</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* CARD 4: حوالات المغتربين والبيت */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>
-              {isAr ? 'حوالات المغتربين والبيت' : 'Family Remittances'}
-            </Text>
-            <Pressable onPress={onOpenRemittanceModal}>
-              <Text style={styles.cardAction}>{isAr ? '+ إرسال' : '+ Send'}</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.remittanceCardBody}>
-            <View style={styles.remittanceIconCircle}>
-              <Ionicons name="paper-plane" size={24} color="#10B981" />
-            </View>
-
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.remittanceTotalText}>
-                {remittanceStats
-                  ? `${formatCurrency(remittanceStats.totalReceived, language)} ${currencySymbol}`
-                  : `0.00 ${currencySymbol}`}
-              </Text>
-              <Text style={styles.remittanceSubText}>
-                {isAr ? 'إجمالي المحول للعائلة هذا الشهر' : 'Total sent to family this month'}
-              </Text>
-            </View>
-          </View>
-
-          <Pressable onPress={onOpenRemittanceModal} style={styles.remittanceBtn}>
-            <Ionicons name="send-outline" size={16} color="#FFF" />
-            <Text style={styles.remittanceBtnText}>
-              {isAr ? 'تسجيل حوالة جديدة' : 'Record New Remittance'}
-            </Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       {/* Pagination Dots */}
       <View style={styles.paginationDots}>
-        {[0, 1, 2, 3].map((idx) => (
+        {[0, 1].map((idx) => (
           <Pressable
             key={idx}
             onPress={() => scrollToIndex(idx)}
