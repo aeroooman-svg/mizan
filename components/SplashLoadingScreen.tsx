@@ -190,24 +190,7 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
         end={{ x: 0.9, y: 0.9 }}
       />
 
-      {/* Ambient background glow */}
-      <Animated.View 
-        style={[
-          styles.ambientGlow, 
-          { 
-            transform: [
-              { scale: glowScale },
-              { rotate: spin }
-            ],
-            opacity: glowOpacity.interpolate({
-              inputRange: [0.3, 0.8],
-              outputRange: [0.12, 0.22],
-            })
-          }
-        ]} 
-      />
-
-      {/* Main Logo Container */}
+      {/* Main Logo Container - Clean Single Emblem */}
       <Animated.View 
         style={[
           styles.content, 
@@ -221,17 +204,6 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
         ]}
       >
         <View style={styles.logoWrapper}>
-          {/* Animated glow behind logo */}
-          <Animated.View 
-            style={[
-              styles.logoGlow, 
-              { 
-                transform: [{ scale: glowScale }],
-                opacity: glowOpacity
-              }
-            ]} 
-          />
-          {/* Custom logo image with correct relative path */}
           <Image 
             source={require('../assets/images/splash-icon.png')} 
             style={styles.logoImage} 

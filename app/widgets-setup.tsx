@@ -19,105 +19,95 @@ import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency } from '@/lib/categories';
-import { getWidgetData, exportWidgetNativePayload } from '@/lib/widgetDataProvider';
 import { getGoals, SavingsGoal } from '@/lib/goalStorage';
-import { getDebts, Debt } from '@/lib/debtStorage';
 
-type WidgetType = 'quick_glance' | 'savings_goal' | 'cashflow_forecast' | 'health_score' | 'pending_bills';
+type WidgetThemeStyle = 'emerald' | 'midnight' | 'gold' | 'light';
 
 export default function WidgetsSetupScreen() {
-  const { colors, theme } = useTheme();
+  const { colors, theme: appTheme } = useTheme();
   const { language } = useLanguage();
   const isAr = language === 'ar';
   const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
   const { transactions, wallets, selectedWallet, balance, pendingRecurring, currencySymbol } = useTransactions();
 
-  // Selected widget options
-  const [selectedWidgetType, setSelectedWidgetType] = useState<WidgetType>('quick_glance');
-  const [selectedWidgetSize, setSelectedWidgetSize] = useState<'small' | 'medium' | 'large'>('medium');
-  const [goals, setGoals] = useState<SavingsGoal[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
+  // Widget Style Preset State
+  const [widgetTheme, setWidgetTheme] = useState<WidgetThemeStyle>('emerald');
+  const [widgetSize, setWidgetSize] = useState<'medium' | 'small' | 'large'>('medium');
 
-  // Widget visibility toggles for home screen
-  const [showQuickGlance, setShowQuickGlance] = useState(true);
-  const [showGoalWidget, setShowGoalWidget] = useState(true);
-  const [showForecastWidget, setShowForecastWidget] = useState(true);
-  const [showHealthWidget, setShowHealthWidget] = useState(true);
+  // Widget Toggles
+  const [showBalance, setShowBalance] = useState(true);
+  const [showTodayExpense, setShowTodayExpense] = useState(true);
+  const [showGoal, setShowGoal] = useState(true);
+  const [showHealthScore, setShowHealthScore] = useState(true);
+
+  const [activeGoal, setActiveGoal] = useState<SavingsGoal | null>(null);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [gList, dList, configStr] = await Promise.all([
+        const [gList, cfgStr] = await Promise.all([
           getGoals(),
-          getDebts(),
-          AsyncStorage.getItem('@mizan_widget_config')
+          AsyncStorage.getItem('@mizan_widget_config'),
         ]);
-        setGoals(gList);
-        setDebts(dList);
+        if (gList.length > 0) setActiveGoal(gList[0]);
 
-        if (configStr) {
-          const cfg = JSON.parse(configStr);
-          if (cfg.showQuickGlance !== undefined) setShowQuickGlance(cfg.showQuickGlance);
-          if (cfg.showGoalWidget !== undefined) setShowGoalWidget(cfg.showGoalWidget);
-          if (cfg.showForecastWidget !== undefined) setShowForecastWidget(cfg.showForecastWidget);
-          if (cfg.showHealthWidget !== undefined) setShowHealthWidget(cfg.showHealthWidget);
+        if (cfgStr) {
+          const cfg = JSON.parse(cfgStr);
+          if (cfg.widgetTheme) setWidgetTheme(cfg.widgetTheme);
+          if (cfg.widgetSize) setWidgetSize(cfg.widgetSize);
+          if (cfg.showBalance !== undefined) setShowBalance(cfg.showBalance);
+          if (cfg.showTodayExpense !== undefined) setShowTodayExpense(cfg.showTodayExpense);
+          if (cfg.showGoal !== undefined) setShowGoal(cfg.showGoal);
+          if (cfg.showHealthScore !== undefined) setShowHealthScore(cfg.showHealthScore);
         }
       } catch (e) {
-        console.error('Error loading widget config:', e);
+        console.error('Error loading widget settings:', e);
       }
     }
     loadData();
   }, []);
 
-  const saveWidgetVisibility = async (key: string, val: boolean) => {
-    try { Haptics.selectionAsync(); } catch {}
-    const updated = {
-      showQuickGlance: key === 'quick' ? val : showQuickGlance,
-      showGoalWidget: key === 'goal' ? val : showGoalWidget,
-      showForecastWidget: key === 'forecast' ? val : showForecastWidget,
-      showHealthWidget: key === 'health' ? val : showHealthWidget,
-    };
-    if (key === 'quick') setShowQuickGlance(val);
-    if (key === 'goal') setShowGoalWidget(val);
-    if (key === 'forecast') setShowForecastWidget(val);
-    if (key === 'health') setShowHealthWidget(val);
+  // Today's total expense calculation
+  const todaySpent = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return transactions
+      .filter(t => t.type === 'expense' && t.date.slice(0, 10) === todayStr)
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions]);
 
-    await AsyncStorage.setItem('@mizan_widget_config', JSON.stringify(updated));
-  };
+  // Clean wallet title
+  const walletDisplayName = useMemo(() => {
+    if (selectedWallet?.name) return selectedWallet.name;
+    return isAr ? 'محفظتي الرئيسية' : 'Main Wallet';
+  }, [selectedWallet, isAr]);
 
-  // Base widget data
-  const widgetData = useMemo(() => {
-    return getWidgetData(
-      transactions,
-      wallets,
-      selectedWallet,
-      85,
-      {},
-      selectedWallet?.currency || 'EGP'
-    );
-  }, [transactions, wallets, selectedWallet]);
-
-  const activeGoal = goals[0];
-  const payload = exportWidgetNativePayload(widgetData);
-
-  const copyPayload = async () => {
+  const handleSaveWidget = async () => {
     try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-    const updated = {
-      showQuickGlance,
-      showGoalWidget,
-      showForecastWidget,
-      showHealthWidget,
-      selectedWidgetType,
-      selectedWidgetSize,
-      lastSynced: new Date().toISOString(),
+    const config = {
+      widgetTheme,
+      widgetSize,
+      showBalance,
+      showTodayExpense,
+      showGoal,
+      showHealthScore,
+      lastUpdated: new Date().toISOString(),
     };
-    await AsyncStorage.setItem('@mizan_widget_config', JSON.stringify(updated));
+    await AsyncStorage.setItem('@mizan_widget_config', JSON.stringify(config));
+    
+    // Copy quick status payload
+    const payload = JSON.stringify({
+      wallet: walletDisplayName,
+      balance: balance || 0,
+      todaySpent: todaySpent || 0,
+      currency: currencySymbol || 'KWD',
+    });
     await Clipboard.setStringAsync(payload);
+
     Alert.alert(
-      isAr ? 'تم الحفظ والمزامنة بنجاح' : 'Widget Synced & Saved',
+      isAr ? 'تم حفظ وتفعيل الودجت 🟢' : 'Widget Saved & Activated',
       isAr
-        ? 'تمت مزامنة وتطبيق إعدادات الودجت التفاعلية فوراً على التطبيق وهاتفك!'
-        : 'Live widget settings saved successfully!'
+        ? 'تمت مزامنة نمط وتنسيق الودجت التفاعلي فوراً ليعمل بتناسق تام على شاشة هاتفك الرئيسية!'
+        : 'Widget configuration saved successfully for your home screen!'
     );
   };
 
@@ -130,6 +120,53 @@ export default function WidgetsSetupScreen() {
     }
   };
 
+  // Color properties based on selected Widget Theme
+  const themeColors = useMemo(() => {
+    switch (widgetTheme) {
+      case 'emerald':
+        return {
+          gradient: ['#0D7C66', '#10B981'] as [string, string],
+          bg: '#0B2920',
+          text: '#FFFFFF',
+          textSub: 'rgba(255,255,255,0.75)',
+          accent: '#10B981',
+          border: 'rgba(16,185,129,0.3)',
+          cardBg: 'rgba(255,255,255,0.12)',
+        };
+      case 'midnight':
+        return {
+          gradient: ['#090E17', '#1E293B'] as [string, string],
+          bg: '#0F172A',
+          text: '#FFFFFF',
+          textSub: 'rgba(255,255,255,0.7)',
+          accent: '#38BDF8',
+          border: 'rgba(56,189,248,0.3)',
+          cardBg: 'rgba(255,255,255,0.08)',
+        };
+      case 'gold':
+        return {
+          gradient: ['#78350F', '#D97706'] as [string, string],
+          bg: '#291804',
+          text: '#FFFFFF',
+          textSub: 'rgba(255,255,255,0.8)',
+          accent: '#F59E0B',
+          border: 'rgba(245,158,11,0.4)',
+          cardBg: 'rgba(255,255,255,0.15)',
+        };
+      case 'light':
+      default:
+        return {
+          gradient: ['#FFFFFF', '#F1F5F9'] as [string, string],
+          bg: '#FFFFFF',
+          text: '#0F172A',
+          textSub: '#64748B',
+          accent: '#0D7C66',
+          border: 'rgba(13,124,102,0.2)',
+          cardBg: '#F8FAFC',
+        };
+    }
+  }, [widgetTheme]);
+
   return (
     <View style={styles.container}>
       {/* Header Bar */}
@@ -138,7 +175,7 @@ export default function WidgetsSetupScreen() {
           <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {isAr ? 'إعدادات وودجت الشاشة' : 'Widgets & Dashboard'}
+          {isAr ? 'تخصيص وودجت الهاتف' : 'Widget Setup'}
         </Text>
         <Pressable onPress={() => router.replace('/(tabs)')} style={styles.backBtn} hitSlop={10}>
           <Ionicons name="close-outline" size={22} color={colors.textSecondary} />
@@ -146,10 +183,10 @@ export default function WidgetsSetupScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Banner Card */}
+        {/* Intro Hero Card */}
         <View style={styles.infoCard}>
           <LinearGradient
-            colors={[colors.primary + '20', 'transparent']}
+            colors={[colors.primary + '18', 'transparent']}
             style={StyleSheet.absoluteFill}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -159,255 +196,213 @@ export default function WidgetsSetupScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.infoTitle}>
-              {isAr ? 'تخصيص الودجت والشاشة الرئيسية' : 'Customize Widgets & Dashboard'}
+              {isAr ? 'ودجت الشاشة الرئيسية المباشر' : 'Live Phone Screen Widget'}
             </Text>
             <Text style={styles.infoSub}>
               {isAr
-                ? 'تحكم في العناصر التفاعلية الظاهرة داخل التطبيق وعرض الميزانية والسيولة على شاشة هاتفك.'
-                : 'Manage dashboard widgets inside the app and set up phone home screen widgets.'}
+                ? 'تابع رصيدك ومصاريفك الحية فوراً من شاشة هاتفك الرئيسية بأشكال وألوان راقية.'
+                : 'Monitor live balances and daily expenses directly on your phone home screen.'}
             </Text>
           </View>
         </View>
 
-        {/* SECTION 1: Home Dashboard Widgets Toggle */}
+        {/* STEP 1: Choose Widget Theme Style */}
         <View style={styles.sectionCard}>
           <View style={styles.cardHeaderRow}>
-            <Ionicons name="options-outline" size={20} color={colors.primary} />
+            <Ionicons name="color-palette-outline" size={20} color={colors.primary} />
             <Text style={styles.cardTitle}>
-              {isAr ? '1. التحكم في ودجات الشاشة الرئيسية' : '1. App Home Screen Widgets'}
-            </Text>
-          </View>
-          <Text style={styles.cardSub}>
-            {isAr ? 'اختر العناصر التي تريد إظهارها على الشاشة الرئيسية للتطبيق:' : 'Select which widgets to show on app dashboard:'}
-          </Text>
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleLabel}>{isAr ? 'اللمحة السريعة والمصروفات' : 'Quick Glance Widget'}</Text>
-              <Text style={styles.toggleDesc}>{isAr ? 'عرض رصيد المحفظة ومصروف اليوم' : 'Show wallet balance & today spending'}</Text>
-            </View>
-            <Switch
-              value={showQuickGlance}
-              onValueChange={(val) => saveWidgetVisibility('quick', val)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleLabel}>{isAr ? 'هدف الادخار المالي' : 'Savings Goal Widget'}</Text>
-              <Text style={styles.toggleDesc}>{isAr ? 'تتبع التقدم في هدف الادخار الأهم' : 'Track progress of main savings goal'}</Text>
-            </View>
-            <Switch
-              value={showGoalWidget}
-              onValueChange={(val) => saveWidgetVisibility('goal', val)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleLabel}>{isAr ? 'التنبؤ بالسيولة القادمة' : 'Cashflow Forecast Widget'}</Text>
-              <Text style={styles.toggleDesc}>{isAr ? 'توقعات التدفق النقدي نهاية الشهر' : 'Projected cashflow at month end'}</Text>
-            </View>
-            <Switch
-              value={showForecastWidget}
-              onValueChange={(val) => saveWidgetVisibility('forecast', val)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextCol}>
-              <Text style={styles.toggleLabel}>{isAr ? 'مؤشر الصحة المالية' : 'Financial Health Score'}</Text>
-              <Text style={styles.toggleDesc}>{isAr ? 'تقييم نسبة الإنفاق من الدخل' : 'Health score based on savings ratio'}</Text>
-            </View>
-            <Switch
-              value={showHealthWidget}
-              onValueChange={(val) => saveWidgetVisibility('health', val)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-            />
-          </View>
-        </View>
-
-        {/* SECTION 2: Native Phone Widget Selector */}
-        <View style={styles.sectionCard}>
-          <View style={styles.cardHeaderRow}>
-            <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
-            <Text style={styles.cardTitle}>
-              {isAr ? '2. إعداد ومعاينة ودجت الهاتف الحي' : '2. Phone Home Screen Widget'}
+              {isAr ? '1. اختر الشكل والمظهر (Widget Style)' : '1. Choose Widget Theme'}
             </Text>
           </View>
 
-          {/* Widget Type Selector Chips */}
-          <Text style={styles.subHeaderLabel}>{isAr ? 'نوع الودجت:' : 'Widget Type:'}</Text>
-          <View style={styles.chipGrid}>
+          <View style={styles.themeGrid}>
             {[
-              { id: 'quick_glance', icon: 'flash-outline', labelAr: 'اللمحة والعمليات', labelEn: 'Quick Glance', color: '#10B981' },
-              { id: 'savings_goal', icon: 'trophy-outline', labelAr: 'أهداف الادخار', labelEn: 'Savings Goal', color: '#F59E0B' },
-              { id: 'cashflow_forecast', icon: 'trending-up-outline', labelAr: 'تنبؤ السيولة', labelEn: 'Cashflow', color: '#3B82F6' },
-              { id: 'health_score', icon: 'heart-outline', labelAr: 'الصحة المالية', labelEn: 'Health Score', color: '#EC4899' },
+              { id: 'emerald', nameAr: 'زمردي فاخر', nameEn: 'Emerald Luxury', colors: ['#0D7C66', '#10B981'] },
+              { id: 'midnight', nameAr: 'كحلي ليلي', nameEn: 'Midnight Dark', colors: ['#090E17', '#1E293B'] },
+              { id: 'gold', nameAr: 'ذهبي استثماري', nameEn: 'Gold Investment', colors: ['#78350F', '#D97706'] },
+              { id: 'light', nameAr: 'أبيض ناصع', nameEn: 'Pure Light', colors: ['#E2E8F0', '#FFFFFF'] },
             ].map(item => {
-              const isActive = selectedWidgetType === item.id;
+              const isSelected = widgetTheme === item.id;
               return (
                 <Pressable
                   key={item.id}
                   onPress={() => {
                     try { Haptics.selectionAsync(); } catch {}
-                    setSelectedWidgetType(item.id as WidgetType);
+                    setWidgetTheme(item.id as WidgetThemeStyle);
                   }}
                   style={[
-                    styles.typeGridBtn,
-                    isActive && { backgroundColor: item.color + '18', borderColor: item.color, borderWidth: 1.5 }
+                    styles.themeBtn,
+                    isSelected && { borderColor: colors.primary, borderWidth: 2 }
                   ]}
                 >
-                  <Ionicons name={item.icon as any} size={18} color={isActive ? item.color : colors.textSecondary} />
-                  <Text style={[styles.typeGridText, isActive && { color: item.color, fontFamily: 'Cairo_700Bold' }]}>
-                    {isAr ? item.labelAr : item.labelEn}
+                  <LinearGradient
+                    colors={item.colors as [string, string]}
+                    style={styles.themePreviewGradient}
+                  >
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color={item.id === 'light' ? colors.primary : '#FFF'} />
+                    )}
+                  </LinearGradient>
+                  <Text style={[styles.themeBtnText, isSelected && { fontFamily: 'Cairo_700Bold', color: colors.primary }]}>
+                    {isAr ? item.nameAr : item.nameEn}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
+        </View>
 
-          {/* Size Selector Buttons */}
-          <Text style={[styles.subHeaderLabel, { marginTop: 16 }]}>{isAr ? 'أبعاد الودجت:' : 'Widget Size:'}</Text>
-          <View style={styles.sizeRow}>
-            {(['small', 'medium', 'large'] as const).map(sz => (
-              <Pressable
-                key={sz}
-                onPress={() => {
-                  try { Haptics.selectionAsync(); } catch {}
-                  setSelectedWidgetSize(sz);
-                }}
-                style={[
-                  styles.sizeBtn,
-                  selectedWidgetSize === sz && { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
-                ]}
-              >
-                <Text style={[styles.sizeBtnText, selectedWidgetSize === sz && { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
-                  {sz === 'small' ? (isAr ? 'صغير (2×2)' : 'Small (2×2)') :
-                   sz === 'medium' ? (isAr ? 'متوسط (4×2)' : 'Medium (4×2)') :
-                   (isAr ? 'كبير (4×4)' : 'Large (4×4)')}
-                </Text>
-              </Pressable>
-            ))}
+        {/* STEP 2: Choose Widget Content Toggles */}
+        <View style={styles.sectionCard}>
+          <View style={styles.cardHeaderRow}>
+            <Ionicons name="list-outline" size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>
+              {isAr ? '2. اختر البيانات الظاهرة على الودجت' : '2. Widget Display Contents'}
+            </Text>
           </View>
 
-          {/* SECTION 3: Live Preview Box */}
-          <Text style={[styles.subHeaderLabel, { marginTop: 18 }]}>{isAr ? 'المعاينة التفاعلية الحية:' : 'Live Preview:'}</Text>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextCol}>
+              <Text style={styles.toggleLabel}>{isAr ? 'رصيد المحفظة المتبقي' : 'Wallet Balance'}</Text>
+              <Text style={styles.toggleDesc}>{isAr ? 'عرض رصيدك المالي المتاح' : 'Display available wallet balance'}</Text>
+            </View>
+            <Switch
+              value={showBalance}
+              onValueChange={setShowBalance}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
 
-          <View style={[
-            styles.previewBox,
-            selectedWidgetSize === 'small' && { width: '60%', alignSelf: 'center' },
-          ]}>
-            {/* Header of Preview */}
-            <View style={styles.previewHeader}>
+          <View style={styles.divider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextCol}>
+              <Text style={styles.toggleLabel}>{isAr ? 'مصروف اليوم والعمليات' : 'Today Expense'}</Text>
+              <Text style={styles.toggleDesc}>{isAr ? 'إجمالي ما تم إنفاقه اليوم' : 'Total spent today'}</Text>
+            </View>
+            <Switch
+              value={showTodayExpense}
+              onValueChange={setShowTodayExpense}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextCol}>
+              <Text style={styles.toggleLabel}>{isAr ? 'هدف الادخار المالي' : 'Savings Goal Progress'}</Text>
+              <Text style={styles.toggleDesc}>{isAr ? 'شريط تقدم الهدف المالي الأهم' : 'Show top savings goal bar'}</Text>
+            </View>
+            <Switch
+              value={showGoal}
+              onValueChange={setShowGoal}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextCol}>
+              <Text style={styles.toggleLabel}>{isAr ? 'مؤشر الصحة المالية' : 'Health Score'}</Text>
+              <Text style={styles.toggleDesc}>{isAr ? 'تقييم الأداء المالي (85/100)' : 'Show health score indicator'}</Text>
+            </View>
+            <Switch
+              value={showHealthScore}
+              onValueChange={setShowHealthScore}
+              trackColor={{ false: colors.border, true: colors.primary }}
+            />
+          </View>
+        </View>
+
+        {/* STEP 3: Live Interactive Preview Card */}
+        <View style={styles.sectionCard}>
+          <View style={styles.cardHeaderRow}>
+            <Ionicons name="eye-outline" size={20} color={colors.primary} />
+            <Text style={styles.cardTitle}>
+              {isAr ? '3. معاينة الودجت الحية بالشكل المختار' : '3. Live Widget Preview'}
+            </Text>
+          </View>
+
+          {/* Actual Phone Widget Card Preview */}
+          <LinearGradient
+            colors={themeColors.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.phoneWidgetCard, { borderColor: themeColors.border }]}
+          >
+            {/* Header of Phone Widget */}
+            <View style={styles.wHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MaterialIcons name="account-balance-wallet" size={18} color={colors.primary} />
-                <Text style={styles.previewTitle} numberOfLines={1}>
-                  {selectedWallet?.name || (isAr ? 'محفظتي الرئيسية' : 'Main Wallet')}
+                <MaterialIcons name="account-balance-wallet" size={18} color={themeColors.accent} />
+                <Text style={[styles.wWalletName, { color: themeColors.text }]}>
+                  {walletDisplayName}
                 </Text>
               </View>
-              <View style={styles.liveIndicator}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>{isAr ? 'حي' : 'LIVE'}</Text>
+              <View style={[styles.wLiveBadge, { backgroundColor: themeColors.cardBg }]}>
+                <View style={[styles.wDot, { backgroundColor: themeColors.accent }]} />
+                <Text style={[styles.wLiveText, { color: themeColors.text }]}>{isAr ? 'حي' : 'LIVE'}</Text>
               </View>
             </View>
 
-            {/* Preview Content based on selected type */}
-            {selectedWidgetType === 'quick_glance' && (
-              <View style={styles.previewContent}>
-                <Text style={styles.previewLabel}>{isAr ? 'الرصيد المتاح' : 'Available Balance'}</Text>
-                <Text style={styles.previewBalance}>
-                  {formatCurrency(balance)} {currencySymbol}
+            {/* Balance Row */}
+            {showBalance && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={[styles.wSubTitle, { color: themeColors.textSub }]}>
+                  {isAr ? 'الرصيد المتاح' : 'Available Balance'}
                 </Text>
+                <Text style={[styles.wBalanceVal, { color: themeColors.text }]}>
+                  {formatCurrency(balance || 0)} {currencySymbol}
+                </Text>
+              </View>
+            )}
 
-                {selectedWidgetSize !== 'small' && (
-                  <View style={styles.previewRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.previewSubLabel}>{isAr ? 'مصروف اليوم' : 'Today Spent'}</Text>
-                      <Text style={[styles.previewSubVal, { color: colors.expense }]}>
-                        {formatCurrency(widgetData.todaySpent)} {currencySymbol}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, alignItems: isAr ? 'flex-start' : 'flex-end' }}>
-                      <Text style={styles.previewSubLabel}>{isAr ? 'الصحة المالية' : 'Health Score'}</Text>
-                      <Text style={[styles.previewSubVal, { color: colors.income }]}>85/100</Text>
-                    </View>
-                  </View>
-                )}
+            {/* Today Expense & Health Score Row */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, gap: 10 }}>
+              {showTodayExpense && (
+                <View style={[styles.wStatBox, { backgroundColor: themeColors.cardBg }]}>
+                  <Text style={[styles.wStatLabel, { color: themeColors.textSub }]}>{isAr ? 'مصروف اليوم' : 'Today Spent'}</Text>
+                  <Text style={[styles.wStatVal, { color: '#EF4444' }]}>
+                    {formatCurrency(todaySpent || 0)} {currencySymbol}
+                  </Text>
+                </View>
+              )}
 
-                <View style={styles.previewActions}>
-                  <View style={[styles.pBtn, { backgroundColor: colors.expense + '20' }]}>
-                    <Ionicons name="remove-circle-outline" size={14} color={colors.expense} />
-                    <Text style={[styles.pBtnText, { color: colors.expense }]}>{isAr ? 'مصروف' : 'Expense'}</Text>
-                  </View>
-                  <View style={[styles.pBtn, { backgroundColor: colors.income + '20' }]}>
-                    <Ionicons name="add-circle-outline" size={14} color={colors.income} />
-                    <Text style={[styles.pBtnText, { color: colors.income }]}>{isAr ? 'دخل' : 'Income'}</Text>
-                  </View>
+              {showHealthScore && (
+                <View style={[styles.wStatBox, { backgroundColor: themeColors.cardBg, alignItems: 'flex-end' }]}>
+                  <Text style={[styles.wStatLabel, { color: themeColors.textSub }]}>{isAr ? 'الصحة المالية' : 'Health Score'}</Text>
+                  <Text style={[styles.wStatVal, { color: themeColors.accent }]}>85/100</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Savings Goal Bar */}
+            {showGoal && (
+              <View style={{ marginTop: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={[styles.wStatLabel, { color: themeColors.textSub }]}>
+                    {activeGoal ? activeGoal.name : (isAr ? 'هدف الادخار' : 'Savings Goal')}
+                  </Text>
+                  <Text style={[styles.wStatLabel, { color: themeColors.accent, fontFamily: 'Cairo_700Bold' }]}>
+                    {activeGoal ? `${Math.min(100, Math.round((activeGoal.savedAmount / activeGoal.targetAmount) * 100))}%` : '65%'}
+                  </Text>
+                </View>
+                <View style={[styles.wProgressBg, { backgroundColor: themeColors.cardBg }]}>
+                  <View style={[styles.wProgressFill, { backgroundColor: themeColors.accent, width: activeGoal ? `${Math.min(100, (activeGoal.savedAmount / activeGoal.targetAmount) * 100)}%` : '65%' }]} />
                 </View>
               </View>
             )}
-
-            {selectedWidgetType === 'savings_goal' && (
-              <View style={styles.previewContent}>
-                <Text style={styles.previewLabel}>{activeGoal?.name || (isAr ? 'هدف الادخار الأهم' : 'Savings Goal')}</Text>
-                <Text style={styles.previewBalance}>
-                  {activeGoal ? formatCurrency(activeGoal.savedAmount) : formatCurrency(500)} / {activeGoal ? formatCurrency(activeGoal.targetAmount) : formatCurrency(1000)} {currencySymbol}
-                </Text>
-                <View style={styles.progressBg}>
-                  <View style={[styles.progressFill, { width: activeGoal ? `${Math.min(100, (activeGoal.savedAmount / activeGoal.targetAmount) * 100)}%` : '50%' }]} />
-                </View>
-              </View>
-            )}
-
-            {selectedWidgetType === 'cashflow_forecast' && (
-              <View style={styles.previewContent}>
-                <Text style={styles.previewLabel}>{isAr ? 'الرصيد المتوقع نهاية الشهر' : 'Projected End Balance'}</Text>
-                <Text style={[styles.previewBalance, { color: '#3B82F6' }]}>
-                  {formatCurrency(balance * 1.15)} {currencySymbol}
-                </Text>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.income, marginTop: 4 }}>
-                  {isAr ? '📈 سيولة آمنة ومستقرة' : '📈 Safe & stable cashflow'}
-                </Text>
-              </View>
-            )}
-
-            {selectedWidgetType === 'health_score' && (
-              <View style={styles.previewContent}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreText}>85</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: isAr ? 'left' : 'right' }}>
-                      {isAr ? 'وضع مالي ممتاز' : 'Excellent Financial Health'}
-                    </Text>
-                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: isAr ? 'left' : 'right' }}>
-                      {isAr ? 'نسبة ادخارك أعلى من 30%' : 'Savings ratio above 30%'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Sync Button */}
-          <Pressable onPress={copyPayload} style={styles.saveBtn}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.saveBtnText}>
-              {isAr ? 'مزامنة وحفظ الإعدادات' : 'Sync & Save Settings'}
-            </Text>
-          </Pressable>
+          </LinearGradient>
         </View>
+
+        {/* STEP 4: Save & Activate Button */}
+        <Pressable onPress={handleSaveWidget} style={styles.activateBtn}>
+          <Ionicons name="checkmark-circle" size={22} color="#FFF" />
+          <Text style={styles.activateBtnText}>
+            {isAr ? 'حفظ وتفعيل الويدجت التفاعلي 🚀' : 'Save & Activate Widget 🚀'}
+          </Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -491,19 +486,39 @@ const getStyles = (colors: any, isAr: boolean) => StyleSheet.create({
     flexDirection: isAr ? 'row-reverse' : 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 12,
   },
   cardTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 15,
     color: colors.text,
   },
-  cardSub: {
-    fontFamily: 'Cairo_400Regular',
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  themeBtn: {
+    width: '48%',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    gap: 6,
+  },
+  themePreviewGradient: {
+    width: '100%',
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeBtnText: {
+    fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
     color: colors.textSecondary,
-    textAlign: isAr ? 'left' : 'right',
-    marginBottom: 12,
   },
   toggleRow: {
     flexDirection: isAr ? 'row-reverse' : 'row',
@@ -533,182 +548,95 @@ const getStyles = (colors: any, isAr: boolean) => StyleSheet.create({
     backgroundColor: colors.border,
     marginVertical: 4,
   },
-  subHeaderLabel: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: colors.text,
-    textAlign: isAr ? 'left' : 'right',
-    marginBottom: 8,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  typeGridBtn: {
-    flexDirection: isAr ? 'row-reverse' : 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surfaceAlt,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  typeGridText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  sizeRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  sizeBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sizeBtnText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  previewBox: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 14,
+  phoneWidgetCard: {
+    borderRadius: 24,
+    padding: 16,
     borderWidth: 1.5,
-    borderColor: colors.primary + '40',
-    marginTop: 4,
-    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  previewHeader: {
+  wHeader: {
     flexDirection: isAr ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
     borderBottomWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.15)',
     paddingBottom: 8,
   },
-  previewTitle: {
+  wWalletName: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: colors.text,
+    fontSize: 14,
   },
-  liveIndicator: {
+  wLiveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.primary + '18',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 10,
   },
-  liveDot: {
+  wDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.primary,
   },
-  liveText: {
+  wLiveText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 9,
-    color: colors.primary,
+    fontSize: 10,
   },
-  previewContent: {
-    gap: 6,
-  },
-  previewLabel: {
+  wSubTitle: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: isAr ? 'left' : 'right',
   },
-  previewBalance: {
+  wBalanceVal: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 20,
-    color: colors.text,
-    textAlign: isAr ? 'left' : 'right',
+    fontSize: 22,
+    marginTop: 2,
   },
-  previewRow: {
-    flexDirection: isAr ? 'row-reverse' : 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
+  wStatBox: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 10,
   },
-  previewSubLabel: {
+  wStatLabel: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 10,
-    color: colors.textTertiary,
   },
-  previewSubVal: {
+  wStatVal: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
+    marginTop: 2,
   },
-  previewActions: {
-    flexDirection: isAr ? 'row-reverse' : 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  pBtn: {
-    flex: 1,
-    flexDirection: isAr ? 'row-reverse' : 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  pBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 11,
-  },
-  progressBg: {
-    height: 8,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
+  wProgressBg: {
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginTop: 6,
+    marginTop: 4,
   },
-  progressFill: {
+  wProgressFill: {
     height: '100%',
-    backgroundColor: '#F59E0B',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  scoreBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EC489918',
-    borderWidth: 2,
-    borderColor: '#EC4899',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: '#EC4899',
-  },
-  saveBtn: {
+  activateBtn: {
     flexDirection: isAr ? 'row-reverse' : 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  saveBtnText: {
+  activateBtnText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFF',
   },
 });
