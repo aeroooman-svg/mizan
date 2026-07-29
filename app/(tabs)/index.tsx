@@ -203,7 +203,7 @@ export default function HomeScreen() {
       if (str) {
         setWidgetConfig(JSON.parse(str));
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   useFocusEffect(
@@ -232,7 +232,7 @@ export default function HomeScreen() {
       try {
         await syncAllSharedWallets();
         refresh();
-      } catch (e) {}
+      } catch (e) { }
     }, 30000);
 
     return () => clearInterval(interval);
@@ -242,8 +242,8 @@ export default function HomeScreen() {
     const targetW = wallets.find(w => w.id === walletId);
     if (!targetW) return 0;
 
-    const walletTxns = transactions.filter(t => 
-      t.walletId === walletId || 
+    const walletTxns = transactions.filter(t =>
+      t.walletId === walletId ||
       (t.type === 'transfer' && t.toWalletId === walletId)
     );
     const income = walletTxns
@@ -281,7 +281,7 @@ export default function HomeScreen() {
       const list = await getRemittancesForWallet(selectedWallet.id);
       const computed = calculateRemittanceStats(list, selectedWallet.id, walletTransactions);
       setRemittanceStats(computed);
-    } catch (e) {}
+    } catch (e) { }
   }, [selectedWallet, walletTransactions]);
 
   useFocusEffect(
@@ -314,7 +314,7 @@ export default function HomeScreen() {
         getDebts(),
         getFinancialPlan(selectedWallet?.id)
       ]);
-      
+
       if (selectedWallet) {
         setGoals(goalsData.filter((g: SavingsGoal) => g.walletId === selectedWallet.id));
         setDebts(debtsData.filter((d: Debt) => d.walletId === selectedWallet.id));
@@ -365,7 +365,7 @@ export default function HomeScreen() {
   };
   const challengesCompletedCount = useMemo(() => {
     let count = 0;
-    
+
     // 1. Coffee Saver Challenge: No shopping or entertainment in last 5 days
     const nonEssentialCategories = ['shopping', 'entertainment'];
     const now = new Date();
@@ -373,9 +373,9 @@ export default function HomeScreen() {
     fiveDaysAgo.setDate(now.getDate() - 5);
     const nonEssentialTx = walletTransactions.filter(tx => {
       const txDate = new Date(tx.date);
-      return tx.type === 'expense' && 
-             nonEssentialCategories.includes(tx.category) && 
-             txDate >= fiveDaysAgo;
+      return tx.type === 'expense' &&
+        nonEssentialCategories.includes(tx.category) &&
+        txDate >= fiveDaysAgo;
     });
     if (nonEssentialTx.length === 0 && walletTransactions.length > 0) count++;
 
@@ -392,12 +392,12 @@ export default function HomeScreen() {
     const nonEssentialTotal = walletTransactions
       .filter(tx => {
         const txDate = new Date(tx.date);
-        return tx.type === 'expense' && 
-               !essentialCategories.includes(tx.category) && 
-               txDate >= sevenDaysAgo;
+        return tx.type === 'expense' &&
+          !essentialCategories.includes(tx.category) &&
+          txDate >= sevenDaysAgo;
       })
       .reduce((sum, tx) => sum + tx.amount, 0);
-    
+
     const limit = 15;
     if (nonEssentialTotal < limit && walletTransactions.length > 0) count++;
 
@@ -410,12 +410,12 @@ export default function HomeScreen() {
 
   const totalConsolidatedBalance = useMemo(() => {
     if (!selectedWallet) return 0;
-    
+
     let total = 0;
     wallets.forEach(w => {
       if (w.excludeFromTotal) return; // Exclude wallet if setting enabled
       const bal = getWalletBalance(w.id);
-      const converted = Object.keys(rates).length > 0 
+      const converted = Object.keys(rates).length > 0
         ? convertAmount(bal, w.currency, selectedWallet.currency, rates)
         : bal;
       total += converted;
@@ -466,10 +466,10 @@ export default function HomeScreen() {
     confirmText?: string;
     isDestructive?: boolean;
     onConfirm: () => void;
-  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+  }>({ visible: false, title: '', message: '', onConfirm: () => { } });
 
   const handleDeleteWallet = (id: string, name: string) => {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch { }
     const title = language === 'ar' ? 'حذف المحفظة' : t.deleteWallet;
     const message = language === 'ar'
       ? `هل أنت متأكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
@@ -494,7 +494,7 @@ export default function HomeScreen() {
     setUndoState({
       visible: true,
       message: language === 'ar' ? `تم تأكيد مصروف ${getCategoryName(item.category, language)} بنجاح` : 'Transaction confirmed successfully',
-      action: () => {},
+      action: () => { },
     });
   };
 
@@ -515,7 +515,7 @@ export default function HomeScreen() {
       setUndoState({
         visible: true,
         message: language === 'ar' ? 'تم تعديل وتأكيد الفاتورة بنجاح' : 'Adjusted bill confirmed',
-        action: () => {},
+        action: () => { },
       });
     }
     setAdjustingItem(null);
@@ -527,7 +527,7 @@ export default function HomeScreen() {
     setUndoState({
       visible: true,
       message: language === 'ar' ? `تم تخطي مصروف ${getCategoryName(item.category, language)}` : 'Transaction skipped',
-      action: () => {},
+      action: () => { },
     });
   };
 
@@ -539,15 +539,15 @@ export default function HomeScreen() {
       onRequestClose={() => setIsMenuOpen(false)}
     >
       <View style={[styles.drawerOverlay, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
-        <Pressable 
-          style={styles.drawerBackdrop} 
-          onPress={() => setIsMenuOpen(false)} 
+        <Pressable
+          style={styles.drawerBackdrop}
+          onPress={() => setIsMenuOpen(false)}
         />
         <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
           <View style={styles.drawerHeader}>
-            <Image 
-              source={require('../../assets/images/icon.png')} 
-              style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }} 
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }}
               resizeMode="contain"
             />
             <Text style={styles.drawerAppName}>MIZAN</Text>
@@ -557,9 +557,9 @@ export default function HomeScreen() {
 
           <View style={styles.drawerDivider} />
 
-          <ScrollView 
-            style={{ flex: 1, marginVertical: 8 }} 
-            contentContainerStyle={{ gap: 8 }} 
+          <ScrollView
+            style={{ flex: 1, marginVertical: 8 }}
+            contentContainerStyle={{ gap: 8 }}
             showsVerticalScrollIndicator={false}
           >
             <Pressable
@@ -811,7 +811,7 @@ export default function HomeScreen() {
         >
           {/* Consistent Top Header Bar */}
           <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
-            <Pressable 
+            <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setIsMenuOpen(true);
@@ -839,7 +839,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Pressable 
+              <Pressable
                 onPress={() => router.push('/notifications')}
                 style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
               >
@@ -850,7 +850,7 @@ export default function HomeScreen() {
                   </View>
                 )}
               </Pressable>
-              <Pressable 
+              <Pressable
                 onPress={() => router.push('/settings')}
                 style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.7 }]}
               >
@@ -897,7 +897,7 @@ export default function HomeScreen() {
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
                 {language === 'ar' ? 'مرحباً بك في مِيزان' : 'Welcome to MIZAN'}
               </Text>
-              
+
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.92)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 24 }}>
                 {language === 'ar'
                   ? 'مساعدك المالي الذكي لإدارة مصاريفك ومحافظك بالعملات المختلفة بسهولة وأمان.'
@@ -1031,7 +1031,7 @@ export default function HomeScreen() {
       >
         {/* Top Header Bar with Menu and Settings */}
         <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>
-          <Pressable 
+          <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setIsMenuOpen(true);
@@ -1055,13 +1055,13 @@ export default function HomeScreen() {
                 { color: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#60A5FA' : '#FBBF24' }
               ]}>
                 {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') :
-                 syncState === 'syncing' ? (language === 'ar' ? 'جاري المزامنة...' : 'Syncing...') :
-                 (language === 'ar' ? 'محلي' : 'Local')}
+                  syncState === 'syncing' ? (language === 'ar' ? 'جاري المزامنة...' : 'Syncing...') :
+                    (language === 'ar' ? 'محلي' : 'Local')}
               </Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Pressable 
+            <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push('/notifications');
@@ -1075,7 +1075,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </Pressable>
-            <Pressable 
+            <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push('/settings');
@@ -1166,15 +1166,15 @@ export default function HomeScreen() {
         onRequestClose={() => setIsMenuOpen(false)}
       >
         <View style={[styles.drawerOverlay, { flexDirection: language === 'ar' ? 'row' : 'row-reverse' }]}>
-          <Pressable 
-            style={styles.drawerBackdrop} 
-            onPress={() => setIsMenuOpen(false)} 
+          <Pressable
+            style={styles.drawerBackdrop}
+            onPress={() => setIsMenuOpen(false)}
           />
           <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
             <View style={styles.drawerHeader}>
-              <Image 
-                source={require('../../assets/images/icon.png')} 
-                style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }} 
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }}
                 resizeMode="contain"
               />
               <Text style={styles.drawerAppName}>MIZAN</Text>
@@ -1184,9 +1184,9 @@ export default function HomeScreen() {
 
             <View style={styles.drawerDivider} />
 
-            <ScrollView 
-              style={{ flex: 1, marginVertical: 8 }} 
-              contentContainerStyle={{ gap: 8 }} 
+            <ScrollView
+              style={{ flex: 1, marginVertical: 8 }}
+              contentContainerStyle={{ gap: 8 }}
               showsVerticalScrollIndicator={false}
             >
               <Pressable
@@ -1451,13 +1451,13 @@ export default function HomeScreen() {
                 <Text style={styles.adjustCurrency}>{currencySymbol}</Text>
               </View>
               <View style={styles.adjustModalActions}>
-                <Pressable 
+                <Pressable
                   style={[styles.adjustBtn, styles.adjustBtnCancel]}
                   onPress={() => setAdjustingItem(null)}
                 >
                   <Text style={styles.adjustBtnTextCancel}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Text>
                 </Pressable>
-                <Pressable 
+                <Pressable
                   style={[styles.adjustBtn, styles.adjustBtnConfirm]}
                   onPress={handleSaveAdjustedAmount}
                 >
@@ -1973,7 +1973,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 12,
     color: colors.expense,
   },
-  
+
   // Custom Adjust Modal Styles
   adjustModalContent: {
     width: '85%',
@@ -2054,7 +2054,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   // Health Score & Forecast Styles
   healthCard: {
     backgroundColor: colors.surface,
