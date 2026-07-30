@@ -1430,6 +1430,8 @@ export default function StatsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
       {/* Detailed Net Worth & Solvency Interactive Modal */}
       <Modal visible={netWorthModalVisible} animationType="slide" transparent onRequestClose={() => setNetWorthModalVisible(false)}>
         <View style={styles.modalOverlay}>
@@ -1562,7 +1564,6 @@ export default function StatsScreen() {
             </ScrollView>
           </SafeAreaView>
         </View>
-      </Modal>
       </Modal>
     </LinearGradient>
   );
