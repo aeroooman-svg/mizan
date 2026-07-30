@@ -32,13 +32,15 @@ export function getCurrencyInfo(code: CurrencyCode): CurrencyInfo {
   return CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
 }
 
+export type CardStyle = 'classic' | 'glass' | 'futuristic' | 'minimal' | 'royal' | 'cosmic';
+
 export const walletSchema = z.object({
   id: z.string(),
   name: z.string(),
   currency: currencyCodeSchema,
   icon: z.string(),
   color: z.string(),
-  cardStyle: z.enum(['classic', 'glass', 'futuristic', 'minimal']).optional(),
+  cardStyle: z.enum(['classic', 'glass', 'futuristic', 'minimal', 'royal', 'cosmic']).optional(),
   createdAt: z.string(),
   sharedWith: z.string().optional(),
   shareCode: z.string().optional(),
@@ -52,7 +54,7 @@ export interface Wallet {
   currency: CurrencyCode;
   icon: string;
   color: string;
-  cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal';
+  cardStyle?: CardStyle;
   createdAt: string;
   userId?: string;
   sharedWith?: string;

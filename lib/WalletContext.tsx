@@ -21,7 +21,7 @@ interface WalletContextValue {
     currency: CurrencyCode,
     icon: string,
     color: string,
-    cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal',
+    cardStyle?: CardStyle,
     sharedWith?: string
   ) => Promise<Wallet>;
   updateWallet: (updatedWallet: Wallet) => Promise<void>;
@@ -71,7 +71,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     currency: CurrencyCode,
     icon: string,
     color: string,
-    cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal',
+    cardStyle?: CardStyle,
     sharedWith?: string
   ): Promise<Wallet> => {
     const newWallet: Wallet = {

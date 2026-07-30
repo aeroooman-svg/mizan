@@ -30,6 +30,7 @@ import { BlurView } from 'expo-blur';
 import { getOrCreateShareCode, syncSharedWalletByCode } from '@/lib/sharingService';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import WalletCardRender from '@/components/home/WalletCardRender';
 
 export default function AddWalletScreen() {
   const { colors } = useTheme();
@@ -46,7 +47,7 @@ export default function AddWalletScreen() {
   const [currency, setCurrency] = useState<CurrencyCode>('EGP');
   const [selectedIcon, setSelectedIcon] = useState('account-balance-wallet');
   const [selectedColor, setSelectedColor] = useState('#0D7C66');
-  const [cardStyle, setCardStyle] = useState<'classic' | 'glass' | 'futuristic' | 'minimal'>('classic');
+  const [cardStyle, setCardStyle] = useState<CardStyle>('classic');
   const [isSaving, setIsSaving] = useState(false);
 
   const [isShared, setIsShared] = useState(false);
@@ -214,87 +215,17 @@ export default function AddWalletScreen() {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: (insets?.bottom || 0) + 20 }]}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Card Preview */}
-          <View style={[
-            {
-              height: 170,
-              borderRadius: 16,
-              marginTop: 8,
-              marginBottom: 20,
-              position: 'relative',
-              overflow: 'hidden',
-              alignItems: 'stretch',
-              justifyContent: 'space-between',
-            },
-            cardStyle === 'classic' && { backgroundColor: selectedColor },
-            cardStyle === 'glass' && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-            cardStyle === 'futuristic' && { backgroundColor: '#090D1A', borderWidth: 2, borderColor: selectedColor },
-            cardStyle === 'minimal' && { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: selectedColor }
-          ]}>
-            {cardStyle === 'classic' && (
-              <LinearGradient
-                colors={[selectedColor, '#060B18']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-              />
-            )}
-            {cardStyle === 'glass' && (
-              <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFillObject} />
-            )}
-
-            {/* Card Content with absolute layout control */}
-            <View style={{ flex: 1, justifyContent: 'space-between', paddingTop: 18, paddingBottom: 22, paddingHorizontal: 22 }}>
-              {/* Top Header Row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View>
-                  <Text style={[
-                    { fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#fff' },
-                    cardStyle === 'minimal' && { color: selectedColor }
-                  ]} numberOfLines={1}>
-                    {(name || t.walletName).toUpperCase()}
-                  </Text>
-                  <Text style={[
-                    { fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: 'rgba(255,255,255,0.6)' },
-                    cardStyle === 'minimal' && { color: selectedColor + 'aa' }
-                  ]}>
-                    MIZAN PLATINUM
-                  </Text>
-                </View>
-                <MaterialIcons name={selectedIcon as any} size={24} color={cardStyle === 'minimal' ? selectedColor : '#fff'} />
-              </View>
-
-              {/* Middle Balance Row (VERY LARGE & CLEAR) */}
-              <View style={{ marginVertical: 2 }}>
-                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 8, color: cardStyle === 'minimal' ? selectedColor + 'aa' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
-                </Text>
-                <Text style={[
-                  { fontFamily: 'Cairo_700Bold', fontSize: 26, color: '#fff', lineHeight: 32 },
-                  cardStyle === 'minimal' && { color: selectedColor }
-                ]} numberOfLines={1}>
-                  {(parseFloat(normalizeAmountInput(initialBalance)) || 0).toFixed(2)} <Text style={{ fontSize: 13, fontFamily: 'Cairo_600SemiBold' }}>{currency}</Text>
-                </Text>
-              </View>
-
-              {/* Bottom Footer Row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={[
-                  { fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.8)', letterSpacing: 1.5 },
-                  cardStyle === 'minimal' && { color: selectedColor }
-                ]}>
-                  ••••  ••••  ••••  0000
-                </Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[
-                    { fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: '#fff' },
-                    cardStyle === 'minimal' && { color: selectedColor }
-                  ]}>
-                    07/31
-                  </Text>
-                </View>
-              </View>
-            </View>
+          {/* Card Preview with Metallic 3D & Artistic Themes */}
+          <View style={{ marginTop: 4, marginBottom: 16 }}>
+            <WalletCardRender
+              name={name || t.walletName}
+              balanceFormatted={(parseFloat(normalizeAmountInput(initialBalance)) || 0).toFixed(2)}
+              currencySymbol={currency}
+              cardStyle={cardStyle}
+              color={selectedColor}
+              icon={selectedIcon}
+              height={180}
+            />
           </View>
 
           {/* Join shared wallet option */}
@@ -345,12 +276,14 @@ export default function AddWalletScreen() {
 
           <View style={styles.section}>
             <Text style={styles.label}>{language === 'ar' ? 'تصميم البطاقة' : 'Card Design'}</Text>
-            <View style={styles.styleRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
               {([
-                { key: 'classic', label: language === 'ar' ? 'كلاسيكي' : 'Classic' },
-                { key: 'glass', label: language === 'ar' ? 'زجاجي' : 'Glass' },
-                { key: 'futuristic', label: language === 'ar' ? 'مستقبلي' : 'Futuristic' },
-                { key: 'minimal', label: language === 'ar' ? 'بسيط' : 'Minimal' }
+                { key: 'classic', label: language === 'ar' ? '🏆 بنكي واقعي' : '🏆 Real Bank' },
+                { key: 'royal', label: language === 'ar' ? '✨ ملكي مزخرف' : '✨ Royal Arabesque' },
+                { key: 'cosmic', label: language === 'ar' ? '🌌 مجري فلكي' : '🌌 Cosmic Galaxy' },
+                { key: 'glass', label: language === 'ar' ? '💎 كريستال زجاجي' : '💎 Frosted Glass' },
+                { key: 'futuristic', label: language === 'ar' ? '🚀 سايبر مستقبلي' : '🚀 Cyber Laser' },
+                { key: 'minimal', label: language === 'ar' ? '🖤 بلاتينيوم بسيط' : '🖤 Platinum Stealth' },
               ] as const).map(s => (
                 <Pressable
                   key={s.key}
@@ -360,7 +293,7 @@ export default function AddWalletScreen() {
                   }}
                   style={[
                     styles.styleChip,
-                    cardStyle === s.key && { backgroundColor: selectedColor + '15', borderColor: selectedColor, borderWidth: 1.5 }
+                    cardStyle === s.key && { backgroundColor: selectedColor + '20', borderColor: selectedColor, borderWidth: 1.5 }
                   ]}
                 >
                   <Text style={[styles.styleText, cardStyle === s.key && { color: selectedColor, fontFamily: 'Cairo_700Bold' }]}>
@@ -368,7 +301,7 @@ export default function AddWalletScreen() {
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
           </View>
 
           <View style={styles.section}>

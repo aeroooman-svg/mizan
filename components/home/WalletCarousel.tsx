@@ -21,6 +21,7 @@ import Colors from '@/constants/colors';
 import { Wallet, Transaction } from '@/lib/storage';
 import { formatCurrency } from '@/lib/categories';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+import WalletCardRender from './WalletCardRender';
 
 interface WalletCarouselProps {
   wallets: Wallet[];
@@ -180,6 +181,16 @@ export default function WalletCarousel({
               : 'rgba(255,255,255,0.7)';
           const expiryColor = cardStyle === 'minimal' ? wallet.color : '#fff';
 
+          const sharedText = wallet.sharedWith ? (() => {
+            try {
+              const members = JSON.parse(wallet.sharedWith);
+              if (Array.isArray(members)) {
+                return members.map((m) => m.username).join(', ');
+              }
+            } catch (e) {}
+            return wallet.sharedWith;
+          })() : undefined;
+
           return (
             <Pressable
               key={wallet.id}
@@ -196,205 +207,24 @@ export default function WalletCarousel({
                 isSelected && styles.wallet3DCardSelected,
                 {
                   shadowColor: wallet.color,
-                  shadowOpacity: isSelected ? 0.45 : 0.2,
-                  shadowRadius: isSelected ? 12 : 6,
+                  shadowOpacity: isSelected ? 0.5 : 0.25,
+                  shadowRadius: isSelected ? 14 : 6,
                   shadowOffset: { width: 0, height: isSelected ? 6 : 3 },
                 },
                 pressed && { transform: [{ scale: 0.97 }] },
               ]}
             >
-              <View style={[cardDesignStyle, { paddingHorizontal: 0, paddingVertical: 0, borderRadius: 22, overflow: 'hidden' }]}>
-                {cardStyle === 'classic' && (
-                  <LinearGradient
-                    colors={[wallet.color, '#060B18']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
-                  />
-                )}
-                {cardStyle === 'glass' &&
-                  (Platform.OS === 'ios' ? (
-                    <BlurView
-                      intensity={35}
-                      tint="dark"
-                      style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        StyleSheet.absoluteFillObject,
-                        { backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: 22 },
-                      ]}
-                    />
-                  ))}
-
-                <View style={{ flex: 1, justifyContent: 'space-between', padding: 18 }}>
-                  {/* Top Header Row */}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text
-                        style={{
-                          fontFamily: 'Cairo_700Bold',
-                          fontSize: 24,
-                          color: textColor,
-                          textAlign: 'left',
-                          lineHeight: 30,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {wallet.name.toUpperCase()}
-                      </Text>
-                      {wallet.sharedWith && (
-                        <Pressable
-                          onPress={() => {
-                            Haptics.selectionAsync();
-                            router.push(`/share-wallet?walletId=${wallet.id}` as any);
-                          }}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                            borderRadius: 6,
-                            alignSelf: 'flex-start',
-                            marginTop: 4,
-                          }}
-                        >
-                          <Ionicons name="people" size={12} color="#10B981" />
-                          <Text
-                            style={{
-                              fontFamily: 'Cairo_700Bold',
-                              fontSize: 9,
-                              color: '#10B981',
-                            }}
-                          >
-                            {(() => {
-                              try {
-                                const members = JSON.parse(wallet.sharedWith);
-                                if (Array.isArray(members)) {
-                                  const names = members.map((m) => m.username).join(', ');
-                                  return language === 'ar'
-                                    ? `مشترك: ${names}`
-                                    : `Shared: ${names}`;
-                                }
-                              } catch (e) {}
-                              return language === 'ar'
-                                ? `مشترك مع ${wallet.sharedWith}`
-                                : `Shared: ${wallet.sharedWith}`;
-                            })()}
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          setActionWallet(wallet);
-                        }}
-                        hitSlop={10}
-                        style={{
-                          padding: 6,
-                          backgroundColor: 'rgba(255,255,255,0.18)',
-                          borderRadius: 10,
-                        }}
-                      >
-                        <Ionicons name="ellipsis-vertical" size={16} color={textColor} />
-                      </Pressable>
-                      <MaterialIcons
-                        name={(wallet.icon as any) || 'account-balance-wallet'}
-                        size={24}
-                        color={textColor}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Middle Card Row: Available Balance on Left + Larger Health Score Ring on Right */}
-                  <View
-                    style={{
-                      marginTop: 14,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    {/* Available Balance */}
-                    <View style={{ flex: 1, alignItems: 'flex-start', marginRight: 12 }}>
-                      <Pressable
-                        onPress={() => handleOpenAdjustModal(wallet, walletBalance)}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: 'Cairo_600SemiBold',
-                            fontSize: 12,
-                            color: textSecondaryColor,
-                            textTransform: 'uppercase',
-                            letterSpacing: 0.5,
-                            textAlign: 'left',
-                          }}
-                        >
-                          {language === 'ar' ? 'الرصيد المتاح' : 'Available Balance'}
-                        </Text>
-                      </Pressable>
-                      <Text
-                        style={{
-                          fontFamily: 'Cairo_700Bold',
-                          fontSize: 34,
-                          color: textColor,
-                          lineHeight: 42,
-                          textAlign: 'left',
-                        }}
-                        numberOfLines={1}
-                      >
-                        {walletBalance >= 0 ? '' : '-'}
-                        {formatCurrency(Math.abs(walletBalance), language)}{' '}
-                        <Text style={{ fontSize: 18, fontFamily: 'Cairo_600SemiBold' }}>
-                          {wallet.currency}
-                        </Text>
-                      </Text>
-                    </View>
-
-                    {/* Circular Financial Health Gauge Badge (Repositioned to right side of card body) */}
-                    <View style={{ alignItems: 'center', gap: 2 }}>
-                      <View
-                        style={{
-                          width: 54,
-                          height: 54,
-                          borderRadius: 27,
-                          borderWidth: 3,
-                          borderColor: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444',
-                          backgroundColor: 'rgba(0, 0, 0, 0.32)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          shadowColor: healthScore >= 80 ? '#10B981' : '#F59E0B',
-                          shadowOffset: { width: 0, height: 3 },
-                          shadowOpacity: 0.5,
-                          shadowRadius: 8,
-                        }}
-                      >
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFFFFF', lineHeight: 20 }}>
-                          {healthScore}
-                        </Text>
-                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: 'rgba(255, 255, 255, 0.8)', marginTop: -3 }}>
-                          %
-                        </Text>
-                      </View>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: healthScore >= 80 ? '#10B981' : healthScore >= 60 ? '#F59E0B' : '#EF4444' }}>
-                        {language === 'ar' ? (healthScore >= 80 ? 'ممتاز' : 'جيد') : (healthScore >= 80 ? 'Excellent' : 'Good')}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
+              <WalletCardRender
+                name={wallet.name}
+                balanceFormatted={`${walletBalance >= 0 ? '' : '-'}${formatCurrency(Math.abs(walletBalance), language)}`}
+                currencySymbol={wallet.currency}
+                cardStyle={cardStyle}
+                color={wallet.color}
+                icon={wallet.icon || 'account-balance-wallet'}
+                isShared={Boolean(wallet.sharedWith)}
+                sharedLabel={sharedText ? (language === 'ar' ? `مشترك: ${sharedText}` : `Shared: ${sharedText}`) : undefined}
+                height={190}
+              />
             </Pressable>
           );
         })}

@@ -49,7 +49,7 @@ interface TransactionContextValue {
   addTransaction: (transaction: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
-  addWallet: (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string, excludeFromTotal?: boolean, initialBalance?: number) => Promise<Wallet>;
+  addWallet: (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: CardStyle, sharedWith?: string, excludeFromTotal?: boolean, initialBalance?: number) => Promise<Wallet>;
   updateWallet: (updatedWallet: Wallet) => Promise<void>;
   removeWallet: (id: string) => Promise<void>;
   selectWallet: (id: string) => Promise<void>;
@@ -442,7 +442,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     triggerLiveSync();
   }, [triggerLiveSync]);
 
-  const addWallet = useCallback(async (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: 'classic' | 'glass' | 'futuristic' | 'minimal', sharedWith?: string, excludeFromTotal?: boolean, initialBalance?: number): Promise<Wallet> => {
+  const addWallet = useCallback(async (name: string, currency: CurrencyCode, icon: string, color: string, cardStyle?: CardStyle, sharedWith?: string, excludeFromTotal?: boolean, initialBalance?: number): Promise<Wallet> => {
     let userId: string | undefined = undefined;
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
