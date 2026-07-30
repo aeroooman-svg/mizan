@@ -148,6 +148,7 @@ export default function AddTransactionScreen() {
 
   // Custom Category state
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any | null>(null);
   const [customNameAr, setCustomNameAr] = useState('');
   const [customNameEn, setCustomNameEn] = useState('');
   const [customColor, setCustomColor] = useState(WALLET_COLORS[0]);
