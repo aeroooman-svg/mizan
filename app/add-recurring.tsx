@@ -20,7 +20,7 @@ import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { expenseCategories, incomeCategories, formatCurrency, WALLET_COLORS } from '@/lib/categories';
+import { expenseCategories, incomeCategories, formatCurrency, WALLET_COLORS, EXPANDED_ICON_LIBRARY } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
@@ -907,7 +907,7 @@ export default function AddRecurringScreen() {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t.selectIcon}</Text>
                 <View style={styles.iconsGrid}>
-                  {['restaurant', 'directions-car', 'receipt-long', 'shopping-bag', 'medical-services', 'school', 'movie', 'home', 'phone-android', 'checkroom', 'more-horiz', 'account-balance-wallet'].map(ic => {
+                  {EXPANDED_ICON_LIBRARY.map(ic => {
                     const isSelected = customIcon === ic;
                     return (
                       <Pressable

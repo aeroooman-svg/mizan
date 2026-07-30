@@ -85,9 +85,41 @@ export const WALLET_ICONS = [
   { icon: 'credit-card', label: 'بطاقة' },
   { icon: 'attach-money', label: 'نقد' },
   { icon: 'business-center', label: 'عمل' },
+  { icon: 'favorite', label: 'شخصي' },
+  { icon: 'card-giftcard', label: 'هدية' },
+  { icon: 'shopping-bag', label: 'تسوق' },
+  { icon: 'local-cafe', label: 'قهوة' },
+  { icon: 'fitness-center', label: 'رياضة' },
+  { icon: 'flight', label: 'سفر' },
 ];
 
 export const WALLET_COLORS = [
-  '#0D7C66', '#2196F3', '#FF6B6B', '#FF9800', '#7C4DFF',
-  '#E91E63', '#4ECDC4', '#8D6E63', '#4CAF50', '#45B7D1',
+  '#F472B6', // Light Pink / بينك فاتح
+  '#EC4899', // Vivid Pink / بينك زاهي
+  '#FB7185', // Soft Rose / روز هادئ
+  '#FF80AB', // Pastel Pink / بينك باستيل
+  '#E879F9', // Orchid Pink / أوركيد
+  '#0D7C66', // Emerald / أخضر زمردي
+  '#2196F3', // Sky Blue / أزرق
+  '#7C4DFF', // Purple / بنفسجي
+  '#C084FC', // Lavender / لافندر
+  '#FF6B6B', // Coral / مرجاني
+  '#FF9800', // Amber / برتقالي
+  '#F59E0B', // Gold / ذهبي
+  '#10B981', // Mint / نعناعي
+  '#45B7D1', // Turquoise / تركواز
+  '#8D6E63', // Cocoa / بني
+  '#64748B', // Slate / رمادي
+];
+
+export const EXPANDED_ICON_LIBRARY = [
+  'restaurant', 'fastfood', 'local-cafe', 'local-bar', 'cake', 'local-pizza',
+  'directions-car', 'directions-bus', 'flight', 'local-taxi', 'commute', 'local-gas-station',
+  'home', 'receipt-long', 'lightbulb', 'water-drop', 'wifi', 'phone-android', 'tv',
+  'shopping-bag', 'shopping-cart', 'checkroom', 'card-giftcard', 'storefront', 'spa',
+  'medical-services', 'fitness-center', 'local-pharmacy', 'child-care',
+  'school', 'work', 'laptop-mac', 'menu-book', 'build',
+  'movie', 'sports-esports', 'sports-soccer', 'music-note', 'headset',
+  'account-balance', 'account-balance-wallet', 'savings', 'credit-card', 'attach-money', 'trending-up', 'stars',
+  'pets', 'family-restroom', 'favorite'
 ];

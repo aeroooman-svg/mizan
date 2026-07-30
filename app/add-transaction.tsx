@@ -24,7 +24,7 @@ import * as Crypto from 'expo-crypto';
 import * as Clipboard from 'expo-clipboard';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { expenseCategories, incomeCategories, formatCurrency, WALLET_COLORS } from '@/lib/categories';
+import { expenseCategories, incomeCategories, formatCurrency, WALLET_COLORS, EXPANDED_ICON_LIBRARY } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
@@ -64,7 +64,7 @@ export default function AddTransactionScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const { addTransaction, updateTransaction, selectedWallet, currencySymbol, walletTransactions, customCategories, addCustomCategory, wallets, selectWallet } = useTransactions();
+  const { addTransaction, updateTransaction, selectedWallet, currencySymbol, walletTransactions, customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory, wallets, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
   const params = useLocalSearchParams<{ 
     editId?: string; 
@@ -620,6 +620,24 @@ export default function AddTransactionScreen() {
   };
 
   // Custom category operations
+  const handleOpenNewCategory = () => {
+    setEditingCategory(null);
+    setCustomNameAr('');
+    setCustomNameEn('');
+    setCustomColor(WALLET_COLORS[0]);
+    setCustomIcon(CUSTOM_CATEGORY_ICONS[0]);
+    setCustomModalVisible(true);
+  };
+
+  const handleOpenEditCategory = (cat: any) => {
+    setEditingCategory(cat);
+    setCustomNameAr(cat.nameAr || cat.name || '');
+    setCustomNameEn(cat.name || cat.nameAr || '');
+    setCustomColor(cat.color || WALLET_COLORS[0]);
+    setCustomIcon(cat.icon || CUSTOM_CATEGORY_ICONS[0]);
+    setCustomModalVisible(true);
+  };
+
   const handleSaveCustomCategory = async () => {
     const nameAr = customNameAr.trim();
     let nameEn = customNameEn.trim();
@@ -631,16 +649,51 @@ export default function AddTransactionScreen() {
     }
 
     try {
-      const newCat = await addCustomCategory(nameAr, nameEn, customIcon, customColor, type === 'transfer' ? 'expense' : type);
-      setSelectedCategory(newCat.id);
+      if (editingCategory) {
+        await updateCustomCategory({
+          ...editingCategory,
+          nameAr,
+          name: nameEn,
+          icon: customIcon,
+          color: customColor,
+        });
+        setSelectedCategory(editingCategory.id);
+      } else {
+        const newCat = await addCustomCategory(nameAr, nameEn, customIcon, customColor, type === 'transfer' ? 'expense' : type);
+        setSelectedCategory(newCat.id);
+      }
       setCustomModalVisible(false);
-      // Reset fields
+      setEditingCategory(null);
       setCustomNameAr('');
       setCustomNameEn('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       Alert.alert(t.error, 'Could not save category');
     }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!editingCategory) return;
+    Alert.alert(
+      language === 'ar' ? 'حذف الفئة' : 'Delete Category',
+      language === 'ar' ? `هل أنت متأكد من حذف فئة "${editingCategory.nameAr || editingCategory.name}"؟` : `Are you sure you want to delete "${editingCategory.name}"?`,
+      [
+        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+        {
+          text: language === 'ar' ? 'حذف' : 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await removeCustomCategory(editingCategory.id);
+            if (selectedCategory === editingCategory.id) {
+              setSelectedCategory('');
+            }
+            setCustomModalVisible(false);
+            setEditingCategory(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -865,35 +918,67 @@ export default function AddTransactionScreen() {
             <View style={styles.categorySection}>
               <Text style={styles.label}>{t.category}</Text>
               <View style={styles.categoryGrid}>
-                {displayedCategories.map((cat) => (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setSelectedCategory(cat.id);
-                    }}
-                    style={[
-                      styles.categoryItem,
-                      selectedCategory === cat.id && { borderColor: cat.color, borderWidth: 2 },
-                    ]}
-                  >
-                    <View style={[styles.categoryIcon, { backgroundColor: cat.color + '18' }]}>
-                      <MaterialIcons name={cat.icon as any} size={22} color={cat.color} />
-                    </View>
-                    <Text style={[
-                      styles.categoryName,
-                      selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
-                    ]}>
-                      {getCategoryName(cat.id, language)}
-                    </Text>
-                  </Pressable>
-                ))}
+                {displayedCategories.map((cat) => {
+                  const isCustom = Boolean((cat as any).isCustom);
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedCategory(cat.id);
+                      }}
+                      onLongPress={() => {
+                        if (isCustom) {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          handleOpenEditCategory(cat);
+                        }
+                      }}
+                      style={[
+                        styles.categoryItem,
+                        selectedCategory === cat.id && { borderColor: cat.color, borderWidth: 2 },
+                        { position: 'relative' }
+                      ]}
+                    >
+                      {isCustom && (
+                        <Pressable
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            handleOpenEditCategory(cat);
+                          }}
+                          hitSlop={8}
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            zIndex: 10,
+                            backgroundColor: colors.surfaceAlt || '#0F172A',
+                            borderRadius: 10,
+                            padding: 3,
+                            borderWidth: 1,
+                            borderColor: cat.color + '60',
+                          }}
+                        >
+                          <Ionicons name="pencil" size={11} color={cat.color} />
+                        </Pressable>
+                      )}
+                      <View style={[styles.categoryIcon, { backgroundColor: cat.color + '18' }]}>
+                        <MaterialIcons name={cat.icon as any} size={22} color={cat.color} />
+                      </View>
+                      <Text style={[
+                        styles.categoryName,
+                        selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
+                      ]}>
+                        {getCategoryName(cat.id, language)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
 
                 {/* Add Custom Category Card */}
                 <Pressable
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setCustomModalVisible(true);
+                    handleOpenNewCategory();
                   }}
                   style={[styles.categoryItem, styles.addCategoryItem]}
                 >
@@ -1310,7 +1395,9 @@ export default function AddTransactionScreen() {
               <Pressable onPress={() => setCustomModalVisible(false)} hitSlop={12} style={styles.closeBtn}>
                 <Ionicons name="close" size={22} color={Colors.text} />
               </Pressable>
-              <Text style={styles.calcTitle}>{t.newCategory}</Text>
+              <Text style={styles.calcTitle}>
+                {editingCategory ? (language === 'ar' ? 'تعديل الفئة' : 'Edit Category') : t.newCategory}
+              </Text>
               <Pressable onPress={handleSaveCustomCategory} hitSlop={12} style={styles.calcConfirmBtn}>
                 <Ionicons name="checkmark" size={22} color={Colors.primary} />
               </Pressable>
@@ -1342,7 +1429,7 @@ export default function AddTransactionScreen() {
                 />
               </View>
 
-              {/* Color Grid Selector */}
+              {/* Color Grid Selector (Including Soft Light Pink & Pastel Colors) */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t.selectColor}</Text>
                 <View style={styles.colorsGrid}>
@@ -1366,11 +1453,11 @@ export default function AddTransactionScreen() {
                 </View>
               </View>
 
-              {/* Icon Grid Selector */}
+              {/* Expanded Icon Grid Selector */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>{t.selectIcon}</Text>
                 <View style={styles.iconsGrid}>
-                  {CUSTOM_CATEGORY_ICONS.map(ic => {
+                  {EXPANDED_ICON_LIBRARY.map(ic => {
                     const isSelected = customIcon === ic;
                     return (
                       <Pressable
@@ -1392,19 +1479,37 @@ export default function AddTransactionScreen() {
               </View>
             </ScrollView>
 
-            {/* Pinned Bottom Footer Save Button */}
-            <View style={styles.modalFooter}>
+            {/* Pinned Bottom Footer Save & Delete Buttons */}
+            <View style={[styles.modalFooter, { flexDirection: 'row', gap: 10 }]}>
+              {editingCategory && (
+                <Pressable
+                  onPress={handleDeleteCategory}
+                  style={({ pressed }) => [
+                    styles.modalSaveBtn,
+                    { flex: 1, backgroundColor: '#EF4444' },
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.modalSaveText}>
+                    {language === 'ar' ? 'حذف الفئة' : 'Delete'}
+                  </Text>
+                </Pressable>
+              )}
+
               <Pressable
                 onPress={handleSaveCustomCategory}
                 style={({ pressed }) => [
                   styles.modalSaveBtn,
-                  { backgroundColor: customColor || Colors.primary },
+                  { flex: 2, backgroundColor: customColor || Colors.primary },
                   pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                 ]}
               >
                 <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.modalSaveText}>
-                  {language === 'ar' ? 'حفظ وإنشاء الفئة' : 'Save & Create Category'}
+                  {editingCategory 
+                    ? (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes')
+                    : (language === 'ar' ? 'حفظ وإنشاء الفئة' : 'Save & Create Category')}
                 </Text>
               </Pressable>
             </View>

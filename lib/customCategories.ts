@@ -24,6 +24,17 @@ export async function saveCustomCategory(category: CustomCategory): Promise<void
   await AsyncStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(existing));
 }
 
+export async function updateCustomCategory(category: CustomCategory): Promise<void> {
+  const existing = await getCustomCategories();
+  const index = existing.findIndex(c => c.id === category.id);
+  if (index !== -1) {
+    existing[index] = category;
+  } else {
+    existing.push(category);
+  }
+  await AsyncStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(existing));
+}
+
 export async function deleteCustomCategory(id: string): Promise<void> {
   const existing = await getCustomCategories();
   const filtered = existing.filter(c => c.id !== id);

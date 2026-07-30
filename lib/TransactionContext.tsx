@@ -23,7 +23,7 @@ import { deleteBudgetsForWallet } from './budgetStorage';
 import { deleteEnvelopesForWallet } from './envelopeBudgetStorage';
 import { deleteInstallmentsForWallet } from './installmentStorage';
 import { deleteJameyasForWallet } from './jameyaStorage';
-import { getCustomCategories, saveCustomCategory, deleteCustomCategory as deleteCustomCatFromStorage, CustomCategory } from './customCategories';
+import { getCustomCategories, saveCustomCategory, updateCustomCategory as updateCustomCatInStorage, deleteCustomCategory as deleteCustomCatFromStorage, CustomCategory } from './customCategories';
 import { getRecurringTransactions, updateRecurringTransaction, deleteRecurringTransaction, RecurringTransaction } from './recurringStorage';
 import { getGoals, deleteGoal, getRules, deleteRule } from './goalStorage';
 import { getDebts, deleteDebt } from './debtStorage';
@@ -60,6 +60,7 @@ interface TransactionContextValue {
   // Custom categories
   customCategories: CustomCategory[];
   addCustomCategory: (nameAr: string, nameEn: string, icon: string, color: string, type: 'expense' | 'income') => Promise<CustomCategory>;
+  updateCustomCategory: (cat: CustomCategory) => Promise<void>;
   removeCustomCategory: (id: string) => Promise<void>;
   // Pending recurring transactions (variable)
   pendingRecurring: RecurringTransaction[];
@@ -570,6 +571,21 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     return newCat;
   }, []);
 
+  const updateCustomCategory = useCallback(async (cat: CustomCategory) => {
+    await updateCustomCatInStorage(cat);
+    setCustomCategories(prev => {
+      const idx = prev.findIndex(c => c.id === cat.id);
+      let next = [...prev];
+      if (idx !== -1) {
+        next[idx] = cat;
+      } else {
+        next.push(cat);
+      }
+      setCustomCategoriesInMemory(next);
+      return next;
+    });
+  }, []);
+
   const removeCustomCategory = useCallback(async (id: string) => {
     await deleteCustomCatFromStorage(id);
     setCustomCategories(prev => {
@@ -654,10 +670,11 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     walletTransactions,
     customCategories,
     addCustomCategory,
+    updateCustomCategory,
     removeCustomCategory,
     pendingRecurring,
     approveRecurringTransaction,
-  }), [transactions, wallets, selectedWallet, isLoading, isInitialLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, updateTransaction, addWallet, updateWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions, customCategories, addCustomCategory, removeCustomCategory, pendingRecurring, approveRecurringTransaction]);
+  }), [transactions, wallets, selectedWallet, isLoading, isInitialLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, updateTransaction, addWallet, updateWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions, customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory, pendingRecurring, approveRecurringTransaction]);
 
   return (
     <TransactionContext.Provider value={value}>
