@@ -309,7 +309,7 @@ export default function StatsScreen() {
   const netWorth = useMemo(() => {
     return selectedWallet 
       ? (selectedWallet.initialBalance || 0) + allTimeIncome - allTimeExpense
-      : (wallets || []).reduce((sum, w) => sum + (w.balance || 0), 0);
+      : (wallets || []).reduce((sum, w) => sum + (w.initialBalance || 0), 0);
   }, [selectedWallet, allTimeIncome, allTimeExpense, wallets]);
 
   const savingsRate = useMemo(() => {
