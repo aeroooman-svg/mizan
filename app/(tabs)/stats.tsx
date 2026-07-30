@@ -34,6 +34,56 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const BAR_CHART_HEIGHT = 160;
 const BAR_CHART_WIDTH = SCREEN_WIDTH - 64;
 
+const HIGH_CONTRAST_DISTINCT_COLORS = [
+  '#FF6B6B', // 🔴 Coral Red
+  '#10B981', // 🟢 Emerald Green
+  '#F59E0B', // 🟡 Golden Amber
+  '#3B82F6', // 🔵 Electric Blue
+  '#EC4899', // 🌸 Hot Pink
+  '#8B5CF6', // 🟣 Vivid Purple
+  '#14B8A6', // 🌊 Dark Teal
+  '#F97316', // 🟠 Bright Orange
+  '#06B6D4', // 🌐 Cyan
+];
+
+const generateSparklinePath = (points: { day: number; netWorth: number }[], width = 140, height = 38) => {
+  if (!points || points.length === 0) {
+    return { pathD: `M 0,${height/2} L ${width},${height/2}`, areaD: `M 0,${height/2} L ${width},${height/2} L ${width},${height} L 0,${height} Z`, lastX: width, lastY: height/2, min: 0, max: 0 };
+  }
+
+  const values = points.map(p => p.netWorth);
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+
+  if (min === max) {
+    min = min - 10;
+    max = max + 10;
+  }
+
+  const paddingY = 6;
+  const usableH = height - (paddingY * 2);
+
+  const coords = points.map((p, i) => {
+    const x = (i / (points.length - 1 || 1)) * width;
+    const normY = (p.netWorth - min) / (max - min);
+    const y = height - paddingY - (normY * usableH);
+    return { x, y };
+  });
+
+  let pathD = `M ${coords[0].x.toFixed(1)},${coords[0].y.toFixed(1)}`;
+  for (let i = 1; i < coords.length; i++) {
+    const prev = coords[i - 1];
+    const curr = coords[i];
+    const cpX = (prev.x + curr.x) / 2;
+    pathD += ` C ${cpX.toFixed(1)},${prev.y.toFixed(1)} ${cpX.toFixed(1)},${curr.y.toFixed(1)} ${curr.x.toFixed(1)},${curr.y.toFixed(1)}`;
+  }
+
+  const lastCoord = coords[coords.length - 1];
+  const areaD = `${pathD} L ${lastCoord.x.toFixed(1)},${height} L ${coords[0].x.toFixed(1)},${height} Z`;
+
+  return { pathD, areaD, lastX: lastCoord.x, lastY: lastCoord.y, min, max, coords };
+};
+
 interface CategoryStat {
   category: Category;
   total: number;
@@ -198,6 +248,60 @@ export default function StatsScreen() {
     stats.sort((a, b) => b.total - a.total);
     return stats;
   }, [monthlyTransactions, viewType, customCategories]);
+
+  const categoryStatsWithColors = useMemo(() => {
+    return categoryStats.map((stat, idx) => {
+      const distinctColor = HIGH_CONTRAST_DISTINCT_COLORS[idx % HIGH_CONTRAST_DISTINCT_COLORS.length];
+      return {
+        ...stat,
+        displayColor: distinctColor,
+      };
+    });
+  }, [categoryStats]);
+
+  const [netWorthModalVisible, setNetWorthModalVisible] = useState(false);
+
+  const realNetWorthPoints = useMemo(() => {
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const isCurrent = currentMonth === now.getMonth() && currentYear === now.getFullYear();
+    const maxDay = isCurrent ? Math.max(1, now.getDate()) : daysInMonth;
+
+    const priorTxns = walletTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() < currentYear || (d.getFullYear() === currentYear && d.getMonth() < currentMonth);
+    });
+
+    const priorIncome = priorTxns
+      .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const priorExpense = priorTxns
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+
+    let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense;
+
+    const points: { day: number; netWorth: number }[] = [];
+
+    for (let day = 1; day <= maxDay; day++) {
+      const dayTxns = monthlyTransactions.filter(t => new Date(t.date).getDate() === day);
+      const inc = dayTxns
+        .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+        .reduce((s, t) => s + t.amount, 0);
+      const exp = dayTxns
+        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .reduce((s, t) => s + t.amount, 0);
+
+      running += (inc - exp);
+      points.push({ day, netWorth: running });
+    }
+
+    return points;
+  }, [walletTransactions, monthlyTransactions, currentYear, currentMonth, now, selectedWallet]);
+
+  const realSparkline = useMemo(() => {
+    return generateSparklinePath(realNetWorthPoints, 140, 38);
+  }, [realNetWorthPoints]);
 
   const dailyData = useMemo((): DailyData[] => {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -430,13 +534,29 @@ export default function StatsScreen() {
 
             {/* 3-Card Grid (Image 2 Replica) */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {/* Left Card: Net Worth & Smooth Sparkline Wave Curve */}
-              <View style={{ flex: 1, backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 18, padding: 12, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 135 }}>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'صافي الأصول والملاءة' : 'Net Worth'}
-                </Text>
+              {/* Left Card: Real Net Worth & Smooth Sparkline Wave Curve */}
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setNetWorthModalVisible(true);
+                }}
+                style={({ pressed }) => [
+                  { flex: 1, backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 18, padding: 12, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 135 },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+                    {language === 'ar' ? 'صافي الملاءة' : 'Net Worth'}
+                  </Text>
+                  <View style={{ backgroundColor: '#10B98115', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: '#10B981' }}>
+                      {language === 'ar' ? 'تفاصيل 🔍' : 'Details 🔍'}
+                    </Text>
+                  </View>
+                </View>
 
-                {/* Smooth Bezier Wave SVG */}
+                {/* Real Dynamic Bezier Wave SVG Calculated from Transactions */}
                 <View style={{ marginVertical: 2, height: 42 }}>
                   <Svg width="100%" height="42" viewBox="0 0 140 42">
                     <Defs>
@@ -446,29 +566,29 @@ export default function StatsScreen() {
                       </SvgGradient>
                     </Defs>
                     <Path
-                      d="M 0,34 Q 20,18 40,28 T 80,12 T 110,20 T 140,4 L 140,42 L 0,42 Z"
+                      d={realSparkline.areaD}
                       fill="url(#netWorthGrad)"
                     />
                     <Path
-                      d="M 0,34 Q 20,18 40,28 T 80,12 T 110,20 T 140,4"
+                      d={realSparkline.pathD}
                       fill="none"
                       stroke="#10B981"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                     />
-                    <Circle cx="140" cy="4" r="3.5" fill="#10B981" />
+                    <Circle cx={realSparkline.lastX} cy={realSparkline.lastY} r="3.5" fill="#10B981" />
                   </Svg>
                 </View>
 
                 <View style={{ alignItems: 'flex-start' }}>
                   <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'النمو الصافي' : 'Net Assets'}
+                    {language === 'ar' ? 'النمو الحقيقي الصافي' : 'Real Net Assets'}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }} numberOfLines={1} adjustsFontSizeToFit>
                     {netWorth >= 0 ? '+' : ''}{formatCurrency(netWorth)} <Text style={{ fontSize: 10, fontFamily: 'Cairo_600SemiBold' }}>{currencySymbol}</Text>
                   </Text>
                 </View>
-              </View>
+              </Pressable>
 
               {/* Right Column: Monthly Spending Donut & Savings Goal Bar */}
               <View style={{ flex: 1, gap: 10 }}>
@@ -946,13 +1066,11 @@ export default function StatsScreen() {
                     strokeWidth={STROKE_WIDTH}
                   />
                   {(() => {
-                    const fallbackColors = ['#10B981', '#F59E0B', '#06B6D4', '#FB7185', '#A855F7', '#FF6B6B', '#EC4899', '#3B82F6', '#F472B6'];
                     let accumulatedOffset = 0;
-                    return categoryStats.map((stat, idx) => {
+                    return categoryStatsWithColors.map((stat) => {
                       const segmentLength = (stat.percentage / 100) * CIRCUMFERENCE;
                       const offset = accumulatedOffset;
                       accumulatedOffset += segmentLength;
-                      const color = stat.category.color || fallbackColors[idx % fallbackColors.length];
                       return (
                         <Circle
                           key={stat.category.id}
@@ -960,7 +1078,7 @@ export default function StatsScreen() {
                           cy={CHART_SIZE / 2}
                           r={RADIUS}
                           fill="none"
-                          stroke={color}
+                          stroke={stat.displayColor}
                           strokeWidth={STROKE_WIDTH}
                           strokeDasharray={`${Math.max(1, segmentLength - 2)} ${CIRCUMFERENCE - Math.max(1, segmentLength - 2)}`}
                           strokeDashoffset={-offset}
@@ -976,13 +1094,38 @@ export default function StatsScreen() {
                   <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>{currencySymbol}</Text>
                 </View>
               </View>
+
+              {/* Distinct Category Color Legend Badges Grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                {categoryStatsWithColors.map(stat => (
+                  <View
+                    key={stat.category.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: stat.displayColor + '15',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: stat.displayColor + '30',
+                    }}
+                  >
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stat.displayColor }} />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }}>
+                      {getCategoryName(stat.category.id, language)} ({Math.round(stat.percentage)}%)
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
 
             {/* Categories Breakdown details list */}
             <View style={styles.categoriesSection}>
               <Text style={styles.sectionTitle}>{t.details}</Text>
               <View style={styles.categoriesList}>
-                {categoryStats.map((stat) => {
+                {categoryStatsWithColors.map((stat) => {
                   const budgetLimit = budgets[stat.category.id] || 0;
                   const hasBudget = budgetLimit > 0;
                   const isOverBudget = hasBudget && stat.total > budgetLimit;
@@ -990,12 +1133,12 @@ export default function StatsScreen() {
                   return (
                     <View key={stat.category.id} style={styles.premiumCategoryCard}>
                       <View style={styles.categoryRowTop}>
-                        <View style={[styles.catIconWrap, { backgroundColor: stat.category.color + '15' }]}>
-                          <MaterialIcons name={stat.category.icon as any} size={18} color={stat.category.color} />
+                        <View style={[styles.catIconWrap, { backgroundColor: stat.displayColor + '18' }]}>
+                          <MaterialIcons name={stat.category.icon as any} size={18} color={stat.displayColor} />
                         </View>
                         <View style={{ flex: 1, paddingHorizontal: 4 }}>
                           <Text style={styles.categoryName} numberOfLines={1}>{getCategoryName(stat.category.id, language)}</Text>
-                          <Text style={styles.categoryPercent}>{Math.round(stat.percentage)}%</Text>
+                          <Text style={[styles.categoryPercent, { color: stat.displayColor, fontFamily: 'Cairo_700Bold' }]}>{Math.round(stat.percentage)}%</Text>
                         </View>
                         <Text style={styles.categoryAmount}>{formatCurrency(stat.total)} {currencySymbol}</Text>
                       </View>
@@ -1003,7 +1146,7 @@ export default function StatsScreen() {
                         <View
                           style={[styles.categoryBarFill, {
                             width: `${stat.percentage}%`,
-                            backgroundColor: stat.category.color,
+                            backgroundColor: stat.displayColor,
                           }]}
                         />
                       </View>
@@ -1287,6 +1430,139 @@ export default function StatsScreen() {
             </View>
           </View>
         </View>
+      {/* Detailed Net Worth & Solvency Interactive Modal */}
+      <Modal visible={netWorthModalVisible} animationType="slide" transparent onRequestClose={() => setNetWorthModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={[styles.modalSheet, { flex: 1, maxHeight: '90%' }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Pressable onPress={() => setNetWorthModalVisible(false)} hitSlop={12} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+              <Text style={styles.modalTitle}>
+                {language === 'ar' ? 'تحليل ومسار صافي الملاءة' : 'Net Worth & Solvency Breakdown'}
+              </Text>
+              <View style={{ width: 32 }} />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16 }}>
+              {/* Solvency Summary Card */}
+              <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#F1F5F9', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
+                  {language === 'ar' ? 'إجمالي الأصول والصافي الحالي' : 'Current Net Solvency Assets'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: netWorth >= 0 ? '#10B981' : '#EF4444', textAlign: 'left' }}>
+                  {netWorth >= 0 ? '+' : ''}{formatCurrency(netWorth)} <Text style={{ fontSize: 14 }}>{currencySymbol}</Text>
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+                  {language === 'ar'
+                    ? `يعبر هذا الجراف عن التغيّر اليومي الفعلي لملاءتك المالية في محفظة "${selectedWallet?.name || 'الرئيسية'}" بناءً على مدفوعاتك ومقبوضاتك.`
+                    : `This graph calculates the real daily trajectory of your solvency in "${selectedWallet?.name || 'Main Wallet'}".`}
+                </Text>
+              </View>
+
+              {/* Full High-Resolution Dynamic Net Worth Chart */}
+              <View style={{ backgroundColor: theme === 'dark' ? '#0B132B' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? '📈 منحنى المسار اليومي للملاءة هذا الشهر' : '📈 Daily Net Worth Trajectory'}
+                </Text>
+
+                {(() => {
+                  const chartW = SCREEN_WIDTH - 64;
+                  const chartH = 160;
+                  const fullSpark = generateSparklinePath(realNetWorthPoints, chartW, chartH);
+
+                  return (
+                    <View style={{ height: chartH + 30, alignItems: 'center', justifyContent: 'center' }}>
+                      <Svg width={chartW} height={chartH + 30}>
+                        <Defs>
+                          <SvgGradient id="modalNetGrad" x1="0" y1="0" x2="0" y2="1">
+                            <Stop offset="0" stopColor="#10B981" stopOpacity="0.5" />
+                            <Stop offset="1" stopColor="#10B981" stopOpacity="0.0" />
+                          </SvgGradient>
+                        </Defs>
+
+                        {/* Grid lines */}
+                        <Path d={`M 0,10 L ${chartW},10`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                        <Path d={`M 0,${chartH/2}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                        <Path d={`M 0,${chartH - 10}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+
+                        {/* Area & Path */}
+                        <Path d={fullSpark.areaD} fill="url(#modalNetGrad)" />
+                        <Path d={fullSpark.pathD} fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
+
+                        {/* Coordinates dots */}
+                        {fullSpark.coords && fullSpark.coords.map((c, i) => (
+                          <React.Fragment key={i}>
+                            <Circle cx={c.x} cy={c.y} r={3.5} fill="#10B981" stroke="#FFFFFF" strokeWidth={1} />
+                            {(i === 0 || i === fullSpark.coords.length - 1 || i % Math.ceil(fullSpark.coords.length / 5) === 0) && (
+                              <SvgText
+                                x={c.x}
+                                y={chartH + 20}
+                                fontSize={9}
+                                fontFamily="Cairo_600SemiBold"
+                                fill={colors.textSecondary}
+                                textAnchor="middle"
+                              >
+                                {realNetWorthPoints[i]?.day}
+                              </SvgText>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </Svg>
+                    </View>
+                  );
+                })()}
+              </View>
+
+              {/* Financial Solvency Components Breakdown */}
+              <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {language === 'ar' ? '📑 مكونات وتفاصيل الملاءة' : '📑 Solvency Components'}
+                </Text>
+
+                <View style={{ gap: 10 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                      {language === 'ar' ? 'رصيد المحفظة الافتتاحي' : 'Initial Wallet Balance'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                      {formatCurrency(selectedWallet?.initialBalance || 0)} {currencySymbol}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                      {language === 'ar' ? 'إجمالي المقبوضات والدخل' : 'Total All-Time Income'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
+                      +{formatCurrency(allTimeIncome)} {currencySymbol}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.expense }}>
+                      {language === 'ar' ? 'إجمالي المدفوعات والمصاريف' : 'Total All-Time Expense'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
+                      -{formatCurrency(allTimeExpense)} {currencySymbol}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, backgroundColor: '#10B98115', paddingHorizontal: 12, borderRadius: 12 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
+                      {language === 'ar' ? 'صافي الملاءة الحالية' : 'Net Current Solvency'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#10B981' }}>
+                      {formatCurrency(netWorth)} {currencySymbol}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
       </Modal>
     </LinearGradient>
   );
