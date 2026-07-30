@@ -19,7 +19,7 @@ import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { WALLET_ICONS, WALLET_COLORS } from '@/lib/categories';
-import { CURRENCIES, CurrencyCode, getCurrencyInfo } from '@/lib/storage';
+import { CURRENCIES, CurrencyCode, CardStyle, getCurrencyInfo } from '@/lib/storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getWalletIconLabel, getCurrencyName } from '@/lib/i18n';

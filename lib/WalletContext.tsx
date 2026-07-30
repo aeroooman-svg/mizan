@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   Wallet,
+  CardStyle,
   CurrencyCode,
   getWallets,
   saveWallet as saveWalletToStorage,

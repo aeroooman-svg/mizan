@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import {
   Transaction,
   Wallet,
+  CardStyle,
   CurrencyCode,
   getTransactions,
   saveTransaction,
