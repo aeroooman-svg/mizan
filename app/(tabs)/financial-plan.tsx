@@ -1934,8 +1934,8 @@ export default function FinancialPlanScreen() {
                 const d = new Date(tx.date);
                 return d.getMonth() === m && d.getFullYear() === y;
               });
-              const actualMonthIncome = monthTx.filter(tx => tx.type === 'income').reduce((s, tx) => s + tx.amount, 0);
-              const actualMonthExpense = monthTx.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
+              const actualMonthIncome = monthTx.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+              const actualMonthExpense = monthTx.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
               const actualMonthSaving = actualMonthIncome - actualMonthExpense;
               const hasActualData = monthTx.length > 0;
               const initialWalletBalance = selectedWallet?.initialBalance || 0;
