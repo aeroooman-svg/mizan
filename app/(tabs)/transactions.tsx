@@ -592,6 +592,9 @@ export default function TransactionsScreen() {
               {searchQuery ? t.tryAnotherSearch : t.addFromHome}
             </Text>
           </View>
+        }
+      />
+
       {/* Transaction Options Modal (Web & Mobile Compatible) */}
       <Modal
         visible={!!selectedTxForOptions}
