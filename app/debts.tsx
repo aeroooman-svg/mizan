@@ -170,7 +170,6 @@ export default function DebtsScreen() {
 
       if (affectWallet) {
         const transactionType = activeTab === 'debt_to_me' ? 'expense' : 'income';
-        const cat = activeTab === 'debt_to_me' ? 'other_expense' : 'other_income';
         const descAr = activeTab === 'debt_to_me'
           ? `تقديم سلفة لـ ${personName.trim()}`
           : `اقتراض دين من ${personName.trim()}`;
@@ -183,7 +182,7 @@ export default function DebtsScreen() {
           walletId: debtWalletId,
           type: transactionType,
           amount: numAmount,
-          category: cat,
+          category: 'debt_loan',
           description: language === 'ar' ? descAr : descEn,
           date: new Date().toISOString(),
           createdAt: new Date().toISOString(),
@@ -243,7 +242,7 @@ export default function DebtsScreen() {
         walletId: payWalletId,
         type: transactionType,
         amount: payment,
-        category: selectedDebt.type === 'debt_to_me' ? 'other_income' : 'other_expense',
+        category: 'debt_loan',
         description: language === 'ar' ? descAr : descEn,
         date: new Date().toISOString(),
         createdAt: new Date().toISOString(),

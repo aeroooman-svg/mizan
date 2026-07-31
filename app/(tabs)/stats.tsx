@@ -182,11 +182,11 @@ export default function StatsScreen() {
       });
 
       const income = txns
-        .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+        .filter(t => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
         .reduce((s, t) => s + t.amount, 0);
 
       const expense = txns
-        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
         .reduce((s, t) => s + t.amount, 0);
 
       const savings = income - expense;
@@ -220,7 +220,7 @@ export default function StatsScreen() {
   }, [yearlyMonthsData]);
 
   const categoryStats = useMemo((): CategoryStat[] => {
-    const filtered = monthlyTransactions.filter(t => t.type === viewType && t.category !== 'jameya_savings');
+    const filtered = monthlyTransactions.filter(t => t.type === viewType && t.category !== 'jameya_savings' && t.category !== 'debt_loan');
     const total = filtered.reduce((sum, t) => sum + t.amount, 0);
     const catMap = new Map<string, number>();
 

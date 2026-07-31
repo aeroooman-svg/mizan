@@ -247,7 +247,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const totalIncome = useMemo(() => {
     if (!selectedWallet) return 0;
     return monthlyTransactions
-      .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === selectedWallet.id))
+      .filter(t => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && t.toWalletId === selectedWallet.id))
       .reduce((sum, t) => {
         if (t.type === 'transfer' && t.toWalletId === selectedWallet.id) {
           const fromW = wallets.find(w => w.id === t.walletId);
@@ -261,7 +261,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const totalExpense = useMemo(() => {
     if (!selectedWallet) return 0;
     return monthlyTransactions
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && t.walletId === selectedWallet.id))
       .reduce((sum, t) => sum + t.amount, 0);
   }, [monthlyTransactions, selectedWallet]);
 

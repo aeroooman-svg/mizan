@@ -22,6 +22,7 @@ export const expenseCategories: Category[] = [
   { id: 'phone', name: 'Phone', nameAr: 'هاتف', icon: 'phone-android', iconFamily: 'MaterialIcons', color: '#26A69A' },
   { id: 'clothes', name: 'Clothes', nameAr: 'ملابس', icon: 'checkroom', iconFamily: 'MaterialIcons', color: '#EC407A' },
   { id: 'jameya_savings', name: 'Jameya Savings', nameAr: 'ادخار جمعية', icon: 'account-balance', iconFamily: 'MaterialIcons', color: '#0D7C66' },
+  { id: 'debt_loan', name: 'Debts & Loans', nameAr: 'ديون وسلف', icon: 'swap-horizontal-circle', iconFamily: 'MaterialIcons', color: '#6366F1' },
   { id: 'other_expense', name: 'Other', nameAr: 'أخرى', icon: 'more-horiz', iconFamily: 'MaterialIcons', color: '#78909C' },
 ];
 
@@ -31,6 +32,7 @@ export const incomeCategories: Category[] = [
   { id: 'investment', name: 'Investment', nameAr: 'استثمار', icon: 'trending-up', iconFamily: 'MaterialIcons', color: '#4CAF50' },
   { id: 'gift', name: 'Gift', nameAr: 'هدية', icon: 'card-giftcard', iconFamily: 'MaterialIcons', color: '#E91E63' },
   { id: 'bonus', name: 'Bonus', nameAr: 'مكافأة', icon: 'stars', iconFamily: 'MaterialIcons', color: '#FF9800' },
+  { id: 'debt_loan', name: 'Debts & Loans', nameAr: 'ديون وسلف', icon: 'swap-horizontal-circle', iconFamily: 'MaterialIcons', color: '#6366F1' },
   { id: 'other_income', name: 'Other', nameAr: 'أخرى', icon: 'more-horiz', iconFamily: 'MaterialIcons', color: '#78909C' },
 ];
 
