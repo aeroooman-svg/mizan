@@ -11,6 +11,7 @@ import {
   Alert,
   TextInput,
   Share,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
+import ConfirmModal from '@/components/ConfirmModal';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,6 +45,10 @@ export default function TransactionsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [rates, setRates] = useState<Record<string, number>>({});
+
+  // Options & Delete Modal States (Web & Mobile Compatible)
+  const [selectedTxForOptions, setSelectedTxForOptions] = useState<Transaction | null>(null);
+  const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
 
   React.useEffect(() => {
     async function loadRates() {
@@ -298,44 +304,7 @@ export default function TransactionsScreen() {
 
   const handleLongPress = (item: Transaction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const catName = getCategoryName(item.category, language);
-    Alert.alert(
-      language === 'ar' ? 'خيارات المعاملة' : 'Transaction Options',
-      `${catName}: ${formatCurrency(item.amount)} ${currencySymbol}`,
-      [
-        { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: t.edit,
-          onPress: () => {
-            router.push({
-              pathname: '/add-transaction',
-              params: { editId: item.id },
-            });
-          },
-        },
-        {
-          text: t.delete,
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              t.deleteTransaction,
-              t.deleteTransactionConfirm
-                .replace('{category}', catName)
-                .replace('{amount}', formatCurrency(item.amount))
-                .replace('{currency}', currencySymbol),
-              [
-                { text: t.cancel, style: 'cancel' },
-                {
-                  text: t.delete,
-                  style: 'destructive',
-                  onPress: () => removeTransaction(item.id),
-                },
-              ],
-            );
-          },
-        },
-      ],
-    );
+    setSelectedTxForOptions(item);
   };
 
   const renderItem = ({ item }: { item: Transaction }) => {
@@ -623,13 +592,165 @@ export default function TransactionsScreen() {
               {searchQuery ? t.tryAnotherSearch : t.addFromHome}
             </Text>
           </View>
+      {/* Transaction Options Modal (Web & Mobile Compatible) */}
+      <Modal
+        visible={!!selectedTxForOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTxForOptions(null)}
+      >
+        <View style={styles.modalBg}>
+          <View style={styles.modalSheet}>
+            {selectedTxForOptions && (
+              <>
+                <View style={styles.modalSheetHeader}>
+                  <Text style={styles.modalSheetTitle}>
+                    {getCategoryName(selectedTxForOptions.category, language)}
+                  </Text>
+                  <Text style={[styles.modalSheetAmount, { color: selectedTxForOptions.type === 'income' ? colors.income : colors.expense }]}>
+                    {selectedTxForOptions.type === 'income' ? '+' : '-'}{formatCurrency(selectedTxForOptions.amount)} {currencySymbol}
+                  </Text>
+                  {selectedTxForOptions.description ? (
+                    <Text style={styles.modalSheetDesc}>{selectedTxForOptions.description}</Text>
+                  ) : null}
+                </View>
+
+                <View style={styles.modalOptionsContainer}>
+                  <Pressable
+                    onPress={() => {
+                      const tx = selectedTxForOptions;
+                      setSelectedTxForOptions(null);
+                      router.push({
+                        pathname: '/add-transaction',
+                        params: { editId: tx.id },
+                      });
+                    }}
+                    style={styles.optionBtn}
+                  >
+                    <Ionicons name="create-outline" size={20} color={colors.primary} />
+                    <Text style={styles.optionBtnText}>{t.edit}</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      const tx = selectedTxForOptions;
+                      setSelectedTxForOptions(null);
+                      setDeletingTx(tx);
+                    }}
+                    style={[styles.optionBtn, styles.deleteOptionBtn]}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={colors.expense} />
+                    <Text style={[styles.optionBtnText, { color: colors.expense }]}>{t.delete}</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setSelectedTxForOptions(null)}
+                    style={styles.cancelOptionBtn}
+                  >
+                    <Text style={styles.cancelOptionText}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        visible={!!deletingTx}
+        title={t.deleteTransaction}
+        message={
+          deletingTx
+            ? t.deleteTransactionConfirm
+                .replace('{category}', getCategoryName(deletingTx.category, language))
+                .replace('{amount}', formatCurrency(deletingTx.amount))
+                .replace('{currency}', currencySymbol)
+            : ''
         }
+        confirmText={t.delete}
+        cancelText={t.cancel}
+        isDestructive
+        onConfirm={async () => {
+          if (deletingTx) {
+            await removeTransaction(deletingTx.id);
+            setDeletingTx(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          }
+        }}
+        onCancel={() => setDeletingTx(null)}
       />
     </LinearGradient>
   );
 }
 
 const getStyles = (colors: any) => StyleSheet.create({
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalSheetHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: 16,
+  },
+  modalSheetTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    color: colors.text,
+  },
+  modalSheetAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    marginTop: 4,
+  },
+  modalSheetDesc: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  modalOptionsContainer: {
+    gap: 10,
+  },
+  optionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surfaceAlt,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  optionBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+  },
+  deleteOptionBtn: {
+    backgroundColor: colors.expense + '15',
+  },
+  cancelOptionBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: 6,
+  },
+  cancelOptionText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
   container: {
     flex: 1,
     backgroundColor: 'transparent', // Transparent to let the LinearGradient show through!
