@@ -174,6 +174,15 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             await updateInStorage(t);
           }
         }
+        // Self-healing: Upgrade any existing debt/loan transactions to category 'debt_loan'
+        if (
+          (t.category === 'other_expense' || t.category === 'other_income') &&
+          t.description &&
+          (t.description.includes('سلفة') || t.description.includes('دين') || t.description.includes('Loan') || t.description.includes('Debt'))
+        ) {
+          t.category = 'debt_loan';
+          await updateInStorage(t);
+        }
       }
     } catch (e) {
     }
