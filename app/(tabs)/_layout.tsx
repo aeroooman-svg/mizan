@@ -201,20 +201,20 @@ export default function TabLayout() {
                 style={({ pressed }) => [styles.actionOptionBtn, pressed && { opacity: 0.8 }]}
                 onPress={() => {
                   setIsActionMenuOpen(false);
-                  router.push('/add-recurring');
+                  router.push('/scan-receipt');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'ar' ? 'إضافة مصروف متكرر' : 'Add Recurring Bill'}
+                accessibilityLabel={language === 'ar' ? 'مسح فاتورة بالكاميرا' : 'Scan Receipt'}
               >
-                <View style={[styles.actionIconWrap, { backgroundColor: colors.accent + '20' }]}>
-                  <Ionicons name="repeat-outline" size={24} color={colors.accent} />
+                <View style={[styles.actionIconWrap, { backgroundColor: '#8B5CF620' }]}>
+                  <Ionicons name="camera-outline" size={24} color="#8B5CF6" />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
-                    {language === 'ar' ? 'تسجيل مصروف أو فاتورة متكررة' : 'Add Recurring Bill'}
+                    {language === 'ar' ? 'مسح فاتورة بالكاميرا' : 'Scan Receipt'}
                   </Text>
                   <Text style={styles.actionOptionDesc}>
-                    {language === 'ar' ? 'سجل الاشتراكات الثابتة أو الفواتير الشهرية' : 'Log monthly subscriptions or bills'}
+                    {language === 'ar' ? 'التقط صورة للفاتورة واستخرج البيانات تلقائياً' : 'Scan a paper receipt to log expenses automatically'}
                   </Text>
                 </View>
                 <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
