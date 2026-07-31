@@ -42,6 +42,7 @@ export default function DebtsScreen() {
   const [dueDate, setDueDate] = useState('');
   const [description, setDescription] = useState('');
   const [debtWalletId, setDebtWalletId] = useState(selectedWallet?.id || '');
+  const [affectWallet, setAffectWallet] = useState(true);
 
   // Pay Modal states
   const [payModalVisible, setPayModalVisible] = useState(false);
@@ -96,6 +97,7 @@ export default function DebtsScreen() {
     setDueDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Default 7 days
     setDescription('');
     setDebtWalletId(selectedWallet?.id || (wallets[0]?.id || ''));
+    setAffectWallet(true);
     setAddModalVisible(true);
   };
 
@@ -165,6 +167,29 @@ export default function DebtsScreen() {
         status: 'pending',
       };
       await saveDebt(newDebt);
+
+      if (affectWallet) {
+        const transactionType = activeTab === 'debt_to_me' ? 'expense' : 'income';
+        const cat = activeTab === 'debt_to_me' ? 'other_expense' : 'other_income';
+        const descAr = activeTab === 'debt_to_me'
+          ? `تقديم سلفة لـ ${personName.trim()}`
+          : `اقتراض دين من ${personName.trim()}`;
+        const descEn = activeTab === 'debt_to_me'
+          ? `Loan given to ${personName.trim()}`
+          : `Debt borrowed from ${personName.trim()}`;
+
+        await addTransaction({
+          id: Crypto.randomUUID(),
+          walletId: debtWalletId,
+          type: transactionType,
+          amount: numAmount,
+          category: cat,
+          description: language === 'ar' ? descAr : descEn,
+          date: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       if (newDebt.dueDate) {
         await scheduleDebtReminder(
           newDebt.id,
@@ -206,8 +231,12 @@ export default function DebtsScreen() {
       }
       // Add corresponding wallet transaction
       const transactionType = selectedDebt.type === 'debt_to_me' ? 'income' : 'expense';
-      const descAr = `سداد جزء من ${selectedDebt.type === 'debt_to_me' ? 'سلفة' : 'دين'} - ${selectedDebt.personName}`;
-      const descEn = `Payment for ${selectedDebt.type === 'debt_to_me' ? 'loan' : 'debt'} - ${selectedDebt.personName}`;
+      const descAr = selectedDebt.type === 'debt_to_me'
+        ? `استرداد/تحصيل سلفة من ${selectedDebt.personName}`
+        : `سداد دين لـ ${selectedDebt.personName}`;
+      const descEn = selectedDebt.type === 'debt_to_me'
+        ? `Loan collected from ${selectedDebt.personName}`
+        : `Debt payment to ${selectedDebt.personName}`;
 
       await addTransaction({
         id: Crypto.randomUUID(),
@@ -327,7 +356,7 @@ export default function DebtsScreen() {
 
                   {/* Actions Row: Edit, Pay, Delete */}
                   <View style={styles.actionsRow}>
-                    {/* Pay Button */}
+                    {/* Pay / Collect Button */}
                     {debt.status !== 'paid' && (
                       <Pressable
                         onPress={() => {
@@ -337,10 +366,13 @@ export default function DebtsScreen() {
                           setPayWalletId(debt.walletId);
                           setPayModalVisible(true);
                         }}
-                        style={styles.payIconBtn}
+                        style={[styles.payIconBtn, { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10 }]}
                         hitSlop={6}
                       >
-                        <Ionicons name="card-outline" size={18} color={colors.primary} />
+                        <Ionicons name="card-outline" size={16} color={colors.primary} />
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                          {debt.type === 'debt_to_me' ? (language === 'ar' ? 'تحصيل' : 'Collect') : (language === 'ar' ? 'سداد' : 'Pay')}
+                        </Text>
                       </Pressable>
                     )}
 
@@ -519,6 +551,44 @@ export default function DebtsScreen() {
                 </View>
               </View>
 
+              {!editingDebtId && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setAffectWallet(!affectWallet);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: colors.surfaceAlt,
+                    padding: 12,
+                    borderRadius: 12,
+                    marginBottom: 16,
+                    borderWidth: 1,
+                    borderColor: affectWallet ? colors.primary : colors.border,
+                  }}
+                >
+                  <View style={{ flex: 1, paddingEnd: 8 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
+                      {language === 'ar'
+                        ? (activeTab === 'debt_to_me' ? 'خصم المبلغ فوراً من المحفظة' : 'إضافة المبلغ فوراً للمحفظة')
+                        : (activeTab === 'debt_to_me' ? 'Deduct amount from wallet now' : 'Add amount to wallet now')}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary, marginTop: 2, textAlign: 'left' }}>
+                      {language === 'ar'
+                        ? (activeTab === 'debt_to_me' ? 'تسجيل معاملة خروج مال عند تقديم السلفة' : 'تسجيل معاملة دخول مال عند الاستدانة')
+                        : 'Record wallet cashflow transaction'}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={affectWallet ? "checkbox" : "square-outline"}
+                    size={22}
+                    color={affectWallet ? colors.primary : colors.textTertiary}
+                  />
+                </Pressable>
+              )}
+
               <Pressable
                 onPress={handleSaveDebt}
                 style={[styles.saveBtn, { backgroundColor: activeTab === 'debt_to_me' ? colors.income : colors.expense }]}
@@ -538,7 +608,10 @@ export default function DebtsScreen() {
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {language === 'ar' ? 'تسجيل سداد دفعة' : 'Record Payment'}
+                {language === 'ar'
+                  ? (selectedDebt?.type === 'debt_to_me' ? 'تسجيل تحصيل / استرداد سلفة' : 'تسجيل سداد دين')
+                  : (selectedDebt?.type === 'debt_to_me' ? 'Collect Loan Repayment' : 'Pay Off Debt')
+                }
               </Text>
               <Pressable onPress={() => setPayModalVisible(false)} hitSlop={15}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
@@ -547,13 +620,25 @@ export default function DebtsScreen() {
 
             <View style={styles.modalForm}>
               {selectedDebt && (
-                <Text style={styles.payHeaderSub}>
-                  {language === 'ar' ? 'الدين الإجمالي:' : 'Total debt:'} {formatCurrency(selectedDebt.amount)} | {language === 'ar' ? 'المتبقي:' : 'Remaining:'} {formatCurrency(selectedDebt.amount - selectedDebt.paidAmount)} {currencySymbol}
-                </Text>
+                <View style={{ marginBottom: 12, backgroundColor: colors.surfaceAlt + '80', padding: 10, borderRadius: 10 }}>
+                  <Text style={styles.payHeaderSub}>
+                    {language === 'ar' ? 'إجمالي المستحق:' : 'Total:'} {formatCurrency(selectedDebt.amount)} | {language === 'ar' ? 'المتبقي:' : 'Remaining:'} {formatCurrency(selectedDebt.amount - selectedDebt.paidAmount)} {currencySymbol}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary, marginTop: 4, textAlign: 'left' }}>
+                    💡 {language === 'ar'
+                      ? (selectedDebt.type === 'debt_to_me' ? 'سيعاد المبلغ المكتوب إلى محفظتك كدخول مال.' : 'سيتم خصم المبلغ المكتوب من محفظتك كخروج مال.')
+                      : (selectedDebt.type === 'debt_to_me' ? 'Collected amount will be added to your wallet.' : 'Payment amount will be deducted from your wallet.')}
+                  </Text>
+                </View>
               )}
 
               <View style={styles.formField}>
-                <Text style={styles.formLabel}>{language === 'ar' ? 'مبلغ السداد' : 'Payment Amount'}</Text>
+                <Text style={styles.formLabel}>
+                  {language === 'ar'
+                    ? (selectedDebt?.type === 'debt_to_me' ? 'مبلغ التحصيل' : 'مبلغ السداد')
+                    : 'Payment Amount'
+                  }
+                </Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="0.00"
@@ -565,7 +650,12 @@ export default function DebtsScreen() {
               </View>
 
               <View style={styles.formField}>
-                <Text style={styles.formLabel}>{language === 'ar' ? 'سداد من محفظة' : 'Pay from Wallet'}</Text>
+                <Text style={styles.formLabel}>
+                  {language === 'ar'
+                    ? (selectedDebt?.type === 'debt_to_me' ? 'إيداع إلى محفظة' : 'سداد من محفظة')
+                    : 'Target Wallet'
+                  }
+                </Text>
                 <View style={styles.walletsRow}>
                   {wallets.map(w => (
                     <Pressable
@@ -587,10 +677,13 @@ export default function DebtsScreen() {
 
               <Pressable
                 onPress={handleRecordPayment}
-                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                style={[styles.saveBtn, { backgroundColor: selectedDebt?.type === 'debt_to_me' ? colors.income : colors.primary }]}
               >
                 <Text style={styles.saveBtnText}>
-                  {language === 'ar' ? 'تأكيد السداد' : 'Confirm Payment'}
+                  {language === 'ar'
+                    ? (selectedDebt?.type === 'debt_to_me' ? 'تأكيد تحصيل السلفة 📥' : 'تأكيد سداد الدين 📤')
+                    : (selectedDebt?.type === 'debt_to_me' ? 'Confirm Collection' : 'Confirm Payment')
+                  }
                 </Text>
               </Pressable>
             </View>
