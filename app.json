@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mizan.app",
+      "bundleIdentifier": "com.aeroooman.mizan",
       "buildNumber": "1.0.0",
       "infoPlist": {
         "NSCameraUsageDescription": "يحتاج التطبيق لإذن الكاميرا لمسح وقراءة الفواتير الضريبية وإيصالات الشراء.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "com.mizan.app",
+      "package": "com.aeroooman.mizan",
       "versionCode": 1,
       "permissions": [
         "CAMERA",
