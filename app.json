@@ -55,6 +55,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://aeroooman-svg.github.io/mizan/"
+      },
+      "eas": {
+        "projectId": "8d873738-3daa-480e-9ba1-11284a3642d9"
+      }
     }
   }
 }
