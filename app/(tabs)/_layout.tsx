@@ -63,6 +63,9 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
         key={route.key}
         onPress={onPress}
         style={styles.tabButton}
+        accessibilityRole="tab"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: isFocused }}
       >
         {isMaterial ? (
           <MaterialIcons 
@@ -109,6 +112,8 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
             styles.centerFab,
             pressed && { transform: [{ scale: 0.92 }] }
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : 'Add new transaction'}
         >
           <LinearGradient
             colors={[colors.primary, colors.primaryDark]}
@@ -175,6 +180,8 @@ export default function TabLayout() {
                   setIsActionMenuOpen(false);
                   router.push('/add-transaction');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : 'Add New Transaction'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: colors.incomeLight }]}>
                   <Ionicons name="cash-outline" size={24} color={colors.primary} />
@@ -196,6 +203,8 @@ export default function TabLayout() {
                   setIsActionMenuOpen(false);
                   router.push('/add-recurring');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={language === 'ar' ? 'إضافة مصروف متكرر' : 'Add Recurring Bill'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: colors.accent + '20' }]}>
                   <Ionicons name="repeat-outline" size={24} color={colors.accent} />
@@ -217,6 +226,8 @@ export default function TabLayout() {
                   setIsActionMenuOpen(false);
                   router.push('/add-wallet');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={language === 'ar' ? 'إنشاء محفظة جديدة' : 'Create New Wallet'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                   <Ionicons name="wallet-outline" size={24} color="#3B82F6" />

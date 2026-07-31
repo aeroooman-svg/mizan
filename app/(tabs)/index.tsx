@@ -60,6 +60,7 @@ import GoalsDebtsSections from '@/components/home/GoalsDebtsSections';
 import FinancialJourneySlider from '@/components/home/FinancialJourneySlider';
 import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
+import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -117,6 +118,14 @@ export default function HomeScreen() {
     });
     return () => subscription.remove();
   }, [checkForSms]);
+
+  // Record first open & check for in-app review prompt
+  useEffect(() => {
+    recordFirstOpen();
+    if (transactions.length > 0) {
+      checkAndPromptReview(transactions.length);
+    }
+  }, [transactions.length]);
 
   const handleSaveDetectedSms = async () => {
     if (!detectedSms || !selectedWallet) return;

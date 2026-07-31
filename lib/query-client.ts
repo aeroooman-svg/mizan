@@ -40,7 +40,7 @@ export async function apiRequest(
   let userId = null;
   try {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    userId = await AsyncStorage.getItem('@masarif_user_id');
+    userId = (await AsyncStorage.getItem('@mizan_user_id')) || (await AsyncStorage.getItem('@masarif_user_id'));
   } catch (err) {}
 
   const headers: Record<string, string> = {};

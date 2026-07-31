@@ -24,6 +24,15 @@ export interface FullBackupPayload {
   plans: any[];
 }
 
+/**
+ * Helper: read from primary @mizan_ key first, fallback to legacy @masarif_ key.
+ */
+async function getWithFallback(primaryKey: string, legacyKey: string): Promise<string | null> {
+  const val = await AsyncStorage.getItem(primaryKey);
+  if (val) return val;
+  return AsyncStorage.getItem(legacyKey);
+}
+
 export async function createFullBackup(): Promise<string> {
   const [
     txData,
@@ -35,14 +44,14 @@ export async function createFullBackup(): Promise<string> {
     recurringData,
     plansData,
   ] = await Promise.all([
-    AsyncStorage.getItem('@masarif_transactions'),
-    AsyncStorage.getItem('@masarif_wallets'),
-    AsyncStorage.getItem('@masarif_goals'),
-    AsyncStorage.getItem('@masarif_debts'),
-    AsyncStorage.getItem('@masarif_category_budgets'),
-    AsyncStorage.getItem('@masarif_custom_categories'),
-    AsyncStorage.getItem('@masarif_recurring_transactions'),
-    AsyncStorage.getItem('@masarif_financial_plans'),
+    getWithFallback('@mizan_transactions', '@masarif_transactions'),
+    getWithFallback('@mizan_wallets', '@masarif_wallets'),
+    getWithFallback('@masarif_goals', '@masarif_goals'),
+    getWithFallback('@masarif_debts', '@masarif_debts'),
+    getWithFallback('@masarif_category_budgets', '@masarif_category_budgets'),
+    getWithFallback('@masarif_custom_categories', '@masarif_custom_categories'),
+    getWithFallback('@masarif_recurring_transactions', '@masarif_recurring_transactions'),
+    getWithFallback('@masarif_financial_plans', '@masarif_financial_plans'),
   ]);
 
   const payload: FullBackupPayload = {
@@ -97,14 +106,45 @@ export async function restoreFullBackup(jsonPayload: string): Promise<boolean> {
       throw new Error('Invalid backup file structure');
     }
 
-    if (parsed.transactions) await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(parsed.transactions));
-    if (parsed.wallets) await AsyncStorage.setItem('@masarif_wallets', JSON.stringify(parsed.wallets));
-    if (parsed.goals) await AsyncStorage.setItem('@masarif_goals', JSON.stringify(parsed.goals));
-    if (parsed.debts) await AsyncStorage.setItem('@masarif_debts', JSON.stringify(parsed.debts));
-    if (parsed.budgets) await AsyncStorage.setItem('@masarif_category_budgets', JSON.stringify(parsed.budgets));
-    if (parsed.customCategories) await AsyncStorage.setItem('@masarif_custom_categories', JSON.stringify(parsed.customCategories));
-    if (parsed.recurring) await AsyncStorage.setItem('@masarif_recurring_transactions', JSON.stringify(parsed.recurring));
-    if (parsed.plans) await AsyncStorage.setItem('@masarif_financial_plans', JSON.stringify(parsed.plans));
+    // Write to both primary (@mizan_) and legacy (@masarif_) keys for full compatibility
+    const writes: Promise<void>[] = [];
+
+    if (parsed.transactions) {
+      const data = JSON.stringify(parsed.transactions);
+      writes.push(AsyncStorage.setItem('@mizan_transactions', data));
+      writes.push(AsyncStorage.setItem('@masarif_transactions', data));
+    }
+    if (parsed.wallets) {
+      const data = JSON.stringify(parsed.wallets);
+      writes.push(AsyncStorage.setItem('@mizan_wallets', data));
+      writes.push(AsyncStorage.setItem('@masarif_wallets', data));
+    }
+    if (parsed.goals) {
+      const data = JSON.stringify(parsed.goals);
+      writes.push(AsyncStorage.setItem('@masarif_goals', data));
+    }
+    if (parsed.debts) {
+      const data = JSON.stringify(parsed.debts);
+      writes.push(AsyncStorage.setItem('@masarif_debts', data));
+    }
+    if (parsed.budgets) {
+      const data = JSON.stringify(parsed.budgets);
+      writes.push(AsyncStorage.setItem('@masarif_category_budgets', data));
+    }
+    if (parsed.customCategories) {
+      const data = JSON.stringify(parsed.customCategories);
+      writes.push(AsyncStorage.setItem('@masarif_custom_categories', data));
+    }
+    if (parsed.recurring) {
+      const data = JSON.stringify(parsed.recurring);
+      writes.push(AsyncStorage.setItem('@masarif_recurring_transactions', data));
+    }
+    if (parsed.plans) {
+      const data = JSON.stringify(parsed.plans);
+      writes.push(AsyncStorage.setItem('@masarif_financial_plans', data));
+    }
+
+    await Promise.all(writes);
 
     return true;
   } catch (err) {
@@ -112,3 +152,4 @@ export async function restoreFullBackup(jsonPayload: string): Promise<boolean> {
     return false;
   }
 }
+

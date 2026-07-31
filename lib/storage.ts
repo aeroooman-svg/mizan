@@ -216,7 +216,7 @@ export async function updateTransaction(updated: Transaction): Promise<void> {
 }
 
 export async function getWallets(): Promise<Wallet[]> {
-  const userId = await AsyncStorage.getItem('@masarif_user_id');
+  const userId = (await AsyncStorage.getItem('@mizan_user_id')) || (await AsyncStorage.getItem('@masarif_user_id'));
   if (!userId) {
     const data = await AsyncStorage.getItem(WALLETS_KEY);
     if (!data) return [];

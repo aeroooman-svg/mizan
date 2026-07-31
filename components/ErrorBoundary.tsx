@@ -1,5 +1,6 @@
 import React, { Component, ComponentType, PropsWithChildren } from "react";
 import { ErrorFallback, ErrorFallbackProps } from "@/components/ErrorFallback";
+import { reportError } from "@/lib/crashReporter";
 
 export type ErrorBoundaryProps = PropsWithChildren<{
   FallbackComponent?: ComponentType<ErrorFallbackProps>;
@@ -30,6 +31,9 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }): void {
+    // Report to crash reporting service (Sentry or local logging)
+    reportError(error, { componentStack: info.componentStack });
+
     if (typeof this.props.onError === "function") {
       this.props.onError(error, info.componentStack);
     }

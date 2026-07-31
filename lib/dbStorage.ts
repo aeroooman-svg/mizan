@@ -19,7 +19,10 @@ class LocalDatabaseEngine {
     if (this.initialized) return;
 
     try {
-      const txData = await AsyncStorage.getItem('@masarif_transactions');
+      let txData = await AsyncStorage.getItem('@mizan_transactions');
+      if (!txData) {
+        txData = await AsyncStorage.getItem('@masarif_transactions');
+      }
       if (txData) {
         const txList: Transaction[] = JSON.parse(txData);
         txList.forEach((tx) => this.indexTransaction(tx));

@@ -160,6 +160,7 @@ export async function getLastSyncTime(): Promise<string | null> {
 
 export async function performLogin(username: string, userId: string): Promise<void> {
   await AsyncStorage.setItem(USER_ID_KEY, userId);
+  await AsyncStorage.setItem('@mizan_username', username);
   await AsyncStorage.setItem('@masarif_username', username);
   updateSyncState('syncing');
   await syncWithCloud();
@@ -167,6 +168,7 @@ export async function performLogin(username: string, userId: string): Promise<vo
 
 export async function performLogout(): Promise<void> {
   await AsyncStorage.removeItem(USER_ID_KEY);
+  await AsyncStorage.removeItem('@mizan_username');
   await AsyncStorage.removeItem('@masarif_username');
   await AsyncStorage.removeItem(LAST_SYNC_KEY);
   await AsyncStorage.removeItem(WALLETS_KEY);
@@ -177,7 +179,7 @@ export async function performLogout(): Promise<void> {
 
 export async function getLoggedInUser(): Promise<{ username: string; id: string } | null> {
   const id = await AsyncStorage.getItem(USER_ID_KEY);
-  const username = await AsyncStorage.getItem('@masarif_username');
+  const username = (await AsyncStorage.getItem('@mizan_username')) || (await AsyncStorage.getItem('@masarif_username'));
   if (id && username) {
     return { id, username };
   }

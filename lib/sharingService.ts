@@ -12,7 +12,25 @@ import { apiRequest } from './query-client';
 const SHARE_CODES_KEY = '@masarif_share_codes';
 const SHARE_REGISTRY_KEY = '@masarif_share_registry';
 const SHARED_MEMBERS_CACHE_KEY = '@masarif_shared_members_cache';
-const WALLETS_KEY = '@masarif_wallets';
+const WALLETS_KEY = '@mizan_wallets';
+const LEGACY_WALLETS_KEY = '@masarif_wallets';
+const TRANSACTIONS_KEY = '@mizan_transactions';
+const LEGACY_TRANSACTIONS_KEY = '@masarif_transactions';
+const USERNAME_KEY = '@mizan_username';
+const LEGACY_USERNAME_KEY = '@masarif_username';
+
+async function getStorageWithFallback(primary: string, legacy: string): Promise<string | null> {
+  const val = await AsyncStorage.getItem(primary);
+  if (val) return val;
+  return AsyncStorage.getItem(legacy);
+}
+
+async function setStorageDual(primary: string, legacy: string, value: string): Promise<void> {
+  await Promise.all([
+    AsyncStorage.setItem(primary, value),
+    AsyncStorage.setItem(legacy, value),
+  ]);
+}
 
 export interface SharedMember {
   id: string;
@@ -75,12 +93,12 @@ async function saveLocalShareCode(walletId: string, code: string, walletName?: s
   let fullWallet: any = null;
   let walletTransactions: any[] = [];
   try {
-    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    const rawWallets = await getStorageWithFallback(WALLETS_KEY, LEGACY_WALLETS_KEY);
     if (rawWallets) {
       const wallets = JSON.parse(rawWallets);
       fullWallet = wallets.find((w: any) => w.id === walletId);
     }
-    const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+    const rawTxs = await getStorageWithFallback(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY);
     if (rawTxs) {
       const allTxs = JSON.parse(rawTxs);
       walletTransactions = Array.isArray(allTxs) ? allTxs.filter((t: any) => t.walletId === walletId) : [];
@@ -89,7 +107,7 @@ async function saveLocalShareCode(walletId: string, code: string, walletName?: s
 
   let ownerUsername = 'صاحب المحفظة';
   try {
-    const username = await AsyncStorage.getItem('@masarif_username');
+    const username = await getStorageWithFallback(USERNAME_KEY, LEGACY_USERNAME_KEY);
     if (username) ownerUsername = username;
   } catch {}
 
@@ -132,11 +150,11 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
     const cloudInfo = await fetchCloudShareRelay(cleanCode);
     
     // 2. Fetch local wallet and transactions
-    const rawWallets = await AsyncStorage.getItem(WALLETS_KEY);
+    const rawWallets = await getStorageWithFallback(WALLETS_KEY, LEGACY_WALLETS_KEY);
     const wallets: any[] = rawWallets ? JSON.parse(rawWallets) : [];
     const localWallet = wallets.find((w: any) => w.shareCode === cleanCode || (w.id && w.id.includes(cleanCode.toLowerCase())));
 
-    const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+    const rawTxs = await getStorageWithFallback(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY);
     let localTxs: any[] = rawTxs ? JSON.parse(rawTxs) : [];
 
     let targetWalletId = localWallet?.id || cloudInfo?.walletId || `w_shared_${cleanCode.toLowerCase()}`;
@@ -164,7 +182,7 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
         txMap.set(t.id, { ...t, walletId: targetWalletId });
       });
       updatedTxs = Array.from(txMap.values());
-      await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(updatedTxs));
+      await setStorageDual(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY, JSON.stringify(updatedTxs));
     }
 
     // Update local wallet record in AsyncStorage if needed
@@ -192,7 +210,7 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 
     let ownerUsername = 'صاحب المحفظة';
     try {
-      const username = await AsyncStorage.getItem('@masarif_username');
+      const username = await getStorageWithFallback(USERNAME_KEY, LEGACY_USERNAME_KEY);
       if (username) ownerUsername = username;
     } catch {}
 
@@ -366,7 +384,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
 
     let ownerName = 'مالك المحفظة';
     try {
-      const savedUser = await AsyncStorage.getItem('@masarif_username');
+      const savedUser = await getStorageWithFallback(USERNAME_KEY, LEGACY_USERNAME_KEY);
       if (savedUser) ownerName = savedUser;
     } catch {}
 
@@ -374,7 +392,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       // Import transactions array from cloud info if present
       if (cloudInfo && Array.isArray(cloudInfo.transactions) && cloudInfo.transactions.length > 0) {
         try {
-          const rawTxs = await AsyncStorage.getItem('@masarif_transactions');
+          const rawTxs = await getStorageWithFallback(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY);
           let txs = rawTxs ? JSON.parse(rawTxs) : [];
           const existingIds = new Set(txs.map((t: any) => t.id));
           const newTxs = cloudInfo.transactions.map((t: any) => ({
@@ -383,7 +401,7 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
           })).filter((t: any) => !existingIds.has(t.id));
           if (newTxs.length > 0) {
             txs = [...txs, ...newTxs];
-            await AsyncStorage.setItem('@masarif_transactions', JSON.stringify(txs));
+            await setStorageDual(TRANSACTIONS_KEY, LEGACY_TRANSACTIONS_KEY, JSON.stringify(txs));
           }
         } catch (txErr) {
           console.warn('Error importing cloud transactions:', txErr);

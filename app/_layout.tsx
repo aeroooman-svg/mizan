@@ -19,6 +19,7 @@ import { Amiri_400Regular, Amiri_700Bold } from "@expo-google-fonts/amiri";
 import { scheduleDailyReminder } from "@/lib/NotificationService";
 import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initCrashReporter } from "@/lib/crashReporter";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -192,6 +193,10 @@ function RootLayoutNav() {
           name="zakat-calculator"
           options={getSheetScreenOptions(colors, 0.85)}
         />
+        <Stack.Screen
+          name="privacy-policy"
+          options={getSheetScreenOptions(colors, 0.92)}
+        />
       </Stack>
     </>
   );
@@ -226,6 +231,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
+      initCrashReporter();
     }
   }, [fontsLoaded]);
 
