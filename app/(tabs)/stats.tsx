@@ -24,6 +24,9 @@ import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
 import Svg, { Circle, Rect, Text as SvgText, Path, Defs, LinearGradient as SvgGradient, Stop, G } from 'react-native-svg';
 import { getBudgetsForWallet, setCategoryBudget, removeCategoryBudget } from '@/lib/budgetStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
+import { getDebts, Debt } from '@/lib/debtStorage';
+import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_SIZE = 180;
@@ -58,6 +61,8 @@ const generateSparklinePath = (points: { day: number; netWorth: number }[], widt
   if (min === max) {
     min = min - 10;
     max = max + 10;
+  } else if (max > 0 && min >= 0 && (max - min) / max < 0.25) {
+    min = Math.max(0, max * 0.75);
   }
 
   const paddingY = 6;
@@ -260,6 +265,61 @@ export default function StatsScreen() {
   }, [categoryStats]);
 
   const [netWorthModalVisible, setNetWorthModalVisible] = useState(false);
+  const [jameyaList, setJameyaList] = useState<Jameya[]>([]);
+  const [debtList, setDebtList] = useState<Debt[]>([]);
+  const [goalList, setGoalList] = useState<SavingsGoal[]>([]);
+  const [selectedChartPointIndex, setSelectedChartPointIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadExtraAssets() {
+      try {
+        const [jData, dData, gData] = await Promise.all([
+          getJameyas(),
+          getDebts(),
+          getGoals(),
+        ]);
+        if (selectedWallet) {
+          setJameyaList(jData.filter(j => j.walletId === selectedWallet.id));
+          setDebtList(dData.filter(d => d.walletId === selectedWallet.id));
+          setGoalList(gData.filter(g => g.walletId === selectedWallet.id));
+        } else {
+          setJameyaList(jData);
+          setDebtList(dData);
+          setGoalList(gData);
+        }
+      } catch (e) {
+        console.error('Error loading extra assets in stats:', e);
+      }
+    }
+    loadExtraAssets();
+  }, [selectedWallet, walletTransactions.length]);
+
+  const totalJameyaSavings = useMemo(() => {
+    return jameyaList.reduce((sum, j) => {
+      const paidCount = Math.min(j.paidMonthsCount || 0, j.totalMonths || 0);
+      return sum + (paidCount * j.monthlyAmount);
+    }, 0);
+  }, [jameyaList]);
+
+  const totalSavedInGoals = useMemo(() => {
+    return goalList.reduce((sum, g) => sum + (g.savedAmount || 0), 0);
+  }, [goalList]);
+
+  const totalLoansOwedToMe = useMemo(() => {
+    return debtList
+      .filter(d => d.type === 'debt_to_me' && d.status !== 'paid')
+      .reduce((sum, d) => sum + Math.max(0, d.amount - (d.paidAmount || 0)), 0);
+  }, [debtList]);
+
+  const totalDebtsOwedByMe = useMemo(() => {
+    return debtList
+      .filter(d => d.type === 'debt_to_others' && d.status !== 'paid')
+      .reduce((sum, d) => sum + Math.max(0, d.amount - (d.paidAmount || 0)), 0);
+  }, [debtList]);
+
+  const totalExtraNetAssets = useMemo(() => {
+    return totalSavedInGoals + totalJameyaSavings + totalLoansOwedToMe - totalDebtsOwedByMe;
+  }, [totalSavedInGoals, totalJameyaSavings, totalLoansOwedToMe, totalDebtsOwedByMe]);
 
   const realNetWorthPoints = useMemo(() => {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -279,7 +339,7 @@ export default function StatsScreen() {
       .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
       .reduce((s, t) => s + t.amount, 0);
 
-    let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense;
+    let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense + totalExtraNetAssets;
 
     const points: { day: number; netWorth: number }[] = [];
 
@@ -297,7 +357,7 @@ export default function StatsScreen() {
     }
 
     return points;
-  }, [walletTransactions, monthlyTransactions, currentYear, currentMonth, now, selectedWallet]);
+  }, [walletTransactions, monthlyTransactions, currentYear, currentMonth, now, selectedWallet, totalExtraNetAssets]);
 
   const realSparkline = useMemo(() => {
     return generateSparklinePath(realNetWorthPoints, 140, 38);
@@ -411,10 +471,11 @@ export default function StatsScreen() {
   const totalAll = monthlyIncome + monthlyExpense;
 
   const netWorth = useMemo(() => {
-    return selectedWallet 
+    const rawWalletBalance = selectedWallet 
       ? (selectedWallet.initialBalance || 0) + allTimeIncome - allTimeExpense
       : (wallets || []).reduce((sum, w) => sum + (w.initialBalance || 0), 0);
-  }, [selectedWallet, allTimeIncome, allTimeExpense, wallets]);
+    return rawWalletBalance + totalExtraNetAssets;
+  }, [selectedWallet, allTimeIncome, allTimeExpense, wallets, totalExtraNetAssets]);
 
   const savingsRate = useMemo(() => {
     if (monthlyIncome <= 0) return 0;
@@ -1470,48 +1531,130 @@ export default function StatsScreen() {
                 </Text>
 
                 {(() => {
-                  const chartW = SCREEN_WIDTH - 64;
+                  const yAxisW = 55;
+                  const totalW = SCREEN_WIDTH - 64;
+                  const chartW = totalW - yAxisW;
                   const chartH = 160;
                   const fullSpark = generateSparklinePath(realNetWorthPoints, chartW, chartH);
+                  const selectedPt = selectedChartPointIndex !== null ? realNetWorthPoints[selectedChartPointIndex] : null;
+                  const selectedCoord = selectedChartPointIndex !== null && fullSpark.coords ? fullSpark.coords[selectedChartPointIndex] : null;
+
+                  const maxValStr = `${formatCurrency(fullSpark.max)}`;
+                  const midValStr = `${formatCurrency((fullSpark.max + fullSpark.min) / 2)}`;
+                  const minValStr = `${formatCurrency(fullSpark.min)}`;
 
                   return (
-                    <View style={{ height: chartH + 30, alignItems: 'center', justifyContent: 'center' }}>
-                      <Svg width={chartW} height={chartH + 30}>
-                        <Defs>
-                          <SvgGradient id="modalNetGrad" x1="0" y1="0" x2="0" y2="1">
-                            <Stop offset="0" stopColor="#10B981" stopOpacity="0.5" />
-                            <Stop offset="1" stopColor="#10B981" stopOpacity="0.0" />
-                          </SvgGradient>
-                        </Defs>
+                    <View style={{ gap: 8 }}>
+                      {/* Active Selected Point Floating Tooltip / Banner */}
+                      {selectedPt && selectedCoord && (
+                        <View style={{
+                          backgroundColor: theme === 'dark' ? '#0F172A' : '#F8FAFC',
+                          borderRadius: 14,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderWidth: 1.5,
+                          borderColor: '#10B981',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="location" size={16} color="#10B981" />
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                              {language === 'ar' ? `اليوم ${selectedPt.day}` : `Day ${selectedPt.day}`}
+                            </Text>
+                          </View>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
+                            {selectedPt.netWorth >= 0 ? '+' : ''}{formatCurrency(selectedPt.netWorth)} {currencySymbol}
+                          </Text>
+                        </View>
+                      )}
 
-                        {/* Grid lines */}
-                        <Path d={`M 0,10 L ${chartW},10`} stroke={colors.borderLight} strokeDasharray="4 4" />
-                        <Path d={`M 0,${chartH/2}`} stroke={colors.borderLight} strokeDasharray="4 4" />
-                        <Path d={`M 0,${chartH - 10}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                      <View style={{ height: chartH + 30, alignItems: 'center', justifyContent: 'center' }}>
+                        <Svg width={totalW} height={chartH + 30}>
+                          <Defs>
+                            <SvgGradient id="modalNetGrad" x1="0" y1="0" x2="0" y2="1">
+                              <Stop offset="0" stopColor="#10B981" stopOpacity="0.5" />
+                              <Stop offset="1" stopColor="#10B981" stopOpacity="0.0" />
+                            </SvgGradient>
+                          </Defs>
 
-                        {/* Area & Path */}
-                        <Path d={fullSpark.areaD} fill="url(#modalNetGrad)" />
-                        <Path d={fullSpark.pathD} fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
+                          {/* Y-Axis Labels on Left side */}
+                          <SvgText x={yAxisW - 6} y={14} fontSize={9} fontFamily="Cairo_700Bold" fill={colors.textSecondary} textAnchor="end">
+                            {maxValStr}
+                          </SvgText>
+                          <SvgText x={yAxisW - 6} y={chartH / 2 + 3} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
+                            {midValStr}
+                          </SvgText>
+                          <SvgText x={yAxisW - 6} y={chartH - 4} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
+                            {minValStr}
+                          </SvgText>
 
-                        {/* Coordinates dots */}
-                        {fullSpark.coords && fullSpark.coords.map((c, i) => (
-                          <React.Fragment key={i}>
-                            <Circle cx={c.x} cy={c.y} r={3.5} fill="#10B981" stroke="#FFFFFF" strokeWidth={1} />
-                            {(i === 0 || i === fullSpark.coords.length - 1 || i % Math.ceil(fullSpark.coords.length / 5) === 0) && (
-                              <SvgText
-                                x={c.x}
-                                y={chartH + 20}
-                                fontSize={9}
-                                fontFamily="Cairo_600SemiBold"
-                                fill={colors.textSecondary}
-                                textAnchor="middle"
-                              >
-                                {realNetWorthPoints[i]?.day}
-                              </SvgText>
+                          {/* Vertical Axis Line */}
+                          <Path d={`M ${yAxisW},6 L ${yAxisW},${chartH}`} stroke={colors.border} strokeWidth={1} />
+
+                          {/* Translated Main Chart Area */}
+                          <G transform={`translate(${yAxisW}, 0)`}>
+                            {/* Grid lines */}
+                            <Path d={`M 0,10 L ${chartW},10`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                            <Path d={`M 0,${chartH/2}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                            <Path d={`M 0,${chartH - 10}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+
+                            {/* Area & Path */}
+                            <Path d={fullSpark.areaD} fill="url(#modalNetGrad)" />
+                            <Path d={fullSpark.pathD} fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
+
+                            {/* Selection Vertical Indicator Line */}
+                            {selectedCoord && (
+                              <Path d={`M ${selectedCoord.x},0 L ${selectedCoord.x},${chartH}`} stroke="#10B981" strokeWidth="1.5" strokeDasharray="3 3" />
                             )}
-                          </React.Fragment>
-                        ))}
-                      </Svg>
+
+                            {/* Coordinates dots & Touch Handles */}
+                            {fullSpark.coords && fullSpark.coords.map((c, i) => {
+                              const isSel = selectedChartPointIndex === i;
+                              return (
+                                <React.Fragment key={i}>
+                                  {isSel && (
+                                    <Circle cx={c.x} cy={c.y} r={7} fill="#10B981" opacity={0.3} />
+                                  )}
+                                  <Circle
+                                    cx={c.x}
+                                    cy={c.y}
+                                    r={isSel ? 5 : 3.5}
+                                    fill="#10B981"
+                                    stroke="#FFFFFF"
+                                    strokeWidth={isSel ? 2 : 1}
+                                  />
+                                  {(i === 0 || i === fullSpark.coords.length - 1 || i % Math.ceil(fullSpark.coords.length / 5) === 0) && (
+                                    <SvgText
+                                      x={c.x}
+                                      y={chartH + 20}
+                                      fontSize={9}
+                                      fontFamily="Cairo_600SemiBold"
+                                      fill={colors.textSecondary}
+                                      textAnchor="middle"
+                                    >
+                                      {realNetWorthPoints[i]?.day}
+                                    </SvgText>
+                                  )}
+                                  {/* Invisible Touch Area for easy tapping */}
+                                  <Rect
+                                    x={Math.max(0, c.x - 12)}
+                                    y={0}
+                                    width={24}
+                                    height={chartH + 30}
+                                    fill="transparent"
+                                    onPress={() => {
+                                      Haptics.selectionAsync();
+                                      setSelectedChartPointIndex(i);
+                                    }}
+                                  />
+                                </React.Fragment>
+                              );
+                            })}
+                          </G>
+                        </Svg>
+                      </View>
                     </View>
                   );
                 })()}
@@ -1551,9 +1694,53 @@ export default function StatsScreen() {
                     </Text>
                   </View>
 
+                  {totalSavedInGoals > 0 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                        {language === 'ar' ? 'الحصالات والأهداف الادخارية' : 'Saved in Goals & Jars'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
+                        +{formatCurrency(totalSavedInGoals)} {currencySymbol}
+                      </Text>
+                    </View>
+                  )}
+
+                  {totalJameyaSavings > 0 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: '#10B981' }}>
+                        🤝 {language === 'ar' ? 'أصول ادخار الجمعيات' : 'Jameya Savings Asset'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
+                        +{formatCurrency(totalJameyaSavings)} {currencySymbol}
+                      </Text>
+                    </View>
+                  )}
+
+                  {totalLoansOwedToMe > 0 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                        {language === 'ar' ? 'قروض مستردة (لي)' : 'Loans Owed to Me'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
+                        +{formatCurrency(totalLoansOwedToMe)} {currencySymbol}
+                      </Text>
+                    </View>
+                  )}
+
+                  {totalDebtsOwedByMe > 0 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.expense }}>
+                        {language === 'ar' ? 'ديون مستحقة (عليّ)' : 'Debts Owed by Me'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
+                        -{formatCurrency(totalDebtsOwedByMe)} {currencySymbol}
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, backgroundColor: '#10B98115', paddingHorizontal: 12, borderRadius: 12 }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
-                      {language === 'ar' ? 'صافي الملاءة الحالية' : 'Net Current Solvency'}
+                      {language === 'ar' ? 'إجمالي صافي الملاءة الشاملة' : 'Total Net Solvency Assets'}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#10B981' }}>
                       {formatCurrency(netWorth)} {currencySymbol}

@@ -1938,8 +1938,40 @@ export default function FinancialPlanScreen() {
               const actualMonthExpense = monthTx.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
               const actualMonthSaving = actualMonthIncome - actualMonthExpense;
               const hasActualData = monthTx.length > 0;
+              // Precalculate exact cumulative savings for month i using actuals for past & current months, and planned/overrides for future months
               const initialWalletBalance = selectedWallet?.initialBalance || 0;
-              const cumulativeSavings = initialWalletBalance + (plannedSaving * (i + 1));
+              let cumulativeSavings = initialWalletBalance;
+
+              for (let k = 0; k <= i; k++) {
+                const monthDateK = new Date(created);
+                monthDateK.setMonth(created.getMonth() + k);
+                const mK = monthDateK.getMonth();
+                const yK = monthDateK.getFullYear();
+                const monthKeyK = `${yK}-${(mK + 1).toString().padStart(2, '0')}`;
+
+                const customOverrideK = plan.customMonthlyOverrides?.[monthKeyK];
+                const plannedIncK = customOverrideK?.income ?? plan.monthlyIncome;
+                const plannedExpK = customOverrideK?.expense ?? plan.monthlyExpense;
+                const plannedSavingK = plannedIncK - plannedExpK;
+
+                const monthTxK = walletTransactions.filter(tx => {
+                  const d = new Date(tx.date);
+                  return d.getMonth() === mK && d.getFullYear() === yK;
+                });
+                const hasActualK = monthTxK.length > 0;
+
+                if (k <= monthsElapsed) {
+                  if (hasActualK) {
+                    const actualIncK = monthTxK.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                    const actualExpK = monthTxK.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                    cumulativeSavings += (actualIncK - actualExpK);
+                  } else {
+                    cumulativeSavings += plannedSavingK;
+                  }
+                } else {
+                  cumulativeSavings += plannedSavingK;
+                }
+              }
 
               return (
                 <Pressable
