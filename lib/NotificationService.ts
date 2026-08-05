@@ -43,25 +43,29 @@ export async function sendImmediateNotification(title: string, body: string) {
 export async function scheduleDailyReminder(hour: number = 21, minute: number = 0) {
   if (Platform.OS === 'web') return;
 
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) return;
+  try {
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
 
-  // Cancel any existing daily reminders first
-  await cancelDailyReminder();
+    // Cancel any existing daily reminders first
+    await cancelDailyReminder();
 
-  await Notifications.scheduleNotificationAsync({
-    identifier: 'daily_reminder',
-    content: {
-      title: '📝 سجل مصاريفك اليوم!',
-      body: 'حافظ على صحتك المالية ولا تنسَ تسجيل معاملاتك اليومية.',
-      sound: true,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-    } as any,
-  });
+    await Notifications.scheduleNotificationAsync({
+      identifier: 'daily_reminder',
+      content: {
+        title: '📝 سجل مصاريفك اليوم!',
+        body: 'حافظ على صحتك المالية ولا تنسَ تسجيل معاملاتك اليومية.',
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      } as any,
+    });
+  } catch (err) {
+    console.warn('Failed to schedule daily reminder:', err);
+  }
 }
 
 export async function cancelDailyReminder() {

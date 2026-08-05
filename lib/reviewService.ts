@@ -57,6 +57,7 @@ export async function checkAndPromptReview(transactionCount: number): Promise<vo
 
     // All criteria met — request review
     try {
+      // @ts-ignore
       const StoreReview = await import('expo-store-review');
       const isAvailable = await StoreReview.isAvailableAsync();
       if (isAvailable) {

@@ -81,122 +81,133 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    let [txns, wlts, selId, customCats] = await Promise.all([
-      getTransactions(),
-      getWallets(),
-      getSelectedWalletId(),
-      getCustomCategories(),
-    ]);
+    let txns: Transaction[] = [];
+    let wlts: Wallet[] = [];
+    let selId: string | null = null;
+    let customCats: CustomCategory[] = [];
 
-    // Process recurring transactions
     try {
-      const now = new Date();
-      const recurringList = await getRecurringTransactions();
-      const generatedTxns: Transaction[] = [];
-      const pending: RecurringTransaction[] = [];
+      [txns, wlts, selId, customCats] = await Promise.all([
+        getTransactions().catch(() => []),
+        getWallets().catch(() => []),
+        getSelectedWalletId().catch(() => null),
+        getCustomCategories().catch(() => []),
+      ]);
 
-      for (const rec of recurringList) {
-        if (!rec.isActive) continue;
-        
-        let nextDue = new Date(rec.nextDueDate);
-        
-        if (rec.isVariable) {
-          if (nextDue <= now) {
-            pending.push(rec);
+      // Process recurring transactions
+      try {
+        const now = new Date();
+        const recurringList = await getRecurringTransactions().catch(() => []);
+        const generatedTxns: Transaction[] = [];
+        const pending: RecurringTransaction[] = [];
+
+        for (const rec of recurringList) {
+          if (!rec.isActive) continue;
+          
+          let nextDue = new Date(rec.nextDueDate);
+          
+          if (rec.isVariable) {
+            if (nextDue <= now) {
+              pending.push(rec);
+            }
+            continue;
           }
-          continue;
-        }
 
-        let timesProcessed = 0;
-        while (nextDue <= now) {
-          if (timesProcessed > 50) break; // Infinite loop safety
-          
-          const newTx: Transaction = {
-            id: Crypto.randomUUID(),
-            walletId: rec.walletId,
-            toWalletId: rec.toWalletId || undefined,
-            type: rec.toWalletId ? 'transfer' : rec.type,
-            amount: rec.amount,
-            category: rec.category,
-            description: rec.description || '',
-            date: nextDue.toISOString(),
-            createdAt: new Date().toISOString(),
-          };
-          
-          generatedTxns.push(newTx);
-          timesProcessed++;
-          
-          // Advance next due date
-          if (rec.frequency === 'daily') {
-            nextDue.setDate(nextDue.getDate() + 1);
-          } else if (rec.frequency === 'weekly') {
-            nextDue.setDate(nextDue.getDate() + 7);
-          } else if (rec.frequency === 'monthly') {
-            nextDue.setMonth(nextDue.getMonth() + 1);
-          } else if (rec.frequency === 'yearly') {
-            nextDue.setFullYear(nextDue.getFullYear() + 1);
+          let timesProcessed = 0;
+          while (nextDue <= now) {
+            if (timesProcessed > 50) break; // Infinite loop safety
+            
+            const newTx: Transaction = {
+              id: Crypto.randomUUID(),
+              walletId: rec.walletId,
+              toWalletId: rec.toWalletId || undefined,
+              type: rec.toWalletId ? 'transfer' : rec.type,
+              amount: rec.amount,
+              category: rec.category,
+              description: rec.description || '',
+              date: nextDue.toISOString(),
+              createdAt: new Date().toISOString(),
+            };
+            
+            generatedTxns.push(newTx);
+            timesProcessed++;
+            
+            // Advance next due date
+            if (rec.frequency === 'daily') {
+              nextDue.setDate(nextDue.getDate() + 1);
+            } else if (rec.frequency === 'weekly') {
+              nextDue.setDate(nextDue.getDate() + 7);
+            } else if (rec.frequency === 'monthly') {
+              nextDue.setMonth(nextDue.getMonth() + 1);
+            } else if (rec.frequency === 'yearly') {
+              nextDue.setFullYear(nextDue.getFullYear() + 1);
+            }
           }
-        }
-        
-        if (timesProcessed > 0) {
-          rec.nextDueDate = nextDue.toISOString();
-          await updateRecurringTransaction(rec);
-        }
-      }
-
-      setPendingRecurring(pending);
-
-      if (generatedTxns.length > 0) {
-        // Save generated transactions
-        for (const tx of generatedTxns) {
-          await saveTransaction(tx);
-        }
-        // Prepended generated ones to state list
-        txns = [...generatedTxns, ...txns];
-
-        // Notify user
-        setTimeout(() => {
-          const lang = language || 'ar';
-          const msg = lang === 'ar'
-            ? `تمت معالجة ${generatedTxns.length} معاملات مجدولة (مكررة) بنجاح!`
-            : `Processed ${generatedTxns.length} recurring transactions successfully!`;
-          Alert.alert(lang === 'ar' ? 'المعاملات المتكررة' : 'Recurring Transactions', msg);
-        }, 600);
-      }
-
-      // Self-healing: Repair any existing transfer transactions missing toWalletId
-      for (let i = 0; i < txns.length; i++) {
-        const t = txns[i];
-        if (t.type === 'transfer' && !t.toWalletId) {
-          const matchRec = recurringList.find(r => r.toWalletId && r.walletId === t.walletId);
-          if (matchRec && matchRec.toWalletId) {
-            t.toWalletId = matchRec.toWalletId;
-            await updateInStorage(t);
+          
+          if (timesProcessed > 0) {
+            rec.nextDueDate = nextDue.toISOString();
+            await updateRecurringTransaction(rec).catch(() => {});
           }
         }
-        // Self-healing: Upgrade any existing debt/loan transactions to category 'debt_loan'
-        if (
-          (t.category === 'other_expense' || t.category === 'other_income') &&
-          t.description &&
-          (t.description.includes('سلفة') || t.description.includes('دين') || t.description.includes('Loan') || t.description.includes('Debt'))
-        ) {
-          t.category = 'debt_loan';
-          await updateInStorage(t);
+
+        setPendingRecurring(pending);
+
+        if (generatedTxns.length > 0) {
+          // Save generated transactions
+          for (const tx of generatedTxns) {
+            await saveTransaction(tx).catch(() => {});
+          }
+          // Prepended generated ones to state list
+          txns = [...generatedTxns, ...txns];
+
+          // Notify user
+          setTimeout(() => {
+            const lang = language || 'ar';
+            const msg = lang === 'ar'
+              ? `تمت معالجة ${generatedTxns.length} معاملات مجدولة (مكررة) بنجاح!`
+              : `Processed ${generatedTxns.length} recurring transactions successfully!`;
+            Alert.alert(lang === 'ar' ? 'المعاملات المتكررة' : 'Recurring Transactions', msg);
+          }, 600);
         }
+
+        // Self-healing: Repair any existing transfer transactions missing toWalletId
+        for (let i = 0; i < txns.length; i++) {
+          const t = txns[i];
+          if (t.type === 'transfer' && !t.toWalletId) {
+            const matchRec = recurringList.find(r => r.toWalletId && r.walletId === t.walletId);
+            if (matchRec && matchRec.toWalletId) {
+              t.toWalletId = matchRec.toWalletId;
+              await updateInStorage(t).catch(() => {});
+            }
+          }
+          // Self-healing: Upgrade any existing debt/loan transactions to category 'debt_loan'
+          if (
+            (t.category === 'other_expense' || t.category === 'other_income') &&
+            t.description &&
+            (t.description.includes('سلفة') || t.description.includes('دين') || t.description.includes('Loan') || t.description.includes('Debt'))
+          ) {
+            t.category = 'debt_loan';
+            await updateInStorage(t).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn('Error processing recurring transactions:', e);
       }
-    } catch (e) {
+
+      if (wlts.length > 0) {
+        setSelectedWalletIdState(selId || wlts[0].id);
+      }
+
+      setTransactions(txns);
+      setWallets(wlts);
+      setCustomCategories(customCats);
+      setCustomCategoriesInMemory(customCats);
+    } catch (err) {
+      console.error('Failed to load transaction context data:', err);
+    } finally {
+      setIsLoading(false);
+      setIsInitialLoading(false);
     }
-
-    if (wlts.length > 0) {
-      setSelectedWalletIdState(selId || wlts[0].id);
-    }
-
-    setTransactions(txns);
-    setWallets(wlts);
-    setCustomCategories(customCats);
-    setCustomCategoriesInMemory(customCats);
-    setIsLoading(false);
-    setIsInitialLoading(false);
   }, [language]);
 
   useEffect(() => {

@@ -21,7 +21,7 @@ import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initCrashReporter } from "@/lib/crashReporter";
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Helper: iOS uses formSheet with sheet detents, Android uses modal
 const getSheetScreenOptions = (colors: any, detent: number = 0.85) => ({
@@ -220,7 +220,7 @@ import { BudgetProvider } from "@/lib/BudgetContext";
 import { RecurringProvider } from "@/lib/RecurringContext";
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_600SemiBold,
     Cairo_700Bold,
@@ -229,13 +229,13 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-      initCrashReporter();
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+      initCrashReporter().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>
