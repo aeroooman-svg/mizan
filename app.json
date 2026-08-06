@@ -2,7 +2,7 @@
   "expo": {
     "name": "MIZAN ميزان",
     "slug": "mizan",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mizan",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.aeroooman.mizan",
-      "buildNumber": "1.0.1",
+      "buildNumber": "1.0.2",
       "infoPlist": {
         "NSCameraUsageDescription": "يحتاج التطبيق لإذن الكاميرا لمسح وقراءة الفواتير الضريبية وإيصالات الشراء.",
         "NSFaceIDUsageDescription": "يحتاج التطبيق لاستخدام بصمة الوجه لحماية بياناتك المالية وتأمين التطبيق."
