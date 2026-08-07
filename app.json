@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.aeroooman.mizan",
-      "versionCode": 2,
+      "versionCode": 9,
       "permissions": [
         "CAMERA",
         "USE_BIOMETRIC",

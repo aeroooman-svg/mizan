@@ -460,7 +460,7 @@ export default function FinancialPlanScreen() {
     const currentYear = new Date().getFullYear();
     const currentMonthTx = walletTransactions.filter(t => {
       const d = new Date(t.date);
-      return t.type === 'expense' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
     const pillarMap = {
