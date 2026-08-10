@@ -2,21 +2,21 @@
   "expo": {
     "name": "MIZAN ميزان",
     "slug": "mizan",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mizan",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#090E17"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.aeroooman.mizan",
-      "buildNumber": "1.0.2",
+      "buildNumber": "1.0.4",
       "infoPlist": {
         "NSCameraUsageDescription": "يحتاج التطبيق لإذن الكاميرا لمسح وقراءة الفواتير الضريبية وإيصالات الشراء.",
         "NSFaceIDUsageDescription": "يحتاج التطبيق لاستخدام بصمة الوجه لحماية بياناتك المالية وتأمين التطبيق."
@@ -24,7 +24,10 @@
     },
     "android": {
       "package": "com.aeroooman.mizan",
-      "versionCode": 9,
+      "versionCode": 12,
+      "edgeToEdge": true,
+      "supportsTablet": true,
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "CAMERA",
         "USE_BIOMETRIC",
@@ -48,13 +51,19 @@
           "origin": "https://aeroooman-svg.github.io/mizan/"
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#00E676"
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       "expo-secure-store"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {

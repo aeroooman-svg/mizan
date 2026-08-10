@@ -9,7 +9,10 @@ export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    // In production builds, EXPO_PUBLIC_DOMAIN may not be set.
+    // Return a safe fallback — API features won't work but app won't crash.
+    console.warn("EXPO_PUBLIC_DOMAIN is not set, using fallback");
+    return "http://localhost:5000/";
   }
 
   let urlString = host;

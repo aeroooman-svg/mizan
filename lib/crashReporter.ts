@@ -26,42 +26,41 @@ let SentryModule: any = null;
 export async function initCrashReporter(): Promise<void> {
   if (sentryInitialized) return;
 
-  // Add global JS error handler safety net for production builds
-  if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
-    const originalHandler = (global as any).ErrorUtils.getGlobalHandler();
-    (global as any).ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-      console.error('[Global Error Caught]:', error);
-      if (originalHandler) {
+  try {
+    // Add global JS error handler safety net for production builds
+    if (typeof global !== 'undefined' && (global as any).ErrorUtils) {
+      const originalHandler = (global as any).ErrorUtils.getGlobalHandler();
+      (global as any).ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+        console.error('[Global Error Caught]:', error);
         try {
-          originalHandler(error, isFatal);
+          if (originalHandler) {
+            originalHandler(error, isFatal);
+          }
         } catch (e) {}
-      }
-    });
-  }
+      });
+    }
 
-  if (SENTRY_DSN) {
-    try {
-      // @ts-ignore
-      SentryModule = await import('@sentry/react-native');
-      if (SentryModule && SentryModule.init) {
-        SentryModule.init({
-          dsn: SENTRY_DSN,
-          debug: __DEV__,
-          environment: __DEV__ ? 'development' : 'production',
-          tracesSampleRate: __DEV__ ? 1.0 : 0.2,
-          enableAutoSessionTracking: true,
-          sessionTrackingIntervalMillis: 30000,
-        });
-        sentryInitialized = true;
-        console.log('✅ Sentry crash reporting initialized');
+    if (SENTRY_DSN) {
+      try {
+        // @ts-ignore
+        SentryModule = require('@sentry/react-native');
+        if (SentryModule && SentryModule.init) {
+          SentryModule.init({
+            dsn: SENTRY_DSN,
+            debug: __DEV__,
+            environment: __DEV__ ? 'development' : 'production',
+            tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+            enableAutoSessionTracking: true,
+            sessionTrackingIntervalMillis: 30000,
+          });
+          sentryInitialized = true;
+        }
+      } catch (err) {
+        console.warn('Sentry not available, using local crash logging:', err);
       }
-    } catch (err) {
-      console.warn('Sentry not available, using local crash logging:', err);
     }
-  } else {
-    if (__DEV__) {
-      console.log('ℹ️ Sentry DSN not configured. Set EXPO_PUBLIC_SENTRY_DSN to enable crash reporting.');
-    }
+  } catch (err) {
+    console.warn('Failed to initialize crash reporter safely:', err);
   }
 }
 
