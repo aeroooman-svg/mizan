@@ -59,7 +59,14 @@
       "expo-font",
       "expo-web-browser",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
