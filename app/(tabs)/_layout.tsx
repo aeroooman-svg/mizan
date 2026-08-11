@@ -9,6 +9,7 @@ import Colors from "@/constants/colors";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useTheme } from "@/lib/ThemeContext";
 import { useMemo } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface CustomTabBarProps {
   state: any;
@@ -19,7 +20,8 @@ interface CustomTabBarProps {
 
 function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabBarProps) {
   const { colors, theme } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => getStyles(colors, insets), [colors, insets]);
   const { language } = useLanguage();
   
   const renderTab = (routeIndex: number) => {
@@ -259,10 +261,10 @@ export default function TabLayout() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, insets: any = { bottom: 0 }) => StyleSheet.create({
   floatingBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 18,
+    bottom: insets.bottom > 0 ? insets.bottom + 8 : (Platform.OS === 'ios' ? 28 : 18),
     left: 16,
     right: 16,
     height: 66,
@@ -326,7 +328,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingBottom: Math.max((insets.bottom || 0) + 16, Platform.OS === 'ios' ? 40 : 24),
     elevation: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -10 },

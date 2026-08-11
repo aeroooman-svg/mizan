@@ -6,9 +6,9 @@ import {
   Pressable,
   Dimensions,
   ScrollView,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +21,7 @@ const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { language, setLanguage } = useLanguage();
   const { wallets } = useTransactions();
   const isAr = language === 'ar';
@@ -193,11 +194,11 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" />
 
       {/* Header with Language Switcher & Skip */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.brandRow}>
           <Text style={[styles.brandTitle, { color: colors.primary }]}>ميزان MIZAN</Text>
         </View>
@@ -266,7 +267,7 @@ export default function OnboardingScreen() {
           </ScrollView>
 
           {/* Pagination Indicators & Next Button */}
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
             <View style={styles.dotsContainer}>
               {slides.map((_, i) => (
                 <Pressable
@@ -312,7 +313,7 @@ export default function OnboardingScreen() {
         </>
       ) : (
         /* Financial Goal Picker Step */
-        <View style={styles.goalStepContainer}>
+        <View style={[styles.goalStepContainer, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
           <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
             {isAr ? 'ما هو هدفك المالي الأساسي؟' : 'What is your primary financial goal?'}
           </Text>
@@ -365,7 +366,7 @@ export default function OnboardingScreen() {
           </Pressable>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

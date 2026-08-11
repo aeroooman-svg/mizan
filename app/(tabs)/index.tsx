@@ -772,7 +772,7 @@ export default function HomeScreen() {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 160, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 160 + (insets.bottom || 0), flexGrow: 1 }}
         >
           <View style={styles.topHeaderBar}>
             <Pressable
@@ -998,7 +998,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={Colors.primary} />
         }
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 140 + (insets.bottom || 0) }}
       >
         {/* Top Header Bar with Menu and Settings */}
         <View style={[styles.topHeaderBar, { paddingTop: (insets.top || webTopInset) + 12 }]}>

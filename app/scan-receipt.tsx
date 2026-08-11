@@ -6,13 +6,13 @@ import {
   Pressable,
   Image,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   Dimensions,
   Animated,
   Easing,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -29,6 +29,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ScanReceiptScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { language } = useLanguage();
   const { selectedWallet, addTransaction, currencySymbol } = useTransactions();
 
@@ -156,9 +157,9 @@ export default function ScanReceiptScreen() {
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 12) }]}>
         <Pressable
           style={styles.closeBtn}
           onPress={() => {
@@ -175,7 +176,7 @@ export default function ScanReceiptScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
         {/* Subtitle instructions */}
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           {language === 'ar'
@@ -334,7 +335,7 @@ export default function ScanReceiptScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

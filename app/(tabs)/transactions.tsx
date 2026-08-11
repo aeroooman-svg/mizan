@@ -580,7 +580,7 @@ export default function TransactionsScreen() {
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 110 }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 120 + (insets.bottom || 0) }]}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         scrollEnabled={filteredTransactions.length > 0}
