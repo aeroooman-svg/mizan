@@ -229,7 +229,7 @@ export default function AddRecurringScreen() {
       const fn = new Function(`return (${sanitized})`);
       const val = fn();
       if (typeof val === 'number' && isFinite(val)) {
-        return Math.max(0, val).toFixed(2).replace(/\.00$/, '');
+        return Number(Math.max(0, val).toFixed(8)).toString();
       }
       return '';
     } catch {

@@ -207,7 +207,7 @@ export default function SplashLoadingScreen({ isDone, onFinish }: SplashLoadingS
           <Image 
             source={require('../assets/images/splash-icon.png')} 
             style={styles.logoImage} 
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
       </Animated.View>
@@ -269,10 +269,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   logoWrapper: {
     width: 170,
     height: 170,
-    borderRadius: 32,
+    borderRadius: 36,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#0A1D30',
+    padding: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -282,7 +284,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 32,
+    borderRadius: 28,
   },
   ambientGlow: {
     position: 'absolute',

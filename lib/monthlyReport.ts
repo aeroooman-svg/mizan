@@ -7,6 +7,7 @@
 
 import { Transaction, Wallet } from './storage';
 import { getCategoryName } from './i18n';
+import { formatCurrency } from './categories';
 
 export interface MonthlyReportData {
   monthName: string;
@@ -92,8 +93,8 @@ export function generateMonthlyReport(
   }
 
   if (topCatAmount > 0) {
-    insightsAr.push(`أعلى فئة صرف هذا الشهر كانت (${topCategoryName}) بمبلغ ${topCatAmount.toFixed(1)} ${wallet?.currency || ''}.`);
-    insightsEn.push(`Top spending category was (${topCategoryName}) at ${topCatAmount.toFixed(1)} ${wallet?.currency || ''}.`);
+    insightsAr.push(`أعلى فئة صرف هذا الشهر كانت (${topCategoryName}) بمبلغ ${formatCurrency(topCatAmount, 'ar')} ${wallet?.currency || ''}.`);
+    insightsEn.push(`Top spending category was (${topCategoryName}) at ${formatCurrency(topCatAmount, 'en')} ${wallet?.currency || ''}.`);
   }
 
   if (savingsRatePercent >= 20) {

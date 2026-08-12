@@ -1,4 +1,5 @@
 import { Transaction } from './storage';
+import { formatCurrency } from './categories';
 
 export interface CashflowForecast {
   status: 'safe' | 'risk' | 'depleted';
@@ -66,8 +67,8 @@ export function predictCashflow(
       status: 'risk',
       daysRemaining: Math.round(daysUntilDepletion),
       depletionDate,
-      messageAr: `⚠️ تنبيه: بناءً على معدل صرفك اليومي (${averageDailySpend.toFixed(1)} ${currencySymbol})، ستنفد أموالك في تاريخ ${formattedDate}. ننصح بتقليل الإنفاق اليومي بمقدار ${recommendedDailyReduction.toFixed(1)} ${currencySymbol} لتفادي ذلك.`,
-      messageEn: `⚠️ Warning: Based on your daily spend (${averageDailySpend.toFixed(1)} ${currencySymbol}), you will run out on ${formattedDateEn}. We recommend reducing daily spend by ${recommendedDailyReduction.toFixed(1)} ${currencySymbol} to stay safe.`,
+      messageAr: `⚠️ تنبيه: بناءً على معدل صرفك اليومي (${formatCurrency(averageDailySpend, 'ar')} ${currencySymbol})، ستنفد أموالك في تاريخ ${formattedDate}. ننصح بتقليل الإنفاق اليومي بمقدار ${formatCurrency(recommendedDailyReduction, 'ar')} ${currencySymbol} لتفادي ذلك.`,
+      messageEn: `⚠️ Warning: Based on your daily spend (${formatCurrency(averageDailySpend, 'en')} ${currencySymbol}), you will run out on ${formattedDateEn}. We recommend reducing daily spend by ${formatCurrency(recommendedDailyReduction, 'en')} ${currencySymbol} to stay safe.`,
       recommendedDailyReduction,
     };
   }

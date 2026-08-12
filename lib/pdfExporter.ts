@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Transaction, Wallet } from './storage';
 import { getCategoryName, getCurrencyName } from './i18n';
+import { formatCurrency } from './categories';
 
 export async function exportTransactionsToPDF(
   transactions: Transaction[],
@@ -52,7 +53,7 @@ export async function exportTransactionsToPDF(
           <td>${formattedDate}</td>
           <td>${t.description || '-'}</td>
           <td>${categoryName}</td>
-          <td style="color: ${typeColor}; font-weight: bold;">${t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}</td>
+          <td style="color: ${typeColor}; font-weight: bold;">${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount, language)}</td>
           <td style="color: ${typeColor};">${typeStr}</td>
         </tr>
       `;
@@ -154,15 +155,15 @@ export async function exportTransactionsToPDF(
       <div class="summary-cards">
         <div class="card income">
           <div class="card-title">${totalIncomeLabel}</div>
-          <div class="card-value">+${totalIncome.toFixed(2)} ${currencySymbol}</div>
+          <div class="card-value">+${formatCurrency(totalIncome, language)} ${currencySymbol}</div>
         </div>
         <div class="card expense">
           <div class="card-title">${totalExpenseLabel}</div>
-          <div class="card-value">-${totalExpense.toFixed(2)} ${currencySymbol}</div>
+          <div class="card-value">-${formatCurrency(totalExpense, language)} ${currencySymbol}</div>
         </div>
         <div class="card balance">
           <div class="card-title">${balanceLabel}</div>
-          <div class="card-value" style="color: ${balance >= 0 ? '#10B981' : '#EF4444'}">${balance >= 0 ? '+' : ''}${balance.toFixed(2)} ${currencySymbol}</div>
+          <div class="card-value" style="color: ${balance >= 0 ? '#10B981' : '#EF4444'}">${balance >= 0 ? '+' : ''}${formatCurrency(balance, language)} ${currencySymbol}</div>
         </div>
       </div>
 

@@ -28,7 +28,7 @@ import { getRecurringTransactions, updateRecurringTransaction, deleteRecurringTr
 import { getGoals, deleteGoal, getRules, deleteRule } from './goalStorage';
 import { getDebts, deleteDebt } from './debtStorage';
 import { useLanguage, globalAppLanguage } from './LanguageContext';
-import { setCustomCategoriesInMemory, getCategoryById } from './categories';
+import { formatCurrency, getCategoryById, setCustomCategoriesInMemory } from './categories';
 import { sendImmediateNotification } from './NotificationService';
 import * as Haptics from 'expo-haptics';
 import { getLoggedInUser, syncWithCloud } from './syncService';
@@ -367,8 +367,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const remaining = limit - spentAfter;
             const title = language === 'ar' ? 'تنبيه الميزانية ⚠️' : 'Budget Warning ⚠️';
             const body = language === 'ar'
-              ? `لقد استهلكت ${Math.round(pctAfter)}% من ميزانية فئة (${categoryName}). المتبقي: ${remaining.toFixed(2)}`
-              : `You have spent ${Math.round(pctAfter)}% of your (${categoryName}) budget. Remaining: ${remaining.toFixed(2)}`;
+              ? `لقد استهلكت ${Math.round(pctAfter)}% من ميزانية فئة (${categoryName}). المتبقي: ${formatCurrency(remaining, language)}`
+              : `You have spent ${Math.round(pctAfter)}% of your (${categoryName}) budget. Remaining: ${formatCurrency(remaining, language)}`;
             
             await sendImmediateNotification(title, body);
           } else if (pctBefore < 100 && pctAfter >= 100) {
@@ -377,8 +377,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const overrun = spentAfter - limit;
             const title = language === 'ar' ? 'تنبيه تجاوز الميزانية 🚨' : 'Budget Exceeded 🚨';
             const body = language === 'ar'
-              ? `لقد تجاوزت ميزانية فئة (${categoryName}) بمقدار ${overrun.toFixed(2)}. إجمالي الصرف: ${spentAfter.toFixed(2)} (الميزانية: ${limit.toFixed(2)})`
-              : `You have exceeded your (${categoryName}) budget by ${overrun.toFixed(2)}. Total spent: ${spentAfter.toFixed(2)} (Budget: ${limit.toFixed(2)})`;
+              ? `لقد تجاوزت ميزانية فئة (${categoryName}) بمقدار ${formatCurrency(overrun, language)}. إجمالي الصرف: ${formatCurrency(spentAfter, language)} (الميزانية: ${formatCurrency(limit, language)})`
+              : `You have exceeded your (${categoryName}) budget by ${formatCurrency(overrun, language)}. Total spent: ${formatCurrency(spentAfter, language)} (Budget: ${formatCurrency(limit, language)})`;
             
             await sendImmediateNotification(title, body);
           }

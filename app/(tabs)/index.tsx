@@ -561,12 +561,14 @@ export default function HomeScreen() {
                 borderRadius: 20,
                 overflow: 'hidden',
                 marginBottom: 8,
+                backgroundColor: '#0A1D30',
+                padding: 4,
               }}
             >
               <Image
                 source={require('../../assets/images/icon.png')}
-                style={{ width: '100%', height: '100%', borderRadius: 20 }}
-                resizeMode="cover"
+                style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                resizeMode="contain"
               />
             </View>
             <Text style={styles.drawerVersion}>v1.0.0</Text>
@@ -841,7 +843,7 @@ export default function HomeScreen() {
               <Image
                 source={require('../../assets/images/icon.png')}
                 style={{ width: '100%', height: '100%', borderRadius: 30 }}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </View>
           </View>

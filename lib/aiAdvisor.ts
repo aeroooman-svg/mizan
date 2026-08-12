@@ -1,4 +1,5 @@
 import { Transaction, Wallet } from './storage';
+import { formatCurrency } from './categories';
 
 export interface Recommendation {
   id: string;
@@ -119,8 +120,8 @@ export function generateFinancialRecommendations(
       type: 'tip',
       titleAr: 'بناء صندوق الطوارئ 🛡️',
       titleEn: 'Build Emergency Fund 🛡️',
-      messageAr: `صندوق الطوارئ المثالي يجب أن يغطي مصاريفك لـ 3 أشهر على الأقل (${emergencyThreshold.toFixed(0)} ${wallet.currency}). ننصحك بالبدء في اقتطاع جزء شهري مخصص للطوارئ.`,
-      messageEn: `An ideal emergency fund should cover at least 3 months of expenses (${emergencyThreshold.toFixed(0)} ${wallet.currency}). We advise allocating a fixed sum monthly.`,
+      messageAr: `صندوق الطوارئ المثالي يجب أن يغطي مصاريفك لـ 3 أشهر على الأقل (${formatCurrency(emergencyThreshold, 'ar')} ${wallet.currency}). ننصحك بالبدء في اقتطاع جزء شهري مخصص للطوارئ.`,
+      messageEn: `An ideal emergency fund should cover at least 3 months of expenses (${formatCurrency(emergencyThreshold, 'en')} ${wallet.currency}). We advise allocating a fixed sum monthly.`,
       impactScore: 8,
     });
   }

@@ -54,18 +54,27 @@ export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 
     if (isNaN(val) || val === null || val === undefined) {
       return isEn ? '0.00' : '٠٫٠٠';
     }
+
+    const cleanedVal = Number(val.toFixed(8));
+    const strVal = cleanedVal.toString();
+    const decPart = strVal.includes('.') ? strVal.split('.')[1] : '';
+    const decCount = decPart.length;
+
+    const minDigits = decCount > 2 ? Math.min(8, decCount) : 2;
+    const maxDigits = Math.max(2, Math.min(8, decCount));
+
     if (isEn) {
-      const formatted = val.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+      const formatted = cleanedVal.toLocaleString('en-US', {
+        minimumFractionDigits: minDigits,
+        maximumFractionDigits: maxDigits,
       });
       return formatted.replace(/[\u0660-\u0669]/g, ch =>
         String.fromCharCode(ch.charCodeAt(0) - 0x0660 + 0x0030)
       );
     }
-    return val.toLocaleString('ar-EG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+    return cleanedVal.toLocaleString('ar-EG', {
+      minimumFractionDigits: minDigits,
+      maximumFractionDigits: maxDigits,
     });
   } catch {
     const activeLang = lang || globalAppLanguage;

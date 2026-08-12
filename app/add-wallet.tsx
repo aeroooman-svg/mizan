@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { WALLET_ICONS, WALLET_COLORS } from '@/lib/categories';
+import { WALLET_ICONS, WALLET_COLORS, formatCurrency } from '@/lib/categories';
 import { CURRENCIES, CurrencyCode, CardStyle, getCurrencyInfo } from '@/lib/storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -219,7 +219,7 @@ export default function AddWalletScreen() {
           <View style={{ marginTop: 4, marginBottom: 16 }}>
             <WalletCardRender
               name={name || t.walletName}
-              balanceFormatted={(parseFloat(normalizeAmountInput(initialBalance)) || 0).toFixed(2)}
+              balanceFormatted={formatCurrency(parseFloat(normalizeAmountInput(initialBalance)) || 0, language)}
               currencySymbol={currency}
               cardStyle={cardStyle}
               color={selectedColor}

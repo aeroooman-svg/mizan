@@ -75,7 +75,7 @@ export default function WalletCarousel({
   const handleOpenAdjustModal = (w: Wallet, currentBal: number) => {
     Haptics.selectionAsync();
     setAdjustWallet(w);
-    setTargetBalanceInput(currentBal.toFixed(2));
+    setTargetBalanceInput(Number(currentBal.toFixed(8)).toString());
   };
 
   const handleSaveAdjustedBalance = async () => {

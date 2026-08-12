@@ -6,6 +6,7 @@ import Colors from '@/constants/colors';
 import FinancialHealthScore from '@/components/FinancialHealthScore';
 import CashflowForecastWidget from '@/components/CashflowForecastWidget';
 import { CashflowForecast } from '@/lib/financialEngine';
+import { formatCurrency } from '@/lib/categories';
 
 interface HealthForecastRowProps {
   healthScore: number;
@@ -80,8 +81,8 @@ export default function HealthForecastRow({
               <Ionicons name="trending-down" size={18} color="#FF9800" />
               <Text style={styles.reductionText}>
                 {language === 'ar'
-                  ? `تقليل إنفاقك اليومي بـ ${forecast.recommendedDailyReduction.toFixed(1)} ${currencySymbol} سيحميك من نفاد المحفظة.`
-                  : `Saving ${forecast.recommendedDailyReduction.toFixed(1)} ${currencySymbol} daily will keep your wallet funded.`}
+                  ? `تقليل إنفاقك اليومي بـ ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} سيحميك من نفاد المحفظة.`
+                  : `Saving ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} daily will keep your wallet funded.`}
               </Text>
             </View>
           )}
