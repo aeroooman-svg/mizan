@@ -556,18 +556,27 @@ export default function HomeScreen() {
           <View style={styles.drawerHeader}>
             <View
               style={{
-                width: 80,
-                height: 80,
-                borderRadius: 20,
+                width: 84,
+                height: 84,
+                borderRadius: 22,
                 overflow: 'hidden',
-                marginBottom: 8,
+                marginBottom: 10,
                 backgroundColor: '#0A1D30',
-                padding: 4,
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 6,
+                borderWidth: 1.5,
+                borderColor: 'rgba(16, 185, 129, 0.3)',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
               }}
             >
               <Image
-                source={require('../../assets/images/icon.png')}
-                style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                source={require('../../assets/images/splash-icon.png')}
+                style={{ width: '100%', height: '100%' }}
                 resizeMode="contain"
               />
             </View>
@@ -829,10 +838,16 @@ export default function HomeScreen() {
           <View style={{ alignItems: 'center', marginTop: 10, marginBottom: 14 }}>
             <View
               style={{
-                width: 150,
-                height: 150,
+                width: 140,
+                height: 140,
                 borderRadius: 30,
                 overflow: 'hidden',
+                backgroundColor: '#0A1D30',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 8,
+                borderWidth: 1.5,
+                borderColor: 'rgba(16, 185, 129, 0.3)',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: 0.4,
@@ -841,8 +856,8 @@ export default function HomeScreen() {
               }}
             >
               <Image
-                source={require('../../assets/images/icon.png')}
-                style={{ width: '100%', height: '100%', borderRadius: 30 }}
+                source={require('../../assets/images/splash-icon.png')}
+                style={{ width: '100%', height: '100%' }}
                 resizeMode="contain"
               />
             </View>
@@ -1145,11 +1160,32 @@ export default function HomeScreen() {
           />
           <View style={[styles.drawerSheet, { borderLeftWidth: language === 'ar' ? 1 : 0, borderRightWidth: language === 'ar' ? 0 : 1 }]}>
             <View style={styles.drawerHeader}>
-              <Image
-                source={require('../../assets/images/icon.png')}
-                style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 8 }}
-                resizeMode="contain"
-              />
+              <View
+                style={{
+                  width: 84,
+                  height: 84,
+                  borderRadius: 22,
+                  overflow: 'hidden',
+                  marginBottom: 10,
+                  backgroundColor: '#0A1D30',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 6,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(16, 185, 129, 0.3)',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 6,
+                }}
+              >
+                <Image
+                  source={require('../../assets/images/splash-icon.png')}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              </View>
               <Text style={styles.drawerAppName}>MIZAN</Text>
               <Text style={[styles.drawerVersion, { color: '#14B8A6', fontFamily: 'Cairo_600SemiBold' }]}>مِيزان</Text>
               <Text style={styles.drawerVersion}>v1.0.0</Text>

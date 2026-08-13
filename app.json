@@ -2,7 +2,7 @@
   "expo": {
     "name": "MIZAN",
     "slug": "mizan",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mizan",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aeroooman.mizan",
-      "buildNumber": "1.0.4",
+      "buildNumber": "1.0.5",
       "infoPlist": {
         "NSCameraUsageDescription": "يحتاج التطبيق لإذن الكاميرا لمسح وقراءة الفواتير الضريبية وإيصالات الشراء.",
         "NSFaceIDUsageDescription": "يحتاج التطبيق لاستخدام بصمة الوجه لحماية بياناتك المالية وتأمين التطبيق."
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.aeroooman.mizan",
-      "versionCode": 12,
+      "versionCode": 13,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "CAMERA",

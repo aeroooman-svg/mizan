@@ -274,7 +274,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#0A1D30',
-    padding: 8,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -284,7 +286,6 @@ const getStyles = (colors: any) => StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
   },
   ambientGlow: {
     position: 'absolute',
