@@ -29,7 +29,12 @@
       "permissions": [
         "CAMERA",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#090E17",
@@ -78,6 +83,12 @@
       "eas": {
         "projectId": "8d873738-3daa-480e-9ba1-11284a3642d9"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8d873738-3daa-480e-9ba1-11284a3642d9"
     }
   }
 }
