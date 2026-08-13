@@ -24,13 +24,9 @@
     },
     "android": {
       "package": "com.aeroooman.mizan",
-      "versionCode": 13,
+      "versionCode": 22,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
-        "CAMERA",
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "CAMERA",
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
