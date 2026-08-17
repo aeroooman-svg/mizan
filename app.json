@@ -80,11 +80,6 @@
         "projectId": "8d873738-3daa-480e-9ba1-11284a3642d9"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/8d873738-3daa-480e-9ba1-11284a3642d9"
-    }
+    "owner": "aeroman"
   }
 }

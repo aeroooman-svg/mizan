@@ -611,9 +611,11 @@ export default function AddRecurringScreen() {
                       style={[
                         styles.colorCircle,
                         { backgroundColor: c },
-                        isSelected && { borderColor: '#FFF', borderWidth: 3, transform: [{ scale: 1.15 }] }
+                        isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5, transform: [{ scale: 1.12 }] }
                       ]}
-                    />
+                    >
+                      {isSelected && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+                    </Pressable>
                   );
                 })}
               </View>
@@ -893,13 +895,18 @@ export default function AddRecurringScreen() {
                     return (
                       <Pressable
                         key={c}
-                        onPress={() => setCustomColor(c)}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setCustomColor(c);
+                        }}
                         style={[
                           styles.colorCircle,
                           { backgroundColor: c },
-                          isSelected && { borderColor: '#000', borderWidth: 2, transform: [{ scale: 1.15 }] }
+                          isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5, transform: [{ scale: 1.12 }] }
                         ]}
-                      />
+                      >
+                        {isSelected && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -926,9 +933,9 @@ export default function AddRecurringScreen() {
               </View>
               <Pressable
                 onPress={handleSaveCustomCategory}
-                style={({ pressed }) => [styles.modalSaveBtn, { backgroundColor: customColor }, pressed && { opacity: 0.9 }]}
+                style={({ pressed }) => [styles.modalSaveBtn, { backgroundColor: customColor, marginBottom: Math.max(insets.bottom, 16) }, pressed && { opacity: 0.9 }]}
               >
-                <Text style={styles.modalSaveText}>{t.createWallet}</Text>
+                <Text style={styles.modalSaveText}>{language === 'ar' ? 'حفظ وإنشاء الفئة' : t.newCategory}</Text>
               </Pressable>
             </ScrollView>
           </SafeAreaView>
@@ -1361,11 +1368,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 6,
   },
   colorCircle: {
-    width: Dimensions.get('window').width * 0.13,
-    aspectRatio: 1,
-    borderRadius: Dimensions.get('window').width * 0.065,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 2,
     borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconsGrid: {
     flexDirection: 'row',

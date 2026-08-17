@@ -1446,9 +1446,11 @@ export default function AddTransactionScreen() {
                         style={[
                           styles.colorCircle,
                           { backgroundColor: c },
-                          isSelected && { borderColor: '#FFF', borderWidth: 3, transform: [{ scale: 1.15 }] }
+                          isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5, transform: [{ scale: 1.12 }] }
                         ]}
-                      />
+                      >
+                        {isSelected && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+                      </Pressable>
                     );
                   })}
                 </View>
@@ -1481,7 +1483,7 @@ export default function AddTransactionScreen() {
             </ScrollView>
 
             {/* Pinned Bottom Footer Save & Delete Buttons */}
-            <View style={[styles.modalFooter, { flexDirection: 'row', gap: 10 }]}>
+            <View style={[styles.modalFooter, { flexDirection: 'row', gap: 10, paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
               {editingCategory && (
                 <Pressable
                   onPress={handleDeleteCategory}
@@ -2014,11 +2016,13 @@ const getStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 6,
   },
   colorCircle: {
-    width: SCREEN_WIDTH * 0.12,
-    aspectRatio: 1,
-    borderRadius: SCREEN_WIDTH * 0.06,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 2,
     borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconsGrid: {
     flexDirection: 'row',

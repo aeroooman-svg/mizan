@@ -139,71 +139,70 @@ export function parseReceiptText(text: string): ScannedReceipt {
   };
 }
 
+export const SAMPLE_RECEIPTS: ScannedReceipt[] = [
+  {
+    merchantName: 'سوبرماركت كارفور Carrefour',
+    totalAmount: 345.50,
+    category: 'food',
+    date: new Date().toISOString(),
+    items: [
+      { name: 'حليب كامل الدسم', price: 45.00 },
+      { name: 'جبنة شيدر 500جم', price: 120.50 },
+      { name: 'خبز طازج', price: 30.00 },
+      { name: 'عصير فواكه طبيعي', price: 150.00 }
+    ],
+    taxAmount: 42.00,
+    paymentMethod: 'فيزا (Visa)',
+    confidenceScore: 0.95,
+  },
+  {
+    merchantName: 'محطة طاقة للوقود Taqa Gas',
+    totalAmount: 250.00,
+    category: 'transport',
+    date: new Date().toISOString(),
+    items: [
+      { name: 'بنزين 95 (22 ليتر)', price: 250.00 }
+    ],
+    taxAmount: 30.00,
+    paymentMethod: 'نقداً (Cash)',
+    confidenceScore: 0.98,
+  },
+  {
+    merchantName: 'صيدلية العزبي El Ezaby',
+    totalAmount: 185.75,
+    category: 'health',
+    date: new Date().toISOString(),
+    items: [
+      { name: 'فيتامين C طوارئ', price: 85.00 },
+      { name: 'مسكن ألم ومضاد التهاب', price: 100.75 }
+    ],
+    taxAmount: 22.00,
+    paymentMethod: 'مستشار صحة (MasterCard)',
+    confidenceScore: 0.92,
+  },
+  {
+    merchantName: 'مطعم ومقهى ستاربكس Starbucks',
+    totalAmount: 140.00,
+    category: 'food',
+    date: new Date().toISOString(),
+    items: [
+      { name: 'لاتيه كراميل كبير', price: 90.00 },
+      { name: 'كيكة الشوكولاتة', price: 50.00 }
+    ],
+    taxAmount: 17.00,
+    paymentMethod: 'Apple Pay',
+    confidenceScore: 0.96,
+  }
+];
+
 /**
  * Simulates AI OCR image scanning with smart heuristics & sample templates for demo/testing
  */
 export async function scanReceiptImage(imageUri: string): Promise<ScannedReceipt> {
   // Simulate network/OCR latency
-  await new Promise(res => setTimeout(res, 1200));
-
-  // High quality receipt templates for realistic instant scanning experience
-  const templates: ScannedReceipt[] = [
-    {
-      merchantName: 'سوبرماركت كارفور Carrefour',
-      totalAmount: 345.50,
-      category: 'food',
-      date: new Date().toISOString(),
-      items: [
-        { name: 'حليب كامل الدسم', price: 45.00 },
-        { name: 'جبنة شيدر 500جم', price: 120.50 },
-        { name: 'خبز طازج', price: 30.00 },
-        { name: 'عصير فواكه طبيعي', price: 150.00 }
-      ],
-      taxAmount: 42.00,
-      paymentMethod: 'فيزا (Visa)',
-      confidenceScore: 0.95,
-    },
-    {
-      merchantName: 'محطة طاقة للوقود Taqa Gas',
-      totalAmount: 250.00,
-      category: 'transport',
-      date: new Date().toISOString(),
-      items: [
-        { name: 'بنزين 95 (22 ليتر)', price: 250.00 }
-      ],
-      taxAmount: 30.00,
-      paymentMethod: 'نقداً (Cash)',
-      confidenceScore: 0.98,
-    },
-    {
-      merchantName: 'صيدلية العزبي El Ezaby',
-      totalAmount: 185.75,
-      category: 'health',
-      date: new Date().toISOString(),
-      items: [
-        { name: 'فيتامين C طوارئ', price: 85.00 },
-        { name: 'مسكن ألم ومضاد التهاب', price: 100.75 }
-      ],
-      taxAmount: 22.00,
-      paymentMethod: 'مستشار صحة (MasterCard)',
-      confidenceScore: 0.92,
-    },
-    {
-      merchantName: 'مطعم ومقهى ستاربكس Starbucks',
-      totalAmount: 140.00,
-      category: 'food',
-      date: new Date().toISOString(),
-      items: [
-        { name: 'لاتيه كراميل كبير', price: 90.00 },
-        { name: 'كيكة الشوكولاتة', price: 50.00 }
-      ],
-      taxAmount: 17.00,
-      paymentMethod: 'Apple Pay',
-      confidenceScore: 0.96,
-    }
-  ];
+  await new Promise(res => setTimeout(res, 900));
 
   // Pick deterministic or realistic match based on image path hash or random fallback
-  const idx = Math.abs(imageUri.length) % templates.length;
-  return templates[idx];
+  const idx = Math.abs(imageUri.length) % SAMPLE_RECEIPTS.length;
+  return { ...SAMPLE_RECEIPTS[idx], date: new Date().toISOString() };
 }

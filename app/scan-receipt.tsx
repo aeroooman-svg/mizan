@@ -11,6 +11,8 @@ import {
   Dimensions,
   Animated,
   Easing,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,9 +23,10 @@ import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { scanReceiptImage, ScannedReceipt } from '@/lib/receiptScanner';
+import { scanReceiptImage, ScannedReceipt, SAMPLE_RECEIPTS } from '@/lib/receiptScanner';
 import { formatCurrency, expenseCategories } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,12 +34,19 @@ export default function ScanReceiptScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { language } = useLanguage();
+  const isAr = language === 'ar';
   const { selectedWallet, addTransaction, currencySymbol } = useTransactions();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannedResult, setScannedResult] = useState<ScannedReceipt | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Editable parsed values
+  const [editMerchant, setEditMerchant] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('shopping');
+  const [editTax, setEditTax] = useState('');
 
   // Scan line animation
   const scanAnim = useRef(new Animated.Value(0)).current;
@@ -65,13 +75,61 @@ export default function ScanReceiptScreen() {
     }
   }, [isScanning]);
 
+  // Sync editable fields when scanned result changes
+  useEffect(() => {
+    if (scannedResult) {
+      setEditMerchant(scannedResult.merchantName || '');
+      setEditAmount(scannedResult.totalAmount !== null ? String(scannedResult.totalAmount) : '');
+      setEditCategory(scannedResult.category || 'shopping');
+      setEditTax(scannedResult.taxAmount ? String(scannedResult.taxAmount) : '');
+    }
+  }, [scannedResult]);
+
   const handlePickImage = async (useCamera: boolean) => {
     try {
       Haptics.selectionAsync();
+
+      if (useCamera) {
+        const { status: currentStatus } = await ImagePicker.getCameraPermissionsAsync();
+        let finalStatus = currentStatus;
+        if (currentStatus !== ImagePicker.PermissionStatus.GRANTED) {
+          const { status: reqStatus } = await ImagePicker.requestCameraPermissionsAsync();
+          finalStatus = reqStatus;
+        }
+
+        if (finalStatus !== ImagePicker.PermissionStatus.GRANTED) {
+          Alert.alert(
+            isAr ? 'إذن الكاميرا مطلوب 📷' : 'Camera Permission Required 📷',
+            isAr
+              ? 'يرجى تفعيل إذن الوصول إلى الكاميرا من إعدادات الهاتف لمسح الفواتير.'
+              : 'Please enable camera access permission in device settings to scan receipts.'
+          );
+          return;
+        }
+      } else {
+        const { status: currentStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+        let finalStatus = currentStatus;
+        if (currentStatus !== ImagePicker.PermissionStatus.GRANTED) {
+          const { status: reqStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          finalStatus = reqStatus;
+        }
+
+        if (finalStatus !== ImagePicker.PermissionStatus.GRANTED) {
+          Alert.alert(
+            isAr ? 'إذن المعرض مطلوب 🖼️' : 'Gallery Permission Required 🖼️',
+            isAr
+              ? 'يرجى تفعيل إذن الوصول إلى معرض الصور لاختيار الفاتورة.'
+              : 'Please enable photo library access in device settings to select receipt images.'
+          );
+          return;
+        }
+      }
+
       const options: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.9,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, // Prevents Android cropping activity crash/cancel bug
+        quality: 0.85,
+        base64: false,
       };
 
       const result = useCamera
@@ -89,37 +147,71 @@ export default function ScanReceiptScreen() {
         setScannedResult(data);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Scan error:', e);
       setIsScanning(false);
       Alert.alert(
-        language === 'ar' ? 'خطأ' : 'Error',
-        language === 'ar' ? 'فشل معالجة الفاتورة' : 'Failed to scan receipt'
+        isAr ? 'تنبيه' : 'Notice',
+        isAr
+          ? 'تعذر التقاط الصورة، يرجى المحاولة مرة أخرى أو اختيار صورة من المعرض.'
+          : 'Failed to access camera/gallery. Please try selecting an image from gallery.'
       );
     }
   };
 
+  const handleTestSampleReceipt = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const randomSample = SAMPLE_RECEIPTS[Math.floor(Math.random() * SAMPLE_RECEIPTS.length)];
+    setImageUri('https://images.unsplash.com/photo-1554415707-9e49019eeb61?w=600');
+    setScannedResult({ ...randomSample, date: new Date().toISOString() });
+  };
+
+  const handleManualEntryFallback = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setImageUri(null);
+    setScannedResult({
+      merchantName: isAr ? 'فاتورة جديدة' : 'New Receipt',
+      totalAmount: 0,
+      category: 'shopping',
+      date: new Date().toISOString(),
+      items: [],
+      confidenceScore: 1.0,
+    });
+  };
+
   const handleConfirmAndAdd = async () => {
-    if (!scannedResult || !scannedResult.totalAmount) {
+    const cleanAmountStr = normalizeAmountInput(editAmount);
+    const parsedAmount = parseFloat(cleanAmountStr);
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
       Alert.alert(
-        language === 'ar' ? 'تنبيه' : 'Notice',
-        language === 'ar' ? 'لم يتم العثور على مبلغ إجمالي في الفاتورة' : 'No total amount detected'
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى إدخال مبلغ إجمالي صحيح للفاتورة' : 'Please enter a valid total amount'
+      );
+      return;
+    }
+
+    if (!selectedWallet) {
+      Alert.alert(
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى اختيار محفظة نشطة أولاً' : 'Please select an active wallet first'
       );
       return;
     }
 
     try {
-      if (!selectedWallet) return;
       setIsSaving(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       const nowStr = new Date().toISOString();
+      const merchantClean = editMerchant.trim() || (isAr ? 'مشتريات فاتورة' : 'Receipt Purchase');
+
       await addTransaction({
         id: String(Date.now()),
         type: 'expense',
-        amount: scannedResult.totalAmount,
-        category: scannedResult.category,
-        description: `${scannedResult.merchantName} (قارئ الفواتير)`,
+        amount: parsedAmount,
+        category: editCategory,
+        description: `${merchantClean} (مسح الفاتورة 🧾)`,
         date: nowStr,
         createdAt: nowStr,
         walletId: selectedWallet.id,
@@ -129,13 +221,13 @@ export default function ScanReceiptScreen() {
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        language === 'ar' ? 'تمت الإضافة بنجاح! 🎉' : 'Transaction Added! 🎉',
-        language === 'ar'
-          ? `تم إضافة ${scannedResult.totalAmount} ${currencySymbol} من ${scannedResult.merchantName} إلى محفظتك.`
-          : `Added ${scannedResult.totalAmount} ${currencySymbol} from ${scannedResult.merchantName}.`,
+        isAr ? 'تمت الإضافة بنجاح! 🎉' : 'Transaction Added! 🎉',
+        isAr
+          ? `تم إضافة ${formatCurrency(parsedAmount)} ${currencySymbol} من ${merchantClean} إلى محفظتك.`
+          : `Added ${formatCurrency(parsedAmount)} ${currencySymbol} from ${merchantClean}.`,
         [
           {
-            text: language === 'ar' ? 'حسناً' : 'OK',
+            text: isAr ? 'حسناً' : 'OK',
             onPress: () => router.back(),
           },
         ]
@@ -143,8 +235,8 @@ export default function ScanReceiptScreen() {
     } catch (e) {
       console.error('Failed to save receipt transaction:', e);
       Alert.alert(
-        language === 'ar' ? 'خطأ' : 'Error',
-        language === 'ar' ? 'حدث خطأ أثناء حفظ المعاملة' : 'Failed to save transaction'
+        isAr ? 'خطأ' : 'Error',
+        isAr ? 'حدث خطأ أثناء حفظ المعاملة' : 'Failed to save transaction'
       );
     } finally {
       setIsSaving(false);
@@ -171,16 +263,20 @@ export default function ScanReceiptScreen() {
           <Ionicons name="close" size={24} color={colors.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {language === 'ar' ? '🧾 مسح الفاتورة بالذكاء الاصطناعي' : '🧾 AI Receipt Scanner'}
+          {isAr ? '🧾 مسح الفاتورة بالذكاء الاصطناعي' : '🧾 AI Receipt Scanner'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 30 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Subtitle instructions */}
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {language === 'ar'
-            ? 'التقط صورة الفاتورة لاستخراج المبلغ واسم المتجر والفئة تلقائياً.'
+          {isAr
+            ? 'التقط صورة الفاتورة أو اخترها من المعرض لاستخراج المبلغ واسم المتجر والفئة تلقائياً.'
             : 'Capture or select a receipt photo to automatically extract amount, merchant & category.'}
         </Text>
 
@@ -188,7 +284,7 @@ export default function ScanReceiptScreen() {
         <View style={[styles.imageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {imageUri ? (
             <View style={styles.imagePreviewWrapper}>
-              <Image source={{ uri: imageUri }} style={styles.receiptImage} resizeMode="contain" />
+              <Image source={{ uri: imageUri }} style={styles.receiptImage} resizeMode="cover" />
 
               {/* Scanning Overlay Animation */}
               {isScanning && (
@@ -202,7 +298,7 @@ export default function ScanReceiptScreen() {
                   <View style={styles.scanningTextBadge}>
                     <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
                     <Text style={styles.scanningText}>
-                      {language === 'ar' ? 'جاري تحليل الفاتورة والبيانات...' : 'Scanning & extracting AI data...'}
+                      {isAr ? 'جاري تحليل الفاتورة والبيانات بالذكاء الاصطناعي...' : 'Scanning & analyzing with AI...'}
                     </Text>
                   </View>
                 </View>
@@ -210,12 +306,14 @@ export default function ScanReceiptScreen() {
             </View>
           ) : (
             <View style={styles.placeholderBox}>
-              <Ionicons name="receipt-outline" size={64} color={colors.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: colors.primary + '18' }]}>
+                <Ionicons name="receipt-outline" size={48} color={colors.primary} />
+              </View>
               <Text style={[styles.placeholderTitle, { color: colors.text }]}>
-                {language === 'ar' ? 'لم يتم اختيار فاتورة بعد' : 'No receipt selected yet'}
+                {isAr ? 'لم يتم اختيار فاتورة بعد' : 'No receipt selected yet'}
               </Text>
               <Text style={[styles.placeholderSubtitle, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'اختر الكاميرا أو معرض الصور للبدء' : 'Choose camera or gallery to start'}
+                {isAr ? 'اختر الكاميرا أو معرض الصور للبدء الفوري' : 'Choose camera or gallery to start'}
               </Text>
             </View>
           )}
@@ -223,86 +321,155 @@ export default function ScanReceiptScreen() {
           {/* Source Picker Buttons */}
           <View style={styles.pickerActions}>
             <Pressable
-              style={[styles.pickerBtn, { backgroundColor: colors.primary }]}
+              style={({ pressed }) => [
+                styles.pickerBtn, 
+                { backgroundColor: colors.primary },
+                pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }
+              ]}
               onPress={() => handlePickImage(true)}
+              disabled={isScanning}
             >
-              <Ionicons name="camera-outline" size={20} color="#FFF" />
+              <Ionicons name="camera" size={20} color="#FFF" />
               <Text style={styles.pickerBtnText}>
-                {language === 'ar' ? 'الكاميرا' : 'Camera'}
+                {isAr ? 'الكاميرا' : 'Camera'}
               </Text>
             </Pressable>
 
             <Pressable
-              style={[styles.pickerBtn, { backgroundColor: colors.cardBorder, borderColor: colors.border, borderWidth: 1 }]}
+              style={({ pressed }) => [
+                styles.pickerBtn, 
+                { backgroundColor: colors.surfaceAlt, borderColor: colors.border, borderWidth: 1 },
+                pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }
+              ]}
               onPress={() => handlePickImage(false)}
+              disabled={isScanning}
             >
-              <Ionicons name="images-outline" size={20} color={colors.text} />
+              <Ionicons name="images" size={20} color={colors.text} />
               <Text style={[styles.pickerBtnText, { color: colors.text }]}>
-                {language === 'ar' ? 'المعرض' : 'Gallery'}
+                {isAr ? 'المعرض' : 'Gallery'}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Fallback & Sample Test Buttons */}
+          <View style={styles.quickOptionsRow}>
+            <Pressable onPress={handleTestSampleReceipt} style={styles.textOptionBtn} hitSlop={8}>
+              <Text style={[styles.textOptionBtnLabel, { color: colors.primary }]}>
+                {isAr ? '⚡ تجربة فاتورة نموذجية' : '⚡ Try Sample Receipt'}
+              </Text>
+            </Pressable>
+            <Text style={{ color: colors.textTertiary }}>•</Text>
+            <Pressable onPress={handleManualEntryFallback} style={styles.textOptionBtn} hitSlop={8}>
+              <Text style={[styles.textOptionBtnLabel, { color: colors.textSecondary }]}>
+                {isAr ? '✍️ إدخال يدوي مباشر' : '✍️ Manual Entry'}
               </Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Scanned Results Display */}
+        {/* Scanned & Editable Results Display */}
         {scannedResult && (
           <View style={[styles.resultsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.resultHeader}>
               <Ionicons name="checkmark-circle" size={24} color={colors.income} />
               <Text style={[styles.resultTitle, { color: colors.text }]}>
-                {language === 'ar' ? 'نتيجة الفحص بنجاح' : 'Scan Successful'}
+                {isAr ? 'بيانات الفاتورة المستخرجة (قابلة للتعديل)' : 'Extracted Receipt Data (Editable)'}
               </Text>
             </View>
 
             <View style={styles.divider} />
 
-            {/* Merchant */}
-            <View style={styles.row}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'المتجر / الجهة:' : 'Merchant:'}
+            {/* Merchant input */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                {isAr ? 'المتجر / الجهة:' : 'Merchant Name:'}
               </Text>
-              <Text style={[styles.value, { color: colors.text }]}>
-                {scannedResult.merchantName}
-              </Text>
+              <TextInput
+                style={[styles.fieldInput, { backgroundColor: colors.surfaceAlt, color: colors.text, borderColor: colors.border }]}
+                value={editMerchant}
+                onChangeText={setEditMerchant}
+                placeholder={isAr ? 'اسم المتجر...' : 'Merchant name...'}
+                placeholderTextColor={colors.textTertiary}
+                textAlign={isAr ? 'right' : 'left'}
+              />
             </View>
 
-            {/* Amount */}
-            <View style={styles.row}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'المبلغ الإجمالي:' : 'Total Amount:'}
+            {/* Total Amount input */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                {isAr ? `المبلغ الإجمالي (${currencySymbol}):` : `Total Amount (${currencySymbol}):`}
               </Text>
-              <Text style={[styles.amountValue, { color: colors.primary }]}>
-                {scannedResult.totalAmount} {currencySymbol}
-              </Text>
+              <TextInput
+                style={[
+                  styles.fieldInput, 
+                  styles.amountInput, 
+                  { backgroundColor: colors.surfaceAlt, color: colors.primary, borderColor: colors.primary + '50' }
+                ]}
+                value={editAmount}
+                onChangeText={setEditAmount}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={colors.textTertiary}
+                textAlign={isAr ? 'right' : 'left'}
+              />
             </View>
 
-            {/* Category */}
-            <View style={styles.row}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {language === 'ar' ? 'الفئة المقترحة:' : 'Category:'}
+            {/* Category selection chips */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                {isAr ? 'الفئة المقترحة:' : 'Suggested Category:'}
               </Text>
-              <Text style={[styles.value, { color: colors.text }]}>
-                {getCategoryName(scannedResult.category, language)}
-              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                {expenseCategories.map(cat => {
+                  const isSelected = editCategory === cat.id;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setEditCategory(cat.id);
+                      }}
+                      style={[
+                        styles.catChip,
+                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                        isSelected && { borderColor: cat.color, backgroundColor: cat.color + '20', borderWidth: 2 }
+                      ]}
+                    >
+                      <MaterialIcons name={cat.icon as any} size={16} color={isSelected ? cat.color : colors.textSecondary} />
+                      <Text style={[
+                        styles.catChipText, 
+                        { color: colors.textSecondary },
+                        isSelected && { color: cat.color, fontFamily: 'Cairo_700Bold' }
+                      ]}>
+                        {getCategoryName(cat.id, language)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
 
-            {/* Tax */}
-            {scannedResult.taxAmount ? (
-              <View style={styles.row}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>
-                  {language === 'ar' ? 'الضريبة المخصومة:' : 'Tax Amount:'}
-                </Text>
-                <Text style={[styles.value, { color: colors.textSecondary }]}>
-                  {scannedResult.taxAmount} {currencySymbol}
-                </Text>
-              </View>
-            ) : null}
+            {/* Tax Amount */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                {isAr ? `الضريبة المخصومة (اختياري):` : `Tax Amount (Optional):`}
+              </Text>
+              <TextInput
+                style={[styles.fieldInput, { backgroundColor: colors.surfaceAlt, color: colors.text, borderColor: colors.border }]}
+                value={editTax}
+                onChangeText={setEditTax}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={colors.textTertiary}
+                textAlign={isAr ? 'right' : 'left'}
+              />
+            </View>
 
             {/* Items list if available */}
             {scannedResult.items && scannedResult.items.length > 0 && (
               <View style={styles.itemsSection}>
                 <Text style={[styles.itemsTitle, { color: colors.textSecondary }]}>
-                  {language === 'ar' ? 'الأغراض المستخرجة:' : 'Detected Items:'}
+                  {isAr ? 'الأغراض المستخرجة من الفاتورة:' : 'Extracted Line Items:'}
                 </Text>
                 {scannedResult.items.map((item, idx) => (
                   <View key={idx} style={styles.itemRow}>
@@ -317,7 +484,11 @@ export default function ScanReceiptScreen() {
 
             {/* Add Button */}
             <Pressable
-              style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+              style={({ pressed }) => [
+                styles.saveBtn, 
+                { backgroundColor: colors.primary },
+                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+              ]}
               onPress={handleConfirmAndAdd}
               disabled={isSaving}
             >
@@ -325,9 +496,9 @@ export default function ScanReceiptScreen() {
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
                 <>
-                  <Ionicons name="add-circle-outline" size={22} color="#FFF" style={{ marginRight: 6 }} />
+                  <Ionicons name="add-circle" size={22} color="#FFF" style={{ marginRight: 6 }} />
                   <Text style={styles.saveBtnText}>
-                    {language === 'ar' ? 'إضافة المعاملة للمحفظة' : 'Confirm & Add Transaction'}
+                    {isAr ? 'إضافة المعاملة للمحفظة' : 'Confirm & Add Transaction'}
                   </Text>
                 </>
               )}
@@ -356,31 +527,35 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: 'Cairo_700Bold',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Cairo_400Regular',
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 20,
   },
   imageCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     padding: 16,
     alignItems: 'center',
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   imagePreviewWrapper: {
     width: '100%',
-    height: 260,
-    borderRadius: 12,
+    height: 240,
+    borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: '#0F172A',
     marginBottom: 16,
   },
   receiptImage: {
@@ -389,7 +564,7 @@ const styles = StyleSheet.create({
   },
   scanOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -416,22 +591,30 @@ const styles = StyleSheet.create({
   },
   scanningText: {
     color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
   },
   placeholderBox: {
-    height: 180,
+    height: 170,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   placeholderTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    marginTop: 12,
+    fontFamily: 'Cairo_700Bold',
   },
   placeholderSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: 'Cairo_400Regular',
     marginTop: 4,
   },
   pickerActions: {
@@ -444,19 +627,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 13,
+    borderRadius: 14,
     gap: 8,
   },
   pickerBtnText: {
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: 'Cairo_700Bold',
+  },
+  quickOptionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+  },
+  textOptionBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  textOptionBtnLabel: {
+    fontSize: 12,
+    fontFamily: 'Cairo_600SemiBold',
   },
   resultsCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     padding: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   resultHeader: {
     flexDirection: 'row',
@@ -464,39 +666,57 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resultTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: 'Cairo_700Bold',
+    flex: 1,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(150,150,150,0.2)',
-    marginVertical: 12,
+    backgroundColor: 'rgba(150,150,150,0.15)',
+    marginVertical: 14,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  inputGroup: {
+    marginBottom: 14,
+    gap: 6,
   },
-  label: {
+  fieldLabel: {
+    fontSize: 13,
+    fontFamily: 'Cairo_600SemiBold',
+  },
+  fieldInput: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
+    fontFamily: 'Cairo_600SemiBold',
+    borderWidth: 1,
   },
-  value: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  amountValue: {
+  amountInput: {
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: 'Cairo_700Bold',
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  catChipText: {
+    fontSize: 12,
+    fontFamily: 'Cairo_600SemiBold',
   },
   itemsSection: {
-    marginTop: 8,
+    marginTop: 4,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(150,150,150,0.2)',
+    borderTopColor: 'rgba(150,150,150,0.15)',
   },
   itemsTitle: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: 'Cairo_600SemiBold',
     marginBottom: 6,
   },
   itemRow: {
@@ -505,10 +725,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   itemName: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: 'Cairo_400Regular',
   },
   itemPrice: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: 'Cairo_600SemiBold',
   },
   saveBtn: {
     flexDirection: 'row',
@@ -516,11 +738,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14,
-    marginTop: 16,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   saveBtnText: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: 'Cairo_700Bold',
   },
 });

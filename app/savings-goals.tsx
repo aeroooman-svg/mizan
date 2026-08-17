@@ -16,6 +16,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-ic
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
@@ -40,6 +41,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function SavingsGoalsScreen() {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const insets = useSafeAreaInsets();
   const { language, t } = useLanguage();
   const isAr = language === 'ar';
   const { wallets, selectedWallet, addTransaction, currencySymbol } = useTransactions();
@@ -620,7 +622,12 @@ export default function SavingsGoalsScreen() {
               </Pressable>
             </View>
 
-            <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.modalForm} 
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}
+              keyboardShouldPersistTaps="handled" 
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>{isAr ? 'ما الذي تدخر لأجله؟' : 'Goal Name'}</Text>
                 <TextInput
@@ -702,7 +709,12 @@ export default function SavingsGoalsScreen() {
               </Pressable>
             </View>
 
-            <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.modalForm} 
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}
+              keyboardShouldPersistTaps="handled" 
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>{isAr ? 'نوع القاعدة الذكية' : 'Rule Type'}</Text>
                 <View style={styles.ruleTypeRow}>
@@ -804,7 +816,7 @@ export default function SavingsGoalsScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.modalForm}>
+            <View style={[styles.modalForm, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
               {selectedGoal && (
                 <View style={styles.goalNoticeBox}>
                   <Text style={styles.goalNoticeText}>
