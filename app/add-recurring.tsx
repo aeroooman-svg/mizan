@@ -31,6 +31,7 @@ import {
   RecurringTransaction
 } from '@/lib/recurringStorage';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';
+import ModernDatePickerModal from '@/components/ModernDatePickerModal';
 
 type TransactionType = 'expense' | 'income';
 type FrequencyType = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -701,47 +702,19 @@ export default function AddRecurringScreen() {
         </View>
       </View>
 
-      {/* Start Date Picker Modal */}
-      <Modal
+      {/* Modern Calendar Date Picker Modal */}
+      <ModernDatePickerModal
         visible={showDatePicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowDatePicker(false)}>
-          <Pressable style={styles.datePickerSheet} onPress={e => e.stopPropagation()}>
-            <View style={styles.datePickerHeader}>
-              <Text style={styles.datePickerTitle}>{t.nextDueDate}</Text>
-              <Pressable onPress={() => setShowDatePicker(false)} hitSlop={12}>
-                <Ionicons name="close" size={22} color={Colors.textSecondary} />
-              </Pressable>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.dateList}>
-              {availableDates.map((d, i) => {
-                const isSelected = d.day === selectedDay && d.month === selectedMonth && d.year === selectedYear;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setSelectedDay(d.day);
-                      setSelectedMonth(d.month);
-                      setSelectedYear(d.year);
-                      setShowDatePicker(false);
-                    }}
-                    style={[styles.dateOption, isSelected && styles.dateOptionActive]}
-                  >
-                    <Text style={[styles.dateOptionText, isSelected && styles.dateOptionTextActive]}>
-                      {d.label}
-                    </Text>
-                    {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={() => setShowDatePicker(false)}
+        selectedDay={selectedDay}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        onSelectDate={(d, m, y) => {
+          setSelectedDay(d);
+          setSelectedMonth(m);
+          setSelectedYear(y);
+        }}
+      />
 
       {/* Calculator Modal */}
       <Modal visible={calcModalVisible} animationType="slide" transparent>

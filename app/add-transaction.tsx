@@ -35,6 +35,8 @@ import { getBudgetsForWallet } from '@/lib/budgetStorage';
 import { parseTransactionText } from '@/lib/nlpParser';
 import { parseBankSMS } from '@/lib/smsParser';
 import { getLoggedInUser } from '@/lib/syncService';
+import IOSWheelTimePicker from '@/components/IOSWheelTimePicker';
+import ModernDatePickerModal from '@/components/ModernDatePickerModal';
 
 type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -1125,57 +1127,17 @@ export default function AddTransactionScreen() {
             </Pressable>
           </View>
 
-          {/* Time Section */}
-          <View style={styles.timeSection}>
-            <Text style={styles.label}>{t.time}</Text>
-            <View style={styles.timeRow}>
-              <View style={styles.timePicker}>
-                <Pressable
-                  onPress={() => setSelectedHour(h => h >= 12 ? 1 : h + 1)}
-                  style={styles.timeArrow}
-                >
-                  <Ionicons name="chevron-up" size={18} color={Colors.textSecondary} />
-                </Pressable>
-                <Text style={styles.timeValue}>{selectedHour}</Text>
-                <Pressable
-                  onPress={() => setSelectedHour(h => h <= 1 ? 12 : h - 1)}
-                  style={styles.timeArrow}
-                >
-                  <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
-                </Pressable>
-              </View>
-
-              <Text style={styles.timeSeparator}>:</Text>
-
-              <View style={styles.timePicker}>
-                <Pressable
-                  onPress={() => setSelectedMinute(m => m >= 59 ? 0 : m + 1)}
-                  style={styles.timeArrow}
-                >
-                  <Ionicons name="chevron-up" size={18} color={Colors.textSecondary} />
-                </Pressable>
-                <Text style={styles.timeValue}>{selectedMinute.toString().padStart(2, '0')}</Text>
-                <Pressable
-                  onPress={() => setSelectedMinute(m => m <= 0 ? 59 : m - 1)}
-                  style={styles.timeArrow}
-                >
-                  <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
-                </Pressable>
-              </View>
-
-              <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setSelectedPeriod(p => p === 'AM' ? 'PM' : 'AM');
-                }}
-                style={styles.periodToggle}
-              >
-                <Text style={styles.periodText}>
-                  {language === 'ar' ? (selectedPeriod === 'AM' ? 'ص' : 'م') : selectedPeriod}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
+          {/* iOS-Style Wheel Time Picker with Manual Mode */}
+          <IOSWheelTimePicker
+            hour={selectedHour}
+            minute={selectedMinute}
+            period={selectedPeriod}
+            onTimeChange={(h, m, p) => {
+              setSelectedHour(h);
+              setSelectedMinute(m);
+              setSelectedPeriod(p);
+            }}
+          />
 
           {(() => {
             const isDisabled = isSaving || !amount || parseFloat(amount) <= 0 || (type === 'transfer' ? !toWalletId : !selectedCategory);
@@ -1231,47 +1193,19 @@ export default function AddTransactionScreen() {
         </ScrollView>
       </View>
 
-      {/* Date Picker Modal */}
-      <Modal
+      {/* Modern Calendar Date Picker Modal */}
+      <ModernDatePickerModal
         visible={showDatePicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowDatePicker(false)}>
-          <Pressable style={styles.datePickerSheet} onPress={e => e.stopPropagation()}>
-            <View style={styles.datePickerHeader}>
-              <Text style={styles.datePickerTitle}>{t.date}</Text>
-              <Pressable onPress={() => setShowDatePicker(false)} hitSlop={12}>
-                <Ionicons name="close" size={22} color={Colors.textSecondary} />
-              </Pressable>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.dateList}>
-              {availableDates.map((d, i) => {
-                const isSelected = d.day === selectedDay && d.month === selectedMonth && d.year === selectedYear;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setSelectedDay(d.day);
-                      setSelectedMonth(d.month);
-                      setSelectedYear(d.year);
-                      setShowDatePicker(false);
-                    }}
-                    style={[styles.dateOption, isSelected && styles.dateOptionActive]}
-                  >
-                    <Text style={[styles.dateOptionText, isSelected && styles.dateOptionTextActive]}>
-                      {d.label}
-                    </Text>
-                    {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={() => setShowDatePicker(false)}
+        selectedDay={selectedDay}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        onSelectDate={(d, m, y) => {
+          setSelectedDay(d);
+          setSelectedMonth(m);
+          setSelectedYear(y);
+        }}
+      />
 
       {/* Calculator Modal */}
       <Modal visible={calcModalVisible} animationType="slide" transparent>

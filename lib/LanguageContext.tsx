@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
-import { I18nManager } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Language, getTranslations } from './i18n';
+
+let I18nManager: any = { isRTL: true, allowRTL: () => {}, forceRTL: () => {} };
+try {
+  const RN = require('react-native');
+  if (RN && RN.I18nManager) I18nManager = RN.I18nManager;
+} catch {}
+
+let AsyncStorage: any = { getItem: async () => null, setItem: async () => {} };
+try {
+  const AS = require('@react-native-async-storage/async-storage');
+  AsyncStorage = AS.default || AS;
+} catch {}
 
 const LANGUAGE_KEY = '@mizan_language';
 const LEGACY_LANGUAGE_KEY = '@masarif_language';
