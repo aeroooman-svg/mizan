@@ -35,8 +35,8 @@ import { getBudgetsForWallet } from '@/lib/budgetStorage';
 import { parseTransactionText } from '@/lib/nlpParser';
 import { parseBankSMS } from '@/lib/smsParser';
 import { getLoggedInUser } from '@/lib/syncService';
-import IOSWheelTimePicker from '@/components/IOSWheelTimePicker';
 import ModernDatePickerModal from '@/components/ModernDatePickerModal';
+import ModernTimePickerModal from '@/components/ModernTimePickerModal';
 
 type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -133,6 +133,7 @@ export default function AddTransactionScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Time
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedHour, setSelectedHour] = useState(initialDate.getHours() % 12 || 12);
   const [selectedMinute, setSelectedMinute] = useState(initialDate.getMinutes());
   const [selectedPeriod, setSelectedPeriod] = useState<'AM' | 'PM'>(initialDate.getHours() >= 12 ? 'PM' : 'AM');
@@ -762,56 +763,126 @@ export default function AddTransactionScreen() {
             </Pressable>
           )}
 
-          {/* Smart AI Voice/Text Input Card */}
-          <View style={styles.smartInputCard}>
-            <Text style={styles.label}>
-              {language === 'ar' ? '💡 إدخال ذكي سريع (اكتب، لصق 📋، أو سجل بصوتك 🎙️)' : '💡 Smart Quick Input (Type, Paste 📋, or Voice 🎙️)'}
-            </Text>
-            <View style={styles.smartInputWrapper}>
+          {/* Smart AI Voice/Text/OCR Input Card */}
+          <View style={[styles.smartInputCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+            <View style={styles.smartCardHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="sparkles" size={16} color="#F59E0B" />
+                <Text style={[styles.smartCardTitle, { color: colors.text }]}>
+                  {language === 'ar' ? 'إدخال ذكي سريع (اكتب، تحدث، أو امسح الفاتورة)' : 'Smart Quick Input (Type, Voice, or Scan)'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.smartInputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TextInput
                 ref={smartInputRef}
-                style={styles.smartTextInput}
+                style={[styles.smartTextInput, { color: colors.text }]}
                 placeholder={language === 'ar' 
-                  ? 'صرفت 45 جنيه قهوة من الكاش...' 
-                  : 'Spent 45 EGP coffee from Cash...'}
-                placeholderTextColor={Colors.textTertiary}
+                  ? 'اكتب أو أملِ: صرفت 45 قهوة من الكاش...' 
+                  : 'Type or speak: Spent 45 coffee from Cash...'}
+                placeholderTextColor={colors.textTertiary}
                 value={smartInputText}
                 onChangeText={(text) => {
                   setSmartInputText(text);
-                  if (text.length > 5) {
+                  if (text.length > 3) {
                     handleSmartParse(text);
                   }
                 }}
               />
+
+              {/* 1. Paste Button */}
               <Pressable
                 onPress={handlePasteClipboard}
-                style={styles.pasteBtn}
-                accessibilityLabel={language === 'ar' ? 'لصق النص المنسوخ من الحافظة' : 'Paste copied text'}
+                style={[styles.smartActionBtn, { backgroundColor: colors.primary + '14' }]}
+                accessibilityLabel="Paste"
+                hitSlop={4}
               >
-                <Ionicons 
-                  name="clipboard-outline" 
-                  size={20} 
-                  color={colors.primary} 
-                />
+                <Ionicons name="clipboard-outline" size={18} color={colors.primary} />
               </Pressable>
+
+              {/* 2. Voice Input Button */}
               <Pressable
                 onPress={startSpeechRecognition}
                 style={[
-                  styles.micBtn,
-                  isRecording && styles.micBtnActive
+                  styles.smartActionBtn,
+                  { backgroundColor: colors.primary + '14' },
+                  isRecording && { backgroundColor: '#EF4444' },
                 ]}
-                accessibilityLabel={language === 'ar' ? 'إملاء بصوتك' : 'Dictate with voice'}
+                accessibilityLabel="Voice"
+                hitSlop={4}
               >
                 <Ionicons 
                   name={isRecording ? "mic" : "mic-outline"} 
-                  size={20} 
-                  color={isRecording ? '#fff' : Colors.primary} 
+                  size={18} 
+                  color={isRecording ? '#FFFFFF' : colors.primary} 
                 />
               </Pressable>
+
+              {/* 3. Smart OCR Camera Button */}
+              <Pressable
+                onPress={initiateReceiptScan}
+                style={[styles.smartActionBtn, { backgroundColor: colors.primary + '14' }]}
+                accessibilityLabel="OCR Scan"
+                hitSlop={4}
+              >
+                <Ionicons name="camera-outline" size={19} color={colors.primary} />
+              </Pressable>
             </View>
+
+            {/* Smart NLP / SMS Feedback */}
             {smartMessage ? (
-              <Text style={styles.smartMessageText}>{smartMessage}</Text>
+              <View style={[styles.smartFeedbackPill, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '30' }]}>
+                <Ionicons name="information-circle-outline" size={15} color={colors.primary} />
+                <Text style={[styles.smartMessageText, { color: colors.primary }]}>{smartMessage}</Text>
+              </View>
             ) : null}
+
+            {/* Receipt Scan / Upload Preview Area */}
+            {isScanning ? (
+              <View style={styles.ocrScanningWrap}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.ocrScanningText, { color: colors.primary }]}>
+                  {language === 'ar' ? 'جاري مسح الفاتورة واستخراج البيانات الذكي...' : 'Analyzing receipt & extracting data...'}
+                </Text>
+              </View>
+            ) : receiptUri ? (
+              <View style={[styles.receiptPreviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Image source={{ uri: receiptUri }} style={styles.receiptThumb} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.receiptAttachedText, { color: colors.text }]}>
+                    {language === 'ar' ? '📷 تم إرفاق الفاتورة بالمعاملة' : '📷 Receipt attached successfully'}
+                  </Text>
+                </View>
+                <Pressable 
+                  onPress={() => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    setReceiptUri('');
+                  }}
+                  style={styles.removeReceiptBtn}
+                  hitSlop={8}
+                >
+                  <Ionicons name="trash-outline" size={14} color={colors.expense} />
+                  <Text style={[styles.removeReceiptText, { color: colors.expense }]}>
+                    {language === 'ar' ? 'حذف' : 'Remove'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={initiateReceiptScan}
+                style={({ pressed }) => [
+                  styles.ocrQuickBanner,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  pressed && { opacity: 0.7 }
+                ]}
+              >
+                <Ionicons name="scan-outline" size={16} color={colors.primary} />
+                <Text style={[styles.ocrQuickBannerText, { color: colors.primary }]}>
+                  {language === 'ar' ? 'مسح الفاتورة الذكي (OCR) | تصوير واستخراج تلقائي' : 'Smart Receipt Scanner (OCR) | Auto Extract'}
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {!isQuick && (
@@ -996,6 +1067,7 @@ export default function AddTransactionScreen() {
             </View>
           )}
 
+          {/* Description / Note */}
           <View style={styles.descSection}>
             <Text style={styles.label}>{t.noteOptional}</Text>
             <TextInput
@@ -1055,89 +1127,93 @@ export default function AddTransactionScreen() {
             </View>
           </View>
 
-          {/* Receipt OCR Scanner Section */}
-          <View style={styles.descSection}>
-            <Text style={styles.label}>{language === 'ar' ? 'مسح الفاتورة الذكي (OCR)' : 'Smart Receipt Scanner'}</Text>
-            
-            {isScanning ? (
-              <View style={{ padding: 12, alignItems: 'center', gap: 8 }}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.primary }}>
-                  {language === 'ar' ? 'جاري مسح الفاتورة واستخراج البيانات...' : 'Analyzing receipt & extracting data...'}
+          {/* Unified Date & Time Duo-Pill Section */}
+          <View style={[styles.dateTimeCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+            <View style={styles.dateTimeHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                <Text style={[styles.label, { marginBottom: 0, color: colors.text }]}>
+                  {language === 'ar' ? 'التاريخ والوقت' : 'Date & Time'}
                 </Text>
               </View>
-            ) : receiptUri ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                <Image source={{ uri: receiptUri }} style={{ width: 64, height: 64, borderRadius: 8, backgroundColor: Colors.surfaceAlt }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.text }}>
-                    {language === 'ar' ? 'تم إرفاق الفاتورة بنجاح' : 'Receipt attached successfully'}
-                  </Text>
-                  <Pressable 
-                    onPress={() => {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                      setReceiptUri('');
-                    }}
-                    style={{ marginTop: 4 }}
-                  >
-                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: Colors.expense }}>
-                      {language === 'ar' ? 'حذف الصورة' : 'Remove Image'}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
               <Pressable
-                onPress={initiateReceiptScan}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  const now = new Date();
+                  setSelectedDay(now.getDate());
+                  setSelectedMonth(now.getMonth());
+                  setSelectedYear(now.getFullYear());
+                  let h = now.getHours();
+                  const m = now.getMinutes();
+                  const p: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
+                  h = h % 12 || 12;
+                  setSelectedHour(h);
+                  setSelectedMinute(m);
+                  setSelectedPeriod(p);
+                }}
                 style={({ pressed }) => [
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 12,
-                    borderRadius: 12,
-                    backgroundColor: Colors.surfaceAlt,
-                    borderWidth: 1.5,
-                    borderColor: Colors.border,
-                    borderStyle: 'dashed',
-                    gap: 8,
-                    marginTop: 6,
-                  },
+                  styles.quickNowBadge,
+                  { backgroundColor: colors.primary + '18' },
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name="camera-outline" size={20} color={Colors.primary} />
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: Colors.primary }}>
-                  {language === 'ar' ? 'تصوير أو اختيار الفاتورة' : 'Capture or Upload Receipt'}
+                <Ionicons name="flash" size={12} color={colors.primary} />
+                <Text style={[styles.quickNowBadgeText, { color: colors.primary }]}>
+                  {language === 'ar' ? 'الآن' : 'Now'}
                 </Text>
               </Pressable>
-            )}
-          </View>
+            </View>
 
-          {/* Date Picker */}
-          <View style={styles.dateSection}>
-            <Text style={styles.label}>{t.date}</Text>
-            <Pressable
-              onPress={() => setShowDatePicker(true)}
-              style={styles.datePressable}
-            >
-              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
-              <Text style={styles.dateText}>{selectedDateLabel}</Text>
-              <Ionicons name="chevron-down" size={16} color={Colors.textTertiary} />
-            </Pressable>
-          </View>
+            <View style={styles.dateTimeRow}>
+              {/* Date Button Pill */}
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowDatePicker(true);
+                }}
+                style={({ pressed }) => [
+                  styles.dateTimePill,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  pressed && { opacity: 0.8 }
+                ]}
+              >
+                <Ionicons name="calendar" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
+                    {language === 'ar' ? 'التاريخ' : 'Date'}
+                  </Text>
+                  <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
+                    {selectedDateLabel}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+              </Pressable>
 
-          {/* iOS-Style Wheel Time Picker with Manual Mode */}
-          <IOSWheelTimePicker
-            hour={selectedHour}
-            minute={selectedMinute}
-            period={selectedPeriod}
-            onTimeChange={(h, m, p) => {
-              setSelectedHour(h);
-              setSelectedMinute(m);
-              setSelectedPeriod(p);
-            }}
-          />
+              {/* Time Button Pill */}
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowTimePicker(true);
+                }}
+                style={({ pressed }) => [
+                  styles.dateTimePill,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  pressed && { opacity: 0.8 }
+                ]}
+              >
+                <Ionicons name="time" size={18} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
+                    {language === 'ar' ? 'الوقت' : 'Time'}
+                  </Text>
+                  <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
+                    {selectedHour}:{selectedMinute.toString().padStart(2, '0')} {language === 'ar' ? (selectedPeriod === 'AM' ? 'ص' : 'م') : selectedPeriod}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+          </View>
 
           {(() => {
             const isDisabled = isSaving || !amount || parseFloat(amount) <= 0 || (type === 'transfer' ? !toWalletId : !selectedCategory);
@@ -1204,6 +1280,20 @@ export default function AddTransactionScreen() {
           setSelectedDay(d);
           setSelectedMonth(m);
           setSelectedYear(y);
+        }}
+      />
+
+      {/* Modern Time Picker Modal (iOS Wheel + Manual Keypad) */}
+      <ModernTimePickerModal
+        visible={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        hour={selectedHour}
+        minute={selectedMinute}
+        period={selectedPeriod}
+        onConfirm={(h, m, p) => {
+          setSelectedHour(h);
+          setSelectedMinute(m);
+          setSelectedPeriod(p);
         }}
       />
 
@@ -1675,69 +1765,160 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     minHeight: 60,
-  },
-  dateSection: {
+  smartInputCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
     marginBottom: 16,
   },
-  datePressable: {
+  smartCardHeader: {
+    marginBottom: 8,
+  },
+  smartCardTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
+  smartInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    height: 48,
+    gap: 6,
   },
-  dateText: {
+  smartTextInput: {
     flex: 1,
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 15,
-    color: colors.text,
+    fontSize: 13,
+    paddingVertical: 0,
   },
-  timeSection: {
-    marginBottom: 24,
+  smartActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  timeRow: {
+  micBtnActive: {
+    backgroundColor: '#EF4444',
+  },
+  smartFeedbackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  smartMessageText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  ocrScanningWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 12,
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 6,
   },
-  timePicker: {
+  ocrScanningText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  receiptPreviewCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-  },
-  timeArrow: {
-    padding: 4,
-  },
-  timeValue: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 28,
-    color: colors.text,
-    minWidth: 44,
-    textAlign: 'center',
-  },
-  timeSeparator: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 28,
-    color: colors.textSecondary,
-    marginTop: -4,
-  },
-  periodToggle: {
-    backgroundColor: colors.primary + '18',
+    gap: 10,
+    marginTop: 10,
+    padding: 8,
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginLeft: 4,
+    borderWidth: 1,
   },
-  periodText: {
+  receiptThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+  },
+  receiptAttachedText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  removeReceiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  removeReceiptText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: colors.primary,
+    fontSize: 12,
+  },
+  ocrQuickBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  ocrQuickBannerText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  dateTimeCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 20,
+  },
+  dateTimeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  quickNowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  quickNowBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dateTimePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  dateTimePillSub: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    lineHeight: 13,
+  },
+  dateTimePillMain: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
   },
   saveButton: {
     flexDirection: 'row',
