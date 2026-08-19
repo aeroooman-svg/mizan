@@ -441,16 +441,64 @@ export function getCategoryName(categoryId: string, lang: Language): string {
 }
 
 export function getWalletIconLabel(icon: string, lang: Language): string {
-  const map: Record<string, TranslationKey> = {
-    'account-balance-wallet': 'walletIconWallet',
-    'account-balance': 'walletIconBank',
-    'savings': 'walletIconSavings',
-    'credit-card': 'walletIconCard',
-    'attach-money': 'walletIconCash',
-    'business-center': 'walletIconBusiness',
+  const isAr = lang === 'ar';
+  const labels: Record<string, { ar: string; en: string }> = {
+    'account-balance-wallet': { ar: 'محفظة', en: 'Wallet' },
+    'account-balance': { ar: 'بنك', en: 'Bank' },
+    'savings': { ar: 'ادخار', en: 'Savings' },
+    'credit-card': { ar: 'بطاقة', en: 'Card' },
+    'attach-money': { ar: 'نقد', en: 'Cash' },
+    'business-center': { ar: 'عمل', en: 'Work' },
+    'favorite': { ar: 'شخصي', en: 'Personal' },
+    'card-giftcard': { ar: 'هدية', en: 'Gift' },
+    'shopping-bag': { ar: 'تسوق', en: 'Shopping' },
+    'local-cafe': { ar: 'كافيه', en: 'Cafe' },
+    'fitness-center': { ar: 'رياضة', en: 'Fitness' },
+    'flight': { ar: 'سفر', en: 'Travel' },
+    'restaurant': { ar: 'مطعم', en: 'Dining' },
+    'fastfood': { ar: 'وجبات', en: 'Fast Food' },
+    'cake': { ar: 'حلويات', en: 'Sweets' },
+    'local-pizza': { ar: 'بيتزا', en: 'Pizza' },
+    'local-bar': { ar: 'مشروبات', en: 'Beverages' },
+    'directions-car': { ar: 'سيارة', en: 'Car' },
+    'directions-bus': { ar: 'حافلة', en: 'Bus' },
+    'local-taxi': { ar: 'تاكسي', en: 'Taxi' },
+    'commute': { ar: 'تنقل', en: 'Commute' },
+    'local-gas-station': { ar: 'وقود', en: 'Fuel' },
+    'home': { ar: 'منزل', en: 'Home' },
+    'receipt-long': { ar: 'فواتير', en: 'Bills' },
+    'lightbulb': { ar: 'كهرباء', en: 'Electricity' },
+    'water-drop': { ar: 'مياه', en: 'Water' },
+    'wifi': { ar: 'إنترنت', en: 'Internet' },
+    'phone-android': { ar: 'هاتف', en: 'Phone' },
+    'tv': { ar: 'تلفزيون', en: 'TV' },
+    'shopping-cart': { ar: 'مشتريات', en: 'Cart' },
+    'checkroom': { ar: 'ملابس', en: 'Clothes' },
+    'storefront': { ar: 'متجر', en: 'Store' },
+    'spa': { ar: 'عناية', en: 'Spa' },
+    'medical-services': { ar: 'صحة', en: 'Medical' },
+    'local-pharmacy': { ar: 'صيدلية', en: 'Pharmacy' },
+    'child-care': { ar: 'أطفال', en: 'Kids' },
+    'school': { ar: 'تعليم', en: 'Education' },
+    'work': { ar: 'وظيفة', en: 'Job' },
+    'laptop-mac': { ar: 'تقنية', en: 'Tech' },
+    'menu-book': { ar: 'كتب', en: 'Books' },
+    'build': { ar: 'صيانة', en: 'Repair' },
+    'movie': { ar: 'سينما', en: 'Movies' },
+    'sports-esports': { ar: 'ألعاب', en: 'Gaming' },
+    'sports-soccer': { ar: 'رياضة', en: 'Sports' },
+    'music-note': { ar: 'موسيقى', en: 'Music' },
+    'headset': { ar: 'سماعات', en: 'Headset' },
+    'trending-up': { ar: 'استثمار', en: 'Invest' },
+    'stars': { ar: 'مكافأة', en: 'Rewards' },
+    'pets': { ar: 'حيوانات', en: 'Pets' },
+    'family-restroom': { ar: 'عائلة', en: 'Family' },
   };
-  const key = map[icon];
-  if (key) return translations[lang][key] as string;
+
+  const match = labels[icon];
+  if (match) {
+    return isAr ? match.ar : match.en;
+  }
   return icon;
 }
 

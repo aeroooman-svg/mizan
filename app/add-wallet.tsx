@@ -10,6 +10,7 @@ import {
   Switch,
   Platform,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -18,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import * as Crypto from 'expo-crypto';
 import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
-import { WALLET_ICONS, WALLET_COLORS, formatCurrency } from '@/lib/categories';
+import { WALLET_ICONS, WALLET_COLORS, EXPANDED_ICON_LIBRARY, formatCurrency } from '@/lib/categories';
 import { CURRENCIES, CurrencyCode, CardStyle, getCurrencyInfo } from '@/lib/storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
@@ -56,6 +57,11 @@ export default function AddWalletScreen() {
   const [excludeFromTotal, setExcludeFromTotal] = useState(false);
   const [initialBalance, setInitialBalance] = useState('');
 
+  const [showIconPickerModal, setShowIconPickerModal] = useState(false);
+  const [iconSearchQuery, setIconSearchQuery] = useState('');
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'all' | 'finance' | 'food' | 'transport' | 'home' | 'lifestyle'>('all');
+  const [displayedIcons, setDisplayedIcons] = useState(WALLET_ICONS);
+
   useEffect(() => {
     if (existingWallet) {
       setName(existingWallet.name || '');
@@ -69,8 +75,49 @@ export default function AddWalletScreen() {
         setIsShared(true);
         setShareWithUser(existingWallet.sharedWith);
       }
+      if (existingWallet.icon) {
+        setDisplayedIcons(prev => {
+          if (!prev.some(item => item.icon === existingWallet.icon)) {
+            return [{ icon: existingWallet.icon, label: getWalletIconLabel(existingWallet.icon, language) }, ...prev];
+          }
+          return prev;
+        });
+      }
     }
-  }, [existingWallet]);
+  }, [existingWallet, language]);
+
+  const ICON_CATEGORIES = useMemo(() => [
+    { key: 'all', label: language === 'ar' ? '✨ الكل' : '✨ All' },
+    { key: 'finance', label: language === 'ar' ? '💰 مالية' : '💰 Finance' },
+    { key: 'food', label: language === 'ar' ? '🍔 طعام' : '🍔 Food' },
+    { key: 'transport', label: language === 'ar' ? '🚗 مواصلات' : '🚗 Transport' },
+    { key: 'home', label: language === 'ar' ? '🏠 فواتير ومنزل' : '🏠 Home & Bills' },
+    { key: 'lifestyle', label: language === 'ar' ? '🛍️ حياة وتسوق' : '🛍️ Lifestyle' },
+  ], [language]);
+
+  const CATEGORY_ICONS_MAP: Record<string, string[]> = useMemo(() => ({
+    finance: ['account-balance-wallet', 'account-balance', 'savings', 'credit-card', 'attach-money', 'trending-up', 'stars', 'business-center'],
+    food: ['restaurant', 'fastfood', 'local-cafe', 'local-bar', 'cake', 'local-pizza'],
+    transport: ['directions-car', 'directions-bus', 'flight', 'local-taxi', 'commute', 'local-gas-station'],
+    home: ['home', 'receipt-long', 'lightbulb', 'water-drop', 'wifi', 'phone-android', 'tv', 'build'],
+    lifestyle: ['shopping-bag', 'shopping-cart', 'checkroom', 'card-giftcard', 'storefront', 'spa', 'medical-services', 'fitness-center', 'local-pharmacy', 'child-care', 'school', 'work', 'laptop-mac', 'menu-book', 'movie', 'sports-esports', 'sports-soccer', 'music-note', 'headset', 'pets', 'family-restroom', 'favorite'],
+  }), []);
+
+  const filteredModalIcons = useMemo(() => {
+    let list = EXPANDED_ICON_LIBRARY;
+    if (selectedCategoryTab !== 'all') {
+      const allowed = CATEGORY_ICONS_MAP[selectedCategoryTab] || [];
+      list = list.filter(icon => allowed.includes(icon));
+    }
+    if (iconSearchQuery.trim()) {
+      const q = iconSearchQuery.trim().toLowerCase();
+      list = list.filter(icon => {
+        const lbl = getWalletIconLabel(icon, language).toLowerCase();
+        return lbl.includes(q) || icon.toLowerCase().includes(q);
+      });
+    }
+    return list;
+  }, [selectedCategoryTab, iconSearchQuery, language]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -374,26 +421,60 @@ export default function AddWalletScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.label}>{t.icon}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.label}>{t.icon}</Text>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowIconPickerModal(true);
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6 }}
+                hitSlop={8}
+              >
+                <Ionicons name="grid-outline" size={15} color={selectedColor} />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: selectedColor }}>
+                  {language === 'ar' ? 'المزيد من الأيقونات 🎨' : 'More Icons 🎨'}
+                </Text>
+              </Pressable>
+            </View>
             <View style={styles.iconRow}>
-              {WALLET_ICONS.map(item => (
-                <Pressable
-                  key={item.icon}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSelectedIcon(item.icon);
-                  }}
-                  style={[
-                    styles.iconItem,
-                    selectedIcon === item.icon && { borderColor: selectedColor, borderWidth: 2 },
-                  ]}
-                >
-                  <MaterialIcons name={item.icon as any} size={24} color={selectedIcon === item.icon ? selectedColor : Colors.textSecondary} />
-                  <Text style={[styles.iconLabel, selectedIcon === item.icon && { color: selectedColor }]}>
-                    {getWalletIconLabel(item.icon, language)}
-                  </Text>
-                </Pressable>
-              ))}
+              {displayedIcons.map(item => {
+                const isSelected = selectedIcon === item.icon;
+                return (
+                  <Pressable
+                    key={item.icon}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedIcon(item.icon);
+                    }}
+                    style={[
+                      styles.iconItem,
+                      isSelected && { borderColor: selectedColor, borderWidth: 2, backgroundColor: selectedColor + '18' },
+                    ]}
+                  >
+                    <MaterialIcons name={item.icon as any} size={24} color={isSelected ? selectedColor : colors.textSecondary} />
+                    <Text style={[styles.iconLabel, isSelected && { color: selectedColor, fontFamily: 'Cairo_700Bold' }]}>
+                      {getWalletIconLabel(item.icon, language)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              {/* Add Custom Icon Action Tile */}
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowIconPickerModal(true);
+                }}
+                style={[
+                  styles.iconItem,
+                  { borderStyle: 'dashed', borderColor: selectedColor, borderWidth: 1.5, backgroundColor: selectedColor + '0D' }
+                ]}
+              >
+                <Ionicons name="add" size={24} color={selectedColor} />
+                <Text style={[styles.iconLabel, { color: selectedColor, fontFamily: 'Cairo_700Bold' }]}>
+                  {language === 'ar' ? 'أيقونة مخصصة' : 'Custom Icon'}
+                </Text>
+              </Pressable>
             </View>
           </View>
 
@@ -482,6 +563,151 @@ export default function AddWalletScreen() {
           </Pressable>
         </ScrollView>
       </View>
+
+      {/* ── Custom Icon Picker Modal ────────────────────────────────────── */}
+      <Modal
+        visible={showIconPickerModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowIconPickerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={[styles.modalContent, { backgroundColor: colors.surface }]}
+          >
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.modalHeaderIcon, { backgroundColor: selectedColor + '18' }]}>
+                  <MaterialIcons name={selectedIcon as any} size={22} color={selectedColor} />
+                </View>
+                <View>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {language === 'ar' ? 'اختر أيقونة المحفظة' : 'Select Wallet Icon'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                    {language === 'ar' ? `الأيقونة المحددة: ${getWalletIconLabel(selectedIcon, language)}` : `Selected: ${getWalletIconLabel(selectedIcon, language)}`}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setShowIconPickerModal(false);
+                }}
+                hitSlop={10}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.surfaceAlt }]}
+              >
+                <Ionicons name="close" size={20} color={colors.text} />
+              </Pressable>
+            </View>
+
+            {/* Search Input */}
+            <View style={[styles.searchContainer, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+              <Ionicons name="search" size={18} color={colors.textSecondary} style={{ marginHorizontal: 8 }} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder={language === 'ar' ? 'ابحث عن أيقونة (سيارة، مطعم، فواتير...)' : 'Search icons (car, cafe, bills...)'}
+                placeholderTextColor={colors.textTertiary}
+                value={iconSearchQuery}
+                onChangeText={setIconSearchQuery}
+                clearButtonMode="while-editing"
+              />
+              {iconSearchQuery.length > 0 && (
+                <Pressable onPress={() => setIconSearchQuery('')} hitSlop={8} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Category Tabs */}
+            <View style={{ height: 44, marginBottom: 8 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryTabsContainer}
+              >
+                {ICON_CATEGORIES.map(tab => (
+                  <Pressable
+                    key={tab.key}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedCategoryTab(tab.key as any);
+                    }}
+                    style={[
+                      styles.categoryTab,
+                      { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                      selectedCategoryTab === tab.key && { backgroundColor: selectedColor, borderColor: selectedColor }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.categoryTabText,
+                      { color: colors.textSecondary },
+                      selectedCategoryTab === tab.key && { color: '#FFF', fontFamily: 'Cairo_700Bold' }
+                    ]}>
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Icons Grid */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalGridContent}
+            >
+              <View style={styles.modalIconsGrid}>
+                {filteredModalIcons.map(iconName => {
+                  const isSelected = selectedIcon === iconName;
+                  return (
+                    <Pressable
+                      key={iconName}
+                      onPress={() => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        setSelectedIcon(iconName);
+                        setDisplayedIcons(prev => {
+                          if (!prev.some(item => item.icon === iconName)) {
+                            return [...prev, { icon: iconName, label: getWalletIconLabel(iconName, language) }];
+                          }
+                          return prev;
+                        });
+                        setShowIconPickerModal(false);
+                      }}
+                      style={[
+                        styles.modalIconItem,
+                        { backgroundColor: colors.surfaceAlt, borderColor: isSelected ? selectedColor : colors.border },
+                        isSelected && { borderWidth: 2, backgroundColor: selectedColor + '20' }
+                      ]}
+                    >
+                      <MaterialIcons name={iconName as any} size={28} color={isSelected ? selectedColor : colors.text} />
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.modalIconLabel,
+                          { color: isSelected ? selectedColor : colors.textSecondary },
+                          isSelected && { fontFamily: 'Cairo_700Bold' }
+                        ]}
+                      >
+                        {getWalletIconLabel(iconName, language)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {filteredModalIcons.length === 0 && (
+                <View style={styles.emptyResultsBox}>
+                  <Ionicons name="search-outline" size={40} color={colors.textTertiary} />
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.textSecondary, marginTop: 8 }}>
+                    {language === 'ar' ? 'لم يتم العثور على أيقونات مطابقة' : 'No matching icons found'}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -669,5 +895,113 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.primary,
     flex: 1,
     textAlign: 'left',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalHeaderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+  },
+  modalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    textAlign: 'left',
+    paddingVertical: 6,
+  },
+  categoryTabsContainer: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+  },
+  categoryTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  categoryTabText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  modalGridContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  modalIconsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modalIconItem: {
+    width: '22.5%',
+    flexGrow: 1,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 6,
+    gap: 4,
+  },
+  modalIconLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  emptyResultsBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
 });
