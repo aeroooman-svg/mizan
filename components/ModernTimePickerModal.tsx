@@ -396,10 +396,15 @@ export default function ModernTimePickerModal({
                     placeholder="12"
                     placeholderTextColor={colors.textTertiary}
                     textAlign="center"
+                    textAlignVertical="center"
+                    selectTextOnFocus
                   />
                 </View>
 
-                <Text style={[styles.manualColon, { color: colors.textSecondary }]}>:</Text>
+                {/* Colon */}
+                <View style={styles.manualColonCol}>
+                  <Text style={[styles.manualColon, { color: colors.textSecondary }]}>:</Text>
+                </View>
 
                 {/* Minute */}
                 <View style={styles.manualCol}>
@@ -422,11 +427,13 @@ export default function ModernTimePickerModal({
                     placeholder="00"
                     placeholderTextColor={colors.textTertiary}
                     textAlign="center"
+                    textAlignVertical="center"
+                    selectTextOnFocus
                   />
                 </View>
 
                 {/* Period Selector */}
-                <View style={styles.manualCol}>
+                <View style={[styles.manualCol, styles.manualPeriodCol]}>
                   <Text style={[styles.manualColLabel, { color: colors.textSecondary }]}>
                     {language === 'ar' ? 'الفترة' : 'Period'}
                   </Text>
@@ -444,7 +451,7 @@ export default function ModernTimePickerModal({
                       <Text
                         style={[
                           styles.periodOptionText,
-                          tempPeriod === 'AM' ? { color: '#FFFFFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
+                          tempPeriod === 'AM' ? { color: '#FFFFFF' } : { color: colors.textSecondary },
                         ]}
                       >
                         {language === 'ar' ? 'ص' : 'AM'}
@@ -464,7 +471,7 @@ export default function ModernTimePickerModal({
                       <Text
                         style={[
                           styles.periodOptionText,
-                          tempPeriod === 'PM' ? { color: '#FFFFFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
+                          tempPeriod === 'PM' ? { color: '#FFFFFF' } : { color: colors.textSecondary },
                         ]}
                       >
                         {language === 'ar' ? 'م' : 'PM'}
@@ -640,57 +647,77 @@ const styles = StyleSheet.create({
   },
   // Manual mode
   manualCard: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   manualInputsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 12,
+    gap: 8,
   },
   manualCol: {
     alignItems: 'center',
     gap: 8,
+    width: 78,
+  },
+  manualPeriodCol: {
+    width: 92,
+  },
+  manualColonCol: {
+    height: 58,
+    marginTop: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   manualColLabel: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 13,
+    textAlign: 'center',
   },
   manualTextInput: {
-    width: 72,
+    width: 78,
     height: 58,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     fontFamily: 'Cairo_700Bold',
     fontSize: 26,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    includeFontPadding: false,
   },
   manualColon: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 28,
-    marginBottom: 12,
+    fontSize: 26,
+    textAlign: 'center',
+    lineHeight: 28,
   },
   periodSwitchWrap: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     padding: 3,
     height: 58,
+    width: 92,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
   },
   periodOptionBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
+    flex: 1,
+    height: '100%',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   periodOptionText: {
-    fontFamily: 'Cairo_600SemiBold',
+    fontFamily: 'Cairo_700Bold',
     fontSize: 15,
+    textAlign: 'center',
   },
   // Preview
   previewContainer: {

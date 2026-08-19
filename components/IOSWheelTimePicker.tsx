@@ -570,11 +570,17 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     fontFamily: 'Cairo_700Bold',
     fontSize: 24,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    includeFontPadding: false,
   },
   timeColon: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 24,
-    marginTop: 14,
+    marginTop: 18,
+    textAlign: 'center',
   },
   manualPeriodWrap: {
     alignItems: 'center',
@@ -589,10 +595,11 @@ const styles = StyleSheet.create({
     gap: 3,
     height: 52,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   manualPeriodBtn: {
+    height: '100%',
     paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
@@ -601,6 +608,7 @@ const styles = StyleSheet.create({
   manualPeriodText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
+    textAlign: 'center',
   },
   // Summary
   summaryBar: {

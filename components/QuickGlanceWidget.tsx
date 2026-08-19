@@ -168,7 +168,7 @@ export default function QuickGlanceWidget({
         {/* Divider */}
         <View style={styles.lightDivider} />
 
-        {/* Row 4: Premium Quick Action Cards (مصاريف متكررة & الأقساط) */}
+        {/* Row 4: Premium Quick Action Cards (مصاريف متكررة & أقساط وجمعيات) */}
         <View style={styles.quickActionPairRow}>
           {/* Recurring Expenses Button */}
           <Pressable
@@ -179,11 +179,11 @@ export default function QuickGlanceWidget({
             style={({ pressed }) => [
               styles.quickActionCard,
               styles.recurringCard,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
             ]}
           >
             <LinearGradient
-              colors={['#10B98118', '#10B98105']}
+              colors={['#10B98120', '#10B98108']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cardGradientBg}
@@ -195,12 +195,11 @@ export default function QuickGlanceWidget({
               end={{ x: 1, y: 1 }}
               style={styles.iconCircle3D}
             >
-              <Ionicons name="sync" size={16} color="#FFF" />
+              <Ionicons name="sync" size={18} color="#FFF" />
             </LinearGradient>
             <Text
               style={styles.quickActionCardText}
               numberOfLines={1}
-              adjustsFontSizeToFit
             >
               {isAr ? 'مصاريف متكررة' : 'Recurring'}
             </Text>
@@ -215,11 +214,11 @@ export default function QuickGlanceWidget({
             style={({ pressed }) => [
               styles.quickActionCard,
               styles.installmentsCard,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.9 },
             ]}
           >
             <LinearGradient
-              colors={['#8B5CF618', '#8B5CF605']}
+              colors={['#8B5CF620', '#8B5CF608']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cardGradientBg}
@@ -231,12 +230,11 @@ export default function QuickGlanceWidget({
               end={{ x: 1, y: 1 }}
               style={styles.iconCircle3D}
             >
-              <Ionicons name="card" size={16} color="#FFF" />
+              <Ionicons name="card" size={18} color="#FFF" />
             </LinearGradient>
             <Text
               style={styles.quickActionCardText}
               numberOfLines={1}
-              adjustsFontSizeToFit
             >
               {isAr ? 'أقساط وجمعيات' : 'Installments & Savings'}
             </Text>
@@ -394,63 +392,69 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   quickActionPairRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     marginVertical: 4,
   },
   quickActionCard: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 8,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceAlt + '60',
-    borderWidth: 1,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceAlt + '70',
+    borderWidth: 1.2,
     borderColor: colors.border,
     position: 'relative',
     overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: theme === 'dark' ? 0.3 : 0.08,
+    shadowRadius: 6,
   },
   recurringCard: {
-    borderColor: '#10B98135',
+    borderColor: '#10B98140',
   },
   installmentsCard: {
-    borderColor: '#8B5CF635',
+    borderColor: '#8B5CF640',
   },
   cardGradientBg: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 16,
+    borderRadius: 18,
   },
   cardBorderGlow: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 1,
     borderColor: '#10B98125',
-    borderRadius: 16,
+    borderRadius: 18,
   },
   cardBorderGlowPurple: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 1,
     borderColor: '#8B5CF625',
-    borderRadius: 16,
+    borderRadius: 18,
   },
   iconCircle3D: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   quickActionCardText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
+    fontSize: 13,
     color: colors.text,
-    flexShrink: 1,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   fullPictureToggle: {
     flexDirection: 'row',

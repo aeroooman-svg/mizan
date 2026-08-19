@@ -23,7 +23,7 @@ import Colors from '@/constants/colors';
 import { useTransactions } from '@/lib/TransactionContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { scanReceiptImage, ScannedReceipt, SAMPLE_RECEIPTS } from '@/lib/receiptScanner';
+import { scanReceiptImage, ScannedReceipt, SAMPLE_RECEIPTS, isRealOCRAvailable } from '@/lib/receiptScanner';
 import { formatCurrency, expenseCategories } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';

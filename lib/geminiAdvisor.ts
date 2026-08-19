@@ -27,10 +27,27 @@ export async function askGeminiFinancialAdvisor(
   },
   apiKey?: string
 ): Promise<GeminiAdviceResponse> {
-  const isAr = context.language === 'ar';
+  const activeKey = apiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '';
 
-  // If no custom API key provided, attempt calling the free public endpoint or fallback to localized Smart Engine
-  if (!apiKey) {
+  // 1. Try Secure Server Proxy First (Server-side Gemini proxy)
+  try {
+    const { apiRequest } = await import('./query-client');
+    const response = await apiRequest('POST', '/api/ai/advisor-chat', { prompt, context });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && typeof data.answer === 'string' && data.answer.trim().length > 0) {
+        return {
+          answer: data.answer.trim(),
+          source: 'gemini',
+        };
+      }
+    }
+  } catch (serverErr) {
+    // Backend not running or offline, proceed to client direct
+  }
+
+  // 2. If no API key provided or available, fallback to localized Smart Engine
+  if (!activeKey) {
     const localAdvice = getSmartResponse(prompt, {
       transactions: context.transactions,
       wallets: context.selectedWallet ? [context.selectedWallet] : [],
@@ -64,7 +81,7 @@ User Question: ${prompt}
 Provide a concise, practical, and highly empathetic response in ${context.language === 'ar' ? 'Arabic' : 'English'}. Include bullet points if useful.`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`,
       {
         method: 'POST',
         headers: {

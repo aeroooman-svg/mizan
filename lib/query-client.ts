@@ -9,9 +9,11 @@ export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
-    // In production builds, EXPO_PUBLIC_DOMAIN may not be set.
-    // Return a safe fallback — API features won't work but app won't crash.
-    console.warn("EXPO_PUBLIC_DOMAIN is not set, using fallback");
+    // If running in a web browser (e.g. Vercel deployment), use the current origin
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin.endsWith('/') ? window.location.origin : `${window.location.origin}/`;
+    }
+    // Default local fallback
     return "http://localhost:5000/";
   }
 

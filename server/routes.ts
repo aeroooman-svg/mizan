@@ -372,6 +372,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── AI & OCR Secure Server Proxy Endpoints ───────────────
+
+  // Secure OCR Proxy (Protects Google Vision API Key on Server)
+  app.post("/api/ai/scan-receipt", async (req, res) => {
+    try {
+      const { imageBase64 } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ error: "imageBase64 is required" });
+      }
+
+      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || process.env.GOOGLE_VISION_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "Server OCR API key not configured" });
+      }
+
+      const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
+      const visionRes = await fetch(visionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: { content: imageBase64 },
+              features: [{ type: "TEXT_DETECTION", maxResults: 1 }],
+              imageContext: { languageHints: ["ar", "en"] },
+            },
+          ],
+        }),
+      });
+
+      if (!visionRes.ok) {
+        const errText = await visionRes.text();
+        return res.status(visionRes.status).json({ error: errText });
+      }
+
+      const visionData = await visionRes.json();
+      const extractedText =
+        visionData.responses?.[0]?.textAnnotations?.[0]?.description ||
+        visionData.responses?.[0]?.fullTextAnnotation?.text ||
+        "";
+
+      res.json({ text: extractedText });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Secure Gemini AI Advisor Proxy (Protects Gemini API Key on Server)
+  app.post("/api/ai/advisor-chat", async (req, res) => {
+    try {
+      const { prompt, context } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ error: "prompt is required" });
+      }
+
+      const apiKey =
+        process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
+        process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY ||
+        process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        return res.status(500).json({ error: "Server Gemini API key not configured" });
+      }
+
+      const isAr = context?.language === "ar";
+      const walletName = context?.selectedWallet?.name || (isAr ? "المحفظة" : "Wallet");
+      const systemPrompt = `You are MIZAN AI, a top financial advisor for personal finance.
+User Language: ${context?.language || "ar"}.
+Financial Summary for ${walletName}:
+- Income: ${context?.totalIncome || 0} ${context?.currencySymbol || "SAR"}
+- Expense: ${context?.totalExpense || 0} ${context?.currencySymbol || "SAR"}
+- Balance: ${context?.balance || 0} ${context?.currencySymbol || "SAR"}
+- Recent Transactions Count: ${context?.transactions?.length || 0}
+
+User Question: ${prompt}
+
+Provide a concise, practical, and highly empathetic response in ${isAr ? "Arabic" : "English"}. Include bullet points if useful.`;
+
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+        }),
+      });
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        return res.status(geminiRes.status).json({ error: errText });
+      }
+
+      const geminiData = await geminiRes.json();
+      const replyText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      res.json({ answer: replyText.trim() });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
