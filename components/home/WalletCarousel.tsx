@@ -192,23 +192,27 @@ export default function WalletCarousel({
               }
 
               if (membersList.length > 0) {
-                const names = membersList
+                // Filter out owner to get the other actively joined members
+                const otherMembers = membersList
+                  .filter((m: any) => m.role !== 'owner' && m.username && m.username !== 'مالك المحفظة' && m.username !== 'صاحب المحفظة')
                   .map((m: any) => m.username)
-                  .filter((name: any) => typeof name === 'string' && name.trim().length > 0);
+                  .filter(Boolean);
 
-                if (names.length === 1) {
-                  return names[0];
+                // If no other members are joined (only owner), hide the badge
+                if (membersList.length <= 1 || otherMembers.length === 0) {
+                  return undefined;
                 }
-                if (names.length === 2) {
-                  return names.join('، ');
+
+                if (otherMembers.length === 1) {
+                  return otherMembers[0];
                 }
-                return language === 'ar' ? `${names.length} أعضاء` : `${names.length} members`;
+                if (otherMembers.length === 2) {
+                  return otherMembers.join('، ');
+                }
+                return language === 'ar' ? `${otherMembers.length} أعضاء` : `${otherMembers.length} members`;
               }
             } catch (e) {}
-            if (typeof wallet.sharedWith === 'string' && !wallet.sharedWith.startsWith('{') && !wallet.sharedWith.startsWith('[')) {
-              return wallet.sharedWith;
-            }
-            return language === 'ar' ? 'مشتركة' : 'Shared';
+            return undefined;
           })() : undefined;
 
           return (
@@ -478,7 +482,7 @@ export default function WalletCarousel({
                   </Pressable>
                 )}
 
-                {/* Option 3: Share Wallet */}
+                {/* Option 3: Share / Manage Wallet */}
                 <Pressable
                   onPress={() => {
                     const wId = actionWallet.id;
@@ -504,9 +508,75 @@ export default function WalletCarousel({
                       color: colors.text,
                     }}
                   >
-                    {language === 'ar' ? 'مشاركة المحفظة' : 'Share Wallet'}
+                    {actionWallet.shareCode || actionWallet.sharedWith
+                      ? (language === 'ar' ? 'إدارة المشاركة والأعضاء' : 'Manage Sharing & Members')
+                      : (language === 'ar' ? 'مشاركة المحفظة' : 'Share Wallet')}
                   </Text>
                 </Pressable>
+
+                {/* Option 3.2: Stop Sharing (if wallet is shared or has code) */}
+                {(actionWallet.shareCode || actionWallet.sharedWith) && (
+                  <Pressable
+                    onPress={() => {
+                      const w = actionWallet;
+                      setActionWallet(null);
+                      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+                      Alert.alert(
+                        language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet',
+                        language === 'ar'
+                          ? `هل أنت متأكد من إيقاف مشاركة محفظة "${w.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
+                          : `Are you sure you want to stop sharing "${w.name}"? The share code will be revoked and members removed.`,
+                        [
+                          { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                          {
+                            text: language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                const { stopSharingWallet } = await import('@/lib/sharingService');
+                                await stopSharingWallet(w.id);
+                                if (onEditWallet) {
+                                  const updated = { ...w };
+                                  delete updated.shareCode;
+                                  delete updated.sharedWith;
+                                  onEditWallet(updated);
+                                }
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                Alert.alert(
+                                  language === 'ar' ? 'تم بنجاح' : 'Success',
+                                  language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
+                                );
+                              } catch (e) {
+                                console.error('Failed to stop sharing:', e);
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Ionicons name="link-outline" size={20} color="#EF4444" />
+                    <Text
+                      style={{
+                        fontFamily: 'Cairo_700Bold',
+                        fontSize: 14,
+                        color: '#EF4444',
+                      }}
+                    >
+                      {language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet'}
+                    </Text>
+                  </Pressable>
+                )}
 
                 {/* Option 3.5: Toggle Exclude from Total */}
                 <Pressable

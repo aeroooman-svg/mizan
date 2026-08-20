@@ -243,6 +243,64 @@ export default function ShareWalletScreen() {
               </Text>
             </View>
           }
+          ListFooterComponent={
+            shareCode ? (
+              <View style={{ marginTop: 24, gap: 12 }}>
+                <Pressable
+                  onPress={() => {
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+                    Alert.alert(
+                      isAr ? 'إيقاف مشاركة المحفظة' : 'Stop Sharing Wallet',
+                      isAr
+                        ? 'هل تريد بالتأكيد إيقاف المشاركة؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة شخصية فقط.'
+                        : 'Are you sure you want to stop sharing? The share code will be revoked and members removed.',
+                      [
+                        { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                        {
+                          text: isAr ? 'إيقاف المشاركة' : 'Stop Sharing',
+                          style: 'destructive',
+                          onPress: async () => {
+                            if (!targetWalletId) return;
+                            setLoading(true);
+                            const { stopSharingWallet } = await import('@/lib/sharingService');
+                            const ok = await stopSharingWallet(targetWalletId);
+                            setLoading(false);
+                            if (ok) {
+                              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+                              Alert.alert(
+                                isAr ? 'تم بنجاح' : 'Success',
+                                isAr ? 'تم إيقاف مشاركة المحفظة بنجاح وأصبحت خاصة بك فقط.' : 'Wallet sharing stopped successfully.',
+                                [{ text: isAr ? 'حسناً' : 'OK', onPress: () => router.back() }]
+                              );
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      paddingVertical: 14,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(239, 68, 68, 0.3)',
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <Ionicons name="link-outline" size={20} color="#EF4444" />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#EF4444' }}>
+                    {isAr ? 'إيقاف المشاركة للجميع' : 'Stop Sharing for Everyone'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={48} color={colors.textTertiary} />
