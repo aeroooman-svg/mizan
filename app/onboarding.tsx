@@ -313,50 +313,60 @@ export default function OnboardingScreen() {
         </>
       ) : (
         /* Financial Goal Picker Step */
-        <View style={[styles.goalStepContainer, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
-          <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-            {isAr ? 'ما هو هدفك المالي الأساسي؟' : 'What is your primary financial goal?'}
-          </Text>
-          <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
-            {isAr
-              ? 'ساعدنا على إعداد المحافظ والمستشار المالي بما يناسب تطلعاتك:'
-              : 'Help us personalize your experience and AI advisor recommendations:'}
-          </Text>
+        <ScrollView
+          style={styles.goalScrollView}
+          contentContainerStyle={[
+            styles.goalStepContent,
+            { paddingBottom: Math.max(insets.bottom, 20) + 24 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          <View style={styles.goalTopSection}>
+            <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
+              {isAr ? 'ما هو هدفك المالي الأساسي؟' : 'What is your primary financial goal?'}
+            </Text>
+            <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
+              {isAr
+                ? 'ساعدنا على إعداد المحافظ والمستشار المالي بما يناسب تطلعاتك:'
+                : 'Help us personalize your experience and AI advisor recommendations:'}
+            </Text>
 
-          <View style={styles.goalsList}>
-            {goals.map((g) => {
-              const isSelected = selectedGoal === g.id;
-              return (
-                <Pressable
-                  key={g.id}
-                  onPress={() => {
-                    Haptics.selectionAsync().catch(() => {});
-                    setSelectedGoal(g.id);
-                  }}
-                  style={[
-                    styles.goalCard,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
-                  ]}
-                >
-                  <Text style={[styles.goalCardText, { color: colors.text }]}>
-                    {isAr ? g.titleAr : g.titleEn}
-                  </Text>
-                  <Ionicons
-                    name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={24}
-                    color={isSelected ? colors.primary : colors.subtext}
-                  />
-                </Pressable>
-              );
-            })}
+            <View style={styles.goalsList}>
+              {goals.map((g) => {
+                const isSelected = selectedGoal === g.id;
+                return (
+                  <Pressable
+                    key={g.id}
+                    onPress={() => {
+                      Haptics.selectionAsync().catch(() => {});
+                      setSelectedGoal(g.id);
+                    }}
+                    style={[
+                      styles.goalCard,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
+                  >
+                    <Text style={[styles.goalCardText, { color: colors.text }]}>
+                      {isAr ? g.titleAr : g.titleEn}
+                    </Text>
+                    <Ionicons
+                      name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={24}
+                      color={isSelected ? colors.primary : colors.subtext}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           <Pressable
             onPress={handleCompleteOnboarding}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { backgroundColor: colors.primary, width: '100%', marginTop: 'auto' },
+              { backgroundColor: colors.primary, width: '100%', marginTop: 24 },
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
             ]}
           >
@@ -364,7 +374,7 @@ export default function OnboardingScreen() {
               {isAr ? 'ابدأ استخدام ميزان الآن 🚀' : 'Get Started with Mizan 🚀'}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -478,38 +488,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFF',
   },
-  goalStepContainer: {
+  goalScrollView: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+  },
+  goalStepContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    justifyContent: 'space-between',
+  },
+  goalTopSection: {
+    width: '100%',
   },
   goalHeaderTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 22,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   goalHeaderDesc: {
     fontFamily: 'Cairo_400Regular',
     fontSize: 14,
-    marginBottom: 32,
+    marginBottom: 20,
     lineHeight: 22,
   },
   goalsList: {
-    gap: 16,
+    gap: 12,
   },
   goalCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
   },
   goalCardText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 15,
+    fontSize: 14.5,
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
 });
