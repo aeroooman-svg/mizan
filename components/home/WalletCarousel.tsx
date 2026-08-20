@@ -183,12 +183,32 @@ export default function WalletCarousel({
 
           const sharedText = wallet.sharedWith ? (() => {
             try {
-              const members = JSON.parse(wallet.sharedWith);
-              if (Array.isArray(members)) {
-                return members.map((m) => m.username).join(', ');
+              const parsed = JSON.parse(wallet.sharedWith);
+              let membersList: any[] = [];
+              if (Array.isArray(parsed)) {
+                membersList = parsed;
+              } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.members)) {
+                membersList = parsed.members;
+              }
+
+              if (membersList.length > 0) {
+                const names = membersList
+                  .map((m: any) => m.username)
+                  .filter((name: any) => typeof name === 'string' && name.trim().length > 0);
+
+                if (names.length === 1) {
+                  return names[0];
+                }
+                if (names.length === 2) {
+                  return names.join('، ');
+                }
+                return language === 'ar' ? `${names.length} أعضاء` : `${names.length} members`;
               }
             } catch (e) {}
-            return wallet.sharedWith;
+            if (typeof wallet.sharedWith === 'string' && !wallet.sharedWith.startsWith('{') && !wallet.sharedWith.startsWith('[')) {
+              return wallet.sharedWith;
+            }
+            return language === 'ar' ? 'مشتركة' : 'Shared';
           })() : undefined;
 
           return (

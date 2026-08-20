@@ -321,11 +321,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    maxWidth: 160,
+    flexShrink: 1,
   },
   sharedBadgeText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 8,
     color: '#10B981',
+    flexShrink: 1,
   },
 
   /* Middle Row & EMV Chip */

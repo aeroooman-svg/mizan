@@ -46,7 +46,7 @@ export function getCategoryById(id: string): Category | undefined {
   return [...expenseCategories, ...incomeCategories, ...customCategoriesInMemory].find(c => c.id === id);
 }
 
-export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 'en'): string {
+export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 'en', maxDecimals: number = 2): string {
   try {
     const val = Number(amount);
     const activeLang = lang || globalAppLanguage;
@@ -55,26 +55,23 @@ export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 
       return isEn ? '0.00' : '٠٫٠٠';
     }
 
-    const cleanedVal = Number(val.toFixed(8));
-    const strVal = cleanedVal.toString();
-    const decPart = strVal.includes('.') ? strVal.split('.')[1] : '';
-    const decCount = decPart.length;
-
-    const minDigits = decCount > 2 ? Math.min(8, decCount) : 2;
-    const maxDigits = Math.max(2, Math.min(8, decCount));
+    // Determine precision: default max 2 decimals (or 3 if 3 decimals are explicitly passed), preventing floating-point overflow like .92018366
+    const decimals = Math.min(3, Math.max(2, maxDecimals));
+    const factor = Math.pow(10, decimals);
+    const roundedVal = Math.round((val + Number.EPSILON) * factor) / factor;
 
     if (isEn) {
-      const formatted = cleanedVal.toLocaleString('en-US', {
-        minimumFractionDigits: minDigits,
-        maximumFractionDigits: maxDigits,
+      const formatted = roundedVal.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: decimals,
       });
       return formatted.replace(/[\u0660-\u0669]/g, ch =>
         String.fromCharCode(ch.charCodeAt(0) - 0x0660 + 0x0030)
       );
     }
-    return cleanedVal.toLocaleString('ar-EG', {
-      minimumFractionDigits: minDigits,
-      maximumFractionDigits: maxDigits,
+    return roundedVal.toLocaleString('ar-EG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: decimals,
     });
   } catch {
     const activeLang = lang || globalAppLanguage;

@@ -51,7 +51,7 @@ const HIGH_CONTRAST_DISTINCT_COLORS = [
 
 const generateSparklinePath = (points: { day: number; netWorth: number }[], width = 140, height = 38) => {
   if (!points || points.length === 0) {
-    return { pathD: `M 0,${height/2} L ${width},${height/2}`, areaD: `M 0,${height/2} L ${width},${height/2} L ${width},${height} L 0,${height} Z`, lastX: width, lastY: height/2, min: 0, max: 0 };
+    return { pathD: `M 0,${height/2} L ${width},${height/2}`, areaD: `M 0,${height/2} L ${width},${height/2} L ${width},${height} L 0,${height} Z`, lastX: width, lastY: height/2, min: 0, max: 0, coords: [] };
   }
 
   const values = points.map(p => p.netWorth);
@@ -59,18 +59,22 @@ const generateSparklinePath = (points: { day: number; netWorth: number }[], widt
   let max = Math.max(...values);
 
   if (min === max) {
-    min = min - 10;
-    max = max + 10;
-  } else if (max > 0 && min >= 0 && (max - min) / max < 0.25) {
-    min = Math.max(0, max * 0.75);
+    min = min - Math.max(10, Math.abs(min) * 0.1 || 10);
+    max = max + Math.max(10, Math.abs(max) * 0.1 || 10);
+  } else {
+    const range = max - min;
+    min = min - range * 0.15;
+    max = max + range * 0.15;
   }
 
-  const paddingY = 6;
-  const usableH = height - (paddingY * 2);
+  const paddingX = 16;
+  const usableW = Math.max(10, width - paddingX * 2);
+  const paddingY = 14;
+  const usableH = Math.max(10, height - paddingY * 2);
 
   const coords = points.map((p, i) => {
-    const x = (i / (points.length - 1 || 1)) * width;
-    const normY = (p.netWorth - min) / (max - min);
+    const x = paddingX + (i / (points.length - 1 || 1)) * usableW;
+    const normY = max === min ? 0.5 : (p.netWorth - min) / (max - min);
     const y = height - paddingY - (normY * usableH);
     return { x, y };
   });
@@ -1531,7 +1535,7 @@ export default function StatsScreen() {
                 </Text>
 
                 {(() => {
-                  const yAxisW = 55;
+                  const yAxisW = 60;
                   const totalW = SCREEN_WIDTH - 64;
                   const chartW = totalW - yAxisW;
                   const chartH = 160;
@@ -1539,117 +1543,147 @@ export default function StatsScreen() {
                   const selectedPt = selectedChartPointIndex !== null ? realNetWorthPoints[selectedChartPointIndex] : null;
                   const selectedCoord = selectedChartPointIndex !== null && fullSpark.coords ? fullSpark.coords[selectedChartPointIndex] : null;
 
-                  const maxValStr = `${formatCurrency(fullSpark.max)}`;
-                  const midValStr = `${formatCurrency((fullSpark.max + fullSpark.min) / 2)}`;
-                  const minValStr = `${formatCurrency(fullSpark.min)}`;
+                  const maxValStr = `${formatCurrency(fullSpark.max, language)}`;
+                  const midValStr = `${formatCurrency((fullSpark.max + fullSpark.min) / 2, language)}`;
+                  const minValStr = `${formatCurrency(fullSpark.min, language)}`;
+
+                  // Calculate 4-5 clean milestone indices for X-axis
+                  const totalPts = realNetWorthPoints.length;
+                  const step = Math.max(1, Math.floor((totalPts - 1) / 4));
+                  const milestoneIndices = [0];
+                  for (let idx = step; idx < totalPts - 1; idx += step) {
+                    if (!milestoneIndices.includes(idx)) milestoneIndices.push(idx);
+                  }
+                  if (totalPts > 1 && !milestoneIndices.includes(totalPts - 1)) {
+                    milestoneIndices.push(totalPts - 1);
+                  }
+
+                  const lastCoord = fullSpark.coords && fullSpark.coords.length > 0 ? fullSpark.coords[fullSpark.coords.length - 1] : null;
 
                   return (
-                    <View style={{ gap: 8 }}>
+                    <View style={{ gap: 10 }}>
                       {/* Active Selected Point Floating Tooltip / Banner */}
-                      {selectedPt && selectedCoord && (
+                      {selectedPt && selectedCoord ? (
                         <View style={{
                           backgroundColor: theme === 'dark' ? '#0F172A' : '#F8FAFC',
                           borderRadius: 14,
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
+                          paddingHorizontal: 14,
+                          paddingVertical: 9,
                           borderWidth: 1.5,
                           borderColor: '#10B981',
                           flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'space-between',
+                          shadowColor: '#10B981',
+                          shadowOpacity: 0.15,
+                          shadowRadius: 8,
                         }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="location" size={16} color="#10B981" />
-                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                            <Ionicons name="calendar-outline" size={16} color="#10B981" />
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
                               {language === 'ar' ? `اليوم ${selectedPt.day}` : `Day ${selectedPt.day}`}
                             </Text>
                           </View>
-                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
-                            {selectedPt.netWorth >= 0 ? '+' : ''}{formatCurrency(selectedPt.netWorth)} {currencySymbol}
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#10B981' }}>
+                            {selectedPt.netWorth >= 0 ? '+' : ''}{formatCurrency(selectedPt.netWorth, language)} {currencySymbol}
                           </Text>
                         </View>
+                      ) : (
+                        <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textTertiary, textAlign: 'center' }}>
+                          {language === 'ar' ? '💡 اضغط على أي نقطة في الرسم البياني لعرض القيمة اليومية' : '💡 Tap anywhere on the graph to inspect daily value'}
+                        </Text>
                       )}
 
-                      <View style={{ height: chartH + 30, alignItems: 'center', justifyContent: 'center' }}>
-                        <Svg width={totalW} height={chartH + 30}>
+                      <View style={{ height: chartH + 34, alignItems: 'center', justifyContent: 'center' }}>
+                        <Svg width={totalW} height={chartH + 34}>
                           <Defs>
                             <SvgGradient id="modalNetGrad" x1="0" y1="0" x2="0" y2="1">
-                              <Stop offset="0" stopColor="#10B981" stopOpacity="0.5" />
+                              <Stop offset="0" stopColor="#10B981" stopOpacity="0.45" />
+                              <Stop offset="0.7" stopColor="#10B981" stopOpacity="0.08" />
                               <Stop offset="1" stopColor="#10B981" stopOpacity="0.0" />
                             </SvgGradient>
                           </Defs>
 
                           {/* Y-Axis Labels on Left side */}
-                          <SvgText x={yAxisW - 6} y={14} fontSize={9} fontFamily="Cairo_700Bold" fill={colors.textSecondary} textAnchor="end">
+                          <SvgText x={yAxisW - 8} y={16} fontSize={9} fontFamily="Cairo_700Bold" fill={colors.textSecondary} textAnchor="end">
                             {maxValStr}
                           </SvgText>
-                          <SvgText x={yAxisW - 6} y={chartH / 2 + 3} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
+                          <SvgText x={yAxisW - 8} y={chartH / 2 + 3} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
                             {midValStr}
                           </SvgText>
-                          <SvgText x={yAxisW - 6} y={chartH - 4} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
+                          <SvgText x={yAxisW - 8} y={chartH - 8} fontSize={9} fontFamily="Cairo_600SemiBold" fill={colors.textSecondary} textAnchor="end">
                             {minValStr}
                           </SvgText>
 
-                          {/* Vertical Axis Line */}
-                          <Path d={`M ${yAxisW},6 L ${yAxisW},${chartH}`} stroke={colors.border} strokeWidth={1} />
+                          {/* Vertical Axis Separator Line */}
+                          <Path d={`M ${yAxisW},10 L ${yAxisW},${chartH}`} stroke={colors.border} strokeWidth={1} />
 
                           {/* Translated Main Chart Area */}
                           <G transform={`translate(${yAxisW}, 0)`}>
-                            {/* Grid lines */}
-                            <Path d={`M 0,10 L ${chartW},10`} stroke={colors.borderLight} strokeDasharray="4 4" />
-                            <Path d={`M 0,${chartH/2}`} stroke={colors.borderLight} strokeDasharray="4 4" />
-                            <Path d={`M 0,${chartH - 10}`} stroke={colors.borderLight} strokeDasharray="4 4" />
+                            {/* Horizontal Dotted Grid lines */}
+                            <Path d={`M 0,14 L ${chartW},14`} stroke={colors.borderLight} strokeDasharray="3 3" opacity={0.7} />
+                            <Path d={`M 0,${chartH/2}`} stroke={colors.borderLight} strokeDasharray="3 3" opacity={0.7} />
+                            <Path d={`M 0,${chartH - 12}`} stroke={colors.borderLight} strokeDasharray="3 3" opacity={0.7} />
 
-                            {/* Area & Path */}
+                            {/* Area Fill & Smooth Curve */}
                             <Path d={fullSpark.areaD} fill="url(#modalNetGrad)" />
-                            <Path d={fullSpark.pathD} fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
+                            <Path d={fullSpark.pathD} fill="none" stroke="#10B981" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
 
-                            {/* Selection Vertical Indicator Line */}
-                            {selectedCoord && (
-                              <Path d={`M ${selectedCoord.x},0 L ${selectedCoord.x},${chartH}`} stroke="#10B981" strokeWidth="1.5" strokeDasharray="3 3" />
+                            {/* Latest Value Pulse Beacon at the end */}
+                            {lastCoord && selectedChartPointIndex === null && (
+                              <>
+                                <Circle cx={lastCoord.x} cy={lastCoord.y} r={8} fill="#10B981" opacity={0.25} />
+                                <Circle cx={lastCoord.x} cy={lastCoord.y} r={4.5} fill="#10B981" stroke="#FFFFFF" strokeWidth={2} />
+                              </>
                             )}
 
-                            {/* Coordinates dots & Touch Handles */}
-                            {fullSpark.coords && fullSpark.coords.map((c, i) => {
-                              const isSel = selectedChartPointIndex === i;
+                            {/* Active Selection Vertical Guideline and Highlight Beacon */}
+                            {selectedCoord && (
+                              <>
+                                <Path d={`M ${selectedCoord.x},10 L ${selectedCoord.x},${chartH}`} stroke="#10B981" strokeWidth={1.5} strokeDasharray="3 3" />
+                                <Circle cx={selectedCoord.x} cy={selectedCoord.y} r={10} fill="#10B981" opacity={0.2} />
+                                <Circle cx={selectedCoord.x} cy={selectedCoord.y} r={5.5} fill="#10B981" stroke="#FFFFFF" strokeWidth={2.5} />
+                              </>
+                            )}
+
+                            {/* X-Axis Milestone Day Labels */}
+                            {fullSpark.coords && milestoneIndices.map((idx) => {
+                              const c = fullSpark.coords[idx];
+                              if (!c) return null;
+                              const isFirst = idx === 0;
+                              const isLast = idx === totalPts - 1;
+                              const anchor = isFirst ? 'start' : isLast ? 'end' : 'middle';
                               return (
-                                <React.Fragment key={i}>
-                                  {isSel && (
-                                    <Circle cx={c.x} cy={c.y} r={7} fill="#10B981" opacity={0.3} />
-                                  )}
-                                  <Circle
-                                    cx={c.x}
-                                    cy={c.y}
-                                    r={isSel ? 5 : 3.5}
-                                    fill="#10B981"
-                                    stroke="#FFFFFF"
-                                    strokeWidth={isSel ? 2 : 1}
-                                  />
-                                  {(i === 0 || i === fullSpark.coords.length - 1 || i % Math.ceil(fullSpark.coords.length / 5) === 0) && (
-                                    <SvgText
-                                      x={c.x}
-                                      y={chartH + 20}
-                                      fontSize={9}
-                                      fontFamily="Cairo_600SemiBold"
-                                      fill={colors.textSecondary}
-                                      textAnchor="middle"
-                                    >
-                                      {realNetWorthPoints[i]?.day}
-                                    </SvgText>
-                                  )}
-                                  {/* Invisible Touch Area for easy tapping */}
-                                  <Rect
-                                    x={Math.max(0, c.x - 12)}
-                                    y={0}
-                                    width={24}
-                                    height={chartH + 30}
-                                    fill="transparent"
-                                    onPress={() => {
-                                      Haptics.selectionAsync();
-                                      setSelectedChartPointIndex(i);
-                                    }}
-                                  />
-                                </React.Fragment>
+                                <SvgText
+                                  key={`axis-${idx}`}
+                                  x={c.x}
+                                  y={chartH + 22}
+                                  fontSize={9.5}
+                                  fontFamily="Cairo_600SemiBold"
+                                  fill={colors.textSecondary}
+                                  textAnchor={anchor}
+                                >
+                                  {realNetWorthPoints[idx]?.day}
+                                </SvgText>
+                              );
+                            })}
+
+                            {/* Interactive Touch Areas */}
+                            {fullSpark.coords && fullSpark.coords.map((c, i) => {
+                              const touchWidth = Math.max(16, chartW / totalPts);
+                              return (
+                                <Rect
+                                  key={`touch-${i}`}
+                                  x={Math.max(0, c.x - touchWidth / 2)}
+                                  y={0}
+                                  width={touchWidth}
+                                  height={chartH + 34}
+                                  fill="transparent"
+                                  onPress={() => {
+                                    Haptics.selectionAsync().catch(() => {});
+                                    setSelectedChartPointIndex(i);
+                                  }}
+                                />
                               );
                             })}
                           </G>
