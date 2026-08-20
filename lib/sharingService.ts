@@ -2,7 +2,7 @@
  * Sharing Service — خدمة المشاركة العائلية (Supabase Direct)
  * 
  * Handles wallet sharing operations using Supabase REST API directly.
- * No Express server or kvdb.io needed — works across all devices in real-time.
+ * Full support for wallet metadata (balance, cardStyle, icon, color) and live transactions.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -99,41 +99,37 @@ function generateCode(): string {
  * Generate or retrieve a share code for a wallet, and push wallet data to Supabase.
  */
 export async function getOrCreateShareCode(walletId: string): Promise<string> {
-  // 1. Check if wallet already has a share code locally
   const wallets = await getLocalWallets();
   const localWallet = wallets.find((w: any) => w.id === walletId);
   
   if (!localWallet) {
-    // No wallet found, generate a code anyway
     return generateCode();
   }
 
-  // 2. If wallet already has a shareCode, reuse it
+  // If wallet already has a shareCode, push latest snapshot and return
   if (localWallet.shareCode) {
-    // Push/sync wallet to Supabase to ensure it's available for others
     await pushWalletToSupabase(localWallet);
     await pushTransactionsToSupabase(walletId);
     return localWallet.shareCode;
   }
 
-  // 3. Check if a code already exists on Supabase for this wallet
+  // Check if a code already exists on Supabase for this wallet
   const remoteWallets = await supabaseGet('wallets', `id=eq.${walletId}&select=share_code`);
   if (remoteWallets.length > 0 && remoteWallets[0].share_code) {
     const existingCode = remoteWallets[0].share_code;
-    // Save locally
     localWallet.shareCode = existingCode;
     await saveLocalWallets(wallets);
+    await pushWalletToSupabase(localWallet);
+    await pushTransactionsToSupabase(walletId);
     return existingCode;
   }
 
-  // 4. Generate new code
+  // Generate new code
   const code = generateCode();
   localWallet.shareCode = code;
 
-  // Save locally
   await saveLocalWallets(wallets);
 
-  // Also save in local share codes cache
   try {
     const codesData = await AsyncStorage.getItem(SHARE_CODES_KEY);
     const codes = codesData ? JSON.parse(codesData) : {};
@@ -141,11 +137,11 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
     await AsyncStorage.setItem(SHARE_CODES_KEY, JSON.stringify(codes));
   } catch {}
 
-  // 5. Push wallet + transactions to Supabase
+  // Push wallet + transactions to Supabase
   await pushWalletToSupabase(localWallet);
   await pushTransactionsToSupabase(walletId);
 
-  // 6. Register owner as a member in wallet_shares
+  // Register owner as member in wallet_shares table
   const username = await getCurrentUsername();
   await supabaseUpsert('wallet_shares', {
     id: `mem_owner_${walletId}`,
@@ -160,13 +156,33 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
 }
 
 /**
- * Push a local wallet to Supabase (upsert).
+ * Push a local wallet to Supabase with all metadata (initialBalance, cardStyle, icon, color).
  */
-async function pushWalletToSupabase(wallet: any): Promise<void> {
+export async function pushWalletToSupabase(wallet: any): Promise<void> {
   try {
     const username = await getCurrentUsername();
-    const members = [{ userId: `owner_${wallet.id}`, username, role: 'owner' }];
+    let membersList = [{ userId: `owner_${wallet.id}`, username, role: 'owner' }];
     
+    if (wallet.sharedWith) {
+      try {
+        const parsed = JSON.parse(wallet.sharedWith);
+        if (Array.isArray(parsed)) {
+          membersList = parsed;
+        } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.members)) {
+          membersList = parsed.members;
+        }
+      } catch {}
+    }
+
+    // Embed rich metadata inside shared_with JSON so everything is preserved across devices
+    const metadataPayload = JSON.stringify({
+      members: membersList,
+      initialBalance: wallet.initialBalance !== undefined ? Number(wallet.initialBalance) : 0,
+      cardStyle: wallet.cardStyle || 'classic',
+      icon: wallet.icon || 'account-balance-wallet',
+      color: wallet.color || '#0D7C66',
+    });
+
     await supabaseUpsert('wallets', {
       id: wallet.id,
       name: wallet.name || 'المحفظة المشتركة',
@@ -175,7 +191,7 @@ async function pushWalletToSupabase(wallet: any): Promise<void> {
       color: wallet.color || '#0D7C66',
       created_at: wallet.createdAt || new Date().toISOString(),
       user_id: wallet.userId || null,
-      shared_with: wallet.sharedWith || JSON.stringify(members),
+      shared_with: metadataPayload,
       share_code: wallet.shareCode || null,
     });
   } catch (e) {
@@ -184,9 +200,9 @@ async function pushWalletToSupabase(wallet: any): Promise<void> {
 }
 
 /**
- * Push local transactions for a wallet to Supabase (upsert each).
+ * Push local transactions for a wallet to Supabase (upsert).
  */
-async function pushTransactionsToSupabase(walletId: string): Promise<void> {
+export async function pushTransactionsToSupabase(walletId: string): Promise<void> {
   try {
     const allTxns = await getLocalTransactions();
     const walletTxns = allTxns.filter((t: any) => t.walletId === walletId);
@@ -198,7 +214,7 @@ async function pushTransactionsToSupabase(walletId: string): Promise<void> {
       const batch = walletTxns.slice(i, i + 50).map((t: any) => ({
         id: t.id,
         type: t.type,
-        amount: t.amount,
+        amount: Number(t.amount) || 0,
         category: t.category,
         description: t.description || '',
         date: t.date,
@@ -218,7 +234,7 @@ async function pushTransactionsToSupabase(walletId: string): Promise<void> {
 }
 
 /**
- * Join a shared wallet using a share code — fetches real data from Supabase.
+ * Join a shared wallet using a share code — fetches full data + transactions from Supabase.
  */
 export async function joinSharedWallet(code: string): Promise<{ success: boolean; walletName?: string; error?: string }> {
   const cleanCode = code.trim().toUpperCase();
@@ -240,64 +256,104 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
     const remoteWallet = remoteWallets[0];
     const remoteWalletId = remoteWallet.id;
 
-    // 2. Fetch transactions for this wallet from Supabase
+    // 2. Extract metadata (initialBalance, cardStyle, icon, color, members)
+    let initialBalance = 0;
+    let cardStyle = 'classic';
+    let icon = remoteWallet.icon || 'account-balance-wallet';
+    let color = remoteWallet.color || '#0D7C66';
+    let membersList: any[] = [];
+
+    if (remoteWallet.shared_with) {
+      try {
+        const parsed = JSON.parse(remoteWallet.shared_with);
+        if (Array.isArray(parsed)) {
+          membersList = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          if (parsed.initialBalance !== undefined) initialBalance = Number(parsed.initialBalance);
+          if (parsed.cardStyle) cardStyle = parsed.cardStyle;
+          if (parsed.icon) icon = parsed.icon;
+          if (parsed.color) color = parsed.color;
+          if (Array.isArray(parsed.members)) membersList = parsed.members;
+        }
+      } catch {}
+    }
+
+    // 3. Fetch all transactions for this wallet from Supabase
     const remoteTxns = await supabaseGet('transactions', `wallet_id=eq.${remoteWalletId}&select=*`);
 
-    // 3. Reconstruct wallet object for local storage
+    // 4. Construct local wallet object
+    const username = await getCurrentUsername();
+    const joinerId = `user_joined_${Date.now()}`;
+    
+    const newMember = {
+      userId: joinerId,
+      username: username,
+      role: 'editor',
+    };
+
+    if (!membersList.some(m => m.username === username)) {
+      membersList.push(newMember);
+    }
+
+    const updatedMetadata = JSON.stringify({
+      members: membersList,
+      initialBalance: initialBalance,
+      cardStyle: cardStyle,
+      icon: icon,
+      color: color,
+    });
+
     const walletForLocal: any = {
       id: remoteWalletId,
       name: remoteWallet.name || 'المحفظة المشتركة',
       currency: remoteWallet.currency || 'SAR',
-      icon: remoteWallet.icon || 'people',
-      color: remoteWallet.color || '#10B981',
-      cardStyle: 'glass',
+      icon: icon,
+      color: color,
+      cardStyle: cardStyle,
+      initialBalance: initialBalance,
       createdAt: remoteWallet.created_at || new Date().toISOString(),
       shareCode: cleanCode,
-      sharedWith: remoteWallet.shared_with || '',
+      sharedWith: updatedMetadata,
     };
 
-    // 4. Save wallet locally
+    // 5. Save wallet locally
     const localWallets = await getLocalWallets();
     const existingIdx = localWallets.findIndex((w: any) => w.id === remoteWalletId);
     if (existingIdx !== -1) {
-      // Update existing
       localWallets[existingIdx] = { ...localWallets[existingIdx], ...walletForLocal };
     } else {
       localWallets.push(walletForLocal);
     }
     await saveLocalWallets(localWallets);
 
-    // 5. Merge remote transactions into local
-    if (remoteTxns.length > 0) {
-      const localTxns = await getLocalTransactions();
-      const txnMap = new Map<string, any>();
-      localTxns.forEach((t: any) => txnMap.set(t.id, t));
+    // 6. Merge transactions into local storage
+    const localTxns = await getLocalTransactions();
+    const txnMap = new Map<string, any>();
+    localTxns.forEach((t: any) => txnMap.set(t.id, t));
 
+    if (Array.isArray(remoteTxns) && remoteTxns.length > 0) {
       remoteTxns.forEach((t: any) => {
         txnMap.set(t.id, {
           id: t.id,
           type: t.type,
-          amount: t.amount,
+          amount: Number(t.amount) || 0,
           category: t.category,
           description: t.description || '',
           date: t.date,
           createdAt: t.created_at,
           walletId: t.wallet_id,
-          toWalletId: t.to_wallet_id || null,
-          tags: t.tags || null,
-          receiptUri: t.receipt_uri || null,
-          userId: t.user_id || null,
-          addedBy: t.added_by || null,
+          toWalletId: t.to_wallet_id || undefined,
+          tags: t.tags || undefined,
+          receiptUri: t.receipt_uri || undefined,
+          userId: t.user_id || undefined,
+          addedBy: t.added_by || undefined,
         });
       });
-
-      await saveLocalTransactions(Array.from(txnMap.values()));
     }
 
-    // 6. Register joiner as member in Supabase wallet_shares
-    const username = await getCurrentUsername();
-    const joinerId = `user_joined_${Date.now()}`;
-    
+    await saveLocalTransactions(Array.from(txnMap.values()));
+
+    // 7. Register joiner in Supabase wallet_shares table
     await supabaseInsert('wallet_shares', {
       id: `mem_${joinerId}`,
       wallet_id: remoteWalletId,
@@ -307,22 +363,8 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       joined_at: new Date().toISOString(),
     });
 
-    // 7. Update sharedWith in the wallet on Supabase
-    const allMembers = await supabaseGet('wallet_shares', `wallet_id=eq.${remoteWalletId}&select=*`);
-    const membersJson = JSON.stringify(allMembers.map((m: any) => ({
-      userId: m.user_id,
-      username: m.username,
-      role: m.role,
-    })));
-    await supabaseUpdate('wallets', `id=eq.${remoteWalletId}`, { shared_with: membersJson });
-
-    // Update local wallet with sharedWith
-    const updatedWallets = await getLocalWallets();
-    const wIdx = updatedWallets.findIndex((w: any) => w.id === remoteWalletId);
-    if (wIdx !== -1) {
-      updatedWallets[wIdx].sharedWith = membersJson;
-      await saveLocalWallets(updatedWallets);
-    }
+    // 8. Update wallet in Supabase with new members payload
+    await supabaseUpdate('wallets', `id=eq.${remoteWalletId}`, { shared_with: updatedMetadata });
 
     return { success: true, walletName: walletForLocal.name };
   } catch (e: any) {
@@ -335,14 +377,14 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
 }
 
 /**
- * Synchronize a shared wallet's transactions with Supabase.
+ * Synchronize a shared wallet's metadata and transactions bidirectionally with Supabase.
  */
 export async function syncSharedWalletByCode(code: string): Promise<boolean> {
   const cleanCode = code.trim().toUpperCase();
   if (!cleanCode) return false;
 
   try {
-    // 1. Find wallet on Supabase by share code
+    // 1. Fetch wallet from Supabase
     const remoteWallets = await supabaseGet('wallets', `share_code=eq.${cleanCode}&select=*`);
     if (remoteWallets.length === 0) return false;
 
@@ -352,47 +394,68 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
     // 2. Fetch remote transactions
     const remoteTxns = await supabaseGet('transactions', `wallet_id=eq.${walletId}&select=*`);
 
-    // 3. Merge with local transactions
-    const localTxns = await getLocalTransactions();
-    const txnMap = new Map<string, any>();
+    // 3. Extract metadata (initialBalance, cardStyle, icon, color)
+    let initialBalance: number | undefined = undefined;
+    let cardStyle: string | undefined = undefined;
+    let icon = remoteWallet.icon;
+    let color = remoteWallet.color;
 
-    // Local transactions first
-    localTxns.forEach((t: any) => txnMap.set(t.id, t));
+    if (remoteWallet.shared_with) {
+      try {
+        const parsed = JSON.parse(remoteWallet.shared_with);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          if (parsed.initialBalance !== undefined) initialBalance = Number(parsed.initialBalance);
+          if (parsed.cardStyle) cardStyle = parsed.cardStyle;
+          if (parsed.icon) icon = parsed.icon;
+          if (parsed.color) color = parsed.color;
+        }
+      } catch {}
+    }
 
-    // Remote transactions (mapped to local format)
-    remoteTxns.forEach((t: any) => {
-      txnMap.set(t.id, {
-        id: t.id,
-        type: t.type,
-        amount: t.amount,
-        category: t.category,
-        description: t.description || '',
-        date: t.date,
-        createdAt: t.created_at,
-        walletId: t.wallet_id,
-        toWalletId: t.to_wallet_id || null,
-        tags: t.tags || null,
-        receiptUri: t.receipt_uri || null,
-        userId: t.user_id || null,
-        addedBy: t.added_by || null,
-      });
-    });
-
-    const mergedTxns = Array.from(txnMap.values());
-    await saveLocalTransactions(mergedTxns);
-
-    // 4. Push local wallet transactions back to Supabase
-    await pushTransactionsToSupabase(walletId);
-
-    // 5. Update local wallet metadata from remote
+    // 4. Update local wallet
     const localWallets = await getLocalWallets();
-    const wIdx = localWallets.findIndex((w: any) => w.id === walletId);
+    const wIdx = localWallets.findIndex((w: any) => w.id === walletId || w.shareCode === cleanCode);
     if (wIdx !== -1) {
       if (remoteWallet.name) localWallets[wIdx].name = remoteWallet.name;
       if (remoteWallet.currency) localWallets[wIdx].currency = remoteWallet.currency;
+      if (icon) localWallets[wIdx].icon = icon;
+      if (color) localWallets[wIdx].color = color;
+      if (cardStyle) localWallets[wIdx].cardStyle = cardStyle;
+      if (initialBalance !== undefined) localWallets[wIdx].initialBalance = initialBalance;
       if (remoteWallet.shared_with) localWallets[wIdx].sharedWith = remoteWallet.shared_with;
       await saveLocalWallets(localWallets);
     }
+
+    // 5. Merge transactions
+    const localTxns = await getLocalTransactions();
+    const txnMap = new Map<string, any>();
+
+    localTxns.forEach((t: any) => txnMap.set(t.id, t));
+
+    if (Array.isArray(remoteTxns)) {
+      remoteTxns.forEach((t: any) => {
+        txnMap.set(t.id, {
+          id: t.id,
+          type: t.type,
+          amount: Number(t.amount) || 0,
+          category: t.category,
+          description: t.description || '',
+          date: t.date,
+          createdAt: t.created_at,
+          walletId: t.wallet_id,
+          toWalletId: t.to_wallet_id || undefined,
+          tags: t.tags || undefined,
+          receiptUri: t.receipt_uri || undefined,
+          userId: t.user_id || undefined,
+          addedBy: t.added_by || undefined,
+        });
+      });
+    }
+
+    await saveLocalTransactions(Array.from(txnMap.values()));
+
+    // 6. Push local transactions back up to Supabase to keep remote complete
+    await pushTransactionsToSupabase(walletId);
 
     return true;
   } catch (e) {
@@ -407,7 +470,7 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 export async function syncAllSharedWallets(): Promise<void> {
   try {
     const wallets = await getLocalWallets();
-    const sharedWallets = wallets.filter((w: any) => w.shareCode || (w.sharedWith && w.sharedWith.length > 0));
+    const sharedWallets = wallets.filter((w: any) => w.shareCode || isWalletShared(w.sharedWith));
     for (const wallet of sharedWallets) {
       if (wallet.shareCode) {
         await syncSharedWalletByCode(wallet.shareCode);
@@ -424,17 +487,19 @@ export async function syncAllSharedWallets(): Promise<void> {
 export async function getSharedMembers(walletId: string): Promise<SharedMember[]> {
   try {
     const members = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
-    return members.map((m: any) => ({
-      id: m.id,
-      userId: m.user_id,
-      username: m.username,
-      role: m.role as 'owner' | 'editor' | 'viewer',
-      joinedAt: m.joined_at,
-    }));
+    if (members.length > 0) {
+      return members.map((m: any) => ({
+        id: m.id,
+        userId: m.user_id,
+        username: m.username,
+        role: m.role as 'owner' | 'editor' | 'viewer',
+        joinedAt: m.joined_at,
+      }));
+    }
   } catch (e) {
     console.warn('getSharedMembers error:', e);
-    return [];
   }
+  return [];
 }
 
 /**
@@ -476,7 +541,6 @@ export async function removeSharedMember(walletId: string, userId: string): Prom
 export async function leaveSharedWallet(walletId: string): Promise<boolean> {
   try {
     const username = await getCurrentUsername();
-    // Find current user's member record
     const members = await supabaseGet(
       'wallet_shares',
       `wallet_id=eq.${walletId}&username=eq.${encodeURIComponent(username)}&select=*`
@@ -499,8 +563,12 @@ export async function leaveSharedWallet(walletId: string): Promise<boolean> {
 export function isWalletShared(sharedWith: string | null | undefined): boolean {
   if (!sharedWith) return false;
   try {
-    const members = JSON.parse(sharedWith);
-    return Array.isArray(members) && members.length > 0;
+    const parsed = JSON.parse(sharedWith);
+    if (Array.isArray(parsed)) return parsed.length > 0;
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.members)) {
+      return parsed.members.length > 0;
+    }
+    return false;
   } catch {
     return sharedWith.length > 0;
   }
@@ -512,8 +580,12 @@ export function isWalletShared(sharedWith: string | null | undefined): boolean {
 export function getSharedMemberCount(sharedWith: string | null | undefined): number {
   if (!sharedWith) return 0;
   try {
-    const members = JSON.parse(sharedWith);
-    return Array.isArray(members) ? members.length : 0;
+    const parsed = JSON.parse(sharedWith);
+    if (Array.isArray(parsed)) return parsed.length;
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.members)) {
+      return parsed.members.length;
+    }
+    return 0;
   } catch {
     return 0;
   }

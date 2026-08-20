@@ -202,6 +202,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       setWallets(wlts);
       setCustomCategories(customCats);
       setCustomCategoriesInMemory(customCats);
+
+      // Automatically sync all shared wallets from Supabase in background
+      import('@/lib/sharingService').then(m => m.syncAllSharedWallets()).catch(() => {});
     } catch (err) {
       console.error('Failed to load transaction context data:', err);
     } finally {
