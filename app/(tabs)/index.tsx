@@ -1195,8 +1195,8 @@ export default function HomeScreen() {
 
             <ScrollView
               style={{ flex: 1, marginVertical: 8 }}
-              contentContainerStyle={{ gap: 8 }}
-              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={true}
             >
               <Pressable
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
@@ -1423,6 +1423,31 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
             </ScrollView>
+
+            {/* Scroll Indicator Cue Banner */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 7,
+              paddingHorizontal: 14,
+              backgroundColor: 'rgba(20, 184, 166, 0.12)',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: 'rgba(20, 184, 166, 0.3)',
+              marginBottom: 8,
+              alignSelf: 'center',
+            }}>
+              <Ionicons name="arrow-down-circle-outline" size={16} color="#14B8A6" />
+              <Text style={{
+                fontFamily: 'Cairo_700Bold',
+                fontSize: 11,
+                color: '#14B8A6',
+              }}>
+                {language === 'ar' ? 'اسحب للأسفل لعرض باقي الأدوات ↓' : 'Scroll down for more features ↓'}
+              </Text>
+            </View>
 
             <Pressable
               style={({ pressed }) => [styles.drawerCloseBtn, pressed && { opacity: 0.8 }]}

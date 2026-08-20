@@ -46,7 +46,19 @@ export function getCategoryById(id: string): Category | undefined {
   return [...expenseCategories, ...incomeCategories, ...customCategoriesInMemory].find(c => c.id === id);
 }
 
-export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 'en', maxDecimals: number = 2): string {
+const THREE_DECIMAL_CURRENCIES = ['KWD', 'BHD', 'OMR', 'JOD', 'IQD', 'TND', 'LYD'];
+
+export function getCurrencyDecimals(currencyCode?: string | null): number {
+  if (!currencyCode) return 2;
+  const upper = currencyCode.toUpperCase().trim();
+  return THREE_DECIMAL_CURRENCIES.includes(upper) ? 3 : 2;
+}
+
+export function formatCurrency(
+  amount: number | null | undefined,
+  lang?: 'ar' | 'en',
+  maxDecimalsOrCurrency?: number | string
+): string {
   try {
     const val = Number(amount);
     const activeLang = lang || globalAppLanguage;
@@ -55,14 +67,29 @@ export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 
       return isEn ? '0.00' : '٠٫٠٠';
     }
 
-    // Determine precision: default max 2 decimals (or 3 if 3 decimals are explicitly passed), preventing floating-point overflow like .92018366
-    const decimals = Math.min(3, Math.max(2, maxDecimals));
+    let decimals = 2;
+    if (typeof maxDecimalsOrCurrency === 'string') {
+      decimals = getCurrencyDecimals(maxDecimalsOrCurrency);
+    } else if (typeof maxDecimalsOrCurrency === 'number') {
+      decimals = maxDecimalsOrCurrency;
+    } else {
+      // If amount naturally has a 3rd decimal digit, preserve 3 decimals
+      const str = val.toString();
+      if (str.includes('.')) {
+        const decCount = str.split('.')[1].length;
+        if (decCount >= 3) {
+          decimals = 3;
+        }
+      }
+    }
+
+    decimals = Math.min(3, Math.max(2, decimals));
     const factor = Math.pow(10, decimals);
     const roundedVal = Math.round((val + Number.EPSILON) * factor) / factor;
 
     if (isEn) {
       const formatted = roundedVal.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
+        minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       });
       return formatted.replace(/[\u0660-\u0669]/g, ch =>
@@ -70,7 +97,7 @@ export function formatCurrency(amount: number | null | undefined, lang?: 'ar' | 
       );
     }
     return roundedVal.toLocaleString('ar-EG', {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
   } catch {

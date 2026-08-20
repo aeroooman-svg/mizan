@@ -240,12 +240,12 @@ export default function WalletCarousel({
             >
               <WalletCardRender
                 name={wallet.name}
-                balanceFormatted={`${walletBalance >= 0 ? '' : '-'}${formatCurrency(Math.abs(walletBalance), language)}`}
+                balanceFormatted={`${walletBalance >= 0 ? '' : '-'}${formatCurrency(Math.abs(walletBalance), language, wallet.currency)}`}
                 currencySymbol={wallet.currency}
                 cardStyle={cardStyle}
                 color={wallet.color}
                 icon={wallet.icon || 'account-balance-wallet'}
-                isShared={Boolean(wallet.sharedWith)}
+                isShared={Boolean(sharedText)}
                 sharedLabel={sharedText ? (language === 'ar' ? `مشترك: ${sharedText}` : `Shared: ${sharedText}`) : undefined}
                 height={190}
               />
