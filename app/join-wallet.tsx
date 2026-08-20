@@ -60,7 +60,7 @@ export default function JoinWalletScreen() {
         await refresh();
         // Activate the joined wallet automatically
         try {
-          const rawWallets = await AsyncStorage.getItem('@masarif_wallets');
+          const rawWallets = await AsyncStorage.getItem('@mizan_wallets');
           if (rawWallets) {
             const list = JSON.parse(rawWallets);
             const joined = list.find((w: any) => w.shareCode === trimmed || w.id === `w_shared_${trimmed.toLowerCase()}` || w.name === result.walletName);
