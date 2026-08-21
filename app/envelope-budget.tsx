@@ -126,7 +126,7 @@ export default function EnvelopeBudgetScreen() {
           }}
           style={styles.backBtn}
         >
-          <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {language === 'ar' ? '✉️ ميزانية الظروف المالية (Zero-Based)' : '✉️ Envelope Budgeting'}

@@ -225,7 +225,7 @@ export default function AIAdvisorScreen() {
           }}
           style={styles.backBtn}
         >
-          <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <View style={{ alignItems: 'center' }}>
           <Text style={styles.headerTitle}>

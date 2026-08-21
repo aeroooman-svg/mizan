@@ -42,7 +42,7 @@ export default function PrivacyPolicyScreen() {
       {/* Header Bar */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || webTopInset) + 14 }]}>
         <Pressable onPress={handleBack} hitSlop={14} style={styles.backBtn}>
-          <Ionicons name={isAr ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>
           {isAr ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy'}

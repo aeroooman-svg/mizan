@@ -105,7 +105,7 @@ export default function JoinWalletScreen() {
             onPress={handleBack}
             style={styles.backBtn}
           >
-            <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>
             {isAr ? 'الانضمام لمحفظة' : 'Join Wallet'}

@@ -197,7 +197,7 @@ export default function ShareWalletScreen() {
           onPress={handleBack}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
         >
-          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {isAr ? 'مشاركة المحفظة' : 'Share Wallet'}

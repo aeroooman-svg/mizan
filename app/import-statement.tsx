@@ -139,7 +139,7 @@ export default function ImportStatementScreen() {
       {/* Header */}
       <View style={styles.headerBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {language === 'ar' ? '📄 استيراد كشف حساب بنكي' : '📄 Import Bank Statement'}

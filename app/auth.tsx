@@ -213,7 +213,7 @@ export default function AuthScreen() {
       <View style={styles.content}>
         {/* Back Button */}
         <Pressable onPress={handleBack} style={styles.backButton}>
-          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
 
         {/* Brand Header */}

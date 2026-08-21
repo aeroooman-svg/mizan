@@ -392,7 +392,7 @@ export default function TransactionsScreen() {
             </Text>
           )}
         </View>
-        <MaterialIcons name="chevron-right" size={16} color={colors.textTertiary} style={styles.chevron} />
+        <MaterialIcons name={language === 'ar' ? "chevron-left" : "chevron-right"} size={16} color={colors.textTertiary} style={styles.chevron} />
       </Pressable>
     );
   };

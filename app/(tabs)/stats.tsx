@@ -1443,7 +1443,7 @@ export default function StatsScreen() {
                       <Text style={styles.budgetLimitValue}>
                         {limit > 0 ? `${formatCurrency(limit)} ${currencySymbol}` : t.noBudget}
                       </Text>
-                      <MaterialIcons name="chevron-right" size={20} color={colors.textTertiary} />
+                      <MaterialIcons name={language === 'ar' ? "chevron-left" : "chevron-right"} size={20} color={colors.textTertiary} />
                     </View>
                   </Pressable>
                 );

@@ -1833,7 +1833,7 @@ export default function FinancialPlanScreen() {
                 {language === 'ar' ? 'افتح أوسمة الإنجاز وتنافس في التحديات المالية!' : 'Unlock achievement badges and compete in savings challenges!'}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#fff" />
+            <Ionicons name={language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={20} color="#fff" />
           </LinearGradient>
         </Pressable>
 

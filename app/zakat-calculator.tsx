@@ -144,7 +144,7 @@ export default function ZakatCalculatorScreen() {
           style={styles.backBtn}
           hitSlop={12}
         >
-          <Ionicons name={language === 'ar' ? 'arrow-forward' : 'arrow-back'} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {language === 'ar' ? '🕌 حاسبة الزكاة الشرعية' : '🕌 Zakat Calculator'}

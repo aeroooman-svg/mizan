@@ -759,7 +759,7 @@ export default function AddTransactionScreen() {
                   ? 'هل تريد تسجيل فاتورة أو مصروف متكرر؟ اضغط هنا' 
                   : 'Want to log a monthly bill or recurring expense? Click here'}
               </Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+              <Ionicons name={language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={14} color={Colors.primary} />
             </Pressable>
           )}
 

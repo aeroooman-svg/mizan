@@ -407,7 +407,7 @@ export default function RecurringListScreen() {
       {/* Top Header Bar */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || webTopInset) + 16 }]}>
         <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name={isAr ? "arrow-forward" : "arrow-back"} size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>{t.recurringTransactions}</Text>
         <Pressable

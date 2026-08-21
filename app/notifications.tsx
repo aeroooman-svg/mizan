@@ -298,7 +298,7 @@ export default function NotificationsScreen() {
             }}
             hitSlop={20}
           >
-            <Ionicons name={language === 'ar' ? 'chevron-forward' : 'chevron-back'} size={26} color="#FFF" />
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
           </Pressable>
           <Text style={styles.headerTitle}>
             {language === 'ar' ? 'الإشعارات' : 'Notifications'}
