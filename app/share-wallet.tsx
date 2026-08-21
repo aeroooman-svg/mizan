@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
+  Modal,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -28,7 +29,7 @@ export default function ShareWalletScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { language } = useLanguage();
-  const { wallets, selectedWallet } = useTransactions();
+  const { wallets, selectedWallet, refresh } = useTransactions();
   const params = useLocalSearchParams<{ walletId: string }>();
 
   const targetWalletId = params.walletId || selectedWallet?.id || (wallets.length > 0 ? wallets[0].id : null);
@@ -37,6 +38,8 @@ export default function ShareWalletScreen() {
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [members, setMembers] = useState<SharedMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [memberToRemove, setMemberToRemove] = useState<SharedMember | null>(null);
+  const [confirmStopSharing, setConfirmStopSharing] = useState(false);
   const isAr = language === 'ar';
 
   useEffect(() => {
@@ -118,26 +121,46 @@ export default function ShareWalletScreen() {
 
   const handleRemoveMember = (member: SharedMember) => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-    Alert.alert(
-      isAr ? 'إزالة عضو' : 'Remove Member',
-      isAr
-        ? `هل تريد إزالة ${member.username} من المحفظة المشتركة؟`
-        : `Remove ${member.username} from the shared wallet?`,
-      [
-        { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: isAr ? 'إزالة' : 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            if (!targetWalletId) return;
-            const success = await removeSharedMember(targetWalletId, member.userId);
-            if (success) {
-              setMembers(prev => prev.filter(m => m.userId !== member.userId));
-            }
-          },
-        },
-      ],
-    );
+    setMemberToRemove(member);
+  };
+
+  const executeRemoveMember = async () => {
+    if (!targetWalletId || !memberToRemove) return;
+    const target = memberToRemove;
+    setMemberToRemove(null);
+    try {
+      const success = await removeSharedMember(targetWalletId, target.userId, target.username);
+      if (success) {
+        setMembers(prev => prev.filter(m => m.userId !== target.userId && m.username !== target.username));
+        await refresh();
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      }
+    } catch (e) {
+      console.error('Failed to remove member:', e);
+    }
+  };
+
+  const executeStopSharing = async () => {
+    if (!targetWalletId) return;
+    setConfirmStopSharing(false);
+    setLoading(true);
+    try {
+      const { stopSharingWallet } = await import('@/lib/sharingService');
+      const ok = await stopSharingWallet(targetWalletId);
+      await refresh();
+      setLoading(false);
+      if (ok) {
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+        Alert.alert(
+          isAr ? 'تم بنجاح' : 'Success',
+          isAr ? 'تم إيقاف مشاركة المحفظة بنجاح وأصبحت خاصة بك فقط.' : 'Wallet sharing stopped successfully.',
+          [{ text: isAr ? 'حسناً' : 'OK', onPress: () => router.back() }]
+        );
+      }
+    } catch (e) {
+      setLoading(false);
+      console.error('Failed to stop sharing:', e);
+    }
   };
 
   const renderMember = ({ item }: { item: SharedMember }) => (
@@ -249,34 +272,7 @@ export default function ShareWalletScreen() {
                 <Pressable
                   onPress={() => {
                     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-                    Alert.alert(
-                      isAr ? 'إيقاف مشاركة المحفظة' : 'Stop Sharing Wallet',
-                      isAr
-                        ? 'هل تريد بالتأكيد إيقاف المشاركة؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة شخصية فقط.'
-                        : 'Are you sure you want to stop sharing? The share code will be revoked and members removed.',
-                      [
-                        { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-                        {
-                          text: isAr ? 'إيقاف المشاركة' : 'Stop Sharing',
-                          style: 'destructive',
-                          onPress: async () => {
-                            if (!targetWalletId) return;
-                            setLoading(true);
-                            const { stopSharingWallet } = await import('@/lib/sharingService');
-                            const ok = await stopSharingWallet(targetWalletId);
-                            setLoading(false);
-                            if (ok) {
-                              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-                              Alert.alert(
-                                isAr ? 'تم بنجاح' : 'Success',
-                                isAr ? 'تم إيقاف مشاركة المحفظة بنجاح وأصبحت خاصة بك فقط.' : 'Wallet sharing stopped successfully.',
-                                [{ text: isAr ? 'حسناً' : 'OK', onPress: () => router.back() }]
-                              );
-                            }
-                          },
-                        },
-                      ]
-                    );
+                    setConfirmStopSharing(true);
                   }}
                   style={({ pressed }) => [
                     {
@@ -313,6 +309,110 @@ export default function ShareWalletScreen() {
           }
         />
       )}
+
+      {/* Remove Member Confirmation Modal */}
+      <Modal
+        visible={!!memberToRemove}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setMemberToRemove(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setMemberToRemove(null)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="person-remove-outline" size={26} color="#EF4444" />
+              </View>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text, textAlign: 'center' }}>
+                {isAr ? 'إزالة عضو' : 'Remove Member'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                {isAr
+                  ? `هل تريد إزالة "${memberToRemove?.username}" من المحفظة المشتركة؟`
+                  : `Remove "${memberToRemove?.username}" from the shared wallet?`}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              <Pressable
+                onPress={() => setMemberToRemove(null)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.textSecondary }}>
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={executeRemoveMember}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                  {isAr ? 'إزالة' : 'Remove'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Stop Sharing Confirmation Modal */}
+      <Modal
+        visible={confirmStopSharing}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setConfirmStopSharing(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setConfirmStopSharing(false)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="link-outline" size={26} color="#EF4444" />
+              </View>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text, textAlign: 'center' }}>
+                {isAr ? 'إيقاف مشاركة المحفظة' : 'Stop Sharing Wallet'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                {isAr
+                  ? 'هل تريد بالتأكيد إيقاف المشاركة؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة شخصية فقط.'
+                  : 'Are you sure you want to stop sharing? The share code will be revoked and members removed.'}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              <Pressable
+                onPress={() => setConfirmStopSharing(false)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.textSecondary }}>
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={executeStopSharing}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                  {isAr ? 'إيقاف المشاركة' : 'Stop Sharing'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

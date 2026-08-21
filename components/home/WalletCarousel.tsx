@@ -7,6 +7,7 @@ import {
   Pressable,
   Platform,
   Modal,
+  Alert,
   useWindowDimensions,
   TextInput,
 } from 'react-native';
@@ -56,6 +57,7 @@ export default function WalletCarousel({
   const styles = getStyles(colors, cardWidth, cardGap);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
   const [adjustWallet, setAdjustWallet] = useState<Wallet | null>(null);
+  const [confirmStopShareWallet, setConfirmStopShareWallet] = useState<Wallet | null>(null);
   const [targetBalanceInput, setTargetBalanceInput] = useState('');
   const { updateWallet, refresh } = useTransactions();
   const scrollRef = useRef<ScrollView>(null);
@@ -521,38 +523,7 @@ export default function WalletCarousel({
                       const w = actionWallet;
                       setActionWallet(null);
                       try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-                      Alert.alert(
-                        language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet',
-                        language === 'ar'
-                          ? `هل أنت متأكد من إيقاف مشاركة محفظة "${w.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
-                          : `Are you sure you want to stop sharing "${w.name}"? The share code will be revoked and members removed.`,
-                        [
-                          { text: language === 'ar' ? 'إلغاء' : 'Cancel', style: 'cancel' },
-                          {
-                            text: language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                const { stopSharingWallet } = await import('@/lib/sharingService');
-                                await stopSharingWallet(w.id);
-                                if (onEditWallet) {
-                                  const updated = { ...w };
-                                  delete updated.shareCode;
-                                  delete updated.sharedWith;
-                                  onEditWallet(updated);
-                                }
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                Alert.alert(
-                                  language === 'ar' ? 'تم بنجاح' : 'Success',
-                                  language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
-                                );
-                              } catch (e) {
-                                console.error('Failed to stop sharing:', e);
-                              }
-                            },
-                          },
-                        ]
-                      );
+                      setConfirmStopShareWallet(w);
                     }}
                     style={{
                       flexDirection: 'row',
@@ -585,12 +556,9 @@ export default function WalletCarousel({
                     setActionWallet(null);
                     const updated = { ...w, excludeFromTotal: !w.excludeFromTotal };
                     try {
-                      const { updateWalletInStorage } = require('@/lib/storage');
-                      await updateWalletInStorage(updated);
+                      await updateWallet(updated);
+                      await refresh();
                     } catch (e) {}
-                    if (onEditWallet) {
-                      onEditWallet(updated);
-                    }
                   }}
                   style={{
                     flexDirection: 'row',
@@ -745,6 +713,143 @@ export default function WalletCarousel({
                 </View>
               </>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm Stop Sharing Modal */}
+      <Modal
+        visible={!!confirmStopShareWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setConfirmStopShareWallet(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+          onPress={() => setConfirmStopShareWallet(null)}
+        >
+          <Pressable
+            style={{
+              width: '100%',
+              maxWidth: 400,
+              backgroundColor: colors.surface,
+              borderRadius: 22,
+              padding: 22,
+              borderWidth: 1,
+              borderColor: colors.border,
+              gap: 16,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="link-outline" size={28} color="#EF4444" />
+              </View>
+              <Text
+                style={{
+                  fontFamily: 'Cairo_700Bold',
+                  fontSize: 17,
+                  color: colors.text,
+                  textAlign: 'center',
+                }}
+              >
+                {language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet'}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: 'Cairo_400Regular',
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  lineHeight: 20,
+                }}
+              >
+                {language === 'ar'
+                  ? `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
+                  : `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <Pressable
+                onPress={() => setConfirmStopShareWallet(null)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'Cairo_700Bold',
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                  }}
+                >
+                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={async () => {
+                  const target = confirmStopShareWallet;
+                  setConfirmStopShareWallet(null);
+                  if (!target) return;
+                  try {
+                    const { stopSharingWallet } = await import('@/lib/sharingService');
+                    await stopSharingWallet(target.id);
+                    const updated = { ...target };
+                    delete updated.shareCode;
+                    delete updated.sharedWith;
+                    await updateWallet(updated);
+                    await refresh();
+                    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+                    Alert.alert(
+                      language === 'ar' ? 'تم بنجاح' : 'Success',
+                      language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
+                    );
+                  } catch (e) {
+                    console.error('Failed to stop sharing:', e);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: '#EF4444',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'Cairo_700Bold',
+                    fontSize: 14,
+                    color: '#FFF',
+                  }}
+                >
+                  {language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing'}
+                </Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

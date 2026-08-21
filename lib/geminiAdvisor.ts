@@ -67,7 +67,7 @@ export async function askGeminiFinancialAdvisor(
   }
 
   try {
-    const walletName = context.selectedWallet?.name || (isAr ? 'المحفظة' : 'Wallet');
+    const walletName = context.selectedWallet?.name || (context.language === 'ar' ? 'المحفظة' : 'Wallet');
     const systemPrompt = `You are MIZAN AI, a top financial advisor for personal finance. 
 User Language: ${context.language}.
 Financial Summary for ${walletName}:

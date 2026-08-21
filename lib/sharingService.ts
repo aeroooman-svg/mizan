@@ -487,18 +487,49 @@ export async function syncAllSharedWallets(): Promise<void> {
 export async function getSharedMembers(walletId: string): Promise<SharedMember[]> {
   try {
     const members = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
-    if (members.length > 0) {
+    if (members && members.length > 0) {
       return members.map((m: any) => ({
-        id: m.id,
-        userId: m.user_id,
+        id: m.id || `mem_${m.user_id}`,
+        userId: m.user_id || m.id,
         username: m.username,
         role: m.role as 'owner' | 'editor' | 'viewer',
-        joinedAt: m.joined_at,
+        joinedAt: m.joined_at || new Date().toISOString(),
       }));
     }
   } catch (e) {
     console.warn('getSharedMembers error:', e);
   }
+
+  // Fallback: parse members from local or remote wallet shared_with JSON
+  try {
+    const localWallets = await getLocalWallets();
+    const localW = localWallets.find((w: any) => w.id === walletId);
+    let sharedWithStr = localW?.sharedWith;
+
+    if (!sharedWithStr) {
+      const remoteWallets = await supabaseGet('wallets', `id=eq.${walletId}&select=shared_with`);
+      if (remoteWallets.length > 0) {
+        sharedWithStr = remoteWallets[0].shared_with;
+      }
+    }
+
+    if (sharedWithStr) {
+      const parsed = typeof sharedWithStr === 'string' ? JSON.parse(sharedWithStr) : sharedWithStr;
+      const list = Array.isArray(parsed) ? parsed : (parsed?.members || []);
+      if (Array.isArray(list) && list.length > 0) {
+        return list.map((m: any, idx: number) => ({
+          id: m.id || m.userId || `mem_${idx}`,
+          userId: m.userId || `user_${idx}`,
+          username: m.username || (idx === 0 ? 'المالك' : 'عضو'),
+          role: (m.role as any) || (idx === 0 ? 'owner' : 'editor'),
+          joinedAt: m.joinedAt || new Date().toISOString(),
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback getSharedMembers error:', e);
+  }
+
   return [];
 }
 
@@ -523,18 +554,26 @@ export async function updateSharedMemberRole(
 
 /**
  * Stop sharing a wallet completely (owner only).
- * Revokes share code and removes all members from Supabase.
+ * Revokes share code and removes all members from Supabase and local storage.
  */
 export async function stopSharingWallet(walletId: string): Promise<boolean> {
   try {
     // 1. Delete all shares for this wallet from Supabase
-    await supabaseDelete('wallet_shares', `wallet_id=eq.${walletId}`);
+    try {
+      await supabaseDelete('wallet_shares', `wallet_id=eq.${walletId}`);
+    } catch (e) {
+      console.warn('stopSharingWallet supabaseDelete wallet_shares error:', e);
+    }
 
     // 2. Clear share_code and shared_with in Supabase wallets table
-    await supabaseUpdate('wallets', `id=eq.${walletId}`, {
-      share_code: null,
-      shared_with: null,
-    });
+    try {
+      await supabaseUpdate('wallets', `id=eq.${walletId}`, {
+        share_code: null,
+        shared_with: null,
+      });
+    } catch (e) {
+      console.warn('stopSharingWallet supabaseUpdate wallets error:', e);
+    }
 
     // 3. Update local wallet record
     const localWallets = await getLocalWallets();
@@ -545,7 +584,21 @@ export async function stopSharingWallet(walletId: string): Promise<boolean> {
       await saveLocalWallets(localWallets);
     }
 
-    // 4. Clear from SHARE_CODES_KEY cache
+    // 4. Update via storage.ts to ensure @masarif_wallets and @mizan_wallets are kept in sync
+    try {
+      const { getWallets, updateWallet } = await import('./storage');
+      const storedWallets = await getWallets();
+      const target = storedWallets.find((w: any) => w.id === walletId);
+      if (target) {
+        delete target.shareCode;
+        delete target.sharedWith;
+        await updateWallet(target);
+      }
+    } catch (e) {
+      console.warn('stopSharingWallet storage update error:', e);
+    }
+
+    // 5. Clear from SHARE_CODES_KEY cache
     try {
       const codesData = await AsyncStorage.getItem(SHARE_CODES_KEY);
       if (codesData) {
@@ -558,24 +611,38 @@ export async function stopSharingWallet(walletId: string): Promise<boolean> {
     return true;
   } catch (e) {
     console.error('stopSharingWallet error:', e);
-    return false;
+    // Even if remote operations throw, ensure local state is cleaned up
+    try {
+      const localWallets = await getLocalWallets();
+      const wIdx = localWallets.findIndex((w: any) => w.id === walletId);
+      if (wIdx !== -1) {
+        delete localWallets[wIdx].shareCode;
+        delete localWallets[wIdx].sharedWith;
+        await saveLocalWallets(localWallets);
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
 /**
  * Remove a member from shared wallet and update Supabase & local state.
  */
-export async function removeSharedMember(walletId: string, userId: string): Promise<boolean> {
+export async function removeSharedMember(walletId: string, userId: string, username?: string): Promise<boolean> {
   try {
-    // 1. Delete from Supabase wallet_shares
-    await supabaseDelete(
-      'wallet_shares',
-      `wallet_id=eq.${walletId}&user_id=eq.${userId}`
-    );
+    // 1. Delete from Supabase wallet_shares (by userId and by username if available)
+    try {
+      await supabaseDelete('wallet_shares', `wallet_id=eq.${walletId}&user_id=eq.${userId}`);
+      if (username) {
+        await supabaseDelete('wallet_shares', `wallet_id=eq.${walletId}&username=eq.${encodeURIComponent(username)}`);
+      }
+    } catch (e) {
+      console.warn('removeSharedMember supabaseDelete error:', e);
+    }
 
-    // 2. Fetch remaining members and update wallets.shared_with in Supabase and locally
-    const remaining = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
-    
+    // 2. Fetch current wallet data from local storage
     const localWallets = await getLocalWallets();
     const wIdx = localWallets.findIndex((w: any) => w.id === walletId);
     
@@ -583,38 +650,76 @@ export async function removeSharedMember(walletId: string, userId: string): Prom
     let cardStyle = 'classic';
     let icon = 'account-balance-wallet';
     let color = '#0D7C66';
-    
+    let membersList: any[] = [];
+
     if (wIdx !== -1) {
-      initialBalance = Number(localWallets[wIdx].initialBalance) || 0;
-      cardStyle = localWallets[wIdx].cardStyle || 'classic';
-      icon = localWallets[wIdx].icon || 'account-balance-wallet';
-      color = localWallets[wIdx].color || '#0D7C66';
+      const w = localWallets[wIdx];
+      initialBalance = Number(w.initialBalance) || 0;
+      cardStyle = w.cardStyle || 'classic';
+      icon = w.icon || 'account-balance-wallet';
+      color = w.color || '#0D7C66';
+      if (w.sharedWith) {
+        try {
+          const parsed = typeof w.sharedWith === 'string' ? JSON.parse(w.sharedWith) : w.sharedWith;
+          membersList = Array.isArray(parsed) ? parsed : (parsed?.members || []);
+        } catch {}
+      }
     }
 
-    const membersList = remaining.map((m: any) => ({
-      userId: m.user_id,
-      username: m.username,
-      role: m.role,
-    }));
+    // Try to get members from Supabase wallet_shares too
+    try {
+      const remainingFromDb = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
+      if (remainingFromDb && remainingFromDb.length > 0) {
+        membersList = remainingFromDb.map((m: any) => ({
+          userId: m.user_id,
+          username: m.username,
+          role: m.role,
+        }));
+      }
+    } catch {}
 
-    const hasOtherMembers = membersList.length > 1;
+    // Filter out the member being removed (by userId and username)
+    const remainingMembers = membersList.filter((m: any) => {
+      if (m.userId && m.userId === userId) return false;
+      if (username && m.username && m.username.toLowerCase() === username.toLowerCase()) return false;
+      return true;
+    });
+
+    const hasOtherMembers = remainingMembers.some((m: any) => m.role !== 'owner');
 
     const updatedMetadata = JSON.stringify({
-      members: membersList,
+      members: remainingMembers,
       initialBalance,
       cardStyle,
       icon,
       color,
     });
 
-    await supabaseUpdate('wallets', `id=eq.${walletId}`, {
-      shared_with: hasOtherMembers ? updatedMetadata : null,
-    });
+    // 3. Update Supabase wallets table
+    try {
+      await supabaseUpdate('wallets', `id=eq.${walletId}`, {
+        shared_with: hasOtherMembers ? updatedMetadata : null,
+      });
+    } catch (e) {
+      console.warn('removeSharedMember supabaseUpdate error:', e);
+    }
 
+    // 4. Update Local storage
     if (wIdx !== -1) {
       localWallets[wIdx].sharedWith = hasOtherMembers ? updatedMetadata : undefined;
       await saveLocalWallets(localWallets);
     }
+
+    // 5. Update storage.ts
+    try {
+      const { getWallets, updateWallet } = await import('./storage');
+      const storedWallets = await getWallets();
+      const target = storedWallets.find((w: any) => w.id === walletId);
+      if (target) {
+        target.sharedWith = hasOtherMembers ? updatedMetadata : undefined;
+        await updateWallet(target);
+      }
+    } catch (e) {}
 
     return true;
   } catch (e) {
@@ -631,32 +736,36 @@ export async function leaveSharedWallet(walletId: string): Promise<boolean> {
     const username = await getCurrentUsername();
     
     // 1. Delete this member from Supabase wallet_shares
-    await supabaseDelete(
-      'wallet_shares',
-      `wallet_id=eq.${walletId}&username=eq.${encodeURIComponent(username)}`
-    );
+    try {
+      await supabaseDelete(
+        'wallet_shares',
+        `wallet_id=eq.${walletId}&username=eq.${encodeURIComponent(username)}`
+      );
+    } catch {}
 
     // 2. Update Supabase wallets.shared_with
-    const remaining = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
-    const membersList = remaining.map((m: any) => ({
-      userId: m.user_id,
-      username: m.username,
-      role: m.role,
-    }));
+    try {
+      const remaining = await supabaseGet('wallet_shares', `wallet_id=eq.${walletId}&select=*`);
+      const membersList = remaining.map((m: any) => ({
+        userId: m.user_id,
+        username: m.username,
+        role: m.role,
+      }));
 
-    const hasOtherMembers = membersList.length > 1;
+      const hasOtherMembers = membersList.length > 1;
 
-    const remoteWallets = await supabaseGet('wallets', `id=eq.${walletId}&select=*`);
-    if (remoteWallets.length > 0) {
-      let meta: any = {};
-      try {
-        meta = JSON.parse(remoteWallets[0].shared_with) || {};
-      } catch {}
-      meta.members = membersList;
-      await supabaseUpdate('wallets', `id=eq.${walletId}`, {
-        shared_with: hasOtherMembers ? JSON.stringify(meta) : null,
-      });
-    }
+      const remoteWallets = await supabaseGet('wallets', `id=eq.${walletId}&select=*`);
+      if (remoteWallets.length > 0) {
+        let meta: any = {};
+        try {
+          meta = JSON.parse(remoteWallets[0].shared_with) || {};
+        } catch {}
+        meta.members = membersList;
+        await supabaseUpdate('wallets', `id=eq.${walletId}`, {
+          shared_with: hasOtherMembers ? JSON.stringify(meta) : null,
+        });
+      }
+    } catch {}
 
     // 3. Remove wallet and its transactions from this member's local device
     const localWallets = await getLocalWallets();
@@ -666,6 +775,11 @@ export async function leaveSharedWallet(walletId: string): Promise<boolean> {
     const localTxns = await getLocalTransactions();
     const filteredTxns = localTxns.filter((t: any) => t.walletId !== walletId);
     await saveLocalTransactions(filteredTxns);
+
+    try {
+      const { deleteWallet } = await import('./storage');
+      await deleteWallet(walletId);
+    } catch {}
 
     return true;
   } catch (e) {
