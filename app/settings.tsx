@@ -31,6 +31,13 @@ import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAutoSmsSettings, setAutoSmsSettings, clearProcessedSmsHistory } from '@/lib/autoSmsListener';
 import SmsAutomationGuideModal from '@/components/SmsAutomationGuideModal';
+import {
+  getNotificationSettings,
+  saveNotificationSettings,
+  sendImmediateNotification,
+  NotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS,
+} from '@/lib/NotificationService';
 const safeHaptic = {
   selection: () => {
     try {
@@ -82,10 +89,53 @@ export default function SettingsScreen() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [userGoal, setUserGoal] = useState<string>('saving');
 
+  // Smart Notifications States
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+
   // Restore Backup Modal States
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [restoreJsonInput, setRestoreJsonInput] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
+
+  useEffect(() => {
+    async function loadNotifSettings() {
+      const s = await getNotificationSettings();
+      setNotifSettings(s);
+    }
+    loadNotifSettings();
+  }, []);
+
+  const handleToggleDailyReminder = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ dailyReminderEnabled: val });
+    setNotifSettings(updated);
+  };
+
+  const handleToggleBudgetAlerts = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ budgetAlertsEnabled: val });
+    setNotifSettings(updated);
+  };
+
+  const handleToggleMonthlyDigest = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ monthlyDigestEnabled: val });
+    setNotifSettings(updated);
+  };
+
+  const handleTestNotification = async () => {
+    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
+    await sendImmediateNotification(
+      isAr ? '🔔 تجربة تنبيه ميزان المالي' : '🔔 Mizan Notification Test',
+      isAr
+        ? 'نظام التنبيهات الذكي يعمل بكفاءة! ستصلك التذكيرات وتنبيهات الميزانية في مواعيدها.'
+        : 'Smart notifications are working properly! You will receive timely budget and daily alerts.'
+    );
+    Alert.alert(
+      isAr ? 'تم الإرسال 🚀' : 'Sent 🚀',
+      isAr ? 'تم إرسال إشعار تجريبي إلى جهازك بنجاح.' : 'A test notification has been dispatched to your device.'
+    );
+  };
 
   useEffect(() => {
     async function loadUserGoal() {
@@ -117,6 +167,7 @@ export default function SettingsScreen() {
     setAutoSmsEnabledState(value);
     await setAutoSmsSettings({ enabled: value });
   };
+
 
   const handleToggleAutoSmsAutoSave = async (value: boolean) => {
     safeHaptic.selection();
@@ -715,6 +766,111 @@ export default function SettingsScreen() {
               </View>
             </Pressable>
           </View>
+
+          {/* Section: Smart Notifications & Reminders */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="notifications-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'الإشعارات والتذكيرات الذكية' : 'Smart Notifications & Alerts'}</Text>
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'التذكير اليومي المسائي' : 'Daily Logging Reminder'}</Text>
+                <Text style={styles.switchSubtext}>
+                  {isAr ? 'تنبيه لطيف الساعة 9:00 مساءً لتسجيل مصاريف اليوم' : 'Daily 9:00 PM nudge to log your transactions'}
+                </Text>
+              </View>
+              <Switch
+                value={notifSettings.dailyReminderEnabled}
+                onValueChange={handleToggleDailyReminder}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'تنبيهات تجاوز الميزانية' : 'Budget Limit Alerts'}</Text>
+                <Text style={styles.switchSubtext}>
+                  {isAr ? 'إشعار فوري عند الوصول إلى 80% أو 100% من ميزانية أي فئة' : 'Instant alerts when reaching 80% or 100% of category budget'}
+                </Text>
+              </View>
+              <Switch
+                value={notifSettings.budgetAlertsEnabled}
+                onValueChange={handleToggleBudgetAlerts}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'التقرير المالي الشهري' : 'Monthly Financial Digest'}</Text>
+                <Text style={styles.switchSubtext}>
+                  {isAr ? 'ملخص إنجازاتك ونسبة ادخارك أول كل شهر' : 'Monthly progress & savings rate digest on the 1st'}
+                </Text>
+              </View>
+              <Switch
+                value={notifSettings.monthlyDigestEnabled}
+                onValueChange={handleToggleMonthlyDigest}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <Pressable
+              onPress={handleTestNotification}
+              style={({ pressed }) => [
+                styles.menuRowItem,
+                { backgroundColor: colors.primary + '10', borderRadius: 12 },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="paper-plane-outline" size={16} color={colors.primary} />
+                <Text style={[styles.menuRowText, { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
+                  {isAr ? 'إرسال إشعار تجريبي فوري' : 'Send Instant Test Notification'}
+                </Text>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          {/* Section: Home Screen Widgets Hub */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="apps-outline" size={18} color="#3B82F6" />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'ودجت الشاشة الرئيسية' : 'Home Screen Widgets'}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/widgets-setup' as any);
+              }}
+              style={({ pressed }) => [
+                styles.menuRowItem,
+                { backgroundColor: '#3B82F615', borderColor: '#3B82F640', borderWidth: 1, borderRadius: 12 },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="color-palette-outline" size={18} color="#3B82F6" />
+                <View>
+                  <Text style={[styles.menuRowText, { color: '#3B82F6', fontFamily: 'Cairo_700Bold' }]}>
+                    {isAr ? 'معاينة وإعداد ودجت الهاتف' : 'Preview & Setup Widgets'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_500Medium', fontSize: 11, color: colors.textSecondary }}>
+                    {isAr ? 'إضافة بطاقة رصيدك وصحتك المالية لشاشتك الرئيسية' : 'Add balance & health score card to Home Screen'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color="#3B82F6" />
+            </Pressable>
+          </View>
+
 
           {/* Section 5: Data & Backup Management */}
           <View style={styles.sectionCard}>

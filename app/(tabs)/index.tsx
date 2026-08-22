@@ -61,6 +61,7 @@ import FinancialJourneySlider from '@/components/home/FinancialJourneySlider';
 import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
+import VoiceTransactionModal from '@/components/VoiceTransactionModal';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -281,6 +282,7 @@ export default function HomeScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false);
   const [isRemittanceModalOpen, setIsRemittanceModalOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [remittanceStats, setRemittanceStats] = useState<RemittanceStats | null>(null);
   const [undoState, setUndoState] = useState<{ visible: boolean; message: string; action: () => void } | null>(null);
 
@@ -591,6 +593,40 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Pressable
+              style={({ pressed }) => [
+                styles.drawerLinkBtn,
+                { backgroundColor: '#00E67615', borderColor: '#00E67640', borderWidth: 1 },
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                setIsVoiceModalOpen(true);
+              }}
+            >
+              <Ionicons name="mic" size={22} color="#00E676" />
+              <Text style={[styles.drawerLinkText, { color: '#00E676', fontFamily: 'Cairo_700Bold' }]}>
+                {language === 'ar' ? '🎙️ التسجيل الصوتي الذكي (Voice)' : '🎙️ Smart Voice Entry (Voice)'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.drawerLinkBtn,
+                { backgroundColor: '#3B82F615', borderColor: '#3B82F640', borderWidth: 1 },
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => {
+                setIsMenuOpen(false);
+                router.push('/widgets-setup' as any);
+              }}
+            >
+              <Ionicons name="apps-outline" size={22} color="#3B82F6" />
+              <Text style={[styles.drawerLinkText, { color: '#3B82F6', fontFamily: 'Cairo_700Bold' }]}>
+                {language === 'ar' ? '📱 ودجت الشاشة الرئيسية' : '📱 Home Screen Widgets'}
+              </Text>
+            </Pressable>
+
+            <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => {
                 setIsMenuOpen(false);
@@ -602,6 +638,7 @@ export default function HomeScreen() {
                 {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
               </Text>
             </Pressable>
+
 
             <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
@@ -1048,7 +1085,20 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setIsVoiceModalOpen(true);
+              }}
+              style={({ pressed }) => [
+                styles.headerIconBtn,
+                { backgroundColor: '#00E67618', borderColor: '#00E67640', borderWidth: 1 },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Ionicons name="mic" size={20} color="#00E676" />
+            </Pressable>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1074,6 +1124,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
+
 
         {/* 3D Bank Credit Cards Carousel */}
         <WalletCarousel
@@ -1537,10 +1588,20 @@ export default function HomeScreen() {
         onCancel={() => setConfirmModalState(prev => ({ ...prev, visible: false }))}
       />
 
+      {/* Smart Voice Entry Modal */}
+      <VoiceTransactionModal
+        visible={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSuccess={() => {
+          refresh();
+        }}
+      />
+
       {renderMenuDrawer()}
     </LinearGradient>
   );
 }
+
 
 
 

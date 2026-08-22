@@ -1538,9 +1538,10 @@ export default function FinancialPlanScreen() {
 
                     {ref.q4 ? (
                       <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                        "{ref.q4}"
+                        {`"${ref.q4}"`}
                       </Text>
                     ) : null}
+
                   </View>
                 ))}
               </View>

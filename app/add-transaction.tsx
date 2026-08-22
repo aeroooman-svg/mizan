@@ -37,6 +37,7 @@ import { parseBankSMS } from '@/lib/smsParser';
 import { getLoggedInUser } from '@/lib/syncService';
 import ModernDatePickerModal from '@/components/ModernDatePickerModal';
 import ModernTimePickerModal from '@/components/ModernTimePickerModal';
+import VoiceTransactionModal from '@/components/VoiceTransactionModal';
 
 type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -163,6 +164,7 @@ export default function AddTransactionScreen() {
   // Smart Input States
   const [smartInputText, setSmartInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [smartMessage, setSmartMessage] = useState('');
   
   const [toWalletId, setToWalletId] = useState<string>(existingTxn?.toWalletId || '');
@@ -803,7 +805,10 @@ export default function AddTransactionScreen() {
 
               {/* 2. Voice Input Button */}
               <Pressable
-                onPress={startSpeechRecognition}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setIsVoiceModalOpen(true);
+                }}
                 style={[
                   styles.smartActionBtn,
                   { backgroundColor: colors.primary + '14' },
@@ -813,11 +818,12 @@ export default function AddTransactionScreen() {
                 hitSlop={4}
               >
                 <Ionicons 
-                  name={isRecording ? "mic" : "mic-outline"} 
+                  name="mic" 
                   size={18} 
-                  color={isRecording ? '#FFFFFF' : colors.primary} 
+                  color={colors.primary} 
                 />
               </Pressable>
+
 
               {/* 3. Smart OCR Camera Button */}
               <Pressable
@@ -1543,9 +1549,19 @@ export default function AddTransactionScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* Voice-to-Transaction AI Modal */}
+      <VoiceTransactionModal
+        visible={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSuccess={() => {
+          router.replace('/');
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
+
 
 const getStyles = (colors: any) => StyleSheet.create({
   container: {
