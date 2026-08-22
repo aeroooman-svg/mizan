@@ -676,55 +676,12 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => {
                 setIsMenuOpen(false);
-                setIsRemittanceModalOpen(true);
-              }}
-            >
-              <Ionicons name="paper-plane-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'إرسال حوالة للبيت' : 'Send Family Remittance'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                if (selectedWallet) {
-                  router.push(`/share-wallet?walletId=${selectedWallet.id}` as any);
-                } else {
-                  Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى اختيار محفظة أولاً' : 'Select a wallet first');
-                }
-              }}
-            >
-              <Ionicons name="share-social-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'مشاركة المحفظة الحالية' : 'Share Current Wallet'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
                 router.push('/join-wallet' as any);
               }}
             >
               <Ionicons name="link-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
                 {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/envelope-budget' as any);
-              }}
-            >
-              <Ionicons name="mail-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budgeting'}
               </Text>
             </Pressable>
 
@@ -741,31 +698,7 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/import-statement' as any);
-              }}
-            >
-              <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'الربط البنكي واستيراد الكشوفات' : 'Bank Sync & Statement Import'}
-              </Text>
-            </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/privacy-policy' as any);
-              }}
-            >
-              <Ionicons name="shield-checkmark-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}
-              </Text>
-            </Pressable>
           </ScrollView>
 
           <Pressable onPress={() => setIsMenuOpen(false)} style={styles.drawerCloseBtn}>
@@ -1324,55 +1257,12 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
-                  setIsRemittanceModalOpen(true);
-                }}
-              >
-                <Ionicons name="paper-plane-outline" size={22} color={Colors.primary} />
-                <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'إرسال حوالة للبيت' : 'Send Family Remittance'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-                onPress={() => {
-                  setIsMenuOpen(false);
-                  if (selectedWallet) {
-                    router.push(`/share-wallet?walletId=${selectedWallet.id}` as any);
-                  } else {
-                    Alert.alert(language === 'ar' ? 'تنبيه' : 'Notice', language === 'ar' ? 'يرجى اختيار محفظة أولاً' : 'Select a wallet first');
-                  }
-                }}
-              >
-                <Ionicons name="share-social-outline" size={22} color={Colors.primary} />
-                <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'مشاركة المحفظة الحالية' : 'Share Current Wallet'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-                onPress={() => {
-                  setIsMenuOpen(false);
                   router.push('/join-wallet' as any);
                 }}
               >
                 <Ionicons name="link-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
                   {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-                onPress={() => {
-                  setIsMenuOpen(false);
-                  router.push('/envelope-budget' as any);
-                }}
-              >
-                <Ionicons name="mail-outline" size={22} color={Colors.primary} />
-                <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'ميزانية الأظرفة' : 'Envelope Budgeting'}
                 </Text>
               </Pressable>
 
@@ -1389,18 +1279,6 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-                onPress={() => {
-                  setIsMenuOpen(false);
-                  router.push('/import-statement' as any);
-                }}
-              >
-                <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
-                <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? '📄 الربط البنكي واستيراد الكشوفات' : '📄 Bank Sync & Statement Import'}
-                </Text>
-              </Pressable>
 
               <Pressable
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
