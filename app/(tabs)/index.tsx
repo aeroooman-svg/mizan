@@ -593,40 +593,6 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Pressable
-              style={({ pressed }) => [
-                styles.drawerLinkBtn,
-                { backgroundColor: '#00E67615', borderColor: '#00E67640', borderWidth: 1 },
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                setIsVoiceModalOpen(true);
-              }}
-            >
-              <Ionicons name="mic" size={22} color="#00E676" />
-              <Text style={[styles.drawerLinkText, { color: '#00E676', fontFamily: 'Cairo_700Bold' }]}>
-                {language === 'ar' ? '🎙️ التسجيل الصوتي الذكي (Voice)' : '🎙️ Smart Voice Entry (Voice)'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.drawerLinkBtn,
-                { backgroundColor: '#3B82F615', borderColor: '#3B82F640', borderWidth: 1 },
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => {
-                setIsMenuOpen(false);
-                router.push('/widgets-setup' as any);
-              }}
-            >
-              <Ionicons name="apps-outline" size={22} color="#3B82F6" />
-              <Text style={[styles.drawerLinkText, { color: '#3B82F6', fontFamily: 'Cairo_700Bold' }]}>
-                {language === 'ar' ? '📱 ودجت الشاشة الرئيسية' : '📱 Home Screen Widgets'}
-              </Text>
-            </Pressable>
-
-            <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => {
                 setIsMenuOpen(false);
@@ -638,6 +604,7 @@ export default function HomeScreen() {
                 {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
               </Text>
             </Pressable>
+
 
 
             <Pressable
