@@ -1,20 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const RATES_CACHE_KEY = '@masarif_exchange_rates';
-const RATES_CACHE_TIME_KEY = '@masarif_exchange_rates_time';
+const RATES_CACHE_KEY = '@masarif_exchange_rates_v2';
+const RATES_CACHE_TIME_KEY = '@masarif_exchange_rates_time_v2';
 
 // Live fallback rates relative to USD (1 USD = X Currency)
 export const FALLBACK_RATES: Record<string, number> = {
   USD: 1.0,
-  EGP: 51.3,   // 1 USD = ~51.3 EGP
-  KWD: 0.31,   // 1 USD = ~0.31 KWD (1 KWD = ~3.23 USD)
+  EGP: 50.88,  // 1 USD = ~50.88 EGP
   SAR: 3.75,
-  AED: 3.67,
-  EUR: 0.88,
-  GBP: 0.75,
+  AED: 3.6725,
+  KWD: 0.3055, // 1 KWD = ~3.27 USD
   QAR: 3.64,
   BHD: 0.376,
   OMR: 0.385,
+  JOD: 0.709,
+  EUR: 0.856,
+  GBP: 0.745,
+  TRY: 38.2,
+  CAD: 1.38,
+  CHF: 0.81,
+  MAD: 9.85,
+  DZD: 133.5,
+  TND: 3.08,
 };
 
 export interface ExchangeRatesResponse {
@@ -38,9 +45,9 @@ export async function getExchangeRatesDetails(forceRefresh = false): Promise<Rat
     const cachedTime = await AsyncStorage.getItem(RATES_CACHE_TIME_KEY);
     const cachedRates = await AsyncStorage.getItem(RATES_CACHE_KEY);
     
-    // 2-hour cache by default unless forceRefresh is requested
-    const twoHours = 2 * 60 * 60 * 1000;
-    if (!forceRefresh && cachedTime && cachedRates && Date.now() - parseInt(cachedTime, 10) < twoHours) {
+    // 15-minute cache for freshness unless forceRefresh is true
+    const fifteenMinutes = 15 * 60 * 1000;
+    if (!forceRefresh && cachedTime && cachedRates && Date.now() - parseInt(cachedTime, 10) < fifteenMinutes) {
       return {
         rates: JSON.parse(cachedRates),
         isLive: true,
@@ -48,27 +55,25 @@ export async function getExchangeRatesDetails(forceRefresh = false): Promise<Rat
       };
     }
     
-    // Endpoint 1: open.er-api.com
+    // Endpoint 1: open.er-api.com (Reliable, free, no key needed, real-time rates)
     try {
-      const response = await fetch('https://open.er-api.com/v6/latest/USD');
+      const response = await fetch('https://open.er-api.com/v6/latest/USD', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (response.ok) {
         const data: ExchangeRatesResponse = await response.json();
         if (data && data.rates) {
-          const filteredRates: Record<string, number> = {};
-          Object.keys(FALLBACK_RATES).forEach((currency) => {
-            if (data.rates[currency]) {
-              filteredRates[currency] = data.rates[currency];
-            } else {
-              filteredRates[currency] = FALLBACK_RATES[currency];
-            }
+          const mergedRates: Record<string, number> = { ...FALLBACK_RATES };
+          Object.keys(data.rates).forEach((currency) => {
+            mergedRates[currency] = data.rates[currency];
           });
           
           const nowStr = new Date().toISOString();
-          await AsyncStorage.setItem(RATES_CACHE_KEY, JSON.stringify(filteredRates));
+          await AsyncStorage.setItem(RATES_CACHE_KEY, JSON.stringify(mergedRates));
           await AsyncStorage.setItem(RATES_CACHE_TIME_KEY, Date.now().toString());
           
           return {
-            rates: filteredRates,
+            rates: mergedRates,
             isLive: true,
             lastUpdated: nowStr,
           };
@@ -80,26 +85,26 @@ export async function getExchangeRatesDetails(forceRefresh = false): Promise<Rat
 
     // Endpoint 2: fawazahmed0 currency-api fallback
     try {
-      const response2 = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+      const response2 = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (response2.ok) {
         const data2 = await response2.json();
         if (data2 && data2.usd) {
-          const filteredRates: Record<string, number> = {};
+          const mergedRates: Record<string, number> = { ...FALLBACK_RATES };
           Object.keys(FALLBACK_RATES).forEach((currency) => {
             const lowerKey = currency.toLowerCase();
             if (data2.usd[lowerKey]) {
-              filteredRates[currency] = data2.usd[lowerKey];
-            } else {
-              filteredRates[currency] = FALLBACK_RATES[currency];
+              mergedRates[currency] = data2.usd[lowerKey];
             }
           });
 
           const nowStr = new Date().toISOString();
-          await AsyncStorage.setItem(RATES_CACHE_KEY, JSON.stringify(filteredRates));
+          await AsyncStorage.setItem(RATES_CACHE_KEY, JSON.stringify(mergedRates));
           await AsyncStorage.setItem(RATES_CACHE_TIME_KEY, Date.now().toString());
 
           return {
-            rates: filteredRates,
+            rates: mergedRates,
             isLive: true,
             lastUpdated: nowStr,
           };
