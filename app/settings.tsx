@@ -532,9 +532,6 @@ export default function SettingsScreen() {
                 {[
                   { id: 'light', nameAr: 'نهاري', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F8FAFC' },
                   { id: 'dark', nameAr: 'ليلي', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
-                  { id: 'midnight', nameAr: 'منتصف الليل', nameEn: 'Midnight', icon: 'planet-outline', primary: '#38BDF8', bg: '#020617' },
-                  { id: 'emerald', nameAr: 'زمردي', nameEn: 'Emerald', icon: 'leaf-outline', primary: '#059669', bg: '#064E3B' },
-                  { id: 'rose', nameAr: 'وردي', nameEn: 'Rose', icon: 'heart-outline', primary: '#F43F5E', bg: '#4C0519' },
                 ].map(tItem => {
                   const isActive = theme === tItem.id;
                   return (
