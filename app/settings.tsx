@@ -14,11 +14,10 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import ConfirmModal from '@/components/ConfirmModal';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useSecurity } from '@/lib/SecurityContext';
@@ -27,10 +26,10 @@ import { getLoggedInUser, performLogout, syncWithCloud } from '@/lib/syncService
 import { exportTransactionsToPDF } from '@/lib/pdfExporter';
 import { exportTransactionsToCSV } from '@/lib/csvExporter';
 import { createFullBackup, restoreFullBackup } from '@/lib/backupService';
-import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAutoSmsSettings, setAutoSmsSettings, clearProcessedSmsHistory } from '@/lib/autoSmsListener';
 import SmsAutomationGuideModal from '@/components/SmsAutomationGuideModal';
+import ConfirmModal from '@/components/ConfirmModal';
 import {
   getNotificationSettings,
   saveNotificationSettings,
@@ -38,6 +37,7 @@ import {
   NotificationSettings,
   DEFAULT_NOTIFICATION_SETTINGS,
 } from '@/lib/NotificationService';
+
 const safeHaptic = {
   selection: () => {
     try {
@@ -53,12 +53,13 @@ const safeHaptic = {
     try {
       Haptics.notificationAsync(type).catch(() => {});
     } catch (e) {}
-  }
+  },
 };
 
 export default function SettingsScreen() {
   const { colors, theme, setTheme } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { language, setLanguage, t } = useLanguage();
   const isAr = language === 'ar';
 
@@ -70,7 +71,7 @@ export default function SettingsScreen() {
     enableBiometrics,
   } = useSecurity();
 
-  const { transactions, selectedWallet, refresh } = useTransactions();
+  const { transactions, wallets, selectedWallet, refresh, currencySymbol } = useTransactions();
 
   const [user, setUser] = useState<{ username: string; id: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -83,11 +84,10 @@ export default function SettingsScreen() {
   const [confirmedPin, setConfirmedPin] = useState('');
   const [pinError, setPinError] = useState('');
 
-  // Auto SMS Automation & Backup States
+  // Auto SMS Automation States
   const [autoSmsEnabled, setAutoSmsEnabledState] = useState(true);
   const [autoSmsAutoSave, setAutoSmsAutoSaveState] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [userGoal, setUserGoal] = useState<string>('saving');
 
   // Smart Notifications States
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
@@ -97,12 +97,29 @@ export default function SettingsScreen() {
   const [restoreJsonInput, setRestoreJsonInput] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
 
+  // Confirm Modal State
+  const [confirmModalState, setConfirmModalState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
   useEffect(() => {
-    async function loadNotifSettings() {
-      const s = await getNotificationSettings();
-      setNotifSettings(s);
+    async function loadData() {
+      const [loggedUser, s, notif] = await Promise.all([
+        getLoggedInUser().catch(() => null),
+        getAutoSmsSettings().catch(() => ({ enabled: true, autoSave: false })),
+        getNotificationSettings().catch(() => DEFAULT_NOTIFICATION_SETTINGS),
+      ]);
+      setUser(loggedUser);
+      setAutoSmsEnabledState(s.enabled);
+      setAutoSmsAutoSaveState(s.autoSave);
+      setNotifSettings(notif);
     }
-    loadNotifSettings();
+    loadData();
   }, []);
 
   const handleToggleDailyReminder = async (val: boolean) => {
@@ -129,7 +146,7 @@ export default function SettingsScreen() {
       isAr ? '🔔 تجربة تنبيه ميزان المالي' : '🔔 Mizan Notification Test',
       isAr
         ? 'نظام التنبيهات الذكي يعمل بكفاءة! ستصلك التذكيرات وتنبيهات الميزانية في مواعيدها.'
-        : 'Smart notifications are working properly! You will receive timely budget and daily alerts.'
+        : 'Smart notifications are working properly! You will receive timely budget alerts.'
     );
     Alert.alert(
       isAr ? 'تم الإرسال 🚀' : 'Sent 🚀',
@@ -137,37 +154,11 @@ export default function SettingsScreen() {
     );
   };
 
-  useEffect(() => {
-    async function loadUserGoal() {
-      try {
-        const saved = await AsyncStorage.getItem('@mizan_user_goal');
-        if (saved) setUserGoal(saved);
-      } catch (e) {}
-    }
-    loadUserGoal();
-  }, []);
-
-  const handleGoalChange = async (goal: string) => {
-    safeHaptic.selection();
-    setUserGoal(goal);
-    await AsyncStorage.setItem('@mizan_user_goal', goal);
-  };
-
-  useEffect(() => {
-    async function loadAutoSmsSettings() {
-      const s = await getAutoSmsSettings();
-      setAutoSmsEnabledState(s.enabled);
-      setAutoSmsAutoSaveState(s.autoSave);
-    }
-    loadAutoSmsSettings();
-  }, []);
-
   const handleToggleAutoSms = async (value: boolean) => {
     safeHaptic.selection();
     setAutoSmsEnabledState(value);
     await setAutoSmsSettings({ enabled: value });
   };
-
 
   const handleToggleAutoSmsAutoSave = async (value: boolean) => {
     safeHaptic.selection();
@@ -188,20 +179,11 @@ export default function SettingsScreen() {
             await clearProcessedSmsHistory();
             safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
             Alert.alert(isAr ? 'نجاح' : 'Success', isAr ? 'تم مسح سجل الرسائل بنجاح' : 'SMS log cleared');
-          }
-        }
+          },
+        },
       ]
     );
   };
-
-  // Load user status
-  useEffect(() => {
-    async function checkUser() {
-      const loggedUser = await getLoggedInUser();
-      setUser(loggedUser);
-    }
-    checkUser();
-  }, []);
 
   const handleToggleLanguage = async (lang: 'ar' | 'en') => {
     safeHaptic.selection();
@@ -233,15 +215,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const [confirmModalState, setConfirmModalState] = useState<{
-    visible: boolean;
-    title: string;
-    message: string;
-    confirmText?: string;
-    isDestructive?: boolean;
-    onConfirm: () => void;
-  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
-
   const handleLogout = () => {
     safeHaptic.selection();
     setConfirmModalState({
@@ -254,63 +227,78 @@ export default function SettingsScreen() {
         setConfirmModalState(prev => ({ ...prev, visible: false }));
         await performLogout();
         setUser(null);
-        router.replace('/auth' as any);
-      }
+        safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+      },
     });
   };
 
-  const handleTogglePin = async (value: boolean) => {
+  // PIN & Biometrics Handlers
+  const handleTogglePin = (value: boolean) => {
     safeHaptic.selection();
     if (value) {
-      setPinStep('enter');
       setEnteredPin('');
       setConfirmedPin('');
+      setPinStep('enter');
       setPinError('');
       setIsPinModalOpen(true);
     } else {
-      await disablePin();
-      Alert.alert(isAr ? 'تنبيه' : 'Alert', isAr ? 'تم تعطيل قفل PIN.' : 'PIN Lock disabled.');
+      setConfirmModalState({
+        visible: true,
+        title: isAr ? 'تعطيل رمز PIN' : 'Disable PIN',
+        message: isAr ? 'هل أنت متأكد من رغبتك في إيقاف قفل رمز PIN؟' : 'Are you sure you want to disable PIN lock?',
+        confirmText: isAr ? 'تعطيل' : 'Disable',
+        isDestructive: true,
+        onConfirm: async () => {
+          setConfirmModalState(prev => ({ ...prev, visible: false }));
+          await disablePin();
+          safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+        },
+      });
     }
   };
 
-  const handlePinKeyPress = async (num: string) => {
-    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Light);
-    setPinError('');
-    
-    if (pinStep === 'enter') {
-      const nextPin = enteredPin + num;
-      if (nextPin.length <= 4) {
-        setEnteredPin(nextPin);
-      }
-      if (nextPin.length === 4) {
-        setTimeout(() => {
-          setPinStep('confirm');
-        }, 250);
+  const handleToggleBiometrics = async (value: boolean) => {
+    safeHaptic.selection();
+    if (value) {
+      const ok = await enableBiometrics(true);
+      if (!ok) {
+        Alert.alert(
+          isAr ? 'تنبيه' : 'Alert',
+          isAr ? 'تعذر تفعيل البصمة. تأكد من إعدادها في إعدادات جهازك أولاً.' : 'Could not enable biometrics. Check your device settings.'
+        );
       }
     } else {
-      const nextPin = confirmedPin + num;
-      if (nextPin.length <= 4) {
-        setConfirmedPin(nextPin);
+      await enableBiometrics(false);
+    }
+  };
+
+  const handlePinKeyPress = (digit: string) => {
+    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Light);
+    setPinError('');
+    if (pinStep === 'enter') {
+      if (enteredPin.length < 4) {
+        const next = enteredPin + digit;
+        setEnteredPin(next);
+        if (next.length === 4) {
+          setTimeout(() => {
+            setPinStep('confirm');
+          }, 200);
+        }
       }
-      if (nextPin.length === 4) {
-        if (enteredPin === nextPin) {
-          try {
-            await enablePin(nextPin);
-            safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+    } else {
+      if (confirmedPin.length < 4) {
+        const next = confirmedPin + digit;
+        setConfirmedPin(next);
+        if (next.length === 4) {
+          if (next === enteredPin) {
+            enablePin(next);
             setIsPinModalOpen(false);
-            Alert.alert(isAr ? 'نجاح' : 'Success', isAr ? 'تم تفعيل قفل PIN بنجاح!' : 'PIN Lock activated successfully!');
-          } catch (e) {
-            setPinError(isAr ? 'فشل حفظ رمز PIN' : 'Failed to save PIN');
-            setEnteredPin('');
+            safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
+          } else {
+            setPinError(isAr ? 'الرمز غير متطابق، يرجى المحاولة ثانية' : 'PINs do not match, try again');
+            safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
             setConfirmedPin('');
-            setPinStep('enter');
           }
-        } else {
-          safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
-          setPinError(isAr ? 'الرموز غير متطابقة! أعد المحاولة.' : 'PIN codes do not match! Try again.');
-          setEnteredPin('');
-          setConfirmedPin('');
-          setPinStep('enter');
         }
       }
     }
@@ -325,50 +313,30 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleToggleBiometrics = async (value: boolean) => {
-    safeHaptic.selection();
-    const success = await enableBiometrics(value);
-    if (value && !success) {
-      Alert.alert(
-        isAr ? 'تنبيه' : 'Alert',
-        isAr 
-          ? 'فشل تفعيل القفل البيومتري. تأكد من أن جهازك يدعم البصمة/الوجه ومن تفعيلها في إعدادات النظام.' 
-          : 'Failed to enable biometric lock. Make sure your device supports FaceID/Fingerprint and it is set up in system settings.'
-      );
-    }
-  };
-
+  // Export handlers
   const handleExportPDF = async () => {
-    if (!selectedWallet) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى اختيار محفظة أولاً' : 'Please select a wallet first');
-      return;
-    }
+    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: isAr ? 'المحفظة' : 'Wallet', currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
     setExporting(true);
-    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const walletTxns = transactions.filter(t => t.walletId === selectedWallet.id);
-      await exportTransactionsToPDF(walletTxns, selectedWallet, language);
+      await exportTransactionsToPDF(transactions, targetWallet, language);
+      safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      console.error(e);
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير كشف الحساب' : 'Failed to export statement');
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير ملف PDF' : 'Failed to export PDF');
     } finally {
       setExporting(false);
     }
   };
 
   const handleExportCSV = async () => {
-    if (!selectedWallet) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'يرجى اختيار محفظة أولاً' : 'Please select a wallet first');
-      return;
-    }
+    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: isAr ? 'المحفظة' : 'Wallet', currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
     setExporting(true);
-    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const walletTxns = transactions.filter(t => t.walletId === selectedWallet.id);
-      await exportTransactionsToCSV(walletTxns, selectedWallet, language);
+      await exportTransactionsToCSV(transactions, targetWallet, language);
+      safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      console.error(e);
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير كشف الحساب' : 'Failed to export statement');
+      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير ملف CSV' : 'Failed to export CSV');
     } finally {
       setExporting(false);
     }
@@ -380,7 +348,6 @@ export default function SettingsScreen() {
       await createFullBackup();
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      console.error(e);
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل إنشاء النسخة الاحتياطية' : 'Failed to create backup');
     }
   };
@@ -419,7 +386,7 @@ export default function SettingsScreen() {
     setConfirmModalState({
       visible: true,
       title: isAr ? 'مسح جميع البيانات' : 'Clear All Data',
-      message: isAr ? 'هل أنت متأكد؟ سيتم مسح جميع المعاملات والمحافظ نهائياً.' : 'Are you sure? All transactions and wallets will be permanently deleted.',
+      message: isAr ? 'هل أنت متأكد تماماً؟ سيتم مسح كافة المعاملات والمحافظ نهائياً من هذا الجهاز.' : 'Are you sure? All transactions and wallets will be permanently deleted.',
       confirmText: isAr ? 'مسح نهائي' : 'Clear All',
       isDestructive: true,
       onConfirm: async () => {
@@ -432,11 +399,9 @@ export default function SettingsScreen() {
         } catch (e) {
           console.error(e);
         }
-      }
+      },
     });
   };
-
-
 
   const handleClose = () => {
     safeHaptic.selection();
@@ -450,19 +415,19 @@ export default function SettingsScreen() {
     >
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 12 }]}>
           <Text style={styles.sheetTitle}>{t.settings}</Text>
-          <Pressable onPress={handleClose} hitSlop={20} style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
-            <Ionicons name="close" size={24} color={colors.textSecondary} />
+          <Pressable onPress={handleClose} hitSlop={14} style={styles.closeBtn}>
+            <Ionicons name="close" size={22} color={colors.text} />
           </Pressable>
         </View>
 
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         >
-          {/* Section 1: Account & Cloud Sync */}
+          {/* 1. Account & Cloud Sync */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -510,7 +475,7 @@ export default function SettingsScreen() {
             ) : (
               <View style={styles.noUserBox}>
                 <Text style={styles.noUserText}>
-                  {isAr ? 'سجل دخولك لحفظ بياناتك ومزامنتها سحابياً بأمان تام' : 'Login to secure and sync your data seamlessly'}
+                  {isAr ? 'سجل حسابك لحفظ بياناتك ومزامنتها سحابياً بأمان تام' : 'Login to secure and sync your data seamlessly'}
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -521,20 +486,20 @@ export default function SettingsScreen() {
                 >
                   <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
                   <Text style={styles.primaryActionBtnText}>
-                    {isAr ? 'إنشاء حساب / تسجيل الدخول' : 'Login / Register'}
+                    {isAr ? 'تسجيل الدخول / إنشاء حساب' : 'Login / Register'}
                   </Text>
                 </Pressable>
               </View>
             )}
           </View>
 
-          {/* Section 2: Appearance & Personalization */}
+          {/* 2. Appearance & Personalization */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'المظهر والتخصيص' : 'Appearance & Themes'}</Text>
+              <Text style={styles.sectionTitle}>{isAr ? 'المظهر واللغة' : 'Appearance & Themes'}</Text>
             </View>
 
             {/* Language Selector */}
@@ -543,10 +508,7 @@ export default function SettingsScreen() {
               <View style={styles.langRow}>
                 <Pressable
                   onPress={() => handleToggleLanguage('ar')}
-                  style={[
-                    styles.langOption,
-                    language === 'ar' && styles.langOptionActive,
-                  ]}
+                  style={[styles.langOption, language === 'ar' && styles.langOptionActive]}
                 >
                   <Text style={[styles.langText, language === 'ar' && styles.langTextActive]}>
                     العربية 🇸🇦
@@ -554,10 +516,7 @@ export default function SettingsScreen() {
                 </Pressable>
                 <Pressable
                   onPress={() => handleToggleLanguage('en')}
-                  style={[
-                    styles.langOption,
-                    language === 'en' && styles.langOptionActive,
-                  ]}
+                  style={[styles.langOption, language === 'en' && styles.langOptionActive]}
                 >
                   <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
                     English 🇺🇸
@@ -566,74 +525,38 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Theme Selector Grid */}
+            {/* Theme Selector */}
             <View style={styles.settingBlock}>
-              <Text style={styles.settingBlockLabel}>{isAr ? 'ثيم التطبيق والمظهر' : 'Color Theme'}</Text>
+              <Text style={styles.settingBlockLabel}>{isAr ? 'ثيم التطبيق' : 'Color Theme'}</Text>
               <View style={styles.themeGrid}>
                 {[
-                  { id: 'light', nameAr: 'نهاري / لايت', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F9FAFB' },
-                  { id: 'dark', nameAr: 'ليلي / دارك', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
-                ].map((t) => {
-                  const isActive = theme === t.id;
+                  { id: 'light', nameAr: 'نهاري', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F8FAFC' },
+                  { id: 'dark', nameAr: 'ليلي', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
+                  { id: 'midnight', nameAr: 'منتصف الليل', nameEn: 'Midnight', icon: 'planet-outline', primary: '#38BDF8', bg: '#020617' },
+                  { id: 'emerald', nameAr: 'زمردي', nameEn: 'Emerald', icon: 'leaf-outline', primary: '#059669', bg: '#064E3B' },
+                  { id: 'rose', nameAr: 'وردي', nameEn: 'Rose', icon: 'heart-outline', primary: '#F43F5E', bg: '#4C0519' },
+                ].map(tItem => {
+                  const isActive = theme === tItem.id;
                   return (
                     <Pressable
-                      key={t.id}
-                      onPress={() => handleToggleTheme(t.id as any)}
-                      style={[
-                        styles.themeCardOption,
-                        isActive && styles.themeCardOptionActive,
-                      ]}
+                      key={tItem.id}
+                      onPress={() => handleToggleTheme(tItem.id as any)}
+                      style={[styles.themeCardOption, isActive && styles.themeCardOptionActive]}
                     >
                       <View style={styles.themeCardHeader}>
                         <Ionicons
-                          name={t.icon as any}
+                          name={tItem.icon as any}
                           size={18}
                           color={isActive ? colors.primary : colors.textSecondary}
                         />
                         <View style={styles.themeDotContainer}>
-                          <View style={[styles.themeDot, { backgroundColor: t.primary }]} />
-                          <View style={[styles.themeDot, { backgroundColor: t.bg, borderWidth: 1, borderColor: colors.border }]} />
+                          <View style={[styles.themeDot, { backgroundColor: tItem.primary }]} />
+                          <View style={[styles.themeDot, { backgroundColor: tItem.bg, borderWidth: 1, borderColor: colors.border }]} />
                         </View>
                       </View>
-                      <Text
-                        numberOfLines={1}
-                        style={[styles.themeCardText, isActive && styles.themeCardTextActive]}
-                      >
-                        {isAr ? t.nameAr : t.nameEn}
+                      <Text numberOfLines={1} style={[styles.themeCardText, isActive && styles.themeCardTextActive]}>
+                        {isAr ? tItem.nameAr : tItem.nameEn}
                       </Text>
-                      {isActive && (
-                        <Ionicons name="checkmark-circle" size={14} color={colors.primary} style={styles.themeActiveBadge} />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-
-            {/* Primary Goal Selection */}
-            <View style={styles.settingBlock}>
-              <Text style={styles.settingBlockLabel}>{isAr ? 'الهدف المالي الرئيسي' : 'Primary Goal'}</Text>
-              <View style={{ gap: 8 }}>
-                {[
-                  { id: 'saving', labelAr: '🎯 توفير المال وبناء الأمان', labelEn: '🎯 Build Savings & Security', color: '#10B981' },
-                  { id: 'debts', labelAr: '💳 سداد الديون والالتزامات', labelEn: '💳 Pay Off Debts & Obligations', color: '#EF4444' },
-                  { id: 'tracking', labelAr: '📊 ضبط النفقات والسيولة اليومية', labelEn: '📊 Control Daily Expenses', color: '#6366F1' },
-                ].map((g) => {
-                  const isActive = userGoal === g.id;
-                  return (
-                    <Pressable
-                      key={g.id}
-                      onPress={() => handleGoalChange(g.id)}
-                      style={[
-                        styles.menuRowItem,
-                        isActive && { backgroundColor: g.color + '15', borderColor: g.color, borderWidth: 1.5 },
-                      ]}
-                    >
-                      <Text style={[styles.menuRowText, isActive && { color: g.color, fontFamily: 'Cairo_700Bold' }]}>
-                        {isAr ? g.labelAr : g.labelEn}
-                      </Text>
-                      {isActive && <Ionicons name="checkmark-circle" size={18} color={g.color} />}
                     </Pressable>
                   );
                 })}
@@ -641,19 +564,19 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Section 3: Security & Sharing */}
+          {/* 3. Security & Permissions */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
-                <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+                <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'الحماية والأمان والمشاركة' : 'Security & Sharing'}</Text>
+              <Text style={styles.sectionTitle}>{isAr ? 'الأمان والخصوصية' : 'Security & Privacy'}</Text>
             </View>
 
             <View style={styles.switchRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.switchLabel}>{isAr ? 'قفل رمز PIN' : 'PIN Lock'}</Text>
-                <Text style={styles.switchSubtext}>{isAr ? 'حماية فتح التطبيق برمز حماية' : 'Secure app opening with PIN'}</Text>
+                <Text style={styles.switchSubtext}>{isAr ? 'حماية فتح التطبيق برمز سري' : 'Secure app opening with 4-digit PIN'}</Text>
               </View>
               <Switch
                 value={isPinEnabled}
@@ -665,7 +588,7 @@ export default function SettingsScreen() {
             <View style={styles.switchRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.switchLabel}>{isAr ? 'البصمة البيومترية' : 'Biometrics (Face/Touch ID)'}</Text>
-                <Text style={styles.switchSubtext}>{isAr ? 'استخدام بصمة الوجه أو الأصبع' : 'Unlock using biometric sensor'}</Text>
+                <Text style={styles.switchSubtext}>{isAr ? 'فتح التطبيق ببصمة الوجه أو الأصبع' : 'Unlock using biometric sensor'}</Text>
               </View>
               <Switch
                 value={isBiometricEnabled}
@@ -691,61 +614,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* Section: Smart Tools & Automation */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconBadge}>
-                <Ionicons name="flash-outline" size={18} color="#F59E0B" />
-              </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'الأدوات الذكية والأتمتة' : 'Smart Tools & Automation'}</Text>
-            </View>
-
-            {/* Receipts Vault */}
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/receipts-vault' as any);
-              }}
-              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="receipt-outline" size={18} color="#00E5FF" />
-                <View>
-                  <Text style={styles.menuRowText}>
-                    {isAr ? 'خزينة ومعرض الفواتير' : 'Receipts Vault & Gallery'}
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_500Medium', fontSize: 11, color: colors.textSecondary }}>
-                    {isAr ? 'أرشيف مرئي وبحث متقدم في الفواتير المرفقة' : 'Visual archive & search for scanned receipts'}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-
-            {/* Smart Auto Rules */}
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                router.push('/auto-rules' as any);
-              }}
-              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="options-outline" size={18} color="#F59E0B" />
-                <View>
-                  <Text style={styles.menuRowText}>
-                    {isAr ? 'القواعد التلقائية الذكية' : 'Smart Auto Rules'}
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_500Medium', fontSize: 11, color: colors.textSecondary }}>
-                    {isAr ? 'تصنيف تلقائي للمعاملات وتطبيق الوسوم حسب الكلمات' : 'Auto-classify and tag transactions by keywords'}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
-            </Pressable>
-          </View>
-
-          {/* Section 4: Bank SMS Automation */}
+          {/* 4. Bank SMS Automation */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -821,7 +690,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* Section: Smart Notifications & Reminders */}
+          {/* 5. Smart Notifications & Reminders */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -848,7 +717,7 @@ export default function SettingsScreen() {
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={styles.switchLabel}>{isAr ? 'تنبيهات تجاوز الميزانية' : 'Budget Limit Alerts'}</Text>
                 <Text style={styles.switchSubtext}>
-                  {isAr ? 'إشعار فوري عند الوصول إلى 80% أو 100% من ميزانية أي فئة' : 'Instant alerts when reaching 80% or 100% of category budget'}
+                  {isAr ? 'إشعار فوري عند الاقتراب أو تجاوز ميزانية أي فئة' : 'Instant alerts when nearing or exceeding category budget'}
                 </Text>
               </View>
               <Switch
@@ -890,7 +759,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* Section: Home Screen Widgets Hub */}
+          {/* 6. Home Screen Widgets */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -912,7 +781,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.menuRowLeft}>
                 <Ionicons name="color-palette-outline" size={18} color="#3B82F6" />
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[styles.menuRowText, { color: '#3B82F6', fontFamily: 'Cairo_700Bold' }]}>
                     {isAr ? 'معاينة وإعداد ودجت الهاتف' : 'Preview & Setup Widgets'}
                   </Text>
@@ -925,8 +794,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-
-          {/* Section 5: Data & Backup Management */}
+          {/* 7. Data & Backup Management */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -997,7 +865,7 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Section 6: Danger Zone */}
+          {/* 8. Danger Zone */}
           <View style={[styles.sectionCard, { borderColor: colors.expense + '30', backgroundColor: colors.expense + '06' }]}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionIconBadge, { backgroundColor: colors.expense + '15' }]}>
@@ -1009,8 +877,8 @@ export default function SettingsScreen() {
             </View>
 
             <Text style={styles.dangerSubtext}>
-              {isAr 
-                ? 'حذف جميع المعاملات والمحافظ والبيانات نهائياً وإعادة التطبيق للحالة الافتراضية.' 
+              {isAr
+                ? 'حذف جميع المعاملات والمحافظ والبيانات نهائياً وإعادة التطبيق للحالة الافتراضية.'
                 : 'Permanently remove all data, transactions, and wallets, resetting app.'}
             </Text>
 
@@ -1025,7 +893,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* Section 7: Privacy & About */}
+          {/* 9. Privacy & Info */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -1047,7 +915,7 @@ export default function SettingsScreen() {
                   {isAr ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy'}
                 </Text>
               </View>
-              <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={16} color={colors.textSecondary} />
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -1055,17 +923,17 @@ export default function SettingsScreen() {
           <View style={styles.aboutContainer}>
             <Text style={styles.aboutTitle}>{isAr ? 'ميزان - Mizan' : 'Mizan App'}</Text>
             <Text style={styles.aboutDesc}>
-              {isAr 
-                ? 'إدارة مصاريفك وتخطيطك المالي بكل ذكاء وسهولة.' 
+              {isAr
+                ? 'إدارة مصاريفك وتخطيطك المالي بكل ذكاء وسهولة.'
                 : 'Track expenses & plan your financial future mindfully.'}
             </Text>
             <Text style={styles.versionText}>
-              {isAr ? 'الإصدار 1.0.0 (بيتا)' : 'Version 1.0.0 (Beta)'}
+              {isAr ? 'الإصدار 1.0.0' : 'Version 1.0.0'}
             </Text>
           </View>
         </ScrollView>
 
-        {/* Custom PIN Creation Modal */}
+        {/* PIN Creation Modal */}
         <Modal
           visible={isPinModalOpen}
           transparent
@@ -1074,7 +942,7 @@ export default function SettingsScreen() {
         >
           <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
             <SafeAreaView style={{ flex: 1, width: '100%', maxWidth: 400, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-              {/* Header / Close */}
+              {/* Close */}
               <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-end', paddingBottom: 20 }}>
                 <Pressable onPress={() => setIsPinModalOpen(false)} hitSlop={12}>
                   <Ionicons name="close" size={26} color={colors.textSecondary} />
@@ -1087,18 +955,18 @@ export default function SettingsScreen() {
                   <Ionicons name="lock-closed" size={36} color={colors.primary} />
                 </View>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 20, color: colors.text }}>
-                  {pinStep === 'enter' 
-                    ? (isAr ? 'إنشاء رمز PIN الجديد' : 'Create New PIN') 
+                  {pinStep === 'enter'
+                    ? (isAr ? 'إنشاء رمز PIN الجديد' : 'Create New PIN')
                     : (isAr ? 'تأكيد رمز PIN' : 'Confirm PIN Code')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 20, lineHeight: 18 }}>
                   {pinStep === 'enter'
                     ? (isAr ? 'أدخل رمز PIN المكون من 4 أرقام لحماية بياناتك:' : 'Enter a 4-digit PIN code to secure your data:')
-                    : (isAr ? 'أعيدوا كتابة رمز PIN للتأكيد:' : 'Re-enter your PIN code to confirm:')}
+                    : (isAr ? 'أعد كتابة رمز PIN للتأكيد:' : 'Re-enter your PIN code to confirm:')}
                 </Text>
               </View>
 
-              {/* Dots Indicator */}
+              {/* Dots */}
               <View style={{ flexDirection: 'row', gap: 20, justifyContent: 'center', alignItems: 'center', height: 30, marginBottom: 10 }}>
                 {Array.from({ length: 4 }).map((_, i) => {
                   const currentLen = pinStep === 'enter' ? enteredPin.length : confirmedPin.length;
@@ -1117,7 +985,7 @@ export default function SettingsScreen() {
                 })}
               </View>
 
-              {/* Error Box */}
+              {/* Error */}
               <View style={{ height: 24, justifyContent: 'center', marginBottom: 20 }}>
                 {pinError ? (
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.expense }}>
@@ -1130,12 +998,12 @@ export default function SettingsScreen() {
               <View style={{ width: '100%', gap: 16, paddingHorizontal: 20 }}>
                 {[['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']].map((row, i) => (
                   <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
-                    {row.map((num) => (
+                    {row.map(num => (
                       <Pressable
                         key={num}
                         style={({ pressed }) => [
                           { width: 70, height: 70, borderRadius: 35, backgroundColor: colors.surfaceAlt, justifyContent: 'center', alignItems: 'center' },
-                          pressed && { backgroundColor: colors.border }
+                          pressed && { backgroundColor: colors.border },
                         ]}
                         onPress={() => handlePinKeyPress(num)}
                       >
@@ -1144,13 +1012,12 @@ export default function SettingsScreen() {
                     ))}
                   </View>
                 ))}
-                {/* Last Row */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
                   <View style={{ width: 70, height: 70 }} />
                   <Pressable
                     style={({ pressed }) => [
                       { width: 70, height: 70, borderRadius: 35, backgroundColor: colors.surfaceAlt, justifyContent: 'center', alignItems: 'center' },
-                      pressed && { backgroundColor: colors.border }
+                      pressed && { backgroundColor: colors.border },
                     ]}
                     onPress={() => handlePinKeyPress('0')}
                   >
@@ -1159,7 +1026,7 @@ export default function SettingsScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center' },
-                      pressed && { backgroundColor: colors.surfaceAlt }
+                      pressed && { backgroundColor: colors.surfaceAlt },
                     ]}
                     onPress={handlePinBackspace}
                   >
@@ -1171,7 +1038,6 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Bank SMS Automation Guide Modal */}
         {/* Restore Backup Modal */}
         <Modal
           visible={isRestoreModalOpen}
@@ -1249,12 +1115,13 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
+        {/* Bank SMS Automation Guide Modal */}
         <SmsAutomationGuideModal
           visible={isGuideOpen}
           onClose={() => setIsGuideOpen(false)}
         />
 
-        {/* Custom Glassmorphic Confirmation Modal */}
+        {/* Custom Confirmation Modal */}
         <ConfirmModal
           visible={confirmModalState.visible}
           title={confirmModalState.title}
@@ -1269,346 +1136,349 @@ export default function SettingsScreen() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 14,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sheetTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 20,
-    color: colors.text,
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 40,
-  },
-  sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 2,
-  },
-  sectionIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.primary + '14',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: colors.text,
-  },
-  userCard: {
-    gap: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  userInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  userAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.primary + '18',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userName: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: colors.text,
-  },
-  userSubtext: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  userActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  primaryActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  primaryActionBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: '#FFF',
-  },
-  secondaryActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.expense + '15',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.expense + '30',
-  },
-  secondaryActionBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: colors.expense,
-  },
-  noUserBox: {
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-  },
-  noUserText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  settingBlock: {
-    gap: 8,
-  },
-  settingBlockLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  langRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  langOption: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  langOptionActive: {
-    backgroundColor: colors.primary + '14',
-    borderColor: colors.primary,
-  },
-  langText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  langTextActive: {
-    color: colors.primary,
-  },
-  themeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  themeCardOption: {
-    width: '48%',
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    gap: 6,
-  },
-  themeCardOptionActive: {
-    backgroundColor: colors.primary + '14',
-    borderColor: colors.primary,
-  },
-  themeCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  themeDotContainer: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  themeDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  themeCardText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
-    color: colors.text,
-  },
-  themeCardTextActive: {
-    color: colors.primary,
-  },
-  themeActiveBadge: {
-    alignSelf: 'flex-end',
-    marginTop: -2,
-  },
-  menuRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  menuRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  menuRowText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.text,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  switchLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 14,
-    color: colors.text,
-  },
-  switchSubtext: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  exportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  exportBtnOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  exportBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#FFF',
-  },
-  backupRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  backupBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 10,
-    gap: 6,
-    borderWidth: 1,
-  },
-  backupBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
-  },
-  dangerSubtext: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-    lineHeight: 16,
-  },
-  clearBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.expense,
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  clearBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: '#FFF',
-  },
-  aboutContainer: {
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-    paddingHorizontal: 20,
-  },
-  aboutTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: colors.text,
-  },
-  aboutDesc: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  versionText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-});
+const getStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingBottom: 14,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    closeBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sheetTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 20,
+      color: colors.text,
+    },
+    content: {
+      padding: 16,
+      gap: 14,
+    },
+    sectionCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 16,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 2,
+    },
+    sectionIconBadge: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      backgroundColor: colors.primary + '14',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sectionTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 15,
+      color: colors.text,
+    },
+    userCard: {
+      gap: 12,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 16,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    userInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    userAvatar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.primary + '18',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    userName: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 15,
+      color: colors.text,
+    },
+    userSubtext: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+    },
+    userActionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 4,
+    },
+    primaryActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      gap: 8,
+    },
+    primaryActionBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: '#FFF',
+    },
+    secondaryActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.expense + '15',
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.expense + '30',
+    },
+    secondaryActionBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: colors.expense,
+    },
+    noUserBox: {
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 8,
+    },
+    noUserText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    settingBlock: {
+      gap: 8,
+    },
+    settingBlockLabel: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    langRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    langOption: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1.5,
+      borderColor: colors.borderLight,
+    },
+    langOptionActive: {
+      backgroundColor: colors.primary + '14',
+      borderColor: colors.primary,
+    },
+    langText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    langTextActive: {
+      color: colors.primary,
+    },
+    themeGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    themeCardOption: {
+      width: '48%',
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1.5,
+      borderColor: colors.borderLight,
+      gap: 6,
+    },
+    themeCardOptionActive: {
+      backgroundColor: colors.primary + '14',
+      borderColor: colors.primary,
+    },
+    themeCardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    themeDotContainer: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    themeDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    themeCardText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+      color: colors.text,
+    },
+    themeCardTextActive: {
+      color: colors.primary,
+    },
+    menuRowItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    menuRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+    },
+    menuRowText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.text,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+    },
+    switchLabel: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 14,
+      color: colors.text,
+    },
+    switchSubtext: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 1,
+    },
+    exportBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingVertical: 12,
+      gap: 8,
+    },
+    exportBtnOutline: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      paddingVertical: 12,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+    },
+    exportBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#FFF',
+    },
+    backupRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    backupBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 14,
+      paddingVertical: 11,
+      gap: 6,
+      borderWidth: 1,
+    },
+    backupBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+    },
+    dangerSubtext: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+      lineHeight: 16,
+    },
+    clearBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.expense,
+      borderRadius: 14,
+      paddingVertical: 12,
+      gap: 8,
+    },
+    clearBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: '#FFF',
+    },
+    aboutContainer: {
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 4,
+      paddingHorizontal: 20,
+    },
+    aboutTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: colors.text,
+    },
+    aboutDesc: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    versionText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 10,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+  });
