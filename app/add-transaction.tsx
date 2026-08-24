@@ -38,6 +38,8 @@ import { getLoggedInUser } from '@/lib/syncService';
 import ModernDatePickerModal from '@/components/ModernDatePickerModal';
 import ModernTimePickerModal from '@/components/ModernTimePickerModal';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
+import { getAllTags, saveCustomTag, Tag, parseTransactionTags, formatTagsToString } from '@/lib/tagStorage';
+import { getAutoRules, matchTransactionAgainstRules, AutoRule, RuleMatchResult } from '@/lib/autoRulesStorage';
 
 type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -174,6 +176,56 @@ export default function AddTransactionScreen() {
   const [receiptUri, setReceiptUri] = useState(existingTxn?.receiptUri || '');
   const [isScanning, setIsScanning] = useState(false);
   const [tags, setTags] = useState(existingTxn?.tags || '');
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [autoRules, setAutoRules] = useState<AutoRule[]>([]);
+  const [matchedRule, setMatchedRule] = useState<RuleMatchResult | null>(null);
+
+  // New Tag Creator Modal state
+  const [tagModalVisible, setTagModalVisible] = useState(false);
+  const [newTagNameAr, setNewTagNameAr] = useState('');
+  const [newTagNameEn, setNewTagNameEn] = useState('');
+  const [newTagColor, setNewTagColor] = useState(WALLET_COLORS[0]);
+
+  useEffect(() => {
+    async function loadTagsAndRules() {
+      try {
+        const [tList, rList] = await Promise.all([
+          getAllTags().catch(() => []),
+          getAutoRules().catch(() => []),
+        ]);
+        setAvailableTags(tList);
+        setAutoRules(rList);
+      } catch (e) {}
+    }
+    loadTagsAndRules();
+  }, []);
+
+  // Real-time evaluation of auto rules
+  useEffect(() => {
+    if (!description.trim() || autoRules.length === 0) {
+      setMatchedRule(null);
+      return;
+    }
+    const match = matchTransactionAgainstRules(
+      description,
+      parseFloat(amount) || 0,
+      type,
+      autoRules
+    );
+    setMatchedRule(match);
+  }, [description, amount, type, autoRules]);
+
+  const handleApplyAutoRule = (match: RuleMatchResult) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (match.category) {
+      setSelectedCategory(match.category);
+    }
+    if (match.tags && match.tags.length > 0) {
+      const currentTags = parseTransactionTags(tags);
+      const combined = Array.from(new Set([...currentTags, ...match.tags]));
+      setTags(formatTagsToString(combined));
+    }
+  };
 
   const runImagePicker = async (useCamera: boolean) => {
     try {
@@ -1086,46 +1138,112 @@ export default function AddTransactionScreen() {
               numberOfLines={2}
               textAlignVertical="top"
             />
+            {/* Auto Rule Smart Match Suggestion */}
+            {matchedRule && (
+              <Pressable
+                onPress={() => handleApplyAutoRule(matchedRule)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#F59E0B18',
+                  borderColor: '#F59E0B80',
+                  borderWidth: 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  marginTop: 8,
+                }}
+              >
+                <Ionicons name="flash" size={16} color="#F59E0B" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#F59E0B' }}>
+                    {language === 'ar' ? `⚡ قاعدة تلقائية: ${matchedRule.matchedRule.name}` : `⚡ Auto Rule: ${matchedRule.matchedRule.name}`}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                    {language === 'ar' ? 'اضغط لتطبيق الفئة والوسوم تلقائياً' : 'Tap to apply category & tags'}
+                  </Text>
+                </View>
+                <Ionicons name="checkmark-circle" size={18} color="#F59E0B" />
+              </Pressable>
+            )}
           </View>
 
-          {/* Tags Section */}
+          {/* Smart Tags Section */}
           <View style={styles.descSection}>
-            <Text style={styles.label}>{language === 'ar' ? 'التاغات / الكلمات الدلالية' : 'Tags / Labels'}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={[styles.label, { marginBottom: 0 }]}>
+                {language === 'ar' ? 'الوسوم الذكية (Tags)' : 'Smart Tags'}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setNewTagNameAr('');
+                  setNewTagNameEn('');
+                  setNewTagColor(WALLET_COLORS[0]);
+                  setTagModalVisible(true);
+                }}
+                hitSlop={6}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Ionicons name="add-circle" size={16} color={colors.primary} />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                  {language === 'ar' ? 'وسم مخصص' : 'New Tag'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Selected / custom tags input */}
             <TextInput
               style={[styles.descInput, { height: 40, paddingVertical: 8 }]}
-              placeholder={language === 'ar' ? 'مثال: سفر، طعام، عمل...' : 'e.g. travel, food, work...'}
+              placeholder={language === 'ar' ? 'اختر من الأسفل أو اكتب وسوماً مفصولة بفاصلة...' : 'Pick below or type tags comma-separated...'}
               placeholderTextColor={Colors.textTertiary}
               value={tags}
               onChangeText={setTags}
             />
-            {/* Quick tag chips */}
+
+            {/* Smart Tag Chips */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {[(language === 'ar' ? 'أكل' : 'food'), (language === 'ar' ? 'مشتريات' : 'shopping'), (language === 'ar' ? 'مواصلات' : 'travel'), (language === 'ar' ? 'ترفيه' : 'leisure'), (language === 'ar' ? 'فواتير' : 'bills'), (language === 'ar' ? 'عمل' : 'work')].map(tag => {
-                const isActive = tags.split(',').map((t: string) => t.trim()).includes(tag);
+              {availableTags.map(tagObj => {
+                const currentTags = parseTransactionTags(tags);
+                const isActive = currentTags.includes(tagObj.id) || currentTags.includes(tagObj.nameAr) || currentTags.includes(tagObj.nameEn);
+
                 return (
                   <Pressable
-                    key={tag}
+                    key={tagObj.id}
                     onPress={() => {
                       Haptics.selectionAsync();
-                      let currentTags = tags.split(',').map((t: string) => t.trim()).filter(Boolean);
-                      if (currentTags.includes(tag)) {
-                        currentTags = currentTags.filter((t: string) => t !== tag);
+                      let updated: string[];
+                      if (isActive) {
+                        updated = currentTags.filter(
+                          t => t !== tagObj.id && t !== tagObj.nameAr && t !== tagObj.nameEn
+                        );
                       } else {
-                        currentTags.push(tag);
+                        updated = [...currentTags, tagObj.id];
                       }
-                      setTags(currentTags.join(', '));
+                      setTags(formatTagsToString(updated));
                     }}
                     style={{
-                      paddingVertical: 4,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingVertical: 5,
                       paddingHorizontal: 10,
-                      borderRadius: 12,
-                      backgroundColor: isActive ? Colors.primary + '20' : Colors.surfaceAlt,
+                      borderRadius: 10,
+                      backgroundColor: isActive ? tagObj.color + '25' : colors.surfaceAlt,
                       borderWidth: 1,
-                      borderColor: isActive ? Colors.primary : Colors.border,
+                      borderColor: isActive ? tagObj.color : colors.border,
                     }}
                   >
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: isActive ? Colors.primary : Colors.textSecondary }}>
-                      #{tag}
+                    <Ionicons name="pricetag" size={11} color={isActive ? tagObj.color : colors.textTertiary} />
+                    <Text
+                      style={{
+                        fontFamily: isActive ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
+                        fontSize: 11,
+                        color: isActive ? tagObj.color : colors.textSecondary,
+                      }}
+                    >
+                      {language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
                     </Text>
                   </Pressable>
                 );
@@ -1546,6 +1664,105 @@ export default function AddTransactionScreen() {
                 </Text>
               </Pressable>
             </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* Custom Tag Creator Modal */}
+      <Modal visible={tagModalVisible} animationType="slide" transparent onRequestClose={() => setTagModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={styles.customCatSheet}>
+            <View style={styles.calcHeader}>
+              <Pressable onPress={() => setTagModalVisible(false)} hitSlop={12} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={Colors.text} />
+              </Pressable>
+              <Text style={styles.calcTitle}>
+                {language === 'ar' ? 'إنشاء وسم جديد' : 'New Custom Tag'}
+              </Text>
+              <Pressable
+                onPress={async () => {
+                  const ar = newTagNameAr.trim();
+                  let en = newTagNameEn.trim();
+                  if (!ar && !en) {
+                    Alert.alert(language === 'ar' ? 'تنبيه' : 'Alert', language === 'ar' ? 'يرجى كتابة اسم الوسم' : 'Please enter tag name');
+                    return;
+                  }
+                  if (!en) en = ar;
+                  const finalAr = ar || en;
+                  try {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    const created = await saveCustomTag({
+                      nameAr: finalAr,
+                      nameEn: en,
+                      color: newTagColor,
+                      icon: 'pricetag',
+                    });
+                    setAvailableTags(prev => [...prev, created]);
+                    const currentTags = parseTransactionTags(tags);
+                    setTags(formatTagsToString([...currentTags, created.id]));
+                    setTagModalVisible(false);
+                  } catch (e) {
+                    console.error('Error saving tag:', e);
+                  }
+                }}
+                hitSlop={12}
+                style={styles.calcConfirmBtn}
+              >
+                <Ionicons name="checkmark" size={22} color={Colors.primary} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.customCatBody} keyboardShouldPersistTaps="handled">
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{language === 'ar' ? 'اسم الوسم بالعربية' : 'Tag Name (Arabic)'}</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="مثال: مشروع تخرج، رحلة أبها، مناسبة..."
+                  placeholderTextColor={Colors.textTertiary}
+                  value={newTagNameAr}
+                  onChangeText={setNewTagNameAr}
+                  textAlign={language === 'ar' ? 'right' : 'left'}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{language === 'ar' ? 'اسم الوسم بالإنجليزية (اختياري)' : 'Tag Name (English)'}</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. Abha Trip, Project..."
+                  placeholderTextColor={Colors.textTertiary}
+                  value={newTagNameEn}
+                  onChangeText={setNewTagNameEn}
+                  textAlign="left"
+                />
+              </View>
+
+              {/* Color Grid Selector */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>{t.selectColor}</Text>
+                <View style={styles.colorsGrid}>
+                  {WALLET_COLORS.map(c => {
+                    const isSelected = newTagColor === c;
+                    return (
+                      <Pressable
+                        key={c}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setNewTagColor(c);
+                        }}
+                        style={[
+                          styles.colorCircle,
+                          { backgroundColor: c },
+                          isSelected && { borderColor: '#FFFFFF', borderWidth: 2.5, transform: [{ scale: 1.12 }] }
+                        ]}
+                      >
+                        {isSelected && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
           </SafeAreaView>
         </View>
       </Modal>

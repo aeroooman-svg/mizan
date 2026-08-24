@@ -691,6 +691,60 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* Section: Smart Tools & Automation */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBadge}>
+                <Ionicons name="flash-outline" size={18} color="#F59E0B" />
+              </View>
+              <Text style={styles.sectionTitle}>{isAr ? 'الأدوات الذكية والأتمتة' : 'Smart Tools & Automation'}</Text>
+            </View>
+
+            {/* Receipts Vault */}
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/receipts-vault' as any);
+              }}
+              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="receipt-outline" size={18} color="#00E5FF" />
+                <View>
+                  <Text style={styles.menuRowText}>
+                    {isAr ? 'خزينة ومعرض الفواتير' : 'Receipts Vault & Gallery'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_500Medium', fontSize: 11, color: colors.textSecondary }}>
+                    {isAr ? 'أرشيف مرئي وبحث متقدم في الفواتير المرفقة' : 'Visual archive & search for scanned receipts'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
+            </Pressable>
+
+            {/* Smart Auto Rules */}
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/auto-rules' as any);
+              }}
+              style={({ pressed }) => [styles.menuRowItem, pressed && { opacity: 0.7 }]}
+            >
+              <View style={styles.menuRowLeft}>
+                <Ionicons name="options-outline" size={18} color="#F59E0B" />
+                <View>
+                  <Text style={styles.menuRowText}>
+                    {isAr ? 'القواعد التلقائية الذكية' : 'Smart Auto Rules'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_500Medium', fontSize: 11, color: colors.textSecondary }}>
+                    {isAr ? 'تصنيف تلقائي للمعاملات وتطبيق الوسوم حسب الكلمات' : 'Auto-classify and tag transactions by keywords'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+
           {/* Section 4: Bank SMS Automation */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>

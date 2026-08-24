@@ -51,8 +51,8 @@ export default function WidgetsSetupScreen() {
 
   // Compute live widget data
   const healthScore = useMemo(() => {
-    return calculateHealthScore(transactions, balance, totalIncome);
-  }, [transactions, balance, totalIncome]);
+    return calculateHealthScore(transactions, {}, totalIncome, totalExpense, 'safe', 0);
+  }, [transactions, totalIncome, totalExpense]);
 
   const widgetData: WidgetData = useMemo(() => {
     return getWidgetData(

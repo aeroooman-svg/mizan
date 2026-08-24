@@ -9,8 +9,8 @@ function assert(condition: boolean, message: string) {
 
 export function runNlpParserTests() {
   const mockWallets: Wallet[] = [
-    { id: 'w1', name: 'كاش Cash', balance: 1000, initialBalance: 1000, color: '#10B981', icon: 'payments', currency: 'KWD', isDefault: true, createdAt: '' },
-    { id: 'w2', name: 'بنك الكويت الوطني NBK', balance: 5000, initialBalance: 5000, color: '#3B82F6', icon: 'account-balance', currency: 'KWD', isDefault: false, createdAt: '' },
+    { id: 'w1', name: 'كاش Cash', initialBalance: 1000, color: '#10B981', icon: 'payments', currency: 'KWD', createdAt: '' },
+    { id: 'w2', name: 'بنك الكويت الوطني NBK', initialBalance: 5000, color: '#3B82F6', icon: 'account-balance', currency: 'KWD', createdAt: '' },
   ];
 
   // Test 1: User's exact prompt from image 3: "مصاريف مطعم شطه دينار و"

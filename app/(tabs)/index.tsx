@@ -62,6 +62,9 @@ import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
+import WeeklyDigestBanner from '@/components/WeeklyDigestBanner';
+import MonthOverMonthCard from '@/components/MonthOverMonthCard';
+import SpendingHeatmapWidget from '@/components/SpendingHeatmapWidget';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -1041,6 +1044,16 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
+        {/* Weekly Digest Banner */}
+        {walletTransactions.length > 0 && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <WeeklyDigestBanner
+              transactions={walletTransactions}
+              currencySymbol={currencySymbol}
+            />
+          </View>
+        )}
+
         {/* Quick Glance Widget */}
         {widgetConfig.showQuickGlance !== false && (
           <QuickGlanceWidget
@@ -1092,6 +1105,20 @@ export default function HomeScreen() {
             onOpenRemittanceModal={() => setIsRemittanceModalOpen(true)}
             onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
           />
+        )}
+
+        {/* Advanced Animated Dashboard Widgets: MoM & Spending Heatmap */}
+        {walletTransactions.length > 0 && (
+          <View style={{ paddingHorizontal: 16, gap: 14, marginTop: 14 }}>
+            <MonthOverMonthCard
+              transactions={walletTransactions}
+              currencySymbol={currencySymbol}
+            />
+            <SpendingHeatmapWidget
+              transactions={walletTransactions}
+              currencySymbol={currencySymbol}
+            />
+          </View>
         )}
 
       </ScrollView>

@@ -27,6 +27,7 @@ import { getBudgetsForWallet, setCategoryBudget, removeCategoryBudget } from '@/
 import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import { getDebts, Debt } from '@/lib/debtStorage';
 import { getGoals, SavingsGoal } from '@/lib/goalStorage';
+import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_SIZE = 180;
@@ -126,6 +127,7 @@ export default function StatsScreen() {
   const [activeCategoryForBudget, setActiveCategoryForBudget] = useState<Category | null>(null);
   const [budgetLimitInput, setBudgetLimitInput] = useState('');
   const [cameFromManage, setCameFromManage] = useState(false);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
 
   const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
 
@@ -139,6 +141,16 @@ export default function StatsScreen() {
   useEffect(() => {
     loadBudgets();
   }, [selectedWallet]);
+
+  useEffect(() => {
+    async function loadTags() {
+      try {
+        const tList = await getAllTags();
+        setAvailableTags(tList);
+      } catch (e) {}
+    }
+    loadTags();
+  }, []);
 
   const handlePrevMonth = () => {
     Haptics.selectionAsync();
@@ -486,6 +498,32 @@ export default function StatsScreen() {
     const net = monthlyIncome - monthlyExpense;
     return Math.max(0, Math.min(100, Math.round((net / monthlyIncome) * 100)));
   }, [monthlyIncome, monthlyExpense]);
+
+  const tagStats = useMemo(() => {
+    const map: Record<string, number> = {};
+
+    monthlyTransactions.forEach(tx => {
+      if (tx.type !== viewType) return;
+      const tagsList = parseTransactionTags(tx.tags);
+      tagsList.forEach(tagId => {
+        map[tagId] = (map[tagId] || 0) + tx.amount;
+      });
+    });
+
+    const entries = Object.entries(map).map(([tagId, amount]) => {
+      const tagObj = availableTags.find(t => t.id === tagId);
+      const percentage = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
+      return {
+        tagId,
+        tagObj,
+        amount,
+        percentage,
+      };
+    });
+
+    entries.sort((a, b) => b.amount - a.amount);
+    return entries;
+  }, [monthlyTransactions, viewType, totalAmount, availableTags]);
 
   const groupWidth = dailyData.length > 0 ? (BAR_CHART_WIDTH - 20) / dailyData.length : 30;
   const barWidth = Math.max(3, (groupWidth - 6) / 2);
@@ -1242,6 +1280,50 @@ export default function StatsScreen() {
                 })}
               </View>
             </View>
+
+            {/* Smart Tags Analytics Section */}
+            {tagStats.length > 0 && (
+              <View style={[styles.categoriesSection, { marginTop: 16 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <Ionicons name="pricetags" size={18} color={colors.accent} />
+                  <Text style={styles.sectionTitle}>
+                    {language === 'ar' ? 'الإنفاق حسب الوسوم الذكية (Tags)' : 'Spending by Smart Tags'}
+                  </Text>
+                </View>
+                <View style={styles.categoriesList}>
+                  {tagStats.map(stat => {
+                    const tagColor = stat.tagObj?.color || colors.primary;
+                    const tagName = stat.tagObj ? (language === 'ar' ? stat.tagObj.nameAr : stat.tagObj.nameEn) : `#${stat.tagId}`;
+                    return (
+                      <View key={stat.tagId} style={styles.premiumCategoryCard}>
+                        <View style={styles.categoryRowTop}>
+                          <View style={[styles.catIconWrap, { backgroundColor: tagColor + '18' }]}>
+                            <Ionicons name="pricetag" size={16} color={tagColor} />
+                          </View>
+                          <View style={{ flex: 1, paddingHorizontal: 4 }}>
+                            <Text style={styles.categoryName} numberOfLines={1}>{tagName}</Text>
+                            <Text style={[styles.categoryPercent, { color: tagColor, fontFamily: 'Cairo_700Bold' }]}>
+                              {Math.round(stat.percentage)}%
+                            </Text>
+                          </View>
+                          <Text style={styles.categoryAmount}>
+                            {formatCurrency(stat.amount)} {currencySymbol}
+                          </Text>
+                        </View>
+                        <View style={styles.categoryBarBg}>
+                          <View
+                            style={[styles.categoryBarFill, {
+                              width: `${Math.min(100, Math.max(2, stat.percentage))}%`,
+                              backgroundColor: tagColor,
+                            }]}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
         )}
 

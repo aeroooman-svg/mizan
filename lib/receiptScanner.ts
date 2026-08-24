@@ -208,7 +208,7 @@ const VISION_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_VISION_API_KEY || '';
 async function imageToBase64(imageUri: string): Promise<string | null> {
   try {
     const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64' as any,
     });
     return base64;
   } catch (err) {

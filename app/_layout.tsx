@@ -194,6 +194,14 @@ function RootLayoutNav() {
           options={getSheetScreenOptions(colors, 0.85)}
         />
         <Stack.Screen
+          name="auto-rules"
+          options={getSheetScreenOptions(colors, 0.85)}
+        />
+        <Stack.Screen
+          name="receipts-vault"
+          options={getSheetScreenOptions(colors, 0.92)}
+        />
+        <Stack.Screen
           name="privacy-policy"
           options={getSheetScreenOptions(colors, 0.92)}
         />

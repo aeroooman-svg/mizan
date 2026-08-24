@@ -31,6 +31,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
 
 type FilterType = 'all' | 'income' | 'expense';
 
@@ -44,6 +45,8 @@ export default function TransactionsScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [rates, setRates] = useState<Record<string, number>>({});
 
   // Options & Delete Modal States (Web & Mobile Compatible)
@@ -51,13 +54,17 @@ export default function TransactionsScreen() {
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
 
   React.useEffect(() => {
-    async function loadRates() {
+    async function loadInitialData() {
       try {
-        const r = await getExchangeRates();
+        const [r, tList] = await Promise.all([
+          getExchangeRates().catch(() => ({})),
+          getAllTags().catch(() => []),
+        ]);
         setRates(r);
+        setAvailableTags(tList);
       } catch (e) {}
     }
-    loadRates();
+    loadInitialData();
   }, []);
 
   // Grouped Categories for filtering
@@ -92,19 +99,27 @@ export default function TransactionsScreen() {
     if (selectedCategoryFilter) {
       result = result.filter(t => t.category === selectedCategoryFilter);
     }
+    if (selectedTagFilter) {
+      result = result.filter(t => {
+        const txTags = parseTransactionTags(t.tags);
+        return txTags.includes(selectedTagFilter);
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(t => {
         const catName = getCategoryName(t.category, language);
+        const tagsStr = (t.tags || '').toLowerCase();
         return (
           catName.toLowerCase().includes(q) ||
           (t.description || '').toLowerCase().includes(q) ||
-          t.amount.toString().includes(q)
+          t.amount.toString().includes(q) ||
+          tagsStr.includes(q)
         );
       });
     }
     return result;
-  }, [walletTransactions, filter, selectedCategoryFilter, searchQuery, language]);
+  }, [walletTransactions, filter, selectedCategoryFilter, selectedTagFilter, searchQuery, language]);
 
   // Group Transactions by Date for SectionList
   const groupedTransactions = useMemo(() => {
@@ -355,6 +370,20 @@ export default function TransactionsScreen() {
               <Text style={styles.transactionDesc} numberOfLines={1}>{item.description}</Text>
             ) : null}
           </View>
+          {item.tags ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+              {parseTransactionTags(item.tags).map(tagStr => {
+                const tagObj = availableTags.find(t => t.id === tagStr);
+                return (
+                  <View key={tagStr} style={{ backgroundColor: (tagObj?.color || colors.primary) + '18', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: tagObj?.color || colors.primary }}>
+                      #{tagObj ? (language === 'ar' ? tagObj.nameAr : tagObj.nameEn) : tagStr}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
           {isCrossCurrency && (
             <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textTertiary, textAlign: 'left', marginTop: 1 }}>
               {language === 'ar' 
@@ -418,8 +447,31 @@ export default function TransactionsScreen() {
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{t.transactions}</Text>
 
-          {/* Smart Entry Actions: Receipt Scan & Statement Import */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {/* Smart Entry Actions: Receipt Scan & Statement Import & Receipts Vault */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push('/receipts-vault' as any);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#00E5FF18',
+                paddingHorizontal: 8,
+                paddingVertical: 6,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#00E5FF40',
+              }}
+            >
+              <Ionicons name="images-outline" size={13} color="#00E5FF" />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#00E5FF' }}>
+                {language === 'ar' ? 'الخزينة' : 'Vault'}
+              </Text>
+            </Pressable>
+
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
@@ -430,15 +482,15 @@ export default function TransactionsScreen() {
                 alignItems: 'center',
                 gap: 4,
                 backgroundColor: '#F59E0B18',
-                paddingHorizontal: 10,
+                paddingHorizontal: 8,
                 paddingVertical: 6,
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: '#F59E0B40',
               }}
             >
-              <Ionicons name="camera-outline" size={14} color="#F59E0B" />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#F59E0B' }}>
+              <Ionicons name="camera-outline" size={13} color="#F59E0B" />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#F59E0B' }}>
                 {language === 'ar' ? 'فاتورة' : 'Scan'}
               </Text>
             </Pressable>
@@ -453,16 +505,16 @@ export default function TransactionsScreen() {
                 alignItems: 'center',
                 gap: 4,
                 backgroundColor: colors.primary + '18',
-                paddingHorizontal: 10,
+                paddingHorizontal: 8,
                 paddingVertical: 6,
                 borderRadius: 10,
                 borderWidth: 1,
                 borderColor: colors.primary + '40',
               }}
             >
-              <Ionicons name="document-text-outline" size={14} color={colors.primary} />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                {language === 'ar' ? 'كشف حساب' : 'Statement'}
+              <Ionicons name="document-text-outline" size={13} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: colors.primary }}>
+                {language === 'ar' ? 'كشف' : 'CSV'}
               </Text>
             </Pressable>
           </View>
@@ -533,6 +585,7 @@ export default function TransactionsScreen() {
           ))}
         </View>
 
+        {/* Category Carousel */}
         <View style={styles.categoryCarouselWrapper}>
           <FlatList
             horizontal
@@ -573,6 +626,48 @@ export default function TransactionsScreen() {
             contentContainerStyle={styles.categoryCarouselScroll}
           />
         </View>
+
+        {/* Smart Tags Carousel Filter */}
+        {availableTags.length > 0 && (
+          <View style={{ marginTop: 6 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {availableTags.map(tagObj => {
+                const isSelected = selectedTagFilter === tagObj.id;
+                return (
+                  <Pressable
+                    key={tagObj.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedTagFilter(isSelected ? null : tagObj.id);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingVertical: 3,
+                      paddingHorizontal: 8,
+                      borderRadius: 8,
+                      backgroundColor: isSelected ? tagObj.color + '25' : colors.surfaceAlt,
+                      borderWidth: 1,
+                      borderColor: isSelected ? tagObj.color : colors.border,
+                    }}
+                  >
+                    <Ionicons name="pricetag" size={10} color={isSelected ? tagObj.color : colors.textTertiary} />
+                    <Text
+                      style={{
+                        fontFamily: isSelected ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
+                        fontSize: 10,
+                        color: isSelected ? tagObj.color : colors.textSecondary,
+                      }}
+                    >
+                      {language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       <SectionList

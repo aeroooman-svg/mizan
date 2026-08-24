@@ -20,8 +20,9 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency } from '@/lib/categories';
 import { getLocalMetalPrices } from '@/lib/goldPriceApi';
+import { CurrencyCode } from '@/lib/storage';
 
-const AVAILABLE_CURRENCIES = [
+const AVAILABLE_CURRENCIES: { code: CurrencyCode; symbol: string; nameAr: string; flag: string }[] = [
   { code: 'EGP', symbol: 'ج.م', nameAr: 'جنيه مصري', flag: '🇪🇬' },
   { code: 'SAR', symbol: 'ر.س', nameAr: 'ريال سعودي', flag: '🇸🇦' },
   { code: 'USD', symbol: '$', nameAr: 'دولار أمريكي', flag: '🇺🇸' },
