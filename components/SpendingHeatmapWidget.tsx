@@ -7,14 +7,22 @@ import {
   Modal,
   ScrollView,
   Dimensions,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { Transaction } from '@/lib/storage';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface SpendingHeatmapWidgetProps {
   transactions: Transaction[];
@@ -32,20 +40,55 @@ export default function SpendingHeatmapWidget({
   const { language } = useLanguage();
   const isAr = language === 'ar';
 
+  const today = useMemo(() => new Date(), []);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [viewType, setViewType] = useState<'expense' | 'income'>('expense');
+
+  // Month navigation offset (0 = current month, -1 = last month, etc.)
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const activeDate = useMemo(() => {
+    return new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  }, [today, monthOffset]);
+
+  const activeYear = activeDate.getFullYear();
+  const activeMonth = activeDate.getMonth();
+  const daysInMonth = new Date(activeYear, activeMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(activeYear, activeMonth, 1).getDay();
+
+  const isCurrentMonth = monthOffset === 0;
+
   const [selectedDayInfo, setSelectedDayInfo] = useState<{
     dayNumber: number;
     dateStr: string;
-    totalExpense: number;
+    totalAmount: number;
     txList: Transaction[];
   } | null>(null);
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+  // Toggle Collapse with animation
+  const toggleCollapse = () => {
+    Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsCollapsed(prev => !prev);
+  };
 
-  // Aggregate spending by day
+  // Month navigation handlers
+  const handlePrevMonth = () => {
+    Haptics.selectionAsync();
+    setMonthOffset(prev => prev - 1);
+  };
+
+  const handleNextMonth = () => {
+    Haptics.selectionAsync();
+    setMonthOffset(prev => prev + 1);
+  };
+
+  const handleResetMonth = () => {
+    Haptics.selectionAsync();
+    setMonthOffset(0);
+  };
+
+  // Aggregate spending/income by day for the active month
   const dailyData = useMemo(() => {
     const map: Record<number, { total: number; txs: Transaction[] }> = {};
     for (let d = 1; d <= daysInMonth; d++) {
@@ -53,9 +96,9 @@ export default function SpendingHeatmapWidget({
     }
 
     transactions.forEach(tx => {
-      if (tx.type !== 'expense') return;
+      if (tx.type !== viewType) return;
       const d = new Date(tx.date);
-      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+      if (d.getFullYear() === activeYear && d.getMonth() === activeMonth) {
         const dayNum = d.getDate();
         if (map[dayNum]) {
           map[dayNum].total += tx.amount;
@@ -65,136 +108,333 @@ export default function SpendingHeatmapWidget({
     });
 
     return map;
-  }, [transactions, currentYear, currentMonth, daysInMonth]);
+  }, [transactions, activeYear, activeMonth, daysInMonth, viewType]);
 
-  // Determine max expense for heat intensity scaling
-  const maxDayExpense = useMemo(() => {
+  // Statistics for the active month
+  const stats = useMemo(() => {
     let max = 0;
-    Object.values(dailyData).forEach(item => {
-      if (item.total > max) max = item.total;
-    });
-    return max || 100;
-  }, [dailyData]);
+    let peakDay = 0;
+    let zeroDaysCount = 0;
+    let grandTotal = 0;
+    const daysEvaluated = isCurrentMonth ? Math.min(today.getDate(), daysInMonth) : daysInMonth;
 
-  const getHeatColor = (amount: number) => {
-    if (amount === 0) return colors.surfaceAlt;
-    const ratio = amount / maxDayExpense;
-    if (ratio < 0.25) return 'rgba(239, 68, 68, 0.25)';
-    if (ratio < 0.55) return 'rgba(239, 68, 68, 0.50)';
-    if (ratio < 0.85) return 'rgba(239, 68, 68, 0.75)';
-    return '#EF4444'; // Peak spending day
+    for (let d = 1; d <= daysInMonth; d++) {
+      const amt = dailyData[d]?.total || 0;
+      grandTotal += amt;
+      if (amt > max) {
+        max = amt;
+        peakDay = d;
+      }
+      if (d <= daysEvaluated && amt === 0) {
+        zeroDaysCount++;
+      }
+    }
+
+    const dailyAverage = daysEvaluated > 0 ? grandTotal / daysEvaluated : 0;
+
+    return {
+      maxAmount: max || 100,
+      peakDay,
+      peakAmount: max,
+      zeroDaysCount,
+      grandTotal,
+      dailyAverage,
+    };
+  }, [dailyData, daysInMonth, isCurrentMonth, today]);
+
+  // Color intensity calculator
+  const getCellColor = (amount: number, isPassedDay: boolean) => {
+    if (amount === 0) {
+      if (viewType === 'expense' && isPassedDay) {
+        // Zero-spend celebration color (subtle emerald tint)
+        return 'rgba(16, 185, 129, 0.12)';
+      }
+      return colors.surfaceAlt || 'rgba(255,255,255,0.03)';
+    }
+
+    const ratio = amount / stats.maxAmount;
+
+    if (viewType === 'expense') {
+      if (ratio < 0.25) return 'rgba(245, 158, 11, 0.25)'; // Amber low
+      if (ratio < 0.55) return 'rgba(249, 115, 22, 0.50)'; // Orange med
+      if (ratio < 0.85) return 'rgba(239, 68, 68, 0.75)'; // Crimson high
+      return '#EF4444'; // Peak high
+    } else {
+      // Income mode
+      if (ratio < 0.25) return 'rgba(6, 182, 212, 0.25)'; // Cyan low
+      if (ratio < 0.55) return 'rgba(16, 185, 129, 0.50)'; // Emerald med
+      if (ratio < 0.85) return 'rgba(16, 185, 129, 0.75)'; // Deep Emerald
+      return '#10B981'; // Peak income
+    }
   };
 
   const dayHeadersAr = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
   const dayHeadersEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dayHeaders = isAr ? dayHeadersAr : dayHeadersEn;
 
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const monthNamesAr = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ];
+  const monthNamesEn = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const formattedMonthName = isAr
+    ? `${monthNamesAr[activeMonth]} ${activeYear}`
+    : `${monthNamesEn[activeMonth]} ${activeYear}`;
+
+  const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
 
   return (
     <View style={styles.card}>
-      <View style={styles.header}>
+      {/* Accordion / Collapsible Header */}
+      <Pressable
+        style={styles.headerPressable}
+        onPress={toggleCollapse}
+      >
         <View style={styles.titleRow}>
-          <Ionicons name="flame" size={20} color="#EF4444" />
-          <Text style={styles.title}>
-            {isAr ? 'الخريطة الحرارية للإنفاق' : 'Spending Heatmap'}
-          </Text>
-        </View>
-        <Text style={styles.monthBadge}>
-          {now.toLocaleString(isAr ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' })}
-        </Text>
-      </View>
-
-      {/* Weekday headers */}
-      <View style={styles.gridRow}>
-        {dayHeaders.map((day, i) => (
-          <View key={i} style={styles.cellHeader}>
-            <Text style={styles.cellHeaderText}>{day}</Text>
+          <View style={[styles.iconCircle, { backgroundColor: viewType === 'expense' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)' }]}>
+            <Ionicons
+              name={viewType === 'expense' ? 'flame' : 'wallet'}
+              size={18}
+              color={viewType === 'expense' ? '#EF4444' : '#10B981'}
+            />
           </View>
-        ))}
-      </View>
-
-      {/* Calendar Heatmap Grid */}
-      <View style={styles.gridContainer}>
-        {/* Leading empty cells for month offset */}
-        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-          <View key={`empty-${i}`} style={styles.cellEmpty} />
-        ))}
-
-        {/* Day cells */}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const dayNum = i + 1;
-          const dayItem = dailyData[dayNum];
-          const isToday = dayNum === now.getDate();
-          const heatBg = getHeatColor(dayItem.total);
-
-          return (
-            <Pressable
-              key={dayNum}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setSelectedDayInfo({
-                  dayNumber: dayNum,
-                  dateStr: `${dayNum} / ${currentMonth + 1} / ${currentYear}`,
-                  totalExpense: dayItem.total,
-                  txList: dayItem.txs,
-                });
-              }}
-              style={[
-                styles.cell,
-                { backgroundColor: heatBg },
-                isToday && styles.todayCell,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.dayNumText,
-                  dayItem.total > 0 && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
-                ]}
-              >
-                {dayNum}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>
+              {isAr ? 'الخريطة الحرارية للإنفاق' : 'Spending Heatmap'}
+            </Text>
+            {isCollapsed && (
+              <Text style={styles.collapsedSubtitle}>
+                {formattedMonthName} • {isAr ? `${stats.zeroDaysCount} يوم توفير 🛡️` : `${stats.zeroDaysCount} No-Spend Days`}
               </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            )}
+          </View>
+        </View>
 
-      {/* Legend */}
-      <View style={styles.legendRow}>
-        <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
-        <View style={[styles.legendBox, { backgroundColor: colors.surfaceAlt }]} />
-        <View style={[styles.legendBox, { backgroundColor: 'rgba(239, 68, 68, 0.25)' }]} />
-        <View style={[styles.legendBox, { backgroundColor: 'rgba(239, 68, 68, 0.55)' }]} />
-        <View style={[styles.legendBox, { backgroundColor: '#EF4444' }]} />
-        <Text style={styles.legendLabel}>{isAr ? 'أعلى إنفاق' : 'High'}</Text>
-      </View>
+        <View style={styles.headerRight}>
+          <View style={styles.collapseToggleBtn}>
+            <Ionicons
+              name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </View>
+        </View>
+      </Pressable>
+
+      {/* Expanded Content */}
+      {!isCollapsed && (
+        <View style={styles.expandedContent}>
+          {/* Controls Bar: Type Switcher & Month Navigation */}
+          <View style={styles.controlsBar}>
+            {/* Type Selector (Expenses vs Income) */}
+            <View style={styles.typeSelector}>
+              <Pressable
+                style={[
+                  styles.typeTabBtn,
+                  viewType === 'expense' && { backgroundColor: '#EF4444' },
+                ]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setViewType('expense');
+                }}
+              >
+                <Ionicons name="flame" size={12} color={viewType === 'expense' ? '#FFF' : colors.textSecondary} />
+                <Text
+                  style={[
+                    styles.typeTabText,
+                    viewType === 'expense' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
+                  ]}
+                >
+                  {isAr ? 'المصروفات' : 'Expenses'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.typeTabBtn,
+                  viewType === 'income' && { backgroundColor: '#10B981' },
+                ]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setViewType('income');
+                }}
+              >
+                <Ionicons name="trending-up" size={12} color={viewType === 'income' ? '#FFF' : colors.textSecondary} />
+                <Text
+                  style={[
+                    styles.typeTabText,
+                    viewType === 'income' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
+                  ]}
+                >
+                  {isAr ? 'الإيرادات' : 'Income'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Month Navigator */}
+            <View style={styles.monthNav}>
+              <Pressable onPress={handlePrevMonth} hitSlop={8} style={styles.navArrowBtn}>
+                <Ionicons name={isAr ? 'chevron-forward' : 'chevron-back'} size={16} color={colors.text} />
+              </Pressable>
+              <Pressable onPress={handleResetMonth}>
+                <Text style={styles.monthNavLabel}>{formattedMonthName}</Text>
+              </Pressable>
+              <Pressable onPress={handleNextMonth} hitSlop={8} style={styles.navArrowBtn}>
+                <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.text} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Quick Insights Summary Bar */}
+          <View style={styles.insightsBar}>
+            <View style={styles.insightStatItem}>
+              <Text style={styles.insightStatLabel}>
+                {isAr ? '🟢 أيام التوفير' : '🟢 No-Spend'}
+              </Text>
+              <Text style={[styles.insightStatValue, { color: '#10B981' }]}>
+                {stats.zeroDaysCount} {isAr ? 'يوم' : 'days'}
+              </Text>
+            </View>
+
+            <View style={styles.insightDivider} />
+
+            <View style={styles.insightStatItem}>
+              <Text style={styles.insightStatLabel}>
+                {isAr ? '🔴 يوم الذروة' : '🔴 Peak Day'}
+              </Text>
+              <Text style={[styles.insightStatValue, { color: viewType === 'expense' ? '#EF4444' : '#10B981' }]}>
+                {stats.peakDay > 0 ? (isAr ? `يوم ${stats.peakDay}` : `Day ${stats.peakDay}`) : '-'}
+              </Text>
+            </View>
+
+            <View style={styles.insightDivider} />
+
+            <View style={styles.insightStatItem}>
+              <Text style={styles.insightStatLabel}>
+                {isAr ? '⚡ المتوسط اليومي' : '⚡ Daily Avg'}
+              </Text>
+              <Text style={[styles.insightStatValue, { color: colors.text }]}>
+                {formatCurrency(stats.dailyAverage, language)} {currencySymbol}
+              </Text>
+            </View>
+          </View>
+
+          {/* Weekday headers */}
+          <View style={styles.gridHeaderRow}>
+            {dayHeaders.map((day, i) => (
+              <View key={i} style={styles.cellHeader}>
+                <Text style={styles.cellHeaderText}>{day}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Calendar Heatmap Grid */}
+          <View style={styles.gridContainer}>
+            {/* Leading empty cells for month offset */}
+            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+              <View key={`empty-${i}`} style={styles.cellEmpty} />
+            ))}
+
+            {/* Day cells */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const dayItem = dailyData[dayNum];
+              const isToday = isCurrentMonth && dayNum === today.getDate();
+              const isPassedDay = isCurrentMonth ? dayNum <= today.getDate() : true;
+              const heatBg = getCellColor(dayItem.total, isPassedDay);
+              const isZeroSpend = dayItem.total === 0 && isPassedDay && viewType === 'expense';
+
+              return (
+                <Pressable
+                  key={dayNum}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setSelectedDayInfo({
+                      dayNumber: dayNum,
+                      dateStr: `${dayNum} ${formattedMonthName}`,
+                      totalAmount: dayItem.total,
+                      txList: dayItem.txs,
+                    });
+                  }}
+                  style={[
+                    styles.cell,
+                    { backgroundColor: heatBg },
+                    isToday && styles.todayCell,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayNumText,
+                      dayItem.total > 0 && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
+                      isZeroSpend && { color: '#10B981' },
+                    ]}
+                  >
+                    {dayNum}
+                  </Text>
+                  {isZeroSpend && (
+                    <View style={styles.zeroDot} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Legend */}
+          <View style={styles.legendRow}>
+            <View style={styles.legendZeroGroup}>
+              <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981', borderWidth: 0.5 }]} />
+              <Text style={styles.legendLabel}>{isAr ? 'يوم توفير 🛡️' : 'Zero-Spend 🛡️'}</Text>
+            </View>
+
+            <View style={styles.legendScaleGroup}>
+              <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+              <View style={[styles.legendBox, { backgroundColor: viewType === 'expense' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(6, 182, 212, 0.25)' }]} />
+              <View style={[styles.legendBox, { backgroundColor: viewType === 'expense' ? 'rgba(249, 115, 22, 0.50)' : 'rgba(16, 185, 129, 0.50)' }]} />
+              <View style={[styles.legendBox, { backgroundColor: viewType === 'expense' ? '#EF4444' : '#10B981' }]} />
+              <Text style={styles.legendLabel}>{isAr ? 'ذروة' : 'High'}</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Day Details Modal */}
       {selectedDayInfo && (
-        <Modal transparent visible animationType="slide" onRequestClose={() => setSelectedDayInfo(null)}>
+        <Modal transparent visible animationType="fade" onRequestClose={() => setSelectedDayInfo(null)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.modalDateTitle}>{selectedDayInfo.dateStr}</Text>
                   <Text style={styles.modalExpenseTotal}>
-                    {isAr ? 'إجمالي الصرف:' : 'Total Spent:'}{' '}
-                    <Text style={{ color: colors.expense }}>
-                      {formatCurrency(selectedDayInfo.totalExpense, language)} {currencySymbol}
+                    {viewType === 'expense' ? (isAr ? 'إجمالي الصرف:' : 'Total Spent:') : (isAr ? 'إجمالي الدخل:' : 'Total Income:')}{' '}
+                    <Text style={{ color: viewType === 'expense' ? colors.expense : colors.income, fontFamily: 'Cairo_700Bold' }}>
+                      {formatCurrency(selectedDayInfo.totalAmount, language)} {currencySymbol}
                     </Text>
                   </Text>
                 </View>
-                <Pressable onPress={() => setSelectedDayInfo(null)} hitSlop={10}>
-                  <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+                <Pressable
+                  onPress={() => setSelectedDayInfo(null)}
+                  hitSlop={10}
+                  style={styles.modalCloseBtn}
+                >
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
                 </Pressable>
               </View>
 
-              <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {selectedDayInfo.txList.length === 0 ? (
                   <View style={styles.noTxBox}>
-                    <Ionicons name="checkmark-done-circle" size={32} color={colors.income} />
-                    <Text style={styles.noTxText}>
-                      {isAr ? 'يوم ادخار مثالي! لا توجد مصاريف مسجلة.' : 'Great savings day! No expenses recorded.'}
+                    <Ionicons name="shield-checkmark" size={36} color="#10B981" />
+                    <Text style={styles.noTxTitle}>
+                      {isAr ? 'يوم ادخار وبدون مصاريف! 🎉' : 'Zero-Spend Day! 🎉'}
+                    </Text>
+                    <Text style={styles.noTxSub}>
+                      {isAr
+                        ? 'لم تسجل أي مصاريف في هذا اليوم، ممتاز في تعزيز أهدافك المالية.'
+                        : 'No expenses recorded on this day. Great job building savings!'}
                     </Text>
                   </View>
                 ) : (
@@ -207,16 +447,46 @@ export default function SpendingHeatmapWidget({
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.txCatName}>{getCategoryName(tx.category, language)}</Text>
-                          {tx.description ? <Text style={styles.txDesc}>{tx.description}</Text> : null}
+                          {tx.description ? <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text> : null}
                         </View>
-                        <Text style={styles.txAmount}>
-                          -{formatCurrency(tx.amount, language)} {currencySymbol}
+                        <Text
+                          style={[
+                            styles.txAmount,
+                            { color: tx.type === 'expense' ? colors.expense : colors.income },
+                          ]}
+                        >
+                          {tx.type === 'expense' ? '-' : '+'}{formatCurrency(tx.amount, language)} {currencySymbol}
                         </Text>
                       </View>
                     );
                   })
                 )}
               </ScrollView>
+
+              {/* Action Button: Add Transaction for this day */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addTxBtn,
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={() => {
+                  const targetDay = selectedDayInfo.dayNumber;
+                  setSelectedDayInfo(null);
+                  const selectedDateObj = new Date(activeYear, activeMonth, targetDay, 12, 0, 0);
+                  router.push({
+                    pathname: '/add-transaction',
+                    params: {
+                      prefillDate: selectedDateObj.toISOString(),
+                      prefillType: viewType,
+                    },
+                  } as any);
+                }}
+              >
+                <Ionicons name="add-circle" size={18} color="#FFF" />
+                <Text style={styles.addTxBtnText}>
+                  {isAr ? `إضافة عملية ليوم ${selectedDayInfo.dayNumber}` : `Add Transaction for Day ${selectedDayInfo.dayNumber}`}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </Modal>
@@ -225,7 +495,7 @@ export default function SpendingHeatmapWidget({
   );
 }
 
-const getStyles = (colors: any) =>
+const getStyles = (colors: any, isAr: boolean) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.card || colors.surface,
@@ -235,29 +505,131 @@ const getStyles = (colors: any) =>
       borderColor: colors.border,
       gap: 12,
     },
-    header: {
-      flexDirection: 'row',
+    headerPressable: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
     titleRow: {
-      flexDirection: 'row',
+      flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 10,
+      flex: 1,
+    },
+    iconCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     title: {
       fontFamily: 'Cairo_700Bold',
       fontSize: 14,
       color: colors.text,
+      textAlign: isAr ? 'right' : 'left',
     },
-    monthBadge: {
+    collapsedSubtitle: {
       fontFamily: 'Cairo_600SemiBold',
       fontSize: 11,
       color: colors.textSecondary,
+      textAlign: isAr ? 'right' : 'left',
+      marginTop: 1,
     },
-    gridRow: {
-      flexDirection: 'row',
+    headerRight: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    collapseToggleBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    expandedContent: {
+      gap: 12,
+      paddingTop: 4,
+    },
+    controlsBar: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 8,
+    },
+    typeSelector: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.04)',
+      borderRadius: 10,
+      padding: 3,
+      gap: 2,
+    },
+    typeTabBtn: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    typeTabText: {
+      fontSize: 11,
+      fontFamily: 'Cairo_600SemiBold',
+    },
+    monthNav: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.04)',
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    navArrowBtn: {
+      padding: 4,
+    },
+    monthNavLabel: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 11,
+      color: colors.text,
+      paddingHorizontal: 4,
+    },
+    insightsBar: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.03)',
+      borderRadius: 12,
+      padding: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    insightStatItem: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 2,
+    },
+    insightDivider: {
+      width: 1,
+      height: 24,
+      backgroundColor: colors.border,
+    },
+    insightStatLabel: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 10,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    insightStatValue: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+      textAlign: 'center',
+    },
+    gridHeaderRow: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: 2,
     },
     cellHeader: {
       width: CELL_SIZE,
@@ -269,7 +641,7 @@ const getStyles = (colors: any) =>
       color: colors.textTertiary,
     },
     gridContainer: {
-      flexDirection: 'row',
+      flexDirection: isAr ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
       gap: 4,
     },
@@ -285,6 +657,7 @@ const getStyles = (colors: any) =>
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.05)',
+      position: 'relative',
     },
     todayCell: {
       borderColor: colors.primary,
@@ -295,12 +668,30 @@ const getStyles = (colors: any) =>
       fontSize: 11,
       color: colors.textSecondary,
     },
+    zeroDot: {
+      position: 'absolute',
+      bottom: 3,
+      width: 3,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: '#10B981',
+    },
     legendRow: {
-      flexDirection: 'row',
+      flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 6,
+      justifyContent: 'space-between',
       marginTop: 4,
+      paddingHorizontal: 2,
+    },
+    legendZeroGroup: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    legendScaleGroup: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     legendLabel: {
       fontFamily: 'Cairo_400Regular',
@@ -308,8 +699,8 @@ const getStyles = (colors: any) =>
       color: colors.textTertiary,
     },
     legendBox: {
-      width: 12,
-      height: 12,
+      width: 10,
+      height: 10,
       borderRadius: 3,
     },
     modalOverlay: {
@@ -317,46 +708,74 @@ const getStyles = (colors: any) =>
       backgroundColor: 'rgba(0,0,0,0.65)',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 20,
+      padding: 16,
     },
     modalContent: {
       width: '100%',
-      backgroundColor: colors.surfaceAlt,
+      backgroundColor: colors.surface || colors.card,
       borderRadius: 20,
       padding: 18,
       gap: 14,
       borderWidth: 1,
       borderColor: colors.border,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 16,
+        },
+        android: {
+          elevation: 8,
+        },
+      }),
     },
     modalHeader: {
-      flexDirection: 'row',
+      flexDirection: isAr ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
     },
     modalDateTitle: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 16,
+      fontSize: 15,
       color: colors.text,
+      textAlign: isAr ? 'right' : 'left',
     },
     modalExpenseTotal: {
       fontFamily: 'Cairo_600SemiBold',
-      fontSize: 13,
+      fontSize: 12,
       color: colors.textSecondary,
       marginTop: 2,
+      textAlign: isAr ? 'right' : 'left',
+    },
+    modalCloseBtn: {
+      padding: 4,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)',
     },
     noTxBox: {
       alignItems: 'center',
-      paddingVertical: 20,
+      paddingVertical: 18,
       gap: 6,
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.03)',
+      borderRadius: 14,
+      paddingHorizontal: 12,
     },
-    noTxText: {
-      fontFamily: 'Cairo_600SemiBold',
-      fontSize: 13,
-      color: colors.income,
+    noTxTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: '#10B981',
       textAlign: 'center',
     },
+    noTxSub: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 16,
+    },
     txRow: {
-      flexDirection: 'row',
+      flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
       paddingVertical: 8,
       borderBottomWidth: 1,
@@ -374,15 +793,31 @@ const getStyles = (colors: any) =>
       fontFamily: 'Cairo_700Bold',
       fontSize: 13,
       color: colors.text,
+      textAlign: isAr ? 'right' : 'left',
     },
     txDesc: {
       fontFamily: 'Cairo_400Regular',
       fontSize: 11,
       color: colors.textSecondary,
+      textAlign: isAr ? 'right' : 'left',
     },
     txAmount: {
       fontFamily: 'Cairo_700Bold',
       fontSize: 13,
-      color: colors.expense,
+    },
+    addTxBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 11,
+      marginTop: 2,
+    },
+    addTxBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#FFF',
     },
   });
