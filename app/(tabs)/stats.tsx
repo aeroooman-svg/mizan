@@ -22,6 +22,7 @@ import { formatCurrency, expenseCategories, incomeCategories, Category } from '@
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
+import MonthlyDigestModal from '@/components/MonthlyDigestModal';
 import Svg, { Circle, Rect, Text as SvgText, Path, Defs, LinearGradient as SvgGradient, Stop, G } from 'react-native-svg';
 import { getBudgetsForWallet, setCategoryBudget, removeCategoryBudget } from '@/lib/budgetStorage';
 import { getJameyas, Jameya } from '@/lib/jameyaStorage';
@@ -128,6 +129,7 @@ export default function StatsScreen() {
   const [budgetLimitInput, setBudgetLimitInput] = useState('');
   const [cameFromManage, setCameFromManage] = useState(false);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isMonthlyDigestOpen, setIsMonthlyDigestOpen] = useState(false);
 
   const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
 
@@ -568,6 +570,28 @@ export default function StatsScreen() {
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>{t.stats}</Text>
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: colors.primary + '18',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.primary + '35',
+              }}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setIsMonthlyDigestOpen(true);
+              }}
+            >
+              <Ionicons name="sparkles" size={15} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
+                {language === 'ar' ? 'التقرير الشهري 📊' : 'Monthly Digest 📊'}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
@@ -1868,6 +1892,16 @@ export default function StatsScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* Monthly Financial Digest Modal */}
+      <MonthlyDigestModal
+        visible={isMonthlyDigestOpen}
+        transactions={walletTransactions}
+        selectedWallet={selectedWallet}
+        currencySymbol={currencySymbol}
+        language={language as 'ar' | 'en'}
+        onClose={() => setIsMonthlyDigestOpen(false)}
+      />
     </LinearGradient>
   );
 }

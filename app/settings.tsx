@@ -27,8 +27,6 @@ import { exportTransactionsToPDF } from '@/lib/pdfExporter';
 import { exportTransactionsToCSV } from '@/lib/csvExporter';
 import { createFullBackup, restoreFullBackup } from '@/lib/backupService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAutoSmsSettings, setAutoSmsSettings, clearProcessedSmsHistory } from '@/lib/autoSmsListener';
-import SmsAutomationGuideModal from '@/components/SmsAutomationGuideModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import {
   getNotificationSettings,
@@ -84,11 +82,6 @@ export default function SettingsScreen() {
   const [confirmedPin, setConfirmedPin] = useState('');
   const [pinError, setPinError] = useState('');
 
-  // Auto SMS Automation States
-  const [autoSmsEnabled, setAutoSmsEnabledState] = useState(true);
-  const [autoSmsAutoSave, setAutoSmsAutoSaveState] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
-
   // Smart Notifications States
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
 
@@ -109,14 +102,11 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     async function loadData() {
-      const [loggedUser, s, notif] = await Promise.all([
+      const [loggedUser, notif] = await Promise.all([
         getLoggedInUser().catch(() => null),
-        getAutoSmsSettings().catch(() => ({ enabled: true, autoSave: false })),
         getNotificationSettings().catch(() => DEFAULT_NOTIFICATION_SETTINGS),
       ]);
       setUser(loggedUser);
-      setAutoSmsEnabledState(s.enabled);
-      setAutoSmsAutoSaveState(s.autoSave);
       setNotifSettings(notif);
     }
     loadData();
@@ -154,36 +144,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleToggleAutoSms = async (value: boolean) => {
-    safeHaptic.selection();
-    setAutoSmsEnabledState(value);
-    await setAutoSmsSettings({ enabled: value });
-  };
 
-  const handleToggleAutoSmsAutoSave = async (value: boolean) => {
-    safeHaptic.selection();
-    setAutoSmsAutoSaveState(value);
-    await setAutoSmsSettings({ autoSave: value });
-  };
-
-  const handleClearSmsHistory = async () => {
-    safeHaptic.notification(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      isAr ? 'مسح سجل الرسائل' : 'Clear SMS History',
-      isAr ? 'سيتم إعادة السماح بالتقاط الرسائل البنكية السابقة التي تم قراءتها.' : 'Reset processed SMS log so previously read SMS can be parsed again.',
-      [
-        { text: isAr ? 'إلغاء' : 'Cancel', style: 'cancel' },
-        {
-          text: isAr ? 'مسح' : 'Clear',
-          onPress: async () => {
-            await clearProcessedSmsHistory();
-            safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
-            Alert.alert(isAr ? 'نجاح' : 'Success', isAr ? 'تم مسح سجل الرسائل بنجاح' : 'SMS log cleared');
-          },
-        },
-      ]
-    );
-  };
 
   const handleToggleLanguage = async (lang: 'ar' | 'en') => {
     safeHaptic.selection();
@@ -611,83 +572,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* 4. Bank SMS Automation */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconBadge}>
-                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'أتمتة الرسائل البنكية' : 'Bank SMS Automation'}</Text>
-            </View>
-
-            <View style={styles.switchRow}>
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={styles.switchLabel}>{isAr ? 'التقاط الرسائل البنكية' : 'Bank SMS Auto-Detection'}</Text>
-                <Text style={styles.switchSubtext}>
-                  {isAr ? 'تحليل الرسائل البنكية تلقائياً فور النسخ أو الفتح' : 'Automatically parse copied or received SMS'}
-                </Text>
-              </View>
-              <Switch
-                value={autoSmsEnabled}
-                onValueChange={handleToggleAutoSms}
-                trackColor={{ false: colors.border, true: colors.primary }}
-              />
-            </View>
-
-            {autoSmsEnabled && (
-              <View style={styles.switchRow}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={styles.switchLabel}>{isAr ? 'التسجيل التلقائي الفوري' : 'Auto-Save Mode'}</Text>
-                  <Text style={styles.switchSubtext}>
-                    {isAr ? 'حفظ المعاملات فوراً بدون نافذة تأكيد' : 'Save bank transactions without confirmation popup'}
-                  </Text>
-                </View>
-                <Switch
-                  value={autoSmsAutoSave}
-                  onValueChange={handleToggleAutoSmsAutoSave}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                />
-              </View>
-            )}
-
-            <Pressable
-              onPress={() => {
-                safeHaptic.selection();
-                setIsGuideOpen(true);
-              }}
-              style={({ pressed }) => [
-                styles.menuRowItem,
-                { backgroundColor: colors.primary + '12', borderRadius: 12 },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
-                <Text style={[styles.menuRowText, { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
-                  {isAr ? 'دليل إعداد الأتمتة الكاملة (Android / iOS)' : 'Full Automation Setup Guide'}
-                </Text>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.primary} />
-            </Pressable>
-
-            <Pressable
-              onPress={handleClearSmsHistory}
-              style={({ pressed }) => [
-                styles.menuRowItem,
-                { backgroundColor: 'transparent', paddingHorizontal: 4, borderWidth: 0 },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.menuRowText, { color: colors.textSecondary, fontSize: 12 }]}>
-                  {isAr ? 'إعادة ضبط سجل الرسائل المقروءة' : 'Reset processed SMS log'}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-
-          {/* 5. Smart Notifications & Reminders */}
+          {/* 4. Smart Notifications & Reminders */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -1112,11 +997,7 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Bank SMS Automation Guide Modal */}
-        <SmsAutomationGuideModal
-          visible={isGuideOpen}
-          onClose={() => setIsGuideOpen(false)}
-        />
+
 
         {/* Custom Confirmation Modal */}
         <ConfirmModal

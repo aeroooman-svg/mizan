@@ -20,7 +20,6 @@ import * as Crypto from 'expo-crypto';
 import { Alert } from 'react-native';
 import { deleteFinancialPlan } from './planStorage';
 import { deleteBudgetsForWallet } from './budgetStorage';
-import { deleteEnvelopesForWallet } from './envelopeBudgetStorage';
 import { deleteInstallmentsForWallet } from './installmentStorage';
 import { deleteJameyasForWallet } from './jameyaStorage';
 import { getCustomCategories, saveCustomCategory, updateCustomCategory as updateCustomCatInStorage, deleteCustomCategory as deleteCustomCatFromStorage, CustomCategory } from './customCategories';
@@ -504,7 +503,6 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     await deleteWalletFromStorage(id);
     await deleteFinancialPlan(id);
     await deleteBudgetsForWallet(id);
-    await deleteEnvelopesForWallet(id);
     await deleteInstallmentsForWallet(id);
     await deleteJameyasForWallet(id);
 

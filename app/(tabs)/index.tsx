@@ -27,10 +27,7 @@ import { useTransactions } from '@/lib/TransactionContext';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { checkClipboardForBankSMS, markSmsAsProcessed } from '@/lib/autoSmsListener';
-import { ParsedBankSMS } from '@/lib/smsParser';
-import SmartSmsModal from '@/components/SmartSmsModal';
-
+import MonthlyDigestModal from '@/components/MonthlyDigestModal';
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 import { getBudgetsForWallet } from '@/lib/budgetStorage';
 import { predictCashflow, calculateHealthScore } from '@/lib/financialEngine';
@@ -38,15 +35,8 @@ import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 import { getDebts, Debt } from '@/lib/debtStorage';
 import { getFinancialPlan, FinancialPlan } from '@/lib/planStorage';
 import { RecurringTransaction } from '@/lib/recurringStorage';
-import Svg, { Circle, Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-import FinancialHealthScore from '@/components/FinancialHealthScore';
-import CashflowForecastWidget from '@/components/CashflowForecastWidget';
 import QuickGlanceWidget from '@/components/QuickGlanceWidget';
-import FinancialGoalWidget from '@/components/FinancialGoalWidget';
 import CurrencyConverterModal from '@/components/CurrencyConverterModal';
-import SendRemittanceModal from '@/components/SendRemittanceModal';
-import RemittanceTrackerWidget from '@/components/RemittanceTrackerWidget';
-import { getRemittancesForWallet, calculateRemittanceStats, RemittanceStats } from '@/lib/remittanceStorage';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getWidgetData } from '@/lib/widgetDataProvider';
 import { subscribeSyncStatus, SyncState, getLoggedInUser } from '@/lib/syncService';
@@ -93,36 +83,6 @@ export default function HomeScreen() {
   const [syncState, setSyncState] = useState<SyncState>('synced');
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  // Bank SMS Auto-Detection State
-  const [detectedSms, setDetectedSms] = useState<ParsedBankSMS | null>(null);
-
-  const checkForSms = useCallback(async () => {
-    if (!selectedWallet) return;
-    const res = await checkClipboardForBankSMS(addTransaction, selectedWallet.id);
-    if (res.detected) {
-      if (res.autoSaved) {
-        await refresh();
-      } else if (res.parsed) {
-        setDetectedSms(res.parsed);
-      }
-    }
-  }, [selectedWallet, addTransaction, refresh]);
-
-  useFocusEffect(
-    useCallback(() => {
-      checkForSms();
-    }, [checkForSms])
-  );
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        checkForSms();
-      }
-    });
-    return () => subscription.remove();
-  }, [checkForSms]);
-
   // Record first open & check for in-app review prompt
   useEffect(() => {
     recordFirstOpen();
@@ -130,48 +90,6 @@ export default function HomeScreen() {
       checkAndPromptReview(transactions.length);
     }
   }, [transactions.length]);
-
-  const handleSaveDetectedSms = async () => {
-    if (!detectedSms || !selectedWallet) return;
-    const now = new Date().toISOString();
-    const newTx = {
-      id: Crypto.randomUUID(),
-      walletId: selectedWallet.id,
-      type: detectedSms.type,
-      amount: detectedSms.amount || 0,
-      category: detectedSms.category || 'other',
-      description: `${detectedSms.merchant} (${detectedSms.bankName})`,
-      date: now,
-      createdAt: now,
-      note: `📱 أتمتة رسائل البنك تلقائياً\n${detectedSms.rawText}`,
-    };
-    await addTransaction(newTx);
-    await markSmsAsProcessed(detectedSms.rawText);
-    setDetectedSms(null);
-    await refresh();
-  };
-
-  const handleEditDetectedSms = async () => {
-    if (!detectedSms) return;
-    await markSmsAsProcessed(detectedSms.rawText);
-    const sms = detectedSms;
-    setDetectedSms(null);
-    router.push({
-      pathname: '/add-transaction',
-      params: {
-        prefillAmount: sms.amount?.toString(),
-        prefillType: sms.type,
-        prefillCategory: sms.category,
-        prefillDesc: `${sms.merchant} (${sms.bankName})`,
-      },
-    } as any);
-  };
-
-  const handleDismissDetectedSms = async () => {
-    if (!detectedSms) return;
-    await markSmsAsProcessed(detectedSms.rawText);
-    setDetectedSms(null);
-  };
 
   useEffect(() => {
     const unsub = subscribeSyncStatus((state) => {
@@ -284,25 +202,9 @@ export default function HomeScreen() {
   const [isForecastExpanded, setIsForecastExpanded] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false);
-  const [isRemittanceModalOpen, setIsRemittanceModalOpen] = useState(false);
+  const [isMonthlyDigestOpen, setIsMonthlyDigestOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [remittanceStats, setRemittanceStats] = useState<RemittanceStats | null>(null);
   const [undoState, setUndoState] = useState<{ visible: boolean; message: string; action: () => void } | null>(null);
-
-  const loadRemittancesData = useCallback(async () => {
-    if (!selectedWallet) return;
-    try {
-      const list = await getRemittancesForWallet(selectedWallet.id);
-      const computed = calculateRemittanceStats(list, selectedWallet.id, walletTransactions);
-      setRemittanceStats(computed);
-    } catch (e) { }
-  }, [selectedWallet, walletTransactions]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadRemittancesData();
-    }, [loadRemittancesData])
-  );
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -1085,14 +987,13 @@ export default function HomeScreen() {
           onSaveAdjustedAmount={(item, amt) => approveRecurringTransaction(item, amt)}
         />
 
-        {/* Horizontal Financial Journey Slider (Budgets, Goals, Subscriptions, Remittances) */}
+        {/* Horizontal Financial Journey Slider (Budgets, Goals, Subscriptions) */}
         {selectedWallet && (
           <FinancialJourneySlider
             plan={plan}
             goals={goals}
             debts={debts}
             budgets={budgets}
-            remittanceStats={remittanceStats}
             walletTransactions={walletTransactions}
             selectedWalletId={selectedWallet?.id}
             totalConsolidatedBalance={totalConsolidatedBalance}
@@ -1102,7 +1003,6 @@ export default function HomeScreen() {
             currencySymbol={currencySymbol}
             language={language as 'ar' | 'en'}
             colors={colors}
-            onOpenRemittanceModal={() => setIsRemittanceModalOpen(true)}
             onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
           />
         )}
@@ -1113,6 +1013,7 @@ export default function HomeScreen() {
             <MonthOverMonthCard
               transactions={walletTransactions}
               currencySymbol={currencySymbol}
+              onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
             />
             <SpendingHeatmapWidget
               transactions={walletTransactions}
@@ -1324,6 +1225,19 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
                 onPress={() => {
                   setIsMenuOpen(false);
+                  setIsMonthlyDigestOpen(true);
+                }}
+              >
+                <Ionicons name="sparkles-outline" size={22} color="#F59E0B" />
+                <Text style={[styles.drawerLinkText, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
+                  {language === 'ar' ? '📊 التقرير المالي الشهري المقارن' : '📊 Monthly Financial Digest'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
+                onPress={() => {
+                  setIsMenuOpen(false);
                   router.push('/(tabs)/stats');
                 }}
               >
@@ -1427,26 +1341,20 @@ export default function HomeScreen() {
         </Modal>
       )}
 
-      {/* Smart Bank SMS Modal */}
-      <SmartSmsModal
-        visible={detectedSms !== null}
-        smsData={detectedSms}
-        onSave={handleSaveDetectedSms}
-        onEdit={handleEditDetectedSms}
-        onDismiss={handleDismissDetectedSms}
+      {/* Monthly Financial Digest Modal */}
+      <MonthlyDigestModal
+        visible={isMonthlyDigestOpen}
+        transactions={walletTransactions}
+        selectedWallet={selectedWallet}
+        currencySymbol={currencySymbol}
+        language={language as 'ar' | 'en'}
+        onClose={() => setIsMonthlyDigestOpen(false)}
       />
 
       {/* Live Currency Converter Modal */}
       <CurrencyConverterModal
         visible={isCurrencyConverterOpen}
         onClose={() => setIsCurrencyConverterOpen(false)}
-      />
-
-      {/* Send Remittance Modal */}
-      <SendRemittanceModal
-        visible={isRemittanceModalOpen}
-        onClose={() => setIsRemittanceModalOpen(false)}
-        onSuccess={loadRemittancesData}
       />
 
       {/* Custom Confirmation Modal */}

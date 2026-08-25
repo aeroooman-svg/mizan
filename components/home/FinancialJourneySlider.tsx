@@ -17,7 +17,6 @@ import { FinancialPlan } from '@/lib/planStorage';
 import { SavingsGoal } from '@/lib/goalStorage';
 import { Debt } from '@/lib/debtStorage';
 import { Transaction } from '@/lib/storage';
-import { RemittanceStats } from '@/lib/remittanceStorage';
 import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
 import { getRecurringTransactions, RecurringTransaction } from '@/lib/recurringStorage';
@@ -29,7 +28,6 @@ interface FinancialJourneySliderProps {
   goals: SavingsGoal[];
   debts: Debt[];
   budgets: Record<string, number>;
-  remittanceStats: RemittanceStats | null;
   walletTransactions: Transaction[];
   selectedWalletId: string | undefined;
   totalConsolidatedBalance?: number;
@@ -39,7 +37,6 @@ interface FinancialJourneySliderProps {
   currencySymbol: string;
   language: 'ar' | 'en';
   colors: any;
-  onOpenRemittanceModal: () => void;
   onOpenConverterModal: () => void;
 }
 
@@ -48,7 +45,6 @@ export default function FinancialJourneySlider({
   goals,
   debts,
   budgets,
-  remittanceStats,
   walletTransactions,
   selectedWalletId,
   totalConsolidatedBalance = 0,
@@ -58,7 +54,6 @@ export default function FinancialJourneySlider({
   currencySymbol,
   language,
   colors,
-  onOpenRemittanceModal,
   onOpenConverterModal,
 }: FinancialJourneySliderProps) {
   const { width: windowWidth } = useWindowDimensions();

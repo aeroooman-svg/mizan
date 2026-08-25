@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { Transaction } from '@/lib/storage';
@@ -9,11 +10,13 @@ import { formatCurrency } from '@/lib/categories';
 interface MonthOverMonthCardProps {
   transactions: Transaction[];
   currencySymbol: string;
+  onOpenMonthlyReport?: () => void;
 }
 
 export default function MonthOverMonthCard({
   transactions,
   currencySymbol,
+  onOpenMonthlyReport,
 }: MonthOverMonthCardProps) {
   const { colors } = useTheme();
   const { language } = useLanguage();
@@ -81,7 +84,9 @@ export default function MonthOverMonthCard({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="swap-vertical" size={20} color={colors.primary} />
+          <View style={styles.iconCircle}>
+            <Ionicons name="swap-vertical" size={18} color={colors.primary} />
+          </View>
           <Text style={styles.title}>
             {isAr ? 'مقارنة شهر بشهر (MoM)' : 'Month-over-Month'}
           </Text>
@@ -128,7 +133,7 @@ export default function MonthOverMonthCard({
       {/* Burn Rate & Projection Row */}
       <View style={styles.insightsBox}>
         <View style={styles.insightItem}>
-          <Ionicons name="speedometer-outline" size={16} color={colors.accent} />
+          <Ionicons name="speedometer-outline" size={16} color={colors.accent || '#F59E0B'} />
           <Text style={styles.insightText}>
             {isAr ? 'معدل الصرف اليومي:' : 'Daily Pace:'}{' '}
             <Text style={{ fontFamily: 'Cairo_700Bold', color: colors.text }}>
@@ -146,6 +151,26 @@ export default function MonthOverMonthCard({
           </Text>
         </View>
       </View>
+
+      {/* Full Monthly Report CTA Button */}
+      {onOpenMonthlyReport && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.reportBtn,
+            pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+          ]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onOpenMonthlyReport();
+          }}
+        >
+          <Ionicons name="sparkles" size={16} color="#FFF" />
+          <Text style={styles.reportBtnText}>
+            {isAr ? 'عرض التقرير الشهري الشامل' : 'View Full Monthly Report'}
+          </Text>
+          <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color="#FFF" />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -168,7 +193,15 @@ const getStyles = (colors: any) =>
     titleRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
+    },
+    iconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: 'rgba(59, 130, 246, 0.12)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     title: {
       fontFamily: 'Cairo_700Bold',
@@ -189,7 +222,7 @@ const getStyles = (colors: any) =>
     },
     statsRow: {
       flexDirection: 'row',
-      backgroundColor: colors.surfaceAlt,
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.03)',
       borderRadius: 14,
       padding: 12,
       alignItems: 'center',
@@ -227,5 +260,21 @@ const getStyles = (colors: any) =>
       fontFamily: 'Cairo_600SemiBold',
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    reportBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      marginTop: 4,
+    },
+    reportBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#FFFFFF',
     },
   });

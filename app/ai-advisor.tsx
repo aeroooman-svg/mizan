@@ -19,7 +19,6 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
 import { generateFinancialRecommendations, Recommendation } from '@/lib/aiAdvisor';
 import { getSmartResponse, generateSuggestedQuestions, FinancialContext } from '@/lib/smartAdvisor';
-import { askGeminiFinancialAdvisor } from '@/lib/geminiAdvisor';
 import { getBudgetsForWallet } from '@/lib/budgetStorage';
 
 interface ChatMessage {
@@ -117,20 +116,12 @@ export default function AIAdvisorScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      const res = await askGeminiFinancialAdvisor(messageText, {
-        transactions,
-        selectedWallet,
-        totalIncome,
-        totalExpense,
-        balance,
-        currencySymbol,
-        language: language as 'ar' | 'en',
-      });
+      const answer = getSmartResponse(messageText, buildContext());
 
       const botMsg: ChatMessage = {
         id: Math.random().toString(),
         role: 'assistant',
-        text: res.answer,
+        text: answer,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 

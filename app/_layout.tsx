@@ -154,14 +154,6 @@ function RootLayoutNav() {
           options={getSheetScreenOptions(colors, 0.85)}
         />
         <Stack.Screen
-          name="envelope-budget"
-          options={getSheetScreenOptions(colors, 0.85)}
-        />
-        <Stack.Screen
-          name="import-statement"
-          options={getSheetScreenOptions(colors, 0.85)}
-        />
-        <Stack.Screen
           name="installments"
           options={getSheetScreenOptions(colors, 0.92)}
         />
@@ -192,14 +184,6 @@ function RootLayoutNav() {
         <Stack.Screen
           name="zakat-calculator"
           options={getSheetScreenOptions(colors, 0.85)}
-        />
-        <Stack.Screen
-          name="auto-rules"
-          options={getSheetScreenOptions(colors, 0.85)}
-        />
-        <Stack.Screen
-          name="receipts-vault"
-          options={getSheetScreenOptions(colors, 0.92)}
         />
         <Stack.Screen
           name="privacy-policy"

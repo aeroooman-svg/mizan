@@ -39,7 +39,6 @@ import ModernDatePickerModal from '@/components/ModernDatePickerModal';
 import ModernTimePickerModal from '@/components/ModernTimePickerModal';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
 import { getAllTags, saveCustomTag, Tag, parseTransactionTags, formatTagsToString } from '@/lib/tagStorage';
-import { getAutoRules, matchTransactionAgainstRules, AutoRule, RuleMatchResult } from '@/lib/autoRulesStorage';
 
 type TransactionType = 'expense' | 'income' | 'transfer';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -177,8 +176,6 @@ export default function AddTransactionScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [tags, setTags] = useState(existingTxn?.tags || '');
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
-  const [autoRules, setAutoRules] = useState<AutoRule[]>([]);
-  const [matchedRule, setMatchedRule] = useState<RuleMatchResult | null>(null);
 
   // New Tag Creator Modal state
   const [tagModalVisible, setTagModalVisible] = useState(false);
@@ -187,45 +184,14 @@ export default function AddTransactionScreen() {
   const [newTagColor, setNewTagColor] = useState(WALLET_COLORS[0]);
 
   useEffect(() => {
-    async function loadTagsAndRules() {
+    async function loadTags() {
       try {
-        const [tList, rList] = await Promise.all([
-          getAllTags().catch(() => []),
-          getAutoRules().catch(() => []),
-        ]);
+        const tList = await getAllTags().catch(() => []);
         setAvailableTags(tList);
-        setAutoRules(rList);
       } catch (e) {}
     }
-    loadTagsAndRules();
+    loadTags();
   }, []);
-
-  // Real-time evaluation of auto rules
-  useEffect(() => {
-    if (!description.trim() || autoRules.length === 0) {
-      setMatchedRule(null);
-      return;
-    }
-    const match = matchTransactionAgainstRules(
-      description,
-      parseFloat(amount) || 0,
-      type,
-      autoRules
-    );
-    setMatchedRule(match);
-  }, [description, amount, type, autoRules]);
-
-  const handleApplyAutoRule = (match: RuleMatchResult) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (match.category) {
-      setSelectedCategory(match.category);
-    }
-    if (match.tags && match.tags.length > 0) {
-      const currentTags = parseTransactionTags(tags);
-      const combined = Array.from(new Set([...currentTags, ...match.tags]));
-      setTags(formatTagsToString(combined));
-    }
-  };
 
   const runImagePicker = async (useCamera: boolean) => {
     try {
@@ -1138,35 +1104,6 @@ export default function AddTransactionScreen() {
               numberOfLines={2}
               textAlignVertical="top"
             />
-            {/* Auto Rule Smart Match Suggestion */}
-            {matchedRule && (
-              <Pressable
-                onPress={() => handleApplyAutoRule(matchedRule)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: '#F59E0B18',
-                  borderColor: '#F59E0B80',
-                  borderWidth: 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  marginTop: 8,
-                }}
-              >
-                <Ionicons name="flash" size={16} color="#F59E0B" />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#F59E0B' }}>
-                    {language === 'ar' ? `⚡ قاعدة تلقائية: ${matchedRule.matchedRule.name}` : `⚡ Auto Rule: ${matchedRule.matchedRule.name}`}
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'اضغط لتطبيق الفئة والوسوم تلقائياً' : 'Tap to apply category & tags'}
-                  </Text>
-                </View>
-                <Ionicons name="checkmark-circle" size={18} color="#F59E0B" />
-              </Pressable>
-            )}
           </View>
 
           {/* Smart Tags Section */}
