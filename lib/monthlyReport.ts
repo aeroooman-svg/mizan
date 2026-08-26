@@ -14,6 +14,7 @@ export interface MonthlyReportData {
   year: number;
   totalIncome: number;
   totalExpense: number;
+  totalJameyaSavings: number;
   netSavings: number;
   savingsRatePercent: number;
   topCategoryName: string;
@@ -56,19 +57,34 @@ export function generateMonthlyReport(
     return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
   });
 
-  const totalIncome = currentMonthTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = currentMonthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const totalIncome = currentMonthTx
+    .filter((t) => t.type === 'income' && t.category !== 'debt_loan')
+    .reduce((s, t) => s + t.amount, 0);
+
+  const totalExpense = currentMonthTx
+    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+    .reduce((s, t) => s + t.amount, 0);
+
+  const totalJameyaSavings = currentMonthTx
+    .filter((t) => t.category === 'jameya_savings')
+    .reduce((s, t) => s + t.amount, 0);
+
   const netSavings = totalIncome - totalExpense;
   const savingsRatePercent = totalIncome > 0 ? Math.max(0, Math.round((netSavings / totalIncome) * 100)) : 0;
 
-  const prevExpense = prevMonthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const prevExpense = prevMonthTx
+    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+    .reduce((s, t) => s + t.amount, 0);
+
   const momExpenseChangePercent = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : 0;
 
-  // Top spending category
+  // Top spending category (excluding Jameya savings and debt loans)
   const categorySums: Record<string, number> = {};
-  currentMonthTx.filter((t) => t.type === 'expense').forEach((t) => {
-    categorySums[t.category] = (categorySums[t.category] || 0) + t.amount;
-  });
+  currentMonthTx
+    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+    .forEach((t) => {
+      categorySums[t.category] = (categorySums[t.category] || 0) + t.amount;
+    });
 
   let topCatId = '';
   let topCatAmount = 0;
@@ -83,6 +99,11 @@ export function generateMonthlyReport(
 
   const insightsAr: string[] = [];
   const insightsEn: string[] = [];
+
+  if (totalJameyaSavings > 0) {
+    insightsAr.push(`ادخرت ${formatCurrency(totalJameyaSavings, 'ar')} ${wallet?.currency || ''} كأصول في الجمعيات هذا الشهر. 🤝`);
+    insightsEn.push(`Saved ${formatCurrency(totalJameyaSavings, 'en')} ${wallet?.currency || ''} in Jameya savings assets this month. 🤝`);
+  }
 
   if (momExpenseChangePercent > 0) {
     insightsAr.push(`ارتفعت مصاريفك بنسبة ${momExpenseChangePercent}% مقارنة بالشهر السابق.`);
@@ -107,6 +128,7 @@ export function generateMonthlyReport(
     year,
     totalIncome,
     totalExpense,
+    totalJameyaSavings,
     netSavings,
     savingsRatePercent,
     topCategoryName,

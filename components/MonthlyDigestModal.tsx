@@ -164,6 +164,21 @@ export default function MonthlyDigestModal({
               </View>
             </View>
 
+            {/* Jameya Savings Dedicated Asset Box */}
+            {reportData.totalJameyaSavings > 0 && (
+              <View style={[styles.infoBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }]}>
+                <View style={[styles.infoIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Ionicons name="people" size={18} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoTitle}>{isAr ? '🤝 مدفوعات ادخار الجمعيات' : '🤝 Jameya Savings Asset'}</Text>
+                  <Text style={[styles.infoValue, { color: '#10B981' }]}>
+                    +{formatCurrency(reportData.totalJameyaSavings, language)} {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* Top Spending Category */}
             <View style={styles.infoBox}>
               <View style={styles.infoIconCircle}>
