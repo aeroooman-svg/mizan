@@ -54,7 +54,6 @@ import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
 import WeeklyDigestBanner from '@/components/WeeklyDigestBanner';
 import MonthOverMonthCard from '@/components/MonthOverMonthCard';
-import SpendingHeatmapWidget from '@/components/SpendingHeatmapWidget';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -1007,17 +1006,13 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Advanced Animated Dashboard Widgets: MoM & Spending Heatmap */}
+        {/* Advanced Animated Dashboard Widgets: MoM Card */}
         {walletTransactions.length > 0 && (
-          <View style={{ paddingHorizontal: 16, gap: 14, marginTop: 14 }}>
+          <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
             <MonthOverMonthCard
               transactions={walletTransactions}
               currencySymbol={currencySymbol}
               onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
-            />
-            <SpendingHeatmapWidget
-              transactions={walletTransactions}
-              currencySymbol={currencySymbol}
             />
           </View>
         )}

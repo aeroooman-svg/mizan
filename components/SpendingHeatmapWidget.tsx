@@ -279,86 +279,86 @@ export default function SpendingHeatmapWidget({
       {/* Expanded Content */}
       {!isCollapsed && (
         <View style={styles.expandedContent}>
-          {/* Controls Bar: Type Switcher & Month Navigation */}
-          <View style={styles.controlsBar}>
-            {/* Type Selector (Expenses vs Savings vs Income) */}
-            <View style={styles.typeSelector}>
-              <Pressable
+          {/* Type Selector (Expenses vs Savings vs Income) - Full Width Segmented */}
+          <View style={styles.typeSelector}>
+            <Pressable
+              style={[
+                styles.typeTabBtn,
+                viewType === 'expense' && { backgroundColor: '#EF4444' },
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('expense');
+              }}
+            >
+              <Ionicons name="flame" size={13} color={viewType === 'expense' ? '#FFF' : colors.textSecondary} />
+              <Text
                 style={[
-                  styles.typeTabBtn,
-                  viewType === 'expense' && { backgroundColor: '#EF4444' },
+                  styles.typeTabText,
+                  viewType === 'expense' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setViewType('expense');
-                }}
               >
-                <Ionicons name="flame" size={12} color={viewType === 'expense' ? '#FFF' : colors.textSecondary} />
-                <Text
-                  style={[
-                    styles.typeTabText,
-                    viewType === 'expense' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
-                  ]}
-                >
-                  {isAr ? 'المصروفات' : 'Expenses'}
-                </Text>
-              </Pressable>
+                {isAr ? 'المصروفات' : 'Expenses'}
+              </Text>
+            </Pressable>
 
-              <Pressable
+            <Pressable
+              style={[
+                styles.typeTabBtn,
+                viewType === 'savings' && { backgroundColor: '#8B5CF6' },
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('savings');
+              }}
+            >
+              <Ionicons name="shield-checkmark" size={13} color={viewType === 'savings' ? '#FFF' : colors.textSecondary} />
+              <Text
                 style={[
-                  styles.typeTabBtn,
-                  viewType === 'savings' && { backgroundColor: '#8B5CF6' },
+                  styles.typeTabText,
+                  viewType === 'savings' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setViewType('savings');
-                }}
               >
-                <Ionicons name="shield-checkmark" size={12} color={viewType === 'savings' ? '#FFF' : colors.textSecondary} />
-                <Text
-                  style={[
-                    styles.typeTabText,
-                    viewType === 'savings' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
-                  ]}
-                >
-                  {isAr ? 'الادخار' : 'Savings'}
-                </Text>
-              </Pressable>
+                {isAr ? 'الادخار' : 'Savings'}
+              </Text>
+            </Pressable>
 
-              <Pressable
+            <Pressable
+              style={[
+                styles.typeTabBtn,
+                viewType === 'income' && { backgroundColor: '#10B981' },
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('income');
+              }}
+            >
+              <Ionicons name="trending-up" size={13} color={viewType === 'income' ? '#FFF' : colors.textSecondary} />
+              <Text
                 style={[
-                  styles.typeTabBtn,
-                  viewType === 'income' && { backgroundColor: '#10B981' },
+                  styles.typeTabText,
+                  viewType === 'income' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setViewType('income');
-                }}
               >
-                <Ionicons name="trending-up" size={12} color={viewType === 'income' ? '#FFF' : colors.textSecondary} />
-                <Text
-                  style={[
-                    styles.typeTabText,
-                    viewType === 'income' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
-                  ]}
-                >
-                  {isAr ? 'الإيرادات' : 'Income'}
-                </Text>
-              </Pressable>
-            </View>
+                {isAr ? 'الإيرادات' : 'Income'}
+              </Text>
+            </Pressable>
+          </View>
 
-            {/* Month Navigator */}
-            <View style={styles.monthNav}>
-              <Pressable onPress={handlePrevMonth} hitSlop={8} style={styles.navArrowBtn}>
-                <Ionicons name={isAr ? 'chevron-forward' : 'chevron-back'} size={16} color={colors.text} />
-              </Pressable>
-              <Pressable onPress={handleResetMonth}>
-                <Text style={styles.monthNavLabel}>{formattedMonthName}</Text>
-              </Pressable>
-              <Pressable onPress={handleNextMonth} hitSlop={8} style={styles.navArrowBtn}>
-                <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={16} color={colors.text} />
-              </Pressable>
-            </View>
+          {/* Clean Full-Width Month Navigation */}
+          <View style={styles.monthNavRow}>
+            <Pressable onPress={handlePrevMonth} hitSlop={10} style={styles.navArrowBtn}>
+              <Ionicons name={isAr ? 'chevron-forward' : 'chevron-back'} size={18} color={colors.text} />
+            </Pressable>
+
+            <Pressable onPress={handleResetMonth} style={styles.monthLabelContainer}>
+              <Ionicons name="calendar-outline" size={14} color={colors.primary} />
+              <Text style={styles.monthNavLabel}>{formattedMonthName}</Text>
+            </Pressable>
+
+            <Pressable onPress={handleNextMonth} hitSlop={10} style={styles.navArrowBtn}>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.text} />
+            </Pressable>
           </View>
 
           {/* Quick Insights Summary Bar */}
@@ -753,48 +753,58 @@ const getStyles = (colors: any, isAr: boolean) =>
       gap: 12,
       paddingTop: 4,
     },
-    controlsBar: {
-      flexDirection: isAr ? 'row-reverse' : 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      gap: 8,
-    },
     typeSelector: {
       flexDirection: isAr ? 'row-reverse' : 'row',
       backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.04)',
-      borderRadius: 10,
+      borderRadius: 12,
       padding: 3,
-      gap: 2,
+      gap: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     typeTabBtn: {
+      flex: 1,
       flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
+      paddingVertical: 6,
+      borderRadius: 9,
     },
     typeTabText: {
       fontSize: 11,
       fontFamily: 'Cairo_600SemiBold',
     },
-    monthNav: {
+    monthNavRow: {
+      flexDirection: isAr ? 'row-reverse' : 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.04)',
+      borderRadius: 12,
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    monthLabelContainer: {
       flexDirection: isAr ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.04)',
-      borderRadius: 10,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
     },
     navArrowBtn: {
-      padding: 4,
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface || 'rgba(255,255,255,0.06)',
     },
     monthNavLabel: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 11,
+      fontSize: 12,
       color: colors.text,
-      paddingHorizontal: 4,
     },
     insightsBar: {
       flexDirection: isAr ? 'row-reverse' : 'row',
