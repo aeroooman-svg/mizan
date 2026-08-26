@@ -29,6 +29,7 @@ import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import { getDebts, Debt } from '@/lib/debtStorage';
 import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
+import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_SIZE = 180;
@@ -112,10 +113,22 @@ export default function StatsScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
-  const { walletTransactions, totalIncome, totalExpense, allTimeIncome, allTimeExpense, currencySymbol, selectedWallet, customCategories, wallets, selectWallet } = useTransactions();
+  const { walletTransactions, transactions, totalIncome, totalExpense, allTimeIncome, allTimeExpense, currencySymbol, selectedWallet, customCategories, wallets, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
   const [viewType, setViewType] = useState<'expense' | 'income'>('expense');
   const [scope, setScope] = useState<'monthly' | 'yearly'>('monthly');
+  const [netWorthScope, setNetWorthScope] = useState<'current' | 'all'>('current');
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    async function loadRates() {
+      try {
+        const r = await getExchangeRates();
+        setRates(r);
+      } catch (e) {}
+    }
+    loadRates();
+  }, []);
 
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth());
@@ -339,43 +352,186 @@ export default function StatsScreen() {
     return totalSavedInGoals + totalJameyaSavings + totalLoansOwedToMe - totalDebtsOwedByMe;
   }, [totalSavedInGoals, totalJameyaSavings, totalLoansOwedToMe, totalDebtsOwedByMe]);
 
+  const targetCurrency = selectedWallet?.currency || 'KWD';
+
+  const includedWallets = useMemo(() => {
+    return (wallets || []).filter(w => !w.excludeFromTotal);
+  }, [wallets]);
+
+  const excludedWallets = useMemo(() => {
+    return (wallets || []).filter(w => !!w.excludeFromTotal);
+  }, [wallets]);
+
+  const consolidatedInitialBalance = useMemo(() => {
+    return includedWallets.reduce((sum, w) => {
+      const init = w.initialBalance || 0;
+      return sum + (Object.keys(rates).length > 0 ? convertAmount(init, w.currency, targetCurrency, rates) : init);
+    }, 0);
+  }, [includedWallets, rates, targetCurrency]);
+
+  const consolidatedAllTimeIncome = useMemo(() => {
+    const includedIds = new Set(includedWallets.map(w => w.id));
+    return (transactions || []).filter(t => {
+      if (t.type === 'income' && includedIds.has(t.walletId)) return true;
+      if (t.type === 'transfer' && t.toWalletId && includedIds.has(t.toWalletId) && !includedIds.has(t.walletId)) return true;
+      return false;
+    }).reduce((sum, t) => {
+      const fromW = wallets.find(w => w.id === t.walletId);
+      const fromCurr = fromW ? fromW.currency : targetCurrency;
+      return sum + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+    }, 0);
+  }, [transactions, includedWallets, wallets, rates, targetCurrency]);
+
+  const consolidatedAllTimeExpense = useMemo(() => {
+    const includedIds = new Set(includedWallets.map(w => w.id));
+    return (transactions || []).filter(t => {
+      if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
+      if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
+      return false;
+    }).reduce((sum, t) => {
+      const fromW = wallets.find(w => w.id === t.walletId);
+      const fromCurr = fromW ? fromW.currency : targetCurrency;
+      return sum + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+    }, 0);
+  }, [transactions, includedWallets, wallets, rates, targetCurrency]);
+
+  const currentWalletNetWorth = useMemo(() => {
+    const raw = (selectedWallet?.initialBalance || 0) + allTimeIncome - allTimeExpense;
+    return raw + totalExtraNetAssets;
+  }, [selectedWallet, allTimeIncome, allTimeExpense, totalExtraNetAssets]);
+
+  const consolidatedNetWorth = useMemo(() => {
+    const raw = consolidatedInitialBalance + consolidatedAllTimeIncome - consolidatedAllTimeExpense;
+    return raw + totalExtraNetAssets;
+  }, [consolidatedInitialBalance, consolidatedAllTimeIncome, consolidatedAllTimeExpense, totalExtraNetAssets]);
+
+  const activeNetWorth = netWorthScope === 'all' ? consolidatedNetWorth : currentWalletNetWorth;
+  const activeInitialBalance = netWorthScope === 'all' ? consolidatedInitialBalance : (selectedWallet?.initialBalance || 0);
+  const activeAllTimeIncome = netWorthScope === 'all' ? consolidatedAllTimeIncome : allTimeIncome;
+  const activeAllTimeExpense = netWorthScope === 'all' ? consolidatedAllTimeExpense : allTimeExpense;
+
   const realNetWorthPoints = useMemo(() => {
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const isCurrent = currentMonth === now.getMonth() && currentYear === now.getFullYear();
     const maxDay = isCurrent ? Math.max(1, now.getDate()) : daysInMonth;
 
-    const priorTxns = walletTransactions.filter(t => {
-      const d = new Date(t.date);
-      return d.getFullYear() < currentYear || (d.getFullYear() === currentYear && d.getMonth() < currentMonth);
-    });
-
-    const priorIncome = priorTxns
-      .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
-      .reduce((s, t) => s + t.amount, 0);
-
-    const priorExpense = priorTxns
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
-      .reduce((s, t) => s + t.amount, 0);
-
-    let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense + totalExtraNetAssets;
-
     const points: { day: number; netWorth: number }[] = [];
 
-    for (let day = 1; day <= maxDay; day++) {
-      const dayTxns = monthlyTransactions.filter(t => new Date(t.date).getDate() === day);
-      const inc = dayTxns
+    if (netWorthScope === 'all') {
+      const includedIds = new Set(includedWallets.map(w => w.id));
+
+      const priorTxns = (transactions || []).filter(t => {
+        const d = new Date(t.date);
+        return d.getFullYear() < currentYear || (d.getFullYear() === currentYear && d.getMonth() < currentMonth);
+      });
+
+      const priorIncome = priorTxns
+        .filter(t => {
+          if (t.type === 'income' && includedIds.has(t.walletId)) return true;
+          if (t.type === 'transfer' && t.toWalletId && includedIds.has(t.toWalletId) && !includedIds.has(t.walletId)) return true;
+          return false;
+        })
+        .reduce((s, t) => {
+          const fromW = wallets.find(w => w.id === t.walletId);
+          const fromCurr = fromW ? fromW.currency : targetCurrency;
+          return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+        }, 0);
+
+      const priorExpense = priorTxns
+        .filter(t => {
+          if (t.type === 'expense' && includedIds.has(t.walletId) && t.category !== 'jameya_savings' && t.category !== 'debt_loan') return true;
+          if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
+          return false;
+        })
+        .reduce((s, t) => {
+          const fromW = wallets.find(w => w.id === t.walletId);
+          const fromCurr = fromW ? fromW.currency : targetCurrency;
+          return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+        }, 0);
+
+      let running = consolidatedInitialBalance + priorIncome - priorExpense + totalExtraNetAssets;
+
+      const monthlyAllTxns = (transactions || []).filter(t => {
+        const d = new Date(t.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+
+      for (let day = 1; day <= maxDay; day++) {
+        const dayTxns = monthlyAllTxns.filter(t => new Date(t.date).getDate() === day);
+        const inc = dayTxns
+          .filter(t => {
+            if (t.type === 'income' && includedIds.has(t.walletId)) return true;
+            if (t.type === 'transfer' && t.toWalletId && includedIds.has(t.toWalletId) && !includedIds.has(t.walletId)) return true;
+            return false;
+          })
+          .reduce((s, t) => {
+            const fromW = wallets.find(w => w.id === t.walletId);
+            const fromCurr = fromW ? fromW.currency : targetCurrency;
+            return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+          }, 0);
+
+        const exp = dayTxns
+          .filter(t => {
+            if (t.type === 'expense' && includedIds.has(t.walletId) && t.category !== 'jameya_savings' && t.category !== 'debt_loan') return true;
+            if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
+            return false;
+          })
+          .reduce((s, t) => {
+            const fromW = wallets.find(w => w.id === t.walletId);
+            const fromCurr = fromW ? fromW.currency : targetCurrency;
+            return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, targetCurrency, rates) : t.amount);
+          }, 0);
+
+        running += (inc - exp);
+        points.push({ day, netWorth: running });
+      }
+    } else {
+      const priorTxns = walletTransactions.filter(t => {
+        const d = new Date(t.date);
+        return d.getFullYear() < currentYear || (d.getFullYear() === currentYear && d.getMonth() < currentMonth);
+      });
+
+      const priorIncome = priorTxns
         .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
-        .reduce((s, t) => s + t.amount, 0);
-      const exp = dayTxns
+        .reduce((s, t) => {
+          if (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id) {
+            const fromW = wallets.find(w => w.id === t.walletId);
+            const fromCurr = fromW ? fromW.currency : selectedWallet.currency;
+            return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, selectedWallet.currency, rates) : t.amount);
+          }
+          return s + t.amount;
+        }, 0);
+
+      const priorExpense = priorTxns
         .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
         .reduce((s, t) => s + t.amount, 0);
 
-      running += (inc - exp);
-      points.push({ day, netWorth: running });
+      let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense + totalExtraNetAssets;
+
+      for (let day = 1; day <= maxDay; day++) {
+        const dayTxns = monthlyTransactions.filter(t => new Date(t.date).getDate() === day);
+        const inc = dayTxns
+          .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+          .reduce((s, t) => {
+            if (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id) {
+              const fromW = wallets.find(w => w.id === t.walletId);
+              const fromCurr = fromW ? fromW.currency : selectedWallet.currency;
+              return s + (Object.keys(rates).length > 0 ? convertAmount(t.amount, fromCurr, selectedWallet.currency, rates) : t.amount);
+            }
+            return s + t.amount;
+          }, 0);
+
+        const exp = dayTxns
+          .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+          .reduce((s, t) => s + t.amount, 0);
+
+        running += (inc - exp);
+        points.push({ day, netWorth: running });
+      }
     }
 
     return points;
-  }, [walletTransactions, monthlyTransactions, currentYear, currentMonth, now, selectedWallet, totalExtraNetAssets]);
+  }, [walletTransactions, monthlyTransactions, transactions, currentYear, currentMonth, now, selectedWallet, totalExtraNetAssets, netWorthScope, includedWallets, consolidatedInitialBalance, wallets, rates, targetCurrency]);
 
   const realSparkline = useMemo(() => {
     return generateSparklinePath(realNetWorthPoints, 140, 38);
@@ -488,12 +644,7 @@ export default function StatsScreen() {
   const totalAmount = viewType === 'expense' ? monthlyExpense : monthlyIncome;
   const totalAll = monthlyIncome + monthlyExpense;
 
-  const netWorth = useMemo(() => {
-    const rawWalletBalance = selectedWallet 
-      ? (selectedWallet.initialBalance || 0) + allTimeIncome - allTimeExpense
-      : (wallets || []).reduce((sum, w) => sum + (w.initialBalance || 0), 0);
-    return rawWalletBalance + totalExtraNetAssets;
-  }, [selectedWallet, allTimeIncome, allTimeExpense, wallets, totalExtraNetAssets]);
+  const netWorth = activeNetWorth;
 
   const savingsRate = useMemo(() => {
     if (monthlyIncome <= 0) return 0;
@@ -1619,25 +1770,133 @@ export default function StatsScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16 }}>
+              {/* Scope Switcher: Active Wallet vs Consolidated All Wallets */}
+              <View style={{ flexDirection: 'row', backgroundColor: theme === 'dark' ? '#0F172A' : '#E2E8F0', borderRadius: 14, padding: 4, gap: 4 }}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setNetWorthScope('current');
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 9,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    backgroundColor: netWorthScope === 'current' ? (theme === 'dark' ? '#1E293B' : '#FFFFFF') : 'transparent',
+                    shadowColor: '#000',
+                    shadowOpacity: netWorthScope === 'current' ? 0.08 : 0,
+                    shadowRadius: 4,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: netWorthScope === 'current' ? colors.primary : colors.textSecondary }}>
+                    💳 {language === 'ar' ? (selectedWallet?.name || 'المحفظة الحالية') : (selectedWallet?.name || 'Active Wallet')}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setNetWorthScope('all');
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 9,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    backgroundColor: netWorthScope === 'all' ? (theme === 'dark' ? '#1E293B' : '#FFFFFF') : 'transparent',
+                    shadowColor: '#000',
+                    shadowOpacity: netWorthScope === 'all' ? 0.08 : 0,
+                    shadowRadius: 4,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: netWorthScope === 'all' ? '#10B981' : colors.textSecondary }}>
+                    🌐 {language === 'ar' ? 'الإجمالي الشامل (كل المحافظ)' : 'Consolidated Total'}
+                  </Text>
+                </Pressable>
+              </View>
+
               {/* Solvency Summary Card */}
               <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#F1F5F9', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'إجمالي الأصول والصافي الحالي' : 'Current Net Solvency Assets'}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
+                    {netWorthScope === 'all'
+                      ? (language === 'ar' ? 'صافي الملاءة الإجمالي الشامل' : 'Consolidated Total Net Solvency')
+                      : (language === 'ar' ? 'إجمالي الأصول والصافي الحالي' : 'Current Net Solvency Assets')}
+                  </Text>
+                  {netWorthScope === 'all' && (
+                    <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
+                        {language === 'ar' ? `${includedWallets.length} محافظ مشمولة` : `${includedWallets.length} Wallets`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: activeNetWorth >= 0 ? '#10B981' : '#EF4444', textAlign: 'left' }}>
+                  {activeNetWorth >= 0 ? '+' : ''}{formatCurrency(activeNetWorth)} <Text style={{ fontSize: 14 }}>{currencySymbol}</Text>
                 </Text>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 24, color: netWorth >= 0 ? '#10B981' : '#EF4444', textAlign: 'left' }}>
-                  {netWorth >= 0 ? '+' : ''}{formatCurrency(netWorth)} <Text style={{ fontSize: 14 }}>{currencySymbol}</Text>
-                </Text>
+
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar'
-                    ? `يعبر هذا الجراف عن التغيّر اليومي الفعلي لملاءتك المالية في محفظة "${selectedWallet?.name || 'الرئيسية'}" بناءً على مدفوعاتك ومقبوضاتك.`
-                    : `This graph calculates the real daily trajectory of your solvency in "${selectedWallet?.name || 'Main Wallet'}".`}
+                  {netWorthScope === 'all'
+                    ? (language === 'ar'
+                        ? `مسار الثروة المالي الشامل المجمع لكافة محافظك المشمولة بعد تحويل العملات.${excludedWallets.length > 0 ? ` (تم استبعاد: ${excludedWallets.map(w => w.name).join('، ')})` : ''}`
+                        : `Consolidated financial trajectory across all included wallets with automatic currency conversions.${excludedWallets.length > 0 ? ` (Excluded: ${excludedWallets.map(w => w.name).join(', ')})` : ''}`)
+                    : (language === 'ar'
+                        ? `يعبر هذا الجراف عن التغيّر اليومي الفعلي لملاءتك المالية في محفظة "${selectedWallet?.name || 'الرئيسية'}" بناءً على مدفوعاتك ومقبوضاتك.`
+                        : `This graph calculates the real daily trajectory of your solvency in "${selectedWallet?.name || 'Main Wallet'}".`)}
                 </Text>
               </View>
+
+              {/* If Consolidated: Show Breakdown of Included vs Excluded Wallets */}
+              {netWorthScope === 'all' && includedWallets.length > 0 && (
+                <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
+                    {language === 'ar' ? '💳 المحافظ المشمولة في الإجمالي' : '💳 Included Wallets in Total'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {includedWallets.map(w => {
+                      const wTxns = transactions.filter(t => t.walletId === w.id || (t.type === 'transfer' && t.toWalletId === w.id));
+                      const inc = wTxns.filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === w.id)).reduce((s, t) => s + t.amount, 0);
+                      const exp = wTxns.filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === w.id)).reduce((s, t) => s + t.amount, 0);
+                      const bal = (w.initialBalance || 0) + inc - exp;
+                      return (
+                        <View
+                          key={w.id}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                            backgroundColor: theme === 'dark' ? '#1E293B' : '#F8FAFC',
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: w.color || colors.border,
+                          }}
+                        >
+                          <MaterialIcons name={w.icon as any || 'account-balance-wallet'} size={14} color={w.color || colors.primary} />
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }}>{w.name}:</Text>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: bal >= 0 ? colors.income : colors.expense }}>
+                            {formatCurrency(bal)} {w.currency}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  {excludedWallets.length > 0 && (
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: '#F59E0B', textAlign: 'left', marginTop: 4 }}>
+                      ⚠️ {language === 'ar' ? `محافظ مستبعدة حسب طلبك: ${excludedWallets.map(w => w.name).join('، ')}` : `Excluded wallets per your settings: ${excludedWallets.map(w => w.name).join(', ')}`}
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {/* Full High-Resolution Dynamic Net Worth Chart */}
               <View style={{ backgroundColor: theme === 'dark' ? '#0B132B' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? '📈 منحنى المسار اليومي للملاءة هذا الشهر' : '📈 Daily Net Worth Trajectory'}
+                  {netWorthScope === 'all'
+                    ? (language === 'ar' ? '📈 مسار صافي الملاءة الكلي لجميع المحافظ هذا الشهر' : '📈 Consolidated Solvency Trajectory')
+                    : (language === 'ar' ? '📈 منحنى المسار اليومي للملاءة هذا الشهر' : '📈 Daily Net Worth Trajectory')}
                 </Text>
 
                 {(() => {
@@ -1803,16 +2062,20 @@ export default function StatsScreen() {
               {/* Financial Solvency Components Breakdown */}
               <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? '📑 مكونات وتفاصيل الملاءة' : '📑 Solvency Components'}
+                  {netWorthScope === 'all'
+                    ? (language === 'ar' ? '📑 تفاصيل الملاءة المجمعة الشاملة' : '📑 Consolidated Components')
+                    : (language === 'ar' ? '📑 مكونات وتفاصيل الملاءة' : '📑 Solvency Components')}
                 </Text>
 
                 <View style={{ gap: 10 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'رصيد المحفظة الافتتاحي' : 'Initial Wallet Balance'}
+                      {netWorthScope === 'all'
+                        ? (language === 'ar' ? 'إجمالي الأرصدة الافتتاحية للمحافظ' : 'Total Initial Balances')
+                        : (language === 'ar' ? 'رصيد المحفظة الافتتاحي' : 'Initial Wallet Balance')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-                      {formatCurrency(selectedWallet?.initialBalance || 0)} {currencySymbol}
+                      {formatCurrency(activeInitialBalance)} {currencySymbol}
                     </Text>
                   </View>
 
@@ -1821,7 +2084,7 @@ export default function StatsScreen() {
                       {language === 'ar' ? 'إجمالي المقبوضات والدخل' : 'Total All-Time Income'}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
-                      +{formatCurrency(allTimeIncome)} {currencySymbol}
+                      +{formatCurrency(activeAllTimeIncome)} {currencySymbol}
                     </Text>
                   </View>
 
@@ -1830,7 +2093,7 @@ export default function StatsScreen() {
                       {language === 'ar' ? 'إجمالي المدفوعات والمصاريف' : 'Total All-Time Expense'}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
-                      -{formatCurrency(allTimeExpense)} {currencySymbol}
+                      -{formatCurrency(activeAllTimeExpense)} {currencySymbol}
                     </Text>
                   </View>
 
@@ -1883,7 +2146,7 @@ export default function StatsScreen() {
                       {language === 'ar' ? 'إجمالي صافي الملاءة الشاملة' : 'Total Net Solvency Assets'}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#10B981' }}>
-                      {formatCurrency(netWorth)} {currencySymbol}
+                      {formatCurrency(activeNetWorth)} {currencySymbol}
                     </Text>
                   </View>
                 </View>
