@@ -156,11 +156,18 @@ export default function MonthlyDigestModal({
               <View style={[styles.statBox, { borderLeftColor: '#EF4444', borderLeftWidth: 4 }]}>
                 <View style={styles.statIconRow}>
                   <Ionicons name="arrow-up-circle" size={18} color="#EF4444" />
-                  <Text style={styles.statLabel}>{isAr ? 'إجمالي المصاريف' : 'Total Expenses'}</Text>
+                  <Text style={styles.statLabel}>{isAr ? 'إجمالي المنصرف والتحويلات' : 'Total Outflows'}</Text>
                 </View>
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {formatCurrency(reportData.totalExpense, language)} {currencySymbol}
                 </Text>
+                {reportData.transfersOut > 0 && (
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9.5, color: colors.textSecondary, marginTop: 2 }}>
+                    {isAr
+                      ? `(${formatCurrency(reportData.pureExpense, language)} صرف • ${formatCurrency(reportData.transfersOut, language)} تحويل)`
+                      : `(${formatCurrency(reportData.pureExpense, language)} spent • ${formatCurrency(reportData.transfersOut, language)} transfer)`}
+                  </Text>
+                )}
               </View>
             </View>
 

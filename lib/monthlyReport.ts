@@ -14,6 +14,8 @@ export interface MonthlyReportData {
   year: number;
   totalIncome: number;
   totalExpense: number;
+  pureExpense: number;
+  transfersOut: number;
   totalJameyaSavings: number;
   netSavings: number;
   savingsRatePercent: number;
@@ -41,7 +43,9 @@ export function generateMonthlyReport(
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const walletTx = wallet ? transactions.filter((t) => t.walletId === wallet.id) : transactions;
+  const walletTx = wallet
+    ? transactions.filter((t) => t.walletId === wallet.id || (t.type === 'transfer' && t.toWalletId === wallet.id))
+    : transactions;
 
   // Current Month Transactions
   const currentMonthTx = walletTx.filter((t) => {
@@ -58,12 +62,18 @@ export function generateMonthlyReport(
   });
 
   const totalIncome = currentMonthTx
-    .filter((t) => t.type === 'income' && t.category !== 'debt_loan')
+    .filter((t) => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && wallet && t.toWalletId === wallet.id))
     .reduce((s, t) => s + t.amount, 0);
 
-  const totalExpense = currentMonthTx
+  const pureExpense = currentMonthTx
     .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
     .reduce((s, t) => s + t.amount, 0);
+
+  const transfersOut = currentMonthTx
+    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id)
+    .reduce((s, t) => s + t.amount, 0);
+
+  const totalExpense = pureExpense + transfersOut;
 
   const totalJameyaSavings = currentMonthTx
     .filter((t) => t.category === 'jameya_savings')
@@ -72,19 +82,27 @@ export function generateMonthlyReport(
   const netSavings = totalIncome - totalExpense;
   const savingsRatePercent = totalIncome > 0 ? Math.max(0, Math.round((netSavings / totalIncome) * 100)) : 0;
 
-  const prevExpense = prevMonthTx
+  const prevPureExpense = prevMonthTx
     .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
     .reduce((s, t) => s + t.amount, 0);
+  const prevTransfersOut = prevMonthTx
+    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id)
+    .reduce((s, t) => s + t.amount, 0);
+  const prevExpense = prevPureExpense + prevTransfersOut;
 
   const momExpenseChangePercent = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : 0;
 
-  // Top spending category (excluding Jameya savings and debt loans)
+  // Top spending category
   const categorySums: Record<string, number> = {};
   currentMonthTx
     .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
     .forEach((t) => {
       categorySums[t.category] = (categorySums[t.category] || 0) + t.amount;
     });
+
+  if (transfersOut > 0) {
+    categorySums['transfer_out'] = transfersOut;
+  }
 
   let topCatId = '';
   let topCatAmount = 0;
@@ -95,7 +113,11 @@ export function generateMonthlyReport(
     }
   });
 
-  const topCategoryName = topCatId ? getCategoryName(topCatId, language) : (isAr ? 'لا يوجد' : 'None');
+  const topCategoryName = topCatId === 'transfer_out'
+    ? (isAr ? 'تحويل لمحفظة أخرى' : 'Transfer to Wallet')
+    : topCatId
+    ? getCategoryName(topCatId, language)
+    : (isAr ? 'لا يوجد' : 'None');
 
   const insightsAr: string[] = [];
   const insightsEn: string[] = [];
@@ -103,6 +125,11 @@ export function generateMonthlyReport(
   if (totalJameyaSavings > 0) {
     insightsAr.push(`ادخرت ${formatCurrency(totalJameyaSavings, 'ar')} ${wallet?.currency || ''} كأصول في الجمعيات هذا الشهر. 🤝`);
     insightsEn.push(`Saved ${formatCurrency(totalJameyaSavings, 'en')} ${wallet?.currency || ''} in Jameya savings assets this month. 🤝`);
+  }
+
+  if (transfersOut > 0) {
+    insightsAr.push(`تم تحويل ${formatCurrency(transfersOut, 'ar')} ${wallet?.currency || ''} لمحافظ أخرى تابعة لك.`);
+    insightsEn.push(`Transferred ${formatCurrency(transfersOut, 'en')} ${wallet?.currency || ''} to your other wallets.`);
   }
 
   if (momExpenseChangePercent > 0) {
@@ -114,8 +141,8 @@ export function generateMonthlyReport(
   }
 
   if (topCatAmount > 0) {
-    insightsAr.push(`أعلى فئة صرف هذا الشهر كانت (${topCategoryName}) بمبلغ ${formatCurrency(topCatAmount, 'ar')} ${wallet?.currency || ''}.`);
-    insightsEn.push(`Top spending category was (${topCategoryName}) at ${formatCurrency(topCatAmount, 'en')} ${wallet?.currency || ''}.`);
+    insightsAr.push(`أعلى بند منصرف هذا الشهر كان (${topCategoryName}) بمبلغ ${formatCurrency(topCatAmount, 'ar')} ${wallet?.currency || ''}.`);
+    insightsEn.push(`Top spending item was (${topCategoryName}) at ${formatCurrency(topCatAmount, 'en')} ${wallet?.currency || ''}.`);
   }
 
   if (savingsRatePercent >= 20) {
@@ -128,6 +155,8 @@ export function generateMonthlyReport(
     year,
     totalIncome,
     totalExpense,
+    pureExpense,
+    transfersOut,
     totalJameyaSavings,
     netSavings,
     savingsRatePercent,
