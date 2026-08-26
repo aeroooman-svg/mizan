@@ -25,15 +25,16 @@ import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName, formatDateLocalized } from '@/lib/i18n';
 import { Transaction } from '@/lib/storage';
 import ConfirmModal from '@/components/ConfirmModal';
+import SpendingHeatmapWidget from '@/components/SpendingHeatmapWidget';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
 
-type FilterType = 'all' | 'income' | 'expense';
+type FilterType = 'all' | 'expense' | 'savings' | 'income';
+type ViewMode = 'list' | 'heatmap';
 
 export default function TransactionsScreen() {
   const { colors, theme } = useTheme();
@@ -42,12 +43,16 @@ export default function TransactionsScreen() {
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { walletTransactions, removeTransaction, currencySymbol, selectedWallet, wallets, customCategories, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
+  const isAr = language === 'ar';
+
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [rates, setRates] = useState<Record<string, number>>({});
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   // Options & Delete Modal States (Web & Mobile Compatible)
   const [selectedTxForOptions, setSelectedTxForOptions] = useState<Transaction | null>(null);
@@ -67,10 +72,17 @@ export default function TransactionsScreen() {
     loadInitialData();
   }, []);
 
+  // Helper to check if tx is savings/loans/investments
+  const isSavingsTx = (tx: Transaction) => {
+    if (tx.category === 'jameya_savings' || tx.category === 'investment') return true;
+    if (tx.category === 'debt_loan' && tx.type === 'expense') return true; // lending money
+    return false;
+  };
+
   // Grouped Categories for filtering
   const allCategoriesForFilter = useMemo(() => {
     const staticCats = filter === 'income' ? incomeCategories : expenseCategories;
-    const userCats = customCategories.filter(c => filter === 'all' || c.type === filter);
+    const userCats = customCategories.filter(c => filter === 'all' || (filter === 'income' ? c.type === 'income' : c.type === 'expense'));
     const staticCombined = filter === 'all' ? [...expenseCategories, ...incomeCategories] : staticCats;
     
     const seen = new Set<string>();
@@ -84,18 +96,24 @@ export default function TransactionsScreen() {
     return uniqueCats;
   }, [filter, customCategories]);
 
-  // Handle resetting category filter on filter type change
-  const handleTypeFilterChange = (newType: FilterType) => {
-    Haptics.selectionAsync();
-    setFilter(newType);
-    setSelectedCategoryFilter(null);
-  };
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategoryFilter) count++;
+    if (selectedTagFilter) count++;
+    return count;
+  }, [selectedCategoryFilter, selectedTagFilter]);
 
   const filteredTransactions = useMemo(() => {
     let result = walletTransactions;
-    if (filter !== 'all') {
-      result = result.filter(t => t.type === filter);
+
+    if (filter === 'expense') {
+      result = result.filter(t => t.type === 'expense' && !isSavingsTx(t) && t.category !== 'debt_loan');
+    } else if (filter === 'savings') {
+      result = result.filter(t => isSavingsTx(t));
+    } else if (filter === 'income') {
+      result = result.filter(t => t.type === 'income' && t.category !== 'debt_loan');
     }
+
     if (selectedCategoryFilter) {
       result = result.filter(t => t.category === selectedCategoryFilter);
     }
@@ -347,14 +365,16 @@ export default function TransactionsScreen() {
       }
     }
 
+    const isSavings = isSavingsTx(item);
+
     return (
       <Pressable
         style={({ pressed }) => [styles.transactionCard, pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] }]}
         onLongPress={() => handleLongPress(item)}
         onPress={() => handleLongPress(item)}
       >
-        <View style={[styles.catIconWrap, { backgroundColor: (cat?.color || '#999') + '15' }]}>
-          <MaterialIcons name={cat?.icon as any || 'receipt'} size={20} color={cat?.color || '#999'} />
+        <View style={[styles.catIconWrap, { backgroundColor: (isSavings ? '#8B5CF6' : (cat?.color || '#999')) + '15' }]}>
+          <MaterialIcons name={(cat?.icon || (isSavings ? 'account-balance-wallet' : 'receipt')) as any} size={20} color={isSavings ? '#8B5CF6' : (cat?.color || '#999')} />
         </View>
         
         <View style={styles.transactionMiddle}>
@@ -396,12 +416,23 @@ export default function TransactionsScreen() {
         <View style={styles.transactionRight}>
           {item.category === 'jameya_savings' ? (
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.transactionAmount, { color: '#0D7C66' }]}>
+              <Text style={[styles.transactionAmount, { color: '#8B5CF6' }]}>
                 {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
               </Text>
-              <View style={{ backgroundColor: '#0D7C6615', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
-                <Text style={{ color: '#0D7C66', fontFamily: 'Cairo_700Bold', fontSize: 9 }}>
-                  {language === 'ar' ? 'ادخار مالي' : 'Savings'}
+              <View style={{ backgroundColor: '#8B5CF618', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
+                <Text style={{ color: '#8B5CF6', fontFamily: 'Cairo_700Bold', fontSize: 9 }}>
+                  {language === 'ar' ? 'ادخار جمعية' : 'Jameya Savings'}
+                </Text>
+              </View>
+            </View>
+          ) : isSavings ? (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={[styles.transactionAmount, { color: '#8B5CF6' }]}>
+                {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+              </Text>
+              <View style={{ backgroundColor: '#8B5CF618', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
+                <Text style={{ color: '#8B5CF6', fontFamily: 'Cairo_700Bold', fontSize: 9 }}>
+                  {language === 'ar' ? 'ادخار / سلفة' : 'Savings / Loan'}
                 </Text>
               </View>
             </View>
@@ -443,13 +474,72 @@ export default function TransactionsScreen() {
       start={{ x: 0.1, y: 0.1 }}
       end={{ x: 0.9, y: 0.9 }}
     >
+      {/* Top Header Row with View Switcher */}
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 12 }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{t.transactions}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={styles.headerTitle}>{t.transactions}</Text>
+            <Pressable onPress={handleExport} style={styles.exportHeaderBtn} hitSlop={8}>
+              <Ionicons name="share-outline" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          {/* Clean Modern View Mode Switcher */}
+          <View style={styles.viewModeSwitcher}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewMode('list');
+              }}
+              style={[
+                styles.viewModeBtn,
+                viewMode === 'list' && styles.viewModeBtnActive,
+              ]}
+            >
+              <Ionicons
+                name="list"
+                size={14}
+                color={viewMode === 'list' ? '#FFF' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.viewModeBtnText,
+                  viewMode === 'list' && styles.viewModeBtnTextActive,
+                ]}
+              >
+                {isAr ? 'قائمة' : 'List'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewMode('heatmap');
+              }}
+              style={[
+                styles.viewModeBtn,
+                viewMode === 'heatmap' && { backgroundColor: '#8B5CF6' },
+              ]}
+            >
+              <Ionicons
+                name="calendar"
+                size={14}
+                color={viewMode === 'heatmap' ? '#FFF' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.viewModeBtnText,
+                  viewMode === 'heatmap' && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
+                ]}
+              >
+                {isAr ? 'خريطة' : 'Heatmap'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Wallet Selector Row */}
-        <View style={{ marginBottom: 4 }}>
+        {/* Compact Wallet Selector Chips */}
+        <View style={{ marginBottom: 8 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -466,11 +556,11 @@ export default function TransactionsScreen() {
                   }}
                   style={[
                     styles.walletChip,
-                    isSelected && { borderColor: wallet.color, backgroundColor: wallet.color + '15' }
+                    isSelected && { borderColor: wallet.color, backgroundColor: wallet.color + '20' }
                   ]}
                 >
-                  <MaterialIcons name={wallet.icon as any} size={16} color={isSelected ? wallet.color : colors.textSecondary} />
-                  <Text style={[styles.walletChipText, { color: isSelected ? wallet.color : colors.textSecondary }]}>
+                  <MaterialIcons name={wallet.icon as any} size={14} color={isSelected ? wallet.color : colors.textSecondary} />
+                  <Text style={[styles.walletChipText, { color: isSelected ? wallet.color : colors.textSecondary, fontFamily: isSelected ? 'Cairo_700Bold' : 'Cairo_600SemiBold' }]}>
                     {wallet.name}
                   </Text>
                 </Pressable>
@@ -479,144 +569,263 @@ export default function TransactionsScreen() {
           </ScrollView>
         </View>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color={colors.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t.search}
-            placeholderTextColor={colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
-            </Pressable>
-          )}
+        {/* Streamlined Search Bar & Filter Drawer Toggle in 1 Unified Row */}
+        <View style={styles.searchAndFilterRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={16} color={colors.textTertiary} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t.search}
+              placeholderTextColor={colors.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+
+          {/* Quick Filter Modal Trigger Button */}
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setIsFilterSheetOpen(true);
+            }}
+            style={[
+              styles.filterSheetTriggerBtn,
+              activeFilterCount > 0 && { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+            ]}
+          >
+            <Ionicons
+              name="options-outline"
+              size={18}
+              color={activeFilterCount > 0 ? colors.primary : colors.textSecondary}
+            />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterActiveBadge}>
+                <Text style={styles.filterActiveBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        <View style={styles.filterRow}>
-          {([
-            { key: 'all' as FilterType, label: t.all },
-            { key: 'income' as FilterType, label: t.incomeType },
-            { key: 'expense' as FilterType, label: t.expenses },
-          ]).map(f => (
-            <Pressable
-              key={f.key}
-              onPress={() => handleTypeFilterChange(f.key)}
-              style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-            >
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Category Carousel */}
-        <View style={styles.categoryCarouselWrapper}>
-          <FlatList
+        {/* Unified Horizontal Quick Filter Pills */}
+        <View style={{ marginTop: 6 }}>
+          <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={allCategoriesForFilter}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => {
-              const isSelected = selectedCategoryFilter === item.id;
-              const catColor = item.color || colors.primary;
+            contentContainerStyle={styles.filterPillsScroll}
+          >
+            {([
+              { key: 'all' as FilterType, label: t.all, icon: 'apps-outline', color: colors.primary },
+              { key: 'expense' as FilterType, label: isAr ? 'المصروفات' : 'Expenses', icon: 'flame', color: '#EF4444' },
+              { key: 'savings' as FilterType, label: isAr ? 'الادخار والسلف' : 'Savings & Loans', icon: 'shield-checkmark', color: '#8B5CF6' },
+              { key: 'income' as FilterType, label: isAr ? 'الإيرادات' : 'Income', icon: 'trending-up', color: '#10B981' },
+            ]).map(f => {
+              const isActive = filter === f.key;
               return (
                 <Pressable
+                  key={f.key}
                   onPress={() => {
                     Haptics.selectionAsync();
-                    setSelectedCategoryFilter(isSelected ? null : item.id);
+                    setFilter(f.key);
                   }}
-                  style={({ pressed }) => [
-                    styles.categoryChip,
-                    isSelected && { 
-                      borderColor: catColor, 
-                      backgroundColor: catColor + '12',
-                      shadowColor: catColor,
-                      shadowOpacity: 0.15,
-                      shadowRadius: 4,
-                    },
-                    pressed && { opacity: 0.8 }
+                  style={[
+                    styles.quickFilterPill,
+                    isActive && { backgroundColor: f.color, borderColor: f.color },
                   ]}
                 >
-                  <MaterialIcons name={item.icon as any} size={14} color={isSelected ? catColor : colors.textSecondary} />
-                  <Text style={[
-                    styles.categoryChipText, 
-                    isSelected && { color: catColor, fontFamily: 'Cairo_700Bold' }
-                  ]}>
-                    {getCategoryName(item.id, language)}
+                  <Ionicons
+                    name={f.icon as any}
+                    size={13}
+                    color={isActive ? '#FFF' : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.quickFilterPillText,
+                      isActive && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
+                    ]}
+                  >
+                    {f.label}
                   </Text>
                 </Pressable>
               );
-            }}
-            contentContainerStyle={styles.categoryCarouselScroll}
-          />
-        </View>
+            })}
 
-        {/* Smart Tags Carousel Filter */}
-        {availableTags.length > 0 && (
-          <View style={{ marginTop: 6 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-              {availableTags.map(tagObj => {
-                const isSelected = selectedTagFilter === tagObj.id;
-                return (
-                  <Pressable
-                    key={tagObj.id}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setSelectedTagFilter(isSelected ? null : tagObj.id);
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingVertical: 3,
-                      paddingHorizontal: 8,
-                      borderRadius: 8,
-                      backgroundColor: isSelected ? tagObj.color + '25' : colors.surfaceAlt,
-                      borderWidth: 1,
-                      borderColor: isSelected ? tagObj.color : colors.border,
-                    }}
-                  >
-                    <Ionicons name="pricetag" size={10} color={isSelected ? tagObj.color : colors.textTertiary} />
-                    <Text
-                      style={{
-                        fontFamily: isSelected ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
-                        fontSize: 10,
-                        color: isSelected ? tagObj.color : colors.textSecondary,
-                      }}
-                    >
-                      {language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
+            {/* Active Category Removable Chip */}
+            {selectedCategoryFilter && (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setSelectedCategoryFilter(null);
+                }}
+                style={styles.activeRemovableChip}
+              >
+                <Text style={styles.activeRemovableChipText}>
+                  🏷️ {getCategoryName(selectedCategoryFilter, language)}
+                </Text>
+                <Ionicons name="close-circle" size={14} color="#FFF" />
+              </Pressable>
+            )}
+
+            {/* Active Tag Removable Chip */}
+            {selectedTagFilter && (
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setSelectedTagFilter(null);
+                }}
+                style={[styles.activeRemovableChip, { backgroundColor: '#3B82F6' }]}
+              >
+                <Text style={styles.activeRemovableChipText}>
+                  #{availableTags.find(t => t.id === selectedTagFilter)?.nameAr || selectedTagFilter}
+                </Text>
+                <Ionicons name="close-circle" size={14} color="#FFF" />
+              </Pressable>
+            )}
+          </ScrollView>
+        </View>
       </View>
 
-      <SectionList
-        sections={groupedTransactions}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 120 + (insets.bottom || 0) }]}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={filteredTransactions.length > 0}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search" size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyTitle}>{t.noTransactions}</Text>
-            <Text style={styles.emptySubtitle}>
-              {searchQuery ? t.tryAnotherSearch : t.addFromHome}
-            </Text>
+      {/* Main Content Area based on ViewMode */}
+      {viewMode === 'heatmap' ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.heatmapScrollContainer, { paddingBottom: 120 + (insets.bottom || 0) }]}
+        >
+          <SpendingHeatmapWidget
+            transactions={walletTransactions}
+            currencySymbol={currencySymbol}
+          />
+        </ScrollView>
+      ) : (
+        <SectionList
+          sections={groupedTransactions}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={item => item.id}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 120 + (insets.bottom || 0) }]}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={filteredTransactions.length > 0}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="search" size={48} color={colors.textTertiary} />
+              <Text style={styles.emptyTitle}>{t.noTransactions}</Text>
+              <Text style={styles.emptySubtitle}>
+                {searchQuery || activeFilterCount > 0 ? t.tryAnotherSearch : t.addFromHome}
+              </Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Filter Bottom Sheet Modal for Categories and Tags */}
+      <Modal
+        visible={isFilterSheetOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsFilterSheetOpen(false)}
+      >
+        <View style={styles.modalBg}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setIsFilterSheetOpen(false)}
+          />
+          <View style={styles.filterSheetContent}>
+            <View style={styles.filterSheetHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="options" size={20} color={colors.primary} />
+                <Text style={styles.filterSheetTitle}>{isAr ? 'تصفية المعاملات' : 'Filter Transactions'}</Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setSelectedCategoryFilter(null);
+                  setSelectedTagFilter(null);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }}
+              >
+                <Text style={styles.filterResetBtnText}>{isAr ? 'إعادة ضبط' : 'Reset All'}</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              {/* Category Filter Section */}
+              <Text style={styles.filterSectionTitle}>
+                {isAr ? 'الفئات' : 'Categories'}
+              </Text>
+              <View style={styles.filterPillsGrid}>
+                {allCategoriesForFilter.map(cat => {
+                  const isSelected = selectedCategoryFilter === cat.id;
+                  const catColor = cat.color || colors.primary;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setSelectedCategoryFilter(isSelected ? null : cat.id);
+                      }}
+                      style={[
+                        styles.filterGridChip,
+                        isSelected && { borderColor: catColor, backgroundColor: catColor + '20' },
+                      ]}
+                    >
+                      <MaterialIcons name={cat.icon as any} size={14} color={isSelected ? catColor : colors.textSecondary} />
+                      <Text style={[styles.filterGridChipText, isSelected && { color: catColor, fontFamily: 'Cairo_700Bold' }]}>
+                        {getCategoryName(cat.id, language)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Tag Filter Section */}
+              {availableTags.length > 0 && (
+                <>
+                  <Text style={[styles.filterSectionTitle, { marginTop: 16 }]}>
+                    {isAr ? 'الوسوم' : 'Tags'}
+                  </Text>
+                  <View style={styles.filterPillsGrid}>
+                    {availableTags.map(tagObj => {
+                      const isSelected = selectedTagFilter === tagObj.id;
+                      return (
+                        <Pressable
+                          key={tagObj.id}
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            setSelectedTagFilter(isSelected ? null : tagObj.id);
+                          }}
+                          style={[
+                            styles.filterGridChip,
+                            isSelected && { borderColor: tagObj.color, backgroundColor: tagObj.color + '20' },
+                          ]}
+                        >
+                          <Ionicons name="pricetag" size={12} color={isSelected ? tagObj.color : colors.textTertiary} />
+                          <Text style={[styles.filterGridChipText, isSelected && { color: tagObj.color, fontFamily: 'Cairo_700Bold' }]}>
+                            #{language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </ScrollView>
+
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setIsFilterSheetOpen(false);
+              }}
+              style={styles.applyFilterBtn}
+            >
+              <Text style={styles.applyFilterBtnText}>{isAr ? 'تطبيق الفلاتر' : 'Apply Filters'}</Text>
+            </Pressable>
           </View>
-        }
-      />
+        </View>
+      </Modal>
 
       {/* Transaction Options Modal (Web & Mobile Compatible) */}
       <Modal
@@ -711,194 +920,241 @@ export default function TransactionsScreen() {
 }
 
 const getStyles = (colors: any) => StyleSheet.create({
-  modalBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalSheetHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: 16,
-  },
-  modalSheetTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 18,
-    color: colors.text,
-  },
-  modalSheetAmount: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 22,
-    marginTop: 4,
-  },
-  modalSheetDesc: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  modalOptionsContainer: {
-    gap: 10,
-  },
-  optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.surfaceAlt,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-  },
-  optionBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: colors.text,
-  },
-  deleteOptionBtn: {
-    backgroundColor: colors.expense + '15',
-  },
-  cancelOptionBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginTop: 6,
-  },
-  cancelOptionText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-    color: colors.textSecondary,
-  },
   container: {
     flex: 1,
-    backgroundColor: 'transparent', // Transparent to let the LinearGradient show through!
+    backgroundColor: 'transparent',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 24,
+    fontSize: 22,
     color: colors.text,
   },
-  actionButtonsRow: {
-    flexDirection: 'row',
+  exportHeaderBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt + '80',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
   },
-  actionHeaderBtn: {
+  viewModeSwitcher: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceAlt + '90',
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  viewModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '12',
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 10,
-    gap: 4,
+    borderRadius: 9,
   },
-  actionHeaderBtnText: {
+  viewModeBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  viewModeBtnText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.primary,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
-  walletBadge: {
+  viewModeBtnTextActive: {
+    color: '#FFF',
+    fontFamily: 'Cairo_700Bold',
+  },
+  walletSelectorScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  walletChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt + '60',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 5,
   },
-  walletBadgeText: {
-    fontFamily: 'Cairo_600SemiBold',
+  walletChipText: {
     fontSize: 11,
+  },
+  searchAndFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface + '60',
-    borderRadius: 14,
+    backgroundColor: colors.surface + '80',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 44,
+    height: 40,
     gap: 8,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     fontFamily: 'Cairo_400Regular',
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
     textAlign: 'left',
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
+  filterSheetTriggerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surface + '80',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    position: 'relative',
   },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+  filterActiveBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  filterActiveBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 9,
+    color: '#FFF',
+  },
+  filterPillsScroll: {
+    gap: 6,
+    paddingVertical: 2,
+  },
+  quickFilterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
     backgroundColor: colors.surfaceAlt + '60',
     borderWidth: 1,
     borderColor: colors.border,
   },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: '#FFF',
-  },
-  categoryCarouselWrapper: {
-    height: 38,
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  categoryCarouselScroll: {
-    gap: 8,
-    paddingRight: 20,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: colors.surface + '60',
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 4,
-    marginRight: 6,
-  },
-  categoryChipText: {
+  quickFilterPillText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 11,
     color: colors.textSecondary,
   },
+  activeRemovableChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  activeRemovableChipText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+    color: '#FFF',
+  },
+  heatmapScrollContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  filterSheetContent: {
+    backgroundColor: colors.surface || colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxHeight: '75%',
+    gap: 12,
+  },
+  filterSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterSheetTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: colors.text,
+  },
+  filterResetBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+    color: colors.expense,
+  },
+  filterSectionTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  filterPillsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  filterGridChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt + '80',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterGridChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  applyFilterBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  applyFilterBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: '#FFF',
+  },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 8,
   },
   transactionCard: {
@@ -973,7 +1229,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   sectionHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   sectionHeaderLine: {
     flex: 1,
@@ -1011,25 +1267,70 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textTertiary,
     textAlign: 'center',
   },
-  walletSelectorScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-    marginVertical: 10,
-    flexDirection: 'row',
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'flex-end',
   },
-  walletChip: {
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalSheetHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: 16,
+  },
+  modalSheetTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+    color: colors.text,
+  },
+  modalSheetAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 22,
+    marginTop: 4,
+  },
+  modalSheetDesc: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  modalOptionsContainer: {
+    gap: 10,
+  },
+  optionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceAlt + '80',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    gap: 6,
+    gap: 12,
+    backgroundColor: colors.surfaceAlt,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
   },
-  walletChipText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
+  optionBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.text,
+  },
+  deleteOptionBtn: {
+    backgroundColor: colors.expense + '15',
+  },
+  cancelOptionBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: 6,
+  },
+  cancelOptionText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+    color: colors.textSecondary,
   },
 });
