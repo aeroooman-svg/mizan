@@ -32,6 +32,12 @@ import { sendImmediateNotification } from './NotificationService';
 import * as Haptics from 'expo-haptics';
 import { getLoggedInUser, syncWithCloud } from './syncService';
 import { getExchangeRates, convertAmount } from './currencyApi';
+import {
+  pushSingleTransactionToSupabase,
+  deleteTransactionFromSupabase,
+  pushWalletToSupabase,
+  syncAllSharedWallets,
+} from './sharingService';
 
 interface TransactionContextValue {
   transactions: Transaction[];
@@ -155,6 +161,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
           // Save generated transactions
           for (const tx of generatedTxns) {
             await saveTransaction(tx).catch(() => {});
+            pushSingleTransactionToSupabase(tx).catch(() => {});
           }
           // Prepended generated ones to state list
           txns = [...generatedTxns, ...txns];
@@ -203,7 +210,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       setCustomCategoriesInMemory(customCats);
 
       // Automatically sync all shared wallets from Supabase in background
-      import('@/lib/sharingService').then(m => m.syncAllSharedWallets()).catch(() => {});
+      syncAllSharedWallets().catch(() => {});
     } catch (err) {
       console.error('Failed to load transaction context data:', err);
     } finally {
@@ -333,6 +340,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     // 1. Save the main transaction
     await saveTransaction(transaction);
     setTransactions(prev => [transaction, ...prev]);
+    pushSingleTransactionToSupabase(transaction).catch(() => {});
 
     // 2. Process Auto-Savings Rules for Expenses
     if (transaction.type === 'expense') {
@@ -406,6 +414,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
               
               await saveTransaction(savingsTx);
               setTransactions(prev => [savingsTx, ...prev]);
+              pushSingleTransactionToSupabase(savingsTx).catch(() => {});
               await import('./goalStorage').then(m => m.addFundsToGoal(rule.targetGoalId, diff));
             }
           }
@@ -442,6 +451,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
                 await saveTransaction(penaltyTx);
                 setTransactions(prev => [penaltyTx, ...prev]);
+                pushSingleTransactionToSupabase(penaltyTx).catch(() => {});
                 await import('./goalStorage').then(m => m.addFundsToGoal(rule.targetGoalId, penaltyAmount));
               }
             }
@@ -457,12 +467,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const removeTransaction = useCallback(async (id: string) => {
     await deleteFromStorage(id);
     setTransactions(prev => prev.filter(t => t.id !== id));
+    deleteTransactionFromSupabase(id).catch(() => {});
     triggerLiveSync();
   }, [triggerLiveSync]);
 
   const updateTransaction = useCallback(async (transaction: Transaction) => {
     await updateInStorage(transaction);
     setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
+    pushSingleTransactionToSupabase(transaction).catch(() => {});
     triggerLiveSync();
   }, [triggerLiveSync]);
 
@@ -489,6 +501,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     };
     await saveWalletToStorage(wallet);
     setWallets(prev => [...prev, wallet]);
+    if (wallet.sharedWith) {
+      pushWalletToSupabase(wallet).catch(() => {});
+    }
     triggerLiveSync();
     return wallet;
   }, [triggerLiveSync]);
@@ -496,6 +511,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const updateWallet = useCallback(async (updatedWallet: Wallet) => {
     await updateWalletInStorage(updatedWallet);
     setWallets(prev => prev.map(w => w.id === updatedWallet.id ? updatedWallet : w));
+    if (updatedWallet.shareCode || updatedWallet.sharedWith) {
+      pushWalletToSupabase(updatedWallet).catch(() => {});
+    }
     triggerLiveSync();
   }, [triggerLiveSync]);
 
