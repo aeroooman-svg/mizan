@@ -18,7 +18,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { useTransactions } from '@/lib/TransactionContext';
-import { formatCurrency, expenseCategories, incomeCategories, Category } from '@/lib/categories';
+import { formatCurrency, expenseCategories, incomeCategories, Category, getCategoryById } from '@/lib/categories';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getCategoryName } from '@/lib/i18n';
@@ -259,34 +259,69 @@ export default function StatsScreen() {
   }, [yearlyMonthsData]);
 
   const categoryStats = useMemo((): CategoryStat[] => {
-    const filtered = monthlyTransactions.filter(t => t.type === viewType && t.category !== 'jameya_savings' && t.category !== 'debt_loan');
+    const isExpense = viewType === 'expense';
+    const filtered = monthlyTransactions.filter(t => {
+      if (isExpense) {
+        return (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id);
+      } else {
+        return (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id);
+      }
+    });
+
     const total = filtered.reduce((sum, t) => sum + t.amount, 0);
     const catMap = new Map<string, number>();
 
     filtered.forEach(t => {
-      catMap.set(t.category, (catMap.get(t.category) || 0) + t.amount);
+      const catKey = t.type === 'transfer' ? (isExpense ? 'transfer_out' : 'transfer_in') : t.category;
+      catMap.set(catKey, (catMap.get(catKey) || 0) + t.amount);
     });
 
-    const staticCategories = viewType === 'expense' ? expenseCategories : incomeCategories;
+    const staticCategories = isExpense ? expenseCategories : incomeCategories;
     const userCategories = customCategories.filter(c => c.type === viewType);
     const allCategories = [...staticCategories, ...userCategories];
+
+    const transferCategory: Category = isExpense
+      ? {
+          id: 'transfer_out',
+          name: 'Transfer to Wallet',
+          nameAr: 'تحويل لمحفظة أخرى',
+          icon: 'swap-horiz',
+          iconFamily: 'MaterialIcons',
+          color: '#8B5CF6',
+        }
+      : {
+          id: 'transfer_in',
+          name: 'Transfer from Wallet',
+          nameAr: 'تحويل وارد من محفظة أخرى',
+          icon: 'swap-horiz',
+          iconFamily: 'MaterialIcons',
+          color: '#10B981',
+        };
 
     const stats: CategoryStat[] = [];
 
     catMap.forEach((catTotal, catId) => {
-      const category = allCategories.find(c => c.id === catId);
-      if (category) {
+      if (catId === 'transfer_out' || catId === 'transfer_in') {
         stats.push({
-          category,
+          category: transferCategory,
           total: catTotal,
           percentage: total > 0 ? (catTotal / total) * 100 : 0,
         });
+      } else {
+        const category = allCategories.find(c => c.id === catId);
+        if (category) {
+          stats.push({
+            category,
+            total: catTotal,
+            percentage: total > 0 ? (catTotal / total) * 100 : 0,
+          });
+        }
       }
     });
 
     stats.sort((a, b) => b.total - a.total);
     return stats;
-  }, [monthlyTransactions, viewType, customCategories]);
+  }, [monthlyTransactions, viewType, customCategories, selectedWallet, language]);
 
   const categoryStatsWithColors = useMemo(() => {
     return categoryStats.map((stat, idx) => {
@@ -299,6 +334,9 @@ export default function StatsScreen() {
   }, [categoryStats]);
 
   const [netWorthModalVisible, setNetWorthModalVisible] = useState(false);
+  const [detailedBreakdownVisible, setDetailedBreakdownVisible] = useState(false);
+  const [breakdownType, setBreakdownType] = useState<'expense' | 'income' | 'rosca'>('expense');
+  const [breakdownSearchQuery, setBreakdownSearchQuery] = useState('');
   const [jameyaList, setJameyaList] = useState<Jameya[]>([]);
   const [debtList, setDebtList] = useState<Debt[]>([]);
   const [goalList, setGoalList] = useState<SavingsGoal[]>([]);
@@ -874,7 +912,18 @@ export default function StatsScreen() {
               {/* Right Column: Monthly Spending Donut & Savings Goal Bar */}
               <View style={{ flex: 1, gap: 10 }}>
                 {/* Right Top Card: Monthly Spending Ring */}
-                <View style={{ backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 16, padding: 10, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setBreakdownType('expense');
+                    setBreakdownSearchQuery('');
+                    setDetailedBreakdownVisible(true);
+                  }}
+                  style={({ pressed }) => [
+                    { backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 16, padding: 10, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                  ]}
+                >
                   {/* Mini Donut Segment SVG */}
                   <Svg width={38} height={38}>
                     <Circle cx={19} cy={19} r={13} stroke={colors.borderLight} strokeWidth={5} fill="none" />
@@ -883,14 +932,17 @@ export default function StatsScreen() {
                     <Circle cx={19} cy={19} r={13} stroke="#FB7185" strokeWidth={5} strokeDasharray="14 66" strokeDashoffset={-65} fill="none" strokeLinecap="round" transform="rotate(-90 19 19)" />
                   </Svg>
                   <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'مصاريف الشهر' : 'Monthly Spending'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
+                        {language === 'ar' ? 'مصاريف الشهر' : 'Monthly Spending'}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
+                    </View>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }} numberOfLines={1} adjustsFontSizeToFit>
                       {formatCurrency(monthlyExpense)} <Text style={{ fontSize: 9, fontFamily: 'Cairo_600SemiBold' }}>{currencySymbol}</Text>
                     </Text>
                   </View>
-                </View>
+                </Pressable>
 
                 {/* Right Bottom Card: Savings Goal Progress */}
                 <View style={{ backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 16, padding: 10, borderWidth: 1, borderColor: colors.border, gap: 6 }}>
@@ -1251,15 +1303,24 @@ export default function StatsScreen() {
 
             {/* Overview Row Cards with dynamic ambient shadows */}
             <View style={styles.overviewCards}>
-              <View style={[
-                styles.overviewCard, 
-                { 
-                  shadowColor: colors.income, 
-                  shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 4 }
-                }
-              ]}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setBreakdownType('income');
+                  setBreakdownSearchQuery('');
+                  setDetailedBreakdownVisible(true);
+                }}
+                style={({ pressed }) => [
+                  styles.overviewCard, 
+                  { 
+                    shadowColor: colors.income, 
+                    shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 }
+                  },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
+              >
                 {Platform.OS === 'ios' && (
                   <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
                 )}
@@ -1267,22 +1328,34 @@ export default function StatsScreen() {
                   <View style={[styles.overviewIconWrap, { backgroundColor: colors.income + '12' }]}>
                     <Ionicons name="arrow-down" size={16} color={colors.income} />
                   </View>
-                  <Text style={styles.overviewLabel}>{t.income}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Text style={styles.overviewLabel}>{t.income}</Text>
+                    <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
+                  </View>
                 </View>
                 <Text style={[styles.overviewValue, { color: colors.income }]} numberOfLines={1}>
                   {formatCurrency(monthlyIncome)} <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
                 </Text>
-              </View>
+              </Pressable>
 
-              <View style={[
-                styles.overviewCard, 
-                { 
-                  shadowColor: colors.expense, 
-                  shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 4 }
-                }
-              ]}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setBreakdownType('expense');
+                  setBreakdownSearchQuery('');
+                  setDetailedBreakdownVisible(true);
+                }}
+                style={({ pressed }) => [
+                  styles.overviewCard, 
+                  { 
+                    shadowColor: colors.expense, 
+                    shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 }
+                  },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
+              >
                 {Platform.OS === 'ios' && (
                   <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
                 )}
@@ -1290,23 +1363,35 @@ export default function StatsScreen() {
                   <View style={[styles.overviewIconWrap, { backgroundColor: colors.expense + '12' }]}>
                     <Ionicons name="arrow-up" size={16} color={colors.expense} />
                   </View>
-                  <Text style={styles.overviewLabel}>{t.expenses}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Text style={styles.overviewLabel}>{t.expenses}</Text>
+                    <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
+                  </View>
                 </View>
                 <Text style={[styles.overviewValue, { color: colors.expense }]} numberOfLines={1}>
                   {formatCurrency(monthlyExpense)} <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
                 </Text>
-              </View>
+              </Pressable>
 
               {monthlyJameyaSavings > 0 && (
-                <View style={[
-                  styles.overviewCard, 
-                  { 
-                    shadowColor: '#0D7C66', 
-                    shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
-                    shadowRadius: 10,
-                    shadowOffset: { width: 0, height: 4 }
-                  }
-                ]}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setBreakdownType('rosca');
+                    setBreakdownSearchQuery('');
+                    setDetailedBreakdownVisible(true);
+                  }}
+                  style={({ pressed }) => [
+                    styles.overviewCard, 
+                    { 
+                      shadowColor: '#0D7C66', 
+                      shadowOpacity: theme === 'dark' ? 0.25 : 0.08, 
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 4 }
+                    },
+                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                  ]}
+                >
                   {Platform.OS === 'ios' && (
                     <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
                   )}
@@ -1314,12 +1399,15 @@ export default function StatsScreen() {
                     <View style={[styles.overviewIconWrap, { backgroundColor: '#0D7C6615' }]}>
                       <Ionicons name="gift-outline" size={16} color="#0D7C66" />
                     </View>
-                    <Text style={styles.overviewLabel}>{language === 'ar' ? 'ادخار جمعيات' : 'ROSCA Savings'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                      <Text style={styles.overviewLabel}>{language === 'ar' ? 'ادخار جمعيات' : 'ROSCA Savings'}</Text>
+                      <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
+                    </View>
                   </View>
                   <Text style={[styles.overviewValue, { color: '#0D7C66' }]} numberOfLines={1}>
                     +{formatCurrency(monthlyJameyaSavings)} <Text style={styles.overviewCurrency}>{currencySymbol}</Text>
                   </Text>
-                </View>
+                </Pressable>
               )}
             </View>
 
@@ -2180,6 +2268,299 @@ export default function StatsScreen() {
         language={language as 'ar' | 'en'}
         onClose={() => setIsMonthlyDigestOpen(false)}
       />
+
+      {/* Interactive Detailed Breakdown Modal (Drill-down for Income, Expense & ROSCA) */}
+      <Modal visible={detailedBreakdownVisible} animationType="slide" transparent onRequestClose={() => setDetailedBreakdownVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={[styles.modalSheet, { flex: 1, maxHeight: '90%' }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Pressable onPress={() => setDetailedBreakdownVisible(false)} hitSlop={12} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+              <Text style={styles.modalTitle}>
+                {breakdownType === 'income'
+                  ? (language === 'ar' ? `تفاصيل الدخل (${t.months[viewMonth]})` : `Income Breakdown (${t.months[viewMonth]})`)
+                  : breakdownType === 'expense'
+                  ? (language === 'ar' ? `تفاصيل المصاريف (${t.months[viewMonth]})` : `Expenses Breakdown (${t.months[viewMonth]})`)
+                  : (language === 'ar' ? `تفاصيل ادخار الجمعيات (${t.months[viewMonth]})` : `ROSCA Savings Breakdown (${t.months[viewMonth]})`)}
+              </Text>
+              <View style={{ width: 32 }} />
+            </View>
+
+            {/* Sub-Switch inside Modal if user wants to toggle between Income and Expense */}
+            <View style={{ flexDirection: 'row', backgroundColor: theme === 'dark' ? '#0F172A' : '#E2E8F0', borderRadius: 14, padding: 4, marginHorizontal: 16, marginTop: 10, gap: 4 }}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setBreakdownType('expense');
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  backgroundColor: breakdownType === 'expense' ? (theme === 'dark' ? '#1E293B' : '#FFFFFF') : 'transparent',
+                }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: breakdownType === 'expense' ? colors.expense : colors.textSecondary }}>
+                  🔴 {t.expenses}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setBreakdownType('income');
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  backgroundColor: breakdownType === 'income' ? (theme === 'dark' ? '#1E293B' : '#FFFFFF') : 'transparent',
+                }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: breakdownType === 'income' ? colors.income : colors.textSecondary }}>
+                  🟢 {t.income}
+                </Text>
+              </Pressable>
+
+              {monthlyJameyaSavings > 0 && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setBreakdownType('rosca');
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    backgroundColor: breakdownType === 'rosca' ? (theme === 'dark' ? '#1E293B' : '#FFFFFF') : 'transparent',
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: breakdownType === 'rosca' ? '#0D7C66' : colors.textSecondary }}>
+                    🎁 {language === 'ar' ? 'الجمعيات' : 'ROSCA'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 14 }}>
+              {/* Grand Total Highlight Banner */}
+              {(() => {
+                const isExp = breakdownType === 'expense';
+                const isInc = breakdownType === 'income';
+                const totalVal = isExp ? monthlyExpense : isInc ? monthlyIncome : monthlyJameyaSavings;
+                const totalColor = isExp ? colors.expense : isInc ? colors.income : '#0D7C66';
+
+                // Sub totals calculation
+                const pureExp = monthlyTransactions.filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan').reduce((s, t) => s + t.amount, 0);
+                const transfersOut = monthlyTransactions.filter(t => t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id).reduce((s, t) => s + t.amount, 0);
+
+                const pureInc = monthlyTransactions.filter(t => t.type === 'income' && t.category !== 'debt_loan').reduce((s, t) => s + t.amount, 0);
+                const transfersIn = monthlyTransactions.filter(t => t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id).reduce((s, t) => s + t.amount, 0);
+
+                // Filter transactions based on breakdownType and search
+                const currentFilteredTxns = monthlyTransactions.filter(t => {
+                  if (isExp) {
+                    return (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id);
+                  } else if (isInc) {
+                    return (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id);
+                  } else {
+                    return t.category === 'jameya_savings';
+                  }
+                }).filter(t => {
+                  if (!breakdownSearchQuery) return true;
+                  const q = breakdownSearchQuery.toLowerCase();
+                  const catName = getCategoryName(t.category, language).toLowerCase();
+                  const note = (t.note || '').toLowerCase();
+                  return catName.includes(q) || note.includes(q);
+                });
+
+                return (
+                  <View style={{ gap: 14 }}>
+                    {/* Total Hero Card */}
+                    <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#F8FAFC', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 6, alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                        {isExp
+                          ? (language === 'ar' ? 'إجمالي المنصرف والتحويلات' : 'Total Monthly Outflow')
+                          : isInc
+                          ? (language === 'ar' ? 'إجمالي المقبوضات والدخل' : 'Total Monthly Inflow')
+                          : (language === 'ar' ? 'إجمالي ادخار الجمعيات' : 'Total ROSCA Savings')}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 26, color: totalColor }}>
+                        {isExp ? '-' : '+'}{formatCurrency(totalVal)} {currencySymbol}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                        {language === 'ar' ? `${currentFilteredTxns.length} معاملة مسجلة في محفظة "${selectedWallet?.name || ''}"` : `${currentFilteredTxns.length} transactions recorded`}
+                      </Text>
+                    </View>
+
+                    {/* Sub-Components Breakdown Pills */}
+                    {isExp && (
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1, backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="cart-outline" size={15} color={colors.expense} />
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                              {language === 'ar' ? 'مصاريف استهلاكية' : 'Pure Spending'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.expense }}>
+                            -{formatCurrency(pureExp)} {currencySymbol}
+                          </Text>
+                        </View>
+
+                        {transfersOut > 0 && (
+                          <View style={{ flex: 1, backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Ionicons name="swap-horizontal" size={15} color="#8B5CF6" />
+                              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                                {language === 'ar' ? 'تحويل لمحافظ أخرى' : 'Transfers Out'}
+                              </Text>
+                            </View>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#8B5CF6' }}>
+                              -{formatCurrency(transfersOut)} {currencySymbol}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {isInc && (
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flex: 1, backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="cash-outline" size={15} color={colors.income} />
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                              {language === 'ar' ? 'دخل وإيرادات مباشرة' : 'Direct Income'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.income }}>
+                            +{formatCurrency(pureInc)} {currencySymbol}
+                          </Text>
+                        </View>
+
+                        {transfersIn > 0 && (
+                          <View style={{ flex: 1, backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Ionicons name="swap-horizontal" size={15} color="#10B981" />
+                              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                                {language === 'ar' ? 'تحويلات واردة' : 'Transfers In'}
+                              </Text>
+                            </View>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#10B981' }}>
+                              +{formatCurrency(transfersIn)} {currencySymbol}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Search / Filter Input */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <Ionicons name="search" size={16} color={colors.textTertiary} />
+                      <TextInput
+                        placeholder={language === 'ar' ? 'بحث في المعاملات...' : 'Search transactions...'}
+                        placeholderTextColor={colors.textTertiary}
+                        value={breakdownSearchQuery}
+                        onChangeText={setBreakdownSearchQuery}
+                        style={{ flex: 1, fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.text, padding: 0 }}
+                      />
+                      {breakdownSearchQuery ? (
+                        <Pressable onPress={() => setBreakdownSearchQuery('')} hitSlop={8}>
+                          <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                        </Pressable>
+                      ) : null}
+                    </View>
+
+                    {/* Transaction List */}
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
+                        {language === 'ar' ? 'قائمة المعاملات بالتفصيل' : 'Transaction Details'}
+                      </Text>
+
+                      {currentFilteredTxns.length === 0 ? (
+                        <View style={{ padding: 24, alignItems: 'center' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {language === 'ar' ? 'لا توجد معاملات مسجلة تطابق البحث' : 'No transactions found'}
+                          </Text>
+                        </View>
+                      ) : (
+                        currentFilteredTxns.map(tx => {
+                          const isTransfer = tx.type === 'transfer';
+                          const toW = isTransfer && tx.toWalletId ? wallets.find(w => w.id === tx.toWalletId) : null;
+                          const fromW = isTransfer && tx.walletId ? wallets.find(w => w.id === tx.walletId) : null;
+
+                          let title = getCategoryName(tx.category, language);
+                          if (isTransfer) {
+                            if (tx.walletId === selectedWallet?.id) {
+                              title = language === 'ar' ? `تحويل إلى "${toW?.name || 'محفظة أخرى'}"` : `Transfer to "${toW?.name || 'Wallet'}"`;
+                            } else {
+                              title = language === 'ar' ? `تحويل من "${fromW?.name || 'محفظة أخرى'}"` : `Transfer from "${fromW?.name || 'Wallet'}"`;
+                            }
+                          }
+
+                          const d = new Date(tx.date);
+                          const dateStr = `${d.getDate()} ${t.months[d.getMonth()]}`;
+                          const catObj = getCategoryById(tx.category);
+
+                          return (
+                            <View
+                              key={tx.id}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF',
+                                padding: 12,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: colors.borderLight,
+                              }}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, paddingRight: 10 }}>
+                                <View style={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 10,
+                                  backgroundColor: isTransfer ? '#8B5CF620' : (catObj?.color ? catObj.color + '20' : (isExp ? '#EF444415' : '#10B98115')),
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}>
+                                  <MaterialIcons
+                                    name={isTransfer ? 'swap-horiz' : (catObj?.icon as any || 'receipt')}
+                                    size={20}
+                                    color={isTransfer ? '#8B5CF6' : (catObj?.color || (isExp ? colors.expense : colors.income))}
+                                  />
+                                </View>
+                                <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }} numberOfLines={1}>
+                                    {title}
+                                  </Text>
+                                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }} numberOfLines={1}>
+                                    {dateStr} {tx.note ? `• ${tx.note}` : ''}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: isTransfer ? '#8B5CF6' : isExp ? colors.expense : colors.income }}>
+                                {isExp ? '-' : '+'}{formatCurrency(tx.amount)} {currencySymbol}
+                              </Text>
+                            </View>
+                          );
+                        })
+                      )}
+                    </View>
+                  </View>
+                );
+              })()}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
