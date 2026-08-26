@@ -52,8 +52,7 @@ import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
-import WeeklyDigestBanner from '@/components/WeeklyDigestBanner';
-import MonthOverMonthCard from '@/components/MonthOverMonthCard';
+import SmartFinancialPulse from '@/components/SmartFinancialPulse';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -945,12 +944,14 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
-        {/* Weekly Digest Banner */}
+        {/* Unified Smart Financial Pulse Hub (Weekly + Monthly Pace & Forecast) */}
         {walletTransactions.length > 0 && (
           <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <WeeklyDigestBanner
+            <SmartFinancialPulse
               transactions={walletTransactions}
               currencySymbol={currencySymbol}
+              wallet={selectedWallet}
+              onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
             />
           </View>
         )}
@@ -1004,17 +1005,6 @@ export default function HomeScreen() {
             colors={colors}
             onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
           />
-        )}
-
-        {/* Advanced Animated Dashboard Widgets: MoM Card */}
-        {walletTransactions.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
-            <MonthOverMonthCard
-              transactions={walletTransactions}
-              currencySymbol={currencySymbol}
-              onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
-            />
-          </View>
         )}
 
       </ScrollView>
