@@ -54,20 +54,23 @@ const HIGH_CONTRAST_DISTINCT_COLORS = [
 
 const generateSparklinePath = (points: { day: number; netWorth: number }[], width = 140, height = 38) => {
   if (!points || points.length === 0) {
-    return { pathD: `M 0,${height/2} L ${width},${height/2}`, areaD: `M 0,${height/2} L ${width},${height/2} L ${width},${height} L 0,${height} Z`, lastX: width, lastY: height/2, min: 0, max: 0, coords: [] };
+    return { pathD: `M 0,${height/2} L ${width},${height/2}`, areaD: `M 0,${height/2} L ${width},${height/2} L ${width},${height} L 0,${height} Z`, lastX: width, lastY: height/2, min: 0, max: 0, actualMin: 0, actualMax: 0, coords: [] };
   }
 
   const values = points.map(p => p.netWorth);
-  let min = Math.min(...values);
-  let max = Math.max(...values);
+  const actualMin = Math.min(...values);
+  const actualMax = Math.max(...values);
+
+  let min = actualMin;
+  let max = actualMax;
 
   if (min === max) {
     min = min - Math.max(10, Math.abs(min) * 0.1 || 10);
     max = max + Math.max(10, Math.abs(max) * 0.1 || 10);
   } else {
     const range = max - min;
-    min = min - range * 0.15;
-    max = max + range * 0.15;
+    min = min - range * 0.08;
+    max = max + range * 0.08;
   }
 
   const paddingX = 16;
@@ -93,7 +96,7 @@ const generateSparklinePath = (points: { day: number; netWorth: number }[], widt
   const lastCoord = coords[coords.length - 1];
   const areaD = `${pathD} L ${lastCoord.x.toFixed(1)},${height} L ${coords[0].x.toFixed(1)},${height} Z`;
 
-  return { pathD, areaD, lastX: lastCoord.x, lastY: lastCoord.y, min, max, coords };
+  return { pathD, areaD, lastX: lastCoord.x, lastY: lastCoord.y, min, max, actualMin, actualMax, coords };
 };
 
 interface CategoryStat {
@@ -439,7 +442,7 @@ export default function StatsScreen() {
 
       const priorExpense = priorTxns
         .filter(t => {
-          if (t.type === 'expense' && includedIds.has(t.walletId) && t.category !== 'jameya_savings' && t.category !== 'debt_loan') return true;
+          if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
           if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
           return false;
         })
@@ -472,7 +475,7 @@ export default function StatsScreen() {
 
         const exp = dayTxns
           .filter(t => {
-            if (t.type === 'expense' && includedIds.has(t.walletId) && t.category !== 'jameya_savings' && t.category !== 'debt_loan') return true;
+            if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
             if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
             return false;
           })
@@ -503,7 +506,7 @@ export default function StatsScreen() {
         }, 0);
 
       const priorExpense = priorTxns
-        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
         .reduce((s, t) => s + t.amount, 0);
 
       let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense + totalExtraNetAssets;
@@ -522,7 +525,7 @@ export default function StatsScreen() {
           }, 0);
 
         const exp = dayTxns
-          .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+          .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
           .reduce((s, t) => s + t.amount, 0);
 
         running += (inc - exp);
@@ -1908,9 +1911,9 @@ export default function StatsScreen() {
                   const selectedPt = selectedChartPointIndex !== null ? realNetWorthPoints[selectedChartPointIndex] : null;
                   const selectedCoord = selectedChartPointIndex !== null && fullSpark.coords ? fullSpark.coords[selectedChartPointIndex] : null;
 
-                  const maxValStr = `${formatCurrency(fullSpark.max, language)}`;
-                  const midValStr = `${formatCurrency((fullSpark.max + fullSpark.min) / 2, language)}`;
-                  const minValStr = `${formatCurrency(fullSpark.min, language)}`;
+                  const maxValStr = `${formatCurrency(fullSpark.actualMax, language)}`;
+                  const midValStr = `${formatCurrency((fullSpark.actualMax + fullSpark.actualMin) / 2, language)}`;
+                  const minValStr = `${formatCurrency(fullSpark.actualMin, language)}`;
 
                   // Calculate 4-5 clean milestone indices for X-axis
                   const totalPts = realNetWorthPoints.length;
@@ -2094,6 +2097,18 @@ export default function StatsScreen() {
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
                       -{formatCurrency(activeAllTimeExpense)} {currencySymbol}
+                    </Text>
+                  </View>
+
+                  {/* Calculated Cash Bank Balance Row */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: theme === 'dark' ? '#1E293B50' : '#F1F5F9', paddingHorizontal: 8, borderRadius: 8 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                      {netWorthScope === 'all'
+                        ? (language === 'ar' ? '💳 الرصيد المتاح بالمحافظ المشمولة' : '💳 Available Wallets Cash Balance')
+                        : (language === 'ar' ? '💳 الرصيد المتاح بالمحفظة (البنك)' : '💳 Available Wallet Cash Balance')}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (activeInitialBalance + activeAllTimeIncome - activeAllTimeExpense) >= 0 ? colors.income : colors.expense }}>
+                      {formatCurrency(activeInitialBalance + activeAllTimeIncome - activeAllTimeExpense)} {currencySymbol}
                     </Text>
                   </View>
 
