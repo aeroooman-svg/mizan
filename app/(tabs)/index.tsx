@@ -52,7 +52,6 @@ import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
-import SmartFinancialPulse from '@/components/SmartFinancialPulse';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -944,19 +943,7 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
-        {/* Unified Smart Financial Pulse Hub (Weekly + Monthly Pace & Forecast) */}
-        {walletTransactions.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <SmartFinancialPulse
-              transactions={walletTransactions}
-              currencySymbol={currencySymbol}
-              wallet={selectedWallet}
-              onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
-            />
-          </View>
-        )}
-
-        {/* Quick Glance Widget */}
+        {/* Quick Glance Widget (Expense / Income Action Buttons) */}
         {widgetConfig.showQuickGlance !== false && (
           <QuickGlanceWidget
             data={getWidgetData(
@@ -987,7 +974,7 @@ export default function HomeScreen() {
           onSaveAdjustedAmount={(item, amt) => approveRecurringTransaction(item, amt)}
         />
 
-        {/* Horizontal Financial Journey Slider (Budgets, Goals, Subscriptions) */}
+        {/* Horizontal Financial Journey Slider (Financial Pulse, Balance Picture, Goals) */}
         {selectedWallet && (
           <FinancialJourneySlider
             plan={plan}
@@ -1004,6 +991,7 @@ export default function HomeScreen() {
             language={language as 'ar' | 'en'}
             colors={colors}
             onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
+            onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
           />
         )}
 

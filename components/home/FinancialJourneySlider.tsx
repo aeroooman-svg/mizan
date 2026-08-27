@@ -38,6 +38,7 @@ interface FinancialJourneySliderProps {
   language: 'ar' | 'en';
   colors: any;
   onOpenConverterModal: () => void;
+  onOpenMonthlyReport?: () => void;
 }
 
 export default function FinancialJourneySlider({
@@ -55,6 +56,7 @@ export default function FinancialJourneySlider({
   language,
   colors,
   onOpenConverterModal,
+  onOpenMonthlyReport,
 }: FinancialJourneySliderProps) {
   const { width: windowWidth } = useWindowDimensions();
   const cardWidth = Math.min(360, Math.max(290, windowWidth - 48));
@@ -62,6 +64,7 @@ export default function FinancialJourneySlider({
   const styles = getStyles(colors, cardWidth);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [pulseTab, setPulseTab] = useState<'weekly' | 'monthly'>('weekly');
   const [recurringItems, setRecurringItems] = useState<RecurringTransaction[]>([]);
   const [showAllRecurring, setShowAllRecurring] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -93,6 +96,82 @@ export default function FinancialJourneySlider({
     return () => { isMounted = false; };
   }, [selectedWalletId, walletTransactions]);
 
+  const pulseStats = useMemo(() => {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+    const curDay = now.getDate();
+    const daysInCurMonth = new Date(curYear, curMonth + 1, 0).getDate();
+
+    const msInDay = 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = new Date(now.getTime() - 7 * msInDay);
+
+    const prevMonthDate = new Date(curYear, curMonth - 1, 1);
+    const prevYear = prevMonthDate.getFullYear();
+    const prevMonth = prevMonthDate.getMonth();
+
+    let thisWeekSpent = 0;
+    const weeklyCatMap: Record<string, number> = {};
+    let biggestTx: Transaction | null = null;
+
+    let curMonthTotal = 0;
+    let prevMonthToDateTotal = 0;
+
+    walletTransactions.forEach(tx => {
+      const isExpense = tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan';
+      if (!isExpense) return;
+
+      const d = new Date(tx.date);
+      const txYear = d.getFullYear();
+      const txMonth = d.getMonth();
+      const txDay = d.getDate();
+
+      // Weekly
+      if (d >= sevenDaysAgo && d <= now) {
+        thisWeekSpent += tx.amount;
+        weeklyCatMap[tx.category] = (weeklyCatMap[tx.category] || 0) + tx.amount;
+
+        if (!biggestTx || tx.amount > biggestTx.amount) {
+          biggestTx = tx;
+        }
+      }
+
+      // Monthly
+      if (txYear === curYear && txMonth === curMonth) {
+        curMonthTotal += tx.amount;
+      } else if (txYear === prevYear && txMonth === prevMonth) {
+        if (txDay <= curDay) {
+          prevMonthToDateTotal += tx.amount;
+        }
+      }
+    });
+
+    let topCatId: string | null = null;
+    let topCatAmount = 0;
+    Object.entries(weeklyCatMap).forEach(([catId, amount]) => {
+      if (amount > topCatAmount) {
+        topCatAmount = amount;
+        topCatId = catId;
+      }
+    });
+
+    const dailyAverage = curDay > 0 ? curMonthTotal / curDay : 0;
+    const projectedTotal = dailyAverage * daysInCurMonth;
+
+    return {
+      thisWeekSpent,
+      topCatId,
+      topCatAmount,
+      biggestTx: biggestTx as Transaction | null,
+      curMonthTotal,
+      prevMonthToDateTotal,
+      dailyAverage,
+      projectedTotal,
+    };
+  }, [walletTransactions]);
+
+  const pulseTopCategoryObj = pulseStats.topCatId ? getCategoryById(pulseStats.topCatId) : null;
+
   const totalJameyaSavings = useMemo(() => {
     return jameyaItems.reduce((sum, j) => {
       const sharesCount = j.sharesCount || 1;
@@ -101,25 +180,6 @@ export default function FinancialJourneySlider({
       return sum + (paidForOneShare * sharesCount);
     }, 0);
   }, [jameyaItems]);
-
-  const recurringTotals = useMemo(() => {
-    let incomeTotal = 0;
-    let outflowTotal = 0;
-    recurringItems.forEach(item => {
-      if (item.isActive === false) return;
-      let amt = item.amount;
-      if (item.frequency === 'daily') amt *= 30;
-      else if (item.frequency === 'weekly') amt *= 4.33;
-      else if (item.frequency === 'yearly') amt /= 12;
-
-      if (item.type === 'income') {
-        incomeTotal += amt;
-      } else {
-        outflowTotal += amt;
-      }
-    });
-    return { incomeTotal, outflowTotal };
-  }, [recurringItems]);
 
   const totalSavedInGoals = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalOwed = debts
@@ -134,16 +194,6 @@ export default function FinancialJourneySlider({
   const totalGoalSaved = goals.reduce((s, g) => s + (g.savedAmount || 0), 0);
   const totalGoalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
   const goalProgress = totalGoalTarget > 0 ? Math.min(100, Math.round((totalGoalSaved / totalGoalTarget) * 100)) : 0;
-
-  const budgetCategories = Object.keys(budgets);
-  const topBudgets = budgetCategories.slice(0, 3).map(catKey => {
-    const limit = budgets[catKey] || 0;
-    const spent = walletTransactions
-      .filter(t => t.category === catKey && t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
-    return { name: catKey, limit, spent, pct };
-  });
 
   const scrollToIndex = (index: number) => {
     if (scrollRef.current) {
@@ -168,7 +218,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex(activeIndex === 0 ? 1 : activeIndex - 1);
+              scrollToIndex(activeIndex === 0 ? 2 : activeIndex - 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -186,7 +236,7 @@ export default function FinancialJourneySlider({
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
-              scrollToIndex((activeIndex + 1) % 2);
+              scrollToIndex(activeIndex === 2 ? 0 : activeIndex + 1);
             }}
             style={({ pressed }) => [
               styles.arrowBtn,
@@ -213,12 +263,201 @@ export default function FinancialJourneySlider({
         onMomentumScrollEnd={(e) => {
           const offsetX = e.nativeEvent.contentOffset.x;
           const idx = Math.round(offsetX / (cardWidth + cardGap));
-          if (idx !== activeIndex && idx >= 0 && idx <= 1) {
+          if (idx !== activeIndex && idx >= 0 && idx <= 2) {
             setActiveIndex(idx);
           }
         }}
       >
-        {/* CARD 1: الصورة الكاملة للوضع المالي */}
+        {/* CARD 1: النبض المالي ومعدل الصرف */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="flash" size={17} color="#10B981" />
+              <Text style={styles.cardTitle}>
+                {isAr ? 'النبض المالي ومعدل الصرف' : 'Financial Pulse & Pace'}
+              </Text>
+            </View>
+
+            {/* Tab switch */}
+            <View style={{ flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: 10, padding: 2, gap: 2 }}>
+              <Pressable
+                onPress={() => {
+                  try { Haptics.selectionAsync(); } catch {}
+                  setPulseTab('weekly');
+                }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  backgroundColor: pulseTab === 'weekly' ? colors.primary : 'transparent',
+                }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: pulseTab === 'weekly' ? '#FFF' : colors.textSecondary }}>
+                  {isAr ? '7 أيام' : '7 Days'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  try { Haptics.selectionAsync(); } catch {}
+                  setPulseTab('monthly');
+                }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  backgroundColor: pulseTab === 'monthly' ? colors.primary : 'transparent',
+                }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: pulseTab === 'monthly' ? '#FFF' : colors.textSecondary }}>
+                  {isAr ? 'الشهري' : 'Monthly'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {pulseTab === 'weekly' ? (
+            <View style={{ flex: 1, justifyContent: 'space-between' }}>
+              <View style={{ gap: 8 }}>
+                {/* 7 Days Spending Box */}
+                <View style={{ backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                      {isAr ? 'منصرف الـ 7 أيام الماضية:' : 'Past 7 Days Spending:'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.expense, marginTop: 1 }}>
+                      {formatCurrency(pulseStats.thisWeekSpent, language)} <Text style={{ fontSize: 11 }}>{currencySymbol}</Text>
+                    </Text>
+                  </View>
+
+                  {pulseStats.biggestTx && (
+                    <View style={{ alignItems: 'flex-end', backgroundColor: '#EF444412', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
+                        {isAr ? 'أكبر عملية' : 'Largest'}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.expense }}>
+                        {formatCurrency(pulseStats.biggestTx.amount, language)} {currencySymbol}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Top Category Chip */}
+                {pulseStats.topCatId && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                    <MaterialIcons
+                      name={(pulseTopCategoryObj?.icon as any) || 'local-grocery-store'}
+                      size={16}
+                      color={pulseTopCategoryObj?.color || colors.primary}
+                    />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, flex: 1 }}>
+                      {isAr ? 'أعلى فئة صرف:' : 'Top Category:'}{' '}
+                      <Text style={{ fontFamily: 'Cairo_700Bold', color: colors.text }}>
+                        {getCategoryName(pulseStats.topCatId, language)}
+                      </Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }}>
+                      {formatCurrency(pulseStats.topCatAmount, language)} {currencySymbol}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Monthly Digest Button */}
+              {onOpenMonthlyReport && (
+                <Pressable
+                  onPress={() => {
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                    onOpenMonthlyReport();
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#10B981',
+                    borderRadius: 10,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    marginTop: 6,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="sparkles" size={13} color="#FFF" />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
+                      {isAr ? 'عرض التقرير الشهري الشامل' : 'View Monthly Digest'}
+                    </Text>
+                  </View>
+                  <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
+                </Pressable>
+              )}
+            </View>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'space-between' }}>
+              <View style={{ gap: 8 }}>
+                {/* Daily Pace & Projected Grid */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: colors.textSecondary }}>
+                      {isAr ? 'معدل الصرف اليومي' : 'Daily Pace'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, marginTop: 2 }}>
+                      {formatCurrency(pulseStats.dailyAverage, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}/يوم</Text>
+                    </Text>
+                  </View>
+
+                  <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: colors.textSecondary }}>
+                      {isAr ? 'التوقع لنهاية الشهر' : 'Projected End'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, marginTop: 2 }}>
+                      {formatCurrency(pulseStats.projectedTotal, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
+                    </Text>
+                  </View>
+                </View>
+
+                {/* MoM Comparison info */}
+                <View style={{ backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                    {isAr ? 'نفس الفترة الشهر الماضي:' : 'Same Period Last Month:'}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.textSecondary }}>
+                    {formatCurrency(pulseStats.prevMonthToDateTotal, language)} {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Monthly Digest Button */}
+              {onOpenMonthlyReport && (
+                <Pressable
+                  onPress={() => {
+                    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+                    onOpenMonthlyReport();
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#10B981',
+                    borderRadius: 10,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    marginTop: 6,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="sparkles" size={13} color="#FFF" />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
+                      {isAr ? 'عرض التقرير الشهري الشامل' : 'View Monthly Digest'}
+                    </Text>
+                  </View>
+                  <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* CARD 2: الصورة الكاملة للوضع المالي */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
@@ -362,7 +601,7 @@ export default function FinancialJourneySlider({
           </ScrollView>
         </View>
 
-        {/* CARD 2: الأهداف المالية وحصالة الادخار المبتكرة */}
+        {/* CARD 3: الأهداف المالية وحصالة الادخار المبتكرة */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -467,7 +706,7 @@ export default function FinancialJourneySlider({
 
       {/* Pagination Dots */}
       <View style={styles.paginationDots}>
-        {[0, 1].map((idx) => (
+        {[0, 1, 2].map((idx) => (
           <Pressable
             key={idx}
             onPress={() => scrollToIndex(idx)}
