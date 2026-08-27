@@ -510,14 +510,16 @@ export default function WalletCarousel({
                       color: colors.text,
                     }}
                   >
-                    {actionWallet.shareCode || actionWallet.sharedWith
+                    {actionWallet.isJoined
+                      ? (language === 'ar' ? 'عرض تفاصيل وأعضاء المحفظة' : 'View Shared Wallet Members')
+                      : (actionWallet.shareCode || actionWallet.sharedWith)
                       ? (language === 'ar' ? 'إدارة المشاركة والأعضاء' : 'Manage Sharing & Members')
                       : (language === 'ar' ? 'مشاركة المحفظة' : 'Share Wallet')}
                   </Text>
                 </Pressable>
 
-                {/* Option 3.2: Stop Sharing (if wallet is shared or has code) */}
-                {(actionWallet.shareCode || actionWallet.sharedWith) && (
+                {/* Option 3.2: Stop Sharing (for owner) or Leave Wallet (for joined member) */}
+                {(actionWallet.shareCode || actionWallet.sharedWith || actionWallet.isJoined) && (
                   <Pressable
                     onPress={() => {
                       const w = actionWallet;
@@ -536,7 +538,7 @@ export default function WalletCarousel({
                       marginBottom: 8,
                     }}
                   >
-                    <Ionicons name="link-outline" size={20} color="#EF4444" />
+                    <Ionicons name={actionWallet.isJoined ? "log-out-outline" : "link-outline"} size={20} color="#EF4444" />
                     <Text
                       style={{
                         fontFamily: 'Cairo_700Bold',
@@ -544,7 +546,9 @@ export default function WalletCarousel({
                         color: '#EF4444',
                       }}
                     >
-                      {language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet'}
+                      {actionWallet.isJoined
+                        ? (language === 'ar' ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet')
+                        : (language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet')}
                     </Text>
                   </Pressable>
                 )}
@@ -758,7 +762,7 @@ export default function WalletCarousel({
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="link-outline" size={28} color="#EF4444" />
+                <Ionicons name={confirmStopShareWallet?.isJoined ? "log-out-outline" : "link-outline"} size={28} color="#EF4444" />
               </View>
               <Text
                 style={{
@@ -768,7 +772,9 @@ export default function WalletCarousel({
                   textAlign: 'center',
                 }}
               >
-                {language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet'}
+                {confirmStopShareWallet?.isJoined
+                  ? (language === 'ar' ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet')
+                  : (language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet')}
               </Text>
               <Text
                 style={{
@@ -779,9 +785,13 @@ export default function WalletCarousel({
                   lineHeight: 20,
                 }}
               >
-                {language === 'ar'
-                  ? `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
-                  : `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`}
+                {confirmStopShareWallet?.isJoined
+                  ? (language === 'ar'
+                    ? `هل أنت متأكد من مغادرة محفظة "${confirmStopShareWallet?.name}"؟ سيتم حذف المحفظة ومعاملاتها من جهازك.`
+                    : `Are you sure you want to leave "${confirmStopShareWallet?.name}"? The wallet and its transactions will be removed from your device.`)
+                  : (language === 'ar'
+                    ? `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
+                    : `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`)}
               </Text>
             </View>
 
@@ -814,20 +824,31 @@ export default function WalletCarousel({
                   setConfirmStopShareWallet(null);
                   if (!target) return;
                   try {
-                    const { stopSharingWallet } = await import('@/lib/sharingService');
-                    await stopSharingWallet(target.id);
-                    const updated = { ...target };
-                    delete updated.shareCode;
-                    delete updated.sharedWith;
-                    await updateWallet(updated);
-                    await refresh();
-                    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-                    Alert.alert(
-                      language === 'ar' ? 'تم بنجاح' : 'Success',
-                      language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
-                    );
+                    if (target.isJoined) {
+                      const { leaveSharedWallet } = await import('@/lib/sharingService');
+                      await leaveSharedWallet(target.id);
+                      await refresh();
+                      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+                      Alert.alert(
+                        language === 'ar' ? 'تم بنجاح' : 'Success',
+                        language === 'ar' ? 'تمت مغادرة المحفظة بنجاح' : 'You have left the wallet'
+                      );
+                    } else {
+                      const { stopSharingWallet } = await import('@/lib/sharingService');
+                      await stopSharingWallet(target.id);
+                      const updated = { ...target };
+                      delete updated.shareCode;
+                      delete updated.sharedWith;
+                      await updateWallet(updated);
+                      await refresh();
+                      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+                      Alert.alert(
+                        language === 'ar' ? 'تم بنجاح' : 'Success',
+                        language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
+                      );
+                    }
                   } catch (e) {
-                    console.error('Failed to stop sharing:', e);
+                    console.error('Failed to stop sharing or leave:', e);
                   }
                 }}
                 style={{
@@ -846,7 +867,9 @@ export default function WalletCarousel({
                     color: '#FFF',
                   }}
                 >
-                  {language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing'}
+                  {confirmStopShareWallet?.isJoined
+                    ? (language === 'ar' ? 'مغادرة' : 'Leave')
+                    : (language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing')}
                 </Text>
               </Pressable>
             </View>

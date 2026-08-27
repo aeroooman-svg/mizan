@@ -30,6 +30,7 @@ export default function WalletCollaborationScreen() {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { language } = useLanguage();
   const { selectedWallet } = useTransactions();
+  const isOwner = selectedWallet ? (!selectedWallet.isJoined && selectedWallet.isOwner !== false) : true;
 
   const [shareCode, setShareCode] = useState<string>('------');
   const [members, setMembers] = useState<SharedMember[]>([]);
@@ -41,8 +42,12 @@ export default function WalletCollaborationScreen() {
     if (!selectedWallet) return;
     setLoading(true);
     try {
-      const code = await getOrCreateShareCode(selectedWallet.id);
-      setShareCode(code);
+      if (isOwner) {
+        const code = await getOrCreateShareCode(selectedWallet.id);
+        setShareCode(code);
+      } else {
+        setShareCode(selectedWallet.shareCode || '------');
+      }
 
       const memList = await getSharedMembers(selectedWallet.id);
       if (memList.length === 0) {
@@ -58,7 +63,7 @@ export default function WalletCollaborationScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedWallet, language]);
+  }, [selectedWallet, language, isOwner]);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,7 +189,7 @@ export default function WalletCollaborationScreen() {
               <Text style={styles.memberRole}>{getRoleLabel(member.role)}</Text>
             </View>
 
-            {member.role !== 'owner' && (
+            {isOwner && member.role !== 'owner' && (
               <View style={styles.memberActions}>
                 <Pressable
                   onPress={() => {

@@ -46,6 +46,9 @@ export const walletSchema = z.object({
   shareCode: z.string().optional(),
   excludeFromTotal: z.boolean().optional(),
   initialBalance: z.number().optional(),
+  isJoined: z.boolean().optional(),
+  isOwner: z.boolean().optional(),
+  ownerUsername: z.string().optional(),
 });
 
 export interface Wallet {
@@ -61,6 +64,9 @@ export interface Wallet {
   shareCode?: string;
   excludeFromTotal?: boolean;
   initialBalance?: number;
+  isJoined?: boolean;
+  isOwner?: boolean;
+  ownerUsername?: string;
 }
 
 export const transactionSchema = z.object({

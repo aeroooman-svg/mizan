@@ -153,15 +153,17 @@ export default function HomeScreen() {
     }
     loadRates();
 
-    const hasShared = wallets.some((w: any) => w.isShared);
+    const hasShared = wallets.some((w: any) => w.shareCode || w.sharedWith || w.isJoined);
     if (!hasShared) return;
 
     const interval = setInterval(async () => {
       try {
-        await syncAllSharedWallets();
-        refresh();
+        const res = await syncAllSharedWallets();
+        if (res && res.changed) {
+          refresh();
+        }
       } catch (e) { }
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [refresh, wallets]);

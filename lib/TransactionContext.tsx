@@ -210,14 +210,27 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       setCustomCategoriesInMemory(customCats);
 
       // Automatically sync all shared wallets from Supabase in background
-      syncAllSharedWallets().catch(() => {});
+      syncAllSharedWallets().then((syncResult) => {
+        if (syncResult && syncResult.changed && syncResult.removedWalletIds && syncResult.removedWalletIds.length > 0) {
+          const removedSet = new Set(syncResult.removedWalletIds);
+          setWallets(prev => {
+            const remaining = prev.filter(w => !removedSet.has(w.id));
+            if (remaining.length > 0 && selectedWalletId && removedSet.has(selectedWalletId)) {
+              setSelectedWalletIdState(remaining[0].id);
+              setSelectedWalletIdStorage(remaining[0].id).catch(() => {});
+            }
+            return remaining;
+          });
+          setTransactions(prev => prev.filter(t => !removedSet.has(t.walletId) && (!t.toWalletId || !removedSet.has(t.toWalletId))));
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('Failed to load transaction context data:', err);
     } finally {
       setIsLoading(false);
       setIsInitialLoading(false);
     }
-  }, [language]);
+  }, [language, selectedWalletId]);
 
   useEffect(() => {
     loadData();
@@ -498,6 +511,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       sharedWith,
       excludeFromTotal,
       initialBalance,
+      isJoined: false,
+      isOwner: true,
     };
     await saveWalletToStorage(wallet);
     setWallets(prev => [...prev, wallet]);

@@ -106,6 +106,11 @@ export async function getOrCreateShareCode(walletId: string): Promise<string> {
     return generateCode();
   }
 
+  // If this wallet is joined (not created/owned by current user), do not generate new codes
+  if (localWallet.isJoined) {
+    return localWallet.shareCode || '';
+  }
+
   // If wallet already has a shareCode, push latest snapshot and return
   if (localWallet.shareCode) {
     await pushWalletToSupabase(localWallet);
@@ -356,6 +361,8 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
       createdAt: remoteWallet.created_at || new Date().toISOString(),
       shareCode: cleanCode,
       sharedWith: updatedMetadata,
+      isJoined: true,
+      isOwner: false,
     };
 
     // 5. Save wallet locally
@@ -440,15 +447,47 @@ export async function joinSharedWallet(code: string): Promise<{ success: boolean
 }
 
 /**
+ * Clean up and completely remove a wallet and its transactions from local storage.
+ */
+export async function removeLocalWalletAndTransactions(walletId: string): Promise<void> {
+  try {
+    const localWallets = await getLocalWallets();
+    const filteredWallets = localWallets.filter((w: any) => w.id !== walletId);
+    await saveLocalWallets(filteredWallets);
+
+    const localTxns = await getLocalTransactions();
+    const filteredTxns = localTxns.filter((t: any) => t.walletId !== walletId && t.toWalletId !== walletId);
+    await saveLocalTransactions(filteredTxns);
+
+    try {
+      const { deleteWallet } = await import('./storage');
+      await deleteWallet(walletId);
+    } catch {}
+
+    try {
+      const codesData = await AsyncStorage.getItem(SHARE_CODES_KEY);
+      if (codesData) {
+        const codes = JSON.parse(codesData);
+        delete codes[walletId];
+        await AsyncStorage.setItem(SHARE_CODES_KEY, JSON.stringify(codes));
+      }
+    } catch {}
+  } catch (e) {
+    console.warn('removeLocalWalletAndTransactions error:', e);
+  }
+}
+
+/**
  * Synchronize a shared wallet's metadata and transactions bidirectionally with Supabase.
  */
-export async function syncSharedWalletByCode(code: string): Promise<boolean> {
+export async function syncSharedWalletByCode(code: string, explicitWalletId?: string): Promise<boolean> {
   const cleanCode = code.trim().toUpperCase();
-  if (!cleanCode) return false;
+  if (!cleanCode && !explicitWalletId) return false;
 
   try {
     // 1. Fetch wallet from Supabase
-    const remoteWallets = await supabaseGet('wallets', `share_code=eq.${cleanCode}&select=*`);
+    const query = explicitWalletId ? `id=eq.${explicitWalletId}&select=*` : `share_code=eq.${cleanCode}&select=*`;
+    const remoteWallets = await supabaseGet('wallets', query);
     if (remoteWallets.length === 0) return false;
 
     const remoteWallet = remoteWallets[0];
@@ -477,7 +516,7 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 
     // 4. Update local wallet
     const localWallets = await getLocalWallets();
-    const wIdx = localWallets.findIndex((w: any) => w.id === walletId || w.shareCode === cleanCode);
+    const wIdx = localWallets.findIndex((w: any) => w.id === walletId || (cleanCode && w.shareCode === cleanCode));
     if (wIdx !== -1) {
       if (remoteWallet.name) localWallets[wIdx].name = remoteWallet.name;
       if (remoteWallet.currency) localWallets[wIdx].currency = remoteWallet.currency;
@@ -494,6 +533,7 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
       }
       
       if (remoteWallet.shared_with) localWallets[wIdx].sharedWith = remoteWallet.shared_with;
+      if (remoteWallet.share_code) localWallets[wIdx].shareCode = remoteWallet.share_code;
       await saveLocalWallets(localWallets);
     }
 
@@ -543,23 +583,96 @@ export async function syncSharedWalletByCode(code: string): Promise<boolean> {
 }
 
 /**
- * Sync all shared wallets for the user.
+ * Sync all shared and joined wallets for the user.
+ * Automatically removes any wallet that was unshared or where the user was removed by the owner.
  */
-export async function syncAllSharedWallets(): Promise<void> {
+export async function syncAllSharedWallets(): Promise<{ changed: boolean; removedWalletIds: string[] }> {
+  const removedWalletIds: string[] = [];
   try {
+    const currentUsername = await getCurrentUsername();
     const wallets = await getLocalWallets();
-    const sharedWallets = wallets.filter((w: any) => w.shareCode || isWalletShared(w.sharedWith));
+    const sharedWallets = wallets.filter((w: any) => w.shareCode || isWalletShared(w.sharedWith) || w.isJoined);
+
     for (const wallet of sharedWallets) {
-      if (wallet.initialBalance !== undefined && wallet.initialBalance !== 0) {
-        await pushWalletToSupabase(wallet).catch(() => {});
-      }
-      if (wallet.shareCode) {
-        await syncSharedWalletByCode(wallet.shareCode);
+      // 1. If it's a JOINED wallet (not the creator/owner)
+      if (wallet.isJoined) {
+        try {
+          const remoteWallets = await supabaseGet('wallets', `id=eq.${wallet.id}&select=*`);
+
+          // Case 1.1: Wallet deleted from server
+          if (!remoteWallets || remoteWallets.length === 0) {
+            console.log(`Joined wallet ${wallet.id} not found on server. Removing locally.`);
+            await removeLocalWalletAndTransactions(wallet.id);
+            removedWalletIds.push(wallet.id);
+            continue;
+          }
+
+          const remoteW = remoteWallets[0];
+
+          // Case 1.2: Owner stopped sharing (share_code is null)
+          if (!remoteW.share_code) {
+            console.log(`Owner stopped sharing wallet ${wallet.id}. Removing from member device.`);
+            await removeLocalWalletAndTransactions(wallet.id);
+            removedWalletIds.push(wallet.id);
+            continue;
+          }
+
+          // Case 1.3: Check if this user was removed from members
+          const shares = await supabaseGet('wallet_shares', `wallet_id=eq.${wallet.id}&select=*`);
+          let isStillMember = false;
+
+          if (Array.isArray(shares) && shares.length > 0) {
+            isStillMember = shares.some((s: any) =>
+              (s.username && s.username.toLowerCase() === currentUsername.toLowerCase()) ||
+              (wallet.userId && s.user_id === wallet.userId)
+            );
+          }
+
+          if (!isStillMember && remoteW.shared_with) {
+            try {
+              const meta = typeof remoteW.shared_with === 'string' ? JSON.parse(remoteW.shared_with) : remoteW.shared_with;
+              const mems = Array.isArray(meta) ? meta : (meta?.members || []);
+              if (Array.isArray(mems)) {
+                isStillMember = mems.some((m: any) =>
+                  m.username && m.username.toLowerCase() === currentUsername.toLowerCase()
+                );
+              }
+            } catch {}
+          }
+
+          // If member was removed by the owner
+          if (!isStillMember) {
+            console.log(`User ${currentUsername} was removed from wallet ${wallet.id}. Removing locally.`);
+            await removeLocalWalletAndTransactions(wallet.id);
+            removedWalletIds.push(wallet.id);
+            continue;
+          }
+
+          // Still valid member -> Sync latest data
+          if (remoteW.share_code) {
+            await syncSharedWalletByCode(remoteW.share_code, wallet.id);
+          }
+        } catch (err) {
+          console.warn(`Error verifying joined wallet ${wallet.id}:`, err);
+        }
+      } else {
+        // 2. Owned wallet
+        if (wallet.initialBalance !== undefined && wallet.initialBalance !== 0) {
+          await pushWalletToSupabase(wallet).catch(() => {});
+        }
+        if (wallet.shareCode) {
+          await syncSharedWalletByCode(wallet.shareCode, wallet.id);
+        }
       }
     }
   } catch (e) {
     console.warn('syncAllSharedWallets error:', e);
   }
+
+  return {
+    changed: removedWalletIds.length > 0,
+    removedWalletIds,
+  };
 }
 
 /**

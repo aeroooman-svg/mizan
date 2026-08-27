@@ -34,12 +34,14 @@ export default function ShareWalletScreen() {
 
   const targetWalletId = params.walletId || selectedWallet?.id || (wallets.length > 0 ? wallets[0].id : null);
   const wallet = wallets.find(w => w.id === targetWalletId) || wallets[0];
+  const isOwner = wallet ? (!wallet.isJoined && wallet.isOwner !== false) : true;
 
   const [shareCode, setShareCode] = useState<string | null>(null);
   const [members, setMembers] = useState<SharedMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [memberToRemove, setMemberToRemove] = useState<SharedMember | null>(null);
   const [confirmStopSharing, setConfirmStopSharing] = useState(false);
+  const [confirmLeaveWallet, setConfirmLeaveWallet] = useState(false);
   const isAr = language === 'ar';
 
   useEffect(() => {
@@ -50,12 +52,18 @@ export default function ShareWalletScreen() {
       }
       setLoading(true);
       try {
-        const [code, membersList] = await Promise.all([
-          getOrCreateShareCode(targetWalletId),
-          getSharedMembers(targetWalletId),
-        ]);
-        setShareCode(code);
-        setMembers(membersList);
+        if (isOwner) {
+          const [code, membersList] = await Promise.all([
+            getOrCreateShareCode(targetWalletId),
+            getSharedMembers(targetWalletId),
+          ]);
+          setShareCode(code);
+          setMembers(membersList);
+        } else {
+          const membersList = await getSharedMembers(targetWalletId);
+          setShareCode(wallet?.shareCode || null);
+          setMembers(membersList);
+        }
       } catch (e) {
         console.warn('Failed to load share wallet data', e);
       } finally {
@@ -63,7 +71,7 @@ export default function ShareWalletScreen() {
       }
     }
     loadData();
-  }, [targetWalletId]);
+  }, [targetWalletId, isOwner]);
 
   const handleBack = () => {
     try { Haptics.selectionAsync(); } catch {}
@@ -120,12 +128,13 @@ export default function ShareWalletScreen() {
   };
 
   const handleRemoveMember = (member: SharedMember) => {
+    if (!isOwner) return;
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
     setMemberToRemove(member);
   };
 
   const executeRemoveMember = async () => {
-    if (!targetWalletId || !memberToRemove) return;
+    if (!targetWalletId || !memberToRemove || !isOwner) return;
     const target = memberToRemove;
     setMemberToRemove(null);
     try {
@@ -141,7 +150,7 @@ export default function ShareWalletScreen() {
   };
 
   const executeStopSharing = async () => {
-    if (!targetWalletId) return;
+    if (!targetWalletId || !isOwner) return;
     setConfirmStopSharing(false);
     setLoading(true);
     try {
@@ -163,6 +172,29 @@ export default function ShareWalletScreen() {
     }
   };
 
+  const executeLeaveWallet = async () => {
+    if (!targetWalletId) return;
+    setConfirmLeaveWallet(false);
+    setLoading(true);
+    try {
+      const { leaveSharedWallet } = await import('@/lib/sharingService');
+      const ok = await leaveSharedWallet(targetWalletId);
+      await refresh();
+      setLoading(false);
+      if (ok) {
+        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+        Alert.alert(
+          isAr ? 'تم بنجاح' : 'Success',
+          isAr ? 'تمت مغادرة المحفظة بنجاح.' : 'You have left the wallet successfully.',
+          [{ text: isAr ? 'حسناً' : 'OK', onPress: () => router.replace('/(tabs)' as any) }]
+        );
+      }
+    } catch (e) {
+      setLoading(false);
+      console.error('Failed to leave wallet:', e);
+    }
+  };
+
   const renderMember = ({ item }: { item: SharedMember }) => (
     <View style={styles.memberCard}>
       <View style={styles.memberAvatar}>
@@ -178,7 +210,7 @@ export default function ShareWalletScreen() {
             : (isAr ? '👤 عضو' : '👤 Member')}
         </Text>
       </View>
-      {item.role !== 'owner' && (
+      {isOwner && item.role !== 'owner' && (
         <Pressable
           onPress={() => handleRemoveMember(item)}
           style={({ pressed }) => [styles.removeMemberBtn, pressed && { opacity: 0.7 }]}
@@ -200,7 +232,9 @@ export default function ShareWalletScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
-          {isAr ? 'مشاركة المحفظة' : 'Share Wallet'}
+          {isOwner
+            ? (isAr ? 'مشاركة المحفظة' : 'Share Wallet')
+            : (isAr ? 'أعضاء المحفظة المشتركة' : 'Shared Wallet Members')}
         </Text>
         <View style={{ width: 44 }} />
       </View>
@@ -224,41 +258,58 @@ export default function ShareWalletScreen() {
                 <Text style={styles.walletName}>{wallet?.name || ''}</Text>
               </View>
 
-              {/* Share Code Card */}
-              <View style={styles.codeCard}>
-                <Text style={styles.codeLabel}>
-                  {isAr ? 'كود المشاركة' : 'Share Code'}
-                </Text>
-                <Text style={styles.codeText}>{shareCode}</Text>
+              {/* Share Code Card (Owner only) */}
+              {isOwner ? (
+                <View style={styles.codeCard}>
+                  <Text style={styles.codeLabel}>
+                    {isAr ? 'كود المشاركة' : 'Share Code'}
+                  </Text>
+                  <Text style={styles.codeText}>{shareCode}</Text>
 
-                <View style={styles.codeActions}>
-                  <Pressable
-                    onPress={handleCopyCode}
-                    style={({ pressed }) => [styles.codeActionBtn, pressed && { opacity: 0.8 }]}
-                  >
-                    <Ionicons name="copy-outline" size={18} color={colors.primary} />
-                    <Text style={styles.codeActionText}>
-                      {isAr ? 'نسخ' : 'Copy'}
-                    </Text>
-                  </Pressable>
+                  <View style={styles.codeActions}>
+                    <Pressable
+                      onPress={handleCopyCode}
+                      style={({ pressed }) => [styles.codeActionBtn, pressed && { opacity: 0.8 }]}
+                    >
+                      <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                      <Text style={styles.codeActionText}>
+                        {isAr ? 'نسخ' : 'Copy'}
+                      </Text>
+                    </Pressable>
 
-                  <Pressable
-                    onPress={handleShareCode}
-                    style={({ pressed }) => [styles.codeActionBtn, styles.codeActionPrimary, pressed && { opacity: 0.8 }]}
-                  >
-                    <Ionicons name="share-social-outline" size={18} color="#FFF" />
-                    <Text style={[styles.codeActionText, { color: '#FFF' }]}>
-                      {isAr ? 'مشاركة' : 'Share'}
-                    </Text>
-                  </Pressable>
+                    <Pressable
+                      onPress={handleShareCode}
+                      style={({ pressed }) => [styles.codeActionBtn, styles.codeActionPrimary, pressed && { opacity: 0.8 }]}
+                    >
+                      <Ionicons name="share-social-outline" size={18} color="#FFF" />
+                      <Text style={[styles.codeActionText, { color: '#FFF' }]}>
+                        {isAr ? 'مشاركة' : 'Share'}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <Text style={styles.codeHint}>
+                    {isAr
+                      ? 'شارك هذا الكود مع عائلتك أو أصدقائك للانضمام لمحفظتك'
+                      : 'Share this code with family or friends to join your wallet'}
+                  </Text>
                 </View>
-
-                <Text style={styles.codeHint}>
-                  {isAr
-                    ? 'شارك هذا الكود مع عائلتك أو أصدقائك للانضمام لمحفظتك'
-                    : 'Share this code with family or friends to join your wallet'}
-                </Text>
-              </View>
+              ) : (
+                /* Member View Info Box */
+                <View style={[styles.codeCard, { backgroundColor: colors.surfaceAlt + '80', borderWidth: 1, borderColor: colors.border }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, justifyContent: 'center' }}>
+                    <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                      {isAr ? 'محفظة مشتركة' : 'Shared Wallet'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.codeHint, { color: colors.textSecondary, fontSize: 13, lineHeight: 20 }]}>
+                    {isAr
+                      ? 'أنت عضو في هذه المحفظة. صلاحية إضافة أعضاء جدد أو حذف الأعضاء مخصصة لمالك المحفظة فقط.'
+                      : 'You are a member of this wallet. Adding or removing members is restricted to the wallet owner.'}
+                  </Text>
+                </View>
+              )}
 
               {/* Members Header */}
               <Text style={styles.sectionTitle}>
@@ -267,12 +318,43 @@ export default function ShareWalletScreen() {
             </View>
           }
           ListFooterComponent={
-            shareCode ? (
+            isOwner ? (
+              shareCode ? (
+                <View style={{ marginTop: 24, gap: 12 }}>
+                  <Pressable
+                    onPress={() => {
+                      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+                      setConfirmStopSharing(true);
+                    }}
+                    style={({ pressed }) => [
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        paddingVertical: 14,
+                        borderRadius: 14,
+                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                      },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                  >
+                    <Ionicons name="link-outline" size={20} color="#EF4444" />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#EF4444' }}>
+                      {isAr ? 'إيقاف المشاركة للجميع' : 'Stop Sharing for Everyone'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null
+            ) : (
+              /* Joined Member Footer: Leave Wallet */
               <View style={{ marginTop: 24, gap: 12 }}>
                 <Pressable
                   onPress={() => {
                     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-                    setConfirmStopSharing(true);
+                    setConfirmLeaveWallet(true);
                   }}
                   style={({ pressed }) => [
                     {
@@ -289,13 +371,13 @@ export default function ShareWalletScreen() {
                     pressed && { opacity: 0.8 },
                   ]}
                 >
-                  <Ionicons name="link-outline" size={20} color="#EF4444" />
+                  <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#EF4444' }}>
-                    {isAr ? 'إيقاف المشاركة للجميع' : 'Stop Sharing for Everyone'}
+                    {isAr ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet'}
                   </Text>
                 </Pressable>
               </View>
-            ) : null
+            )
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -310,7 +392,7 @@ export default function ShareWalletScreen() {
         />
       )}
 
-      {/* Remove Member Confirmation Modal */}
+      {/* Remove Member Confirmation Modal (Owner only) */}
       <Modal
         visible={!!memberToRemove}
         animationType="fade"
@@ -362,7 +444,7 @@ export default function ShareWalletScreen() {
         </Pressable>
       </Modal>
 
-      {/* Stop Sharing Confirmation Modal */}
+      {/* Stop Sharing Confirmation Modal (Owner only) */}
       <Modal
         visible={confirmStopSharing}
         animationType="fade"
@@ -386,7 +468,7 @@ export default function ShareWalletScreen() {
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
                 {isAr
-                  ? 'هل تريد بالتأكيد إيقاف المشاركة؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة شخصية فقط.'
+                  ? 'هل تريد بالتأكيد إيقاف المشاركة؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.'
                   : 'Are you sure you want to stop sharing? The share code will be revoked and members removed.'}
               </Text>
             </View>
@@ -407,6 +489,58 @@ export default function ShareWalletScreen() {
               >
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
                   {isAr ? 'إيقاف المشاركة' : 'Stop Sharing'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Leave Wallet Confirmation Modal (Member only) */}
+      <Modal
+        visible={confirmLeaveWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setConfirmLeaveWallet(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setConfirmLeaveWallet(false)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: 22, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="log-out-outline" size={26} color="#EF4444" />
+              </View>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text, textAlign: 'center' }}>
+                {isAr ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                {isAr
+                  ? `هل أنت متأكد من مغادرة محفظة "${wallet?.name || ''}"؟ سيتم حذف المحفظة ومعاملاتها من جهازك.`
+                  : `Are you sure you want to leave "${wallet?.name || ''}"? The wallet and its transactions will be removed from your device.`}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              <Pressable
+                onPress={() => setConfirmLeaveWallet(false)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.textSecondary }}>
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={executeLeaveWallet}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                  {isAr ? 'مغادرة' : 'Leave'}
                 </Text>
               </Pressable>
             </View>
