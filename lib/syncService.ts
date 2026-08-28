@@ -167,7 +167,13 @@ export async function performLogin(username: string, userId: string): Promise<vo
 }
 
 export async function performLogout(): Promise<void> {
+  try {
+    const { supabaseSignOut } = await import('./supabaseAuth');
+    await supabaseSignOut();
+  } catch {}
+
   await AsyncStorage.removeItem(USER_ID_KEY);
+  await AsyncStorage.removeItem(LEGACY_USER_ID_KEY);
   await AsyncStorage.removeItem('@mizan_username');
   await AsyncStorage.removeItem('@masarif_username');
   await AsyncStorage.removeItem(LAST_SYNC_KEY);
@@ -177,11 +183,21 @@ export async function performLogout(): Promise<void> {
   updateSyncState('idle');
 }
 
-export async function getLoggedInUser(): Promise<{ username: string; id: string } | null> {
-  const id = await AsyncStorage.getItem(USER_ID_KEY);
+export async function getLoggedInUser(): Promise<{ username: string; id: string; email?: string } | null> {
+  try {
+    const { getCurrentUser } = await import('./supabaseAuth');
+    const sbUser = await getCurrentUser();
+    if (sbUser) {
+      const username = sbUser.user_metadata?.username || sbUser.user_metadata?.full_name || sbUser.email.split('@')[0];
+      return { id: sbUser.id, username, email: sbUser.email };
+    }
+  } catch {}
+
+  const id = (await AsyncStorage.getItem(USER_ID_KEY)) || (await AsyncStorage.getItem(LEGACY_USER_ID_KEY));
   const username = (await AsyncStorage.getItem('@mizan_username')) || (await AsyncStorage.getItem('@masarif_username'));
   if (id && username) {
     return { id, username };
   }
   return null;
 }
+

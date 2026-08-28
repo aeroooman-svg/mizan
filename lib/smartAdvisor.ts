@@ -280,40 +280,40 @@ type QuestionIntent =
   | 'general';
 
 function detectIntent(question: string): QuestionIntent {
-  const q = question.toLowerCase();
+  const q = question.toLowerCase().trim();
 
-  // Affordability
-  if (/أشتري|أقدر أشتري|هل أقدر|can i (buy|afford)|purchase|شراء/.test(q)) return 'can_afford';
+  // Affordability (Egyptian, Gulf, Levantine, Maghrebi, Fusha, English)
+  if (/أشتري|اشتري|اشري|نشري|أقدر أشتري|اقدر اشتري|يمديني|يمديني اشتري|فيي اشتري|نقدر نشري|واش نقدر|هل أقدر|can i (buy|afford)|purchase|شراء/.test(q)) return 'can_afford';
 
-  // Saving
-  if (/توفير|ادخار|وفر|أوفر|save|saving|ادخر/.test(q)) return 'saving_tips';
+  // Saving & Advice
+  if (/توفير|ادخار|وفر|أوفر|اوفر|ادخر|نوفر|نخبي|كيفاش نوفر|شحال نخبي|save|saving|how to save/.test(q)) return 'saving_tips';
 
   // Spending pattern
-  if (/نمط|عادة|يوم|أكثر يوم|pattern|habit|day|أصرف|بصرف/.test(q)) return 'spending_pattern';
+  if (/نمط|عادة|يوم|أكثر يوم|اكثر يوم|pattern|habit|day|أصرف|اصرف|بصرف|نصرف|كيف بصرف/.test(q)) return 'spending_pattern';
 
   // Debt
-  if (/دين|ديون|سداد|debt|payoff|owe|مديون/.test(q)) return 'debt_advice';
+  if (/دين|ديون|سداد|debt|payoff|owe|مديون|سلفة|سلف/.test(q)) return 'debt_advice';
 
-  // Investment
-  if (/استثمار|ذهب|بورصة|أسهم|invest|gold|stock|crypto/.test(q)) return 'investment';
+  // Investment & Gold
+  if (/استثمار|ذهب|دهب|بورصة|أسهم|اسهم|عقار|invest|gold|stock|crypto/.test(q)) return 'investment';
 
   // Budget status
-  if (/ميزانية|budget|حد|limit|تجاوز|overrun/.test(q)) return 'budget_status';
+  if (/ميزانية|ميزانيتي|budget|حد|limit|تجاوز|overrun|سقف/.test(q)) return 'budget_status';
 
   // Comparison
-  if (/مقارنة|الشهر اللي فات|الشهر الماضي|compar|last month|previous/.test(q)) return 'comparison';
+  if (/مقارنة|مقارنه|الشهر اللي فات|الشهر الماضي|الشهر الفايت|الشهر السابق|compar|last month|previous/.test(q)) return 'comparison';
 
-  // Prediction
-  if (/توقع|مستقبل|predict|forecast|كم هوفر|هوصل/.test(q)) return 'prediction';
+  // Prediction & Future
+  if (/توقع|مستقبل|predict|forecast|كم هوفر|هوصل|شحال غنوفر|كم بوفر/.test(q)) return 'prediction';
 
   // Anomaly
-  if (/غريب|unusual|مصروف كبير|زيادة|ارتفاع|spike/.test(q)) return 'anomaly_check';
+  if (/غريب|unusual|مصروف كبير|زيادة|ارتفاع|spike|انفاق زائد/.test(q)) return 'anomaly_check';
 
   // Today
-  if (/النهارده|اليوم|today/.test(q)) return 'today_summary';
+  if (/النهارده|النهاردة|اليوم|ليوم|today|شريت اليوم|صرفت اليوم/.test(q)) return 'today_summary';
 
-  // Top categories
-  if (/أكثر فئة|أعلى|top|highest|بصرف على إيه|أصرف على/.test(q)) return 'top_categories';
+  // Top categories / Where did money go
+  if (/أكثر فئة|اكثر فئة|أعلى|اعلى|top|highest|بصرف على إيه|بصرف على ايه|أصرف على|فين راحت فلوسي|وين راحت فلوسي|فين مشاو الفلوس|وين راحو المصاري/.test(q)) return 'top_categories';
 
   return 'general';
 }

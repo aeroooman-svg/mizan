@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,93 +10,237 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
-import { apiRequest } from '@/lib/query-client';
-import { performLogin } from '@/lib/syncService';
-
-const LOCAL_USERS_KEY = '@masarif_user_registry_v1';
+import { performLogin, syncWithCloud } from '@/lib/syncService';
+import {
+  supabaseSignIn,
+  supabaseSignUp,
+  supabaseResetPassword,
+  supabaseOAuthSignIn,
+  signInAsLocalGuest,
+  getCurrentUser,
+  OAuthProvider,
+  LOCAL_USERS_KEY,
+} from '@/lib/supabaseAuth';
+import { authenticateWithBiometrics, isBiometricAvailable } from '@/lib/BiometricService';
 
 export default function AuthScreen() {
   const { colors, theme } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
-  const { language, t } = useLanguage();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
+  const { language } = useLanguage();
   const isAr = language === 'ar';
 
-  const [isLogin, setIsLogin] = useState(true);
-  const [socialModalVisible, setSocialModalVisible] = useState(false);
-  const [socialProvider, setSocialProvider] = useState<'google' | 'email' | 'apple'>('google');
-  const [emailInput, setEmailInput] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
 
-  const openSocialAuth = (provider: 'google' | 'email' | 'apple') => {
-    setSocialProvider(provider);
-    setEmailInput('');
-    setSocialModalVisible(true);
+  // Quick direct email sync modal for fallback / instant connect
+  const [fallbackModalVisible, setFallbackModalVisible] = useState(false);
+  const [fallbackProvider, setFallbackProvider] = useState<'google' | 'apple' | 'azure'>('google');
+  const [fallbackEmail, setFallbackEmail] = useState('');
+
+  useEffect(() => {
+    async function checkBio() {
+      try {
+        const available = await isBiometricAvailable();
+        setBiometricSupported(available);
+      } catch {}
+    }
+    checkBio();
+  }, []);
+
+  // 1. Biometric Fast Auth
+  const handleBiometricAuth = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const success = await authenticateWithBiometrics(
+        isAr ? 'تأكيد الهوية للدخول السريع إلى ميزان' : 'Confirm identity to unlock Mizan'
+      );
+      if (success) {
+        const user = await getCurrentUser();
+        if (user) {
+          const name = user.user_metadata?.username || user.user_metadata?.full_name || user.email.split('@')[0];
+          await performLogin(name, user.id);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace('/(tabs)' as any);
+        } else {
+          const lastUser = await AsyncStorage.getItem('@mizan_username');
+          const lastId = await AsyncStorage.getItem('@mizan_user_id');
+          if (lastUser && lastId) {
+            await performLogin(lastUser, lastId);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace('/(tabs)' as any);
+          } else {
+            Alert.alert(
+              isAr ? 'تنبيه' : 'Notice',
+              isAr
+                ? 'يرجى تسجيل الدخول أول مرة بحسابك لتفعيل البصمة التلقائية'
+                : 'Please sign in first to activate biometric quick access'
+            );
+          }
+        }
+      }
+    } catch (e: any) {
+      Alert.alert(isAr ? 'فشل التحقق' : 'Biometric Error', e?.message || '');
+    }
   };
 
-  const handleSocialSubmit = async () => {
-    const cleanEmail = emailInput.trim().toLowerCase();
-    if (!cleanEmail) {
+  // 2. Real OAuth Sign-In (Google, Apple, Microsoft/Hotmail)
+  const handleOAuthSignIn = async (provider: OAuthProvider) => {
+    try {
+      setOauthLoading(provider);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const result = await supabaseOAuthSignIn(provider);
+
+      if (result.user) {
+        const displayName =
+          result.user.user_metadata?.full_name ||
+          result.user.user_metadata?.name ||
+          result.user.user_metadata?.username ||
+          result.user.email?.split('@')[0] ||
+          'مستخدم ميزان';
+
+        await performLogin(displayName, result.user.id);
+        await syncWithCloud();
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Platform.OS === 'web') {
+          router.replace('/(tabs)' as any);
+        } else {
+          Alert.alert(
+            isAr ? 'تم تسجيل الدخول بنجاح 🎉' : 'Sign-In Success 🎉',
+            isAr
+              ? `أهلاً بك ${displayName}! تم التحقق من حسابك ومزامنته سحابياً بنجاح.`
+              : `Welcome ${displayName}! Cloud account verified & synced.`,
+            [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
+          );
+        }
+      } else if (result.error && result.error !== 'تم إلغاء عملية تسجيل الدخول') {
+        // If OAuth provider requires manual setup or offline fallback, open friendly direct sync modal
+        setFallbackProvider(provider);
+        setFallbackModalVisible(true);
+      }
+    } catch (err: any) {
+      Alert.alert(isAr ? 'خطأ في المصادقة' : 'Authentication Error', err?.message || 'Failed to authenticate');
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  // 3. Fallback Instant Cloud Link
+  const handleFallbackSubmit = async () => {
+    const cleanEmail = fallbackEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       Alert.alert(
         isAr ? 'تنبيه' : 'Notice',
-        isAr ? 'يرجى إدخال البريد الإلكتروني أو الحساب' : 'Please enter your email or account address'
+        isAr ? 'يرجى إدخال بريد إلكتروني صالح' : 'Please enter a valid email'
       );
       return;
     }
 
     setLoading(true);
-    setSocialModalVisible(false);
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-
-    const providerTag = socialProvider;
-    const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-    const deterministicUserId = `usr_${providerTag}_${cleanId}`;
-    const displayName = cleanEmail.split('@')[0] || cleanEmail;
-
+    setFallbackModalVisible(false);
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      const deterministicUserId = `usr_${fallbackProvider}_${cleanId}`;
+      const displayName = cleanEmail.split('@')[0] || cleanEmail;
+
       await performLogin(displayName, deterministicUserId);
-      setLoading(false);
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+      await syncWithCloud();
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (Platform.OS === 'web') {
         router.replace('/(tabs)' as any);
       } else {
         Alert.alert(
           isAr ? 'تم تسجيل الدخول والمزامنة 🎉' : 'Sign-In Success 🎉',
-          isAr ? `أهلاً بك ${displayName}! تم ربط وتأمين حسابك سحابياً بنجاح.` : `Welcome ${displayName}! Cloud account synced successfully.`,
+          isAr ? `أهلاً بك ${displayName}! تم ربط وتأمين حسابك سحابياً بنجاح.` : `Welcome ${displayName}! Cloud account synced.`,
           [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
         );
       }
     } catch (err: any) {
+      Alert.alert(isAr ? 'خطأ' : 'Error', err?.message || 'Could not complete sign in');
+    } finally {
       setLoading(false);
-      if (Platform.OS === 'web') {
-        window.alert(err.message || 'Could not process sign in');
-      } else {
-        Alert.alert(isAr ? 'خطأ' : 'Error', err.message || 'Could not process sign in');
-      }
     }
   };
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleAuth = async () => {
-    const cleanUsername = username.trim();
-    if (!cleanUsername || !password.trim()) {
+  // 4. Reset Password
+  const handleResetPassword = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       Alert.alert(
         isAr ? 'تنبيه' : 'Notice',
-        isAr ? 'يرجى إدخال اسم المستخدم وكلمة المرور' : 'Username and password are required'
+        isAr ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email address'
       );
       return;
     }
 
-    if (!isLogin && password !== confirmPassword) {
+    setLoading(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const res = await supabaseResetPassword(cleanEmail);
+      setLoading(false);
+
+      if (res.success) {
+        Alert.alert(
+          isAr ? 'تم الإرسال بنجاح 📧' : 'Sent Successfully 📧',
+          isAr
+            ? `تم إرسال رابط استعادة كلمة المرور إلى البريد: ${cleanEmail}`
+            : `Password reset link sent to: ${cleanEmail}`,
+          [{ text: isAr ? 'حسناً' : 'OK', onPress: () => setAuthMode('login') }]
+        );
+      } else {
+        Alert.alert(isAr ? 'خطأ' : 'Error', res.error || (isAr ? 'تعذر إرسال الطلب' : 'Failed to send reset email'));
+      }
+    } catch (err: any) {
+      setLoading(false);
+      Alert.alert(isAr ? 'خطأ' : 'Error', err?.message || 'Error occurred');
+    }
+  };
+
+  // 5. Email/Password Authentication
+  const handleAuth = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (authMode === 'forgot') {
+      return handleResetPassword();
+    }
+
+    if (!cleanEmail || !cleanPass) {
+      Alert.alert(
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى إدخال البريد الإلكتروني وكلمة المرور' : 'Email and password are required'
+      );
+      return;
+    }
+
+    if (!cleanEmail.includes('@')) {
+      Alert.alert(
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يرجى إدخال بريد إلكتروني صالح' : 'Please enter a valid email address'
+      );
+      return;
+    }
+
+    if (authMode === 'register' && cleanPass !== confirmPassword.trim()) {
       Alert.alert(
         isAr ? 'خطأ' : 'Error',
         isAr ? 'كلمات المرور غير متطابقة!' : 'Passwords do not match!'
@@ -104,103 +248,112 @@ export default function AuthScreen() {
       return;
     }
 
+    if (cleanPass.length < 6) {
+      Alert.alert(
+        isAr ? 'تنبيه' : 'Notice',
+        isAr ? 'يجب ألا تقل كلمة المرور عن 6 خانات' : 'Password must be at least 6 characters'
+      );
+      return;
+    }
+
     setLoading(true);
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
 
     try {
-      let loggedInUser = null;
+      if (authMode === 'login') {
+        // A. Supabase Real Sign In
+        const { user, error } = await supabaseSignIn(cleanEmail, cleanPass);
 
-      // 1. Try Server Cloud Auth API first
-      try {
-        const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-        const response = await apiRequest('POST', endpoint, {
-          username: cleanUsername,
-          password: password,
-        });
+        if (user) {
+          const displayName =
+            user.user_metadata?.username ||
+            user.user_metadata?.full_name ||
+            cleanEmail.split('@')[0];
+          await performLogin(displayName, user.id);
+          await syncWithCloud();
 
-        if (response.ok) {
-          loggedInUser = await response.json();
-        }
-      } catch (cloudErr) {
-        console.warn('Cloud Auth server unreachable, using offline fallback auth:', cloudErr);
-      }
-
-      // 2. If Server API is unreachable (Offline/Vercel Standalone), handle local secure user registry
-      if (!loggedInUser) {
-        const jsonUsers = await AsyncStorage.getItem(LOCAL_USERS_KEY);
-        const usersList: { id: string; username: string; passHash: string }[] = jsonUsers ? JSON.parse(jsonUsers) : [];
-
-        if (isLogin) {
-          const found = usersList.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
-          if (found) {
-            if (found.passHash === password) {
-              loggedInUser = { id: found.id, username: found.username };
-            } else {
-              throw new Error(isAr ? 'كلمة المرور غير صحيحة!' : 'Incorrect password!');
-            }
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (Platform.OS === 'web') {
+            router.replace('/(tabs)' as any);
           } else {
-            // First time login offline - auto register user seamlessly
-            const newId = 'usr_' + Date.now();
-            const newUser = { id: newId, username: cleanUsername, passHash: password };
-            await AsyncStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([newUser, ...usersList]));
-            loggedInUser = { id: newId, username: cleanUsername };
+            Alert.alert(
+              isAr ? 'أهلاً بك مجدداً! 🎉' : 'Welcome Back! 🎉',
+              isAr ? `تم تسجيل دخولك بنجاح ومزامنة حسابك سحابياً.` : `Signed in and synced successfully.`,
+              [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
+            );
           }
         } else {
-          // Registration
-          const existing = usersList.find(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
-          if (existing) {
-            throw new Error(isAr ? 'اسم المستخدم موجود بالفعل! يمكنك تسجيل الدخول.' : 'Username already exists! Please sign in.');
+          // Fallback offline registry verification with legacy support
+          let localUsers: any[] = [];
+          const localJson = await AsyncStorage.getItem(LOCAL_USERS_KEY);
+          if (localJson) {
+            try { localUsers = JSON.parse(localJson); } catch {}
           }
-          const newId = 'usr_' + Date.now();
-          const newUser = { id: newId, username: cleanUsername, passHash: password };
-          await AsyncStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([newUser, ...usersList]));
-          loggedInUser = { id: newId, username: cleanUsername };
+          if (!localUsers.length) {
+            const legacyJson = await AsyncStorage.getItem('@masarif_user_registry_v1');
+            if (legacyJson) {
+              try { localUsers = JSON.parse(legacyJson); } catch {}
+            }
+          }
+          const found = localUsers.find((u: any) => u.email === cleanEmail);
+
+          if (found && found.password === cleanPass) {
+            await performLogin(found.username || cleanEmail.split('@')[0], found.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace('/(tabs)' as any);
+          } else {
+            throw new Error(error || (isAr ? 'البريد أو كلمة المرور غير صحيحة' : 'Invalid email or password'));
+          }
         }
-      }
+      } else {
+        // B. Supabase Real Sign Up
+        const desiredUsername = username.trim() || cleanEmail.split('@')[0];
+        const { user, error } = await supabaseSignUp(cleanEmail, cleanPass, desiredUsername);
 
-      // 3. Complete Login / Session initialization
-      if (loggedInUser) {
-        await performLogin(loggedInUser.username, loggedInUser.id);
+        if (user) {
+          // Save to local registry backup
+          const localJson = await AsyncStorage.getItem(LOCAL_USERS_KEY);
+          const localUsers: any[] = localJson ? JSON.parse(localJson) : [];
+          const newUser = { id: user.id, email: cleanEmail, username: desiredUsername, password: cleanPass };
+          await AsyncStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([newUser, ...localUsers]));
 
-        try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-        if (Platform.OS === 'web') {
-          router.replace('/(tabs)' as any);
+          await performLogin(desiredUsername, user.id);
+          await syncWithCloud();
+
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (Platform.OS === 'web') {
+            router.replace('/(tabs)' as any);
+          } else {
+            Alert.alert(
+              isAr ? 'تم إنشاء الحساب بنجاح! 🎉' : 'Account Created! 🎉',
+              isAr ? `مرحباً بك ${desiredUsername} في ميزان! تم تأمين بياناتك ومزامنتها سحابياً.` : `Welcome ${desiredUsername}! Cloud backup is active.`,
+              [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
+            );
+          }
         } else {
-          Alert.alert(
-            isAr ? 'تمت العملية بنجاح! 🎉' : 'Success! 🎉',
-            isLogin
-              ? (isAr ? `أهلاً بك مجدداً ${loggedInUser.username}! تم تفعيل الحساب والمزامنة السحابية.` : `Welcome back ${loggedInUser.username}! Cloud sync activated.`)
-              : (isAr ? `تم إنشاء حساب "${loggedInUser.username}" وتأمين بياناتك بنجاح.` : `Account "${loggedInUser.username}" created successfully.`),
-            [
-              {
-                text: isAr ? 'دخول التطبيق' : 'Continue',
-                onPress: () => router.replace('/(tabs)' as any),
-              },
-            ]
-          );
+          throw new Error(error || (isAr ? 'تعذر إنشاء الحساب السحابي' : 'Registration failed'));
         }
       }
     } catch (e: any) {
-      console.error(e);
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
-      if (Platform.OS === 'web') {
-        window.alert(e.message || (isAr ? 'تعذر إتمام العملية، يرجى المحاولة لاحقاً' : 'Could not process request, please try again'));
-      } else {
-        Alert.alert(
-          isAr ? 'فشل العملية' : 'Authentication Error',
-          e.message || (isAr ? 'تعذر إتمام العملية، يرجى المحاولة لاحقاً' : 'Could not process request, please try again')
-        );
-      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        isAr ? 'خطأ في المصادقة' : 'Authentication Error',
+        e?.message || (isAr ? 'حدث خطأ، يرجى المحاولة لاحقاً' : 'An error occurred, please try again')
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    try { Haptics.selectionAsync(); } catch {}
-    if (router.canGoBack()) {
-      router.back();
-    } else {
+  // 6. Local Offline Guest Mode
+  const handleGuestMode = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const guest = await signInAsLocalGuest();
+      await performLogin(guest.user_metadata?.full_name || 'حساب محلي', guest.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/(tabs)' as any);
+    } catch {
       router.replace('/(tabs)' as any);
     }
   };
@@ -210,69 +363,211 @@ export default function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back Button */}
-        <Pressable onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            if (router.canGoBack()) router.back();
+            else router.replace('/(tabs)' as any);
+          }}
+          style={styles.backButton}
+        >
+          <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={22} color={colors.text} />
         </Pressable>
 
         {/* Brand Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="cloud-upload" size={40} color={colors.primary} />
+            <Ionicons name="shield-checkmark" size={38} color={colors.primary} />
           </View>
           <Text style={styles.appName}>MIZAN · مِيزان</Text>
           <Text style={styles.subtitle}>
             {isAr
-              ? 'حساب موحد ومزامنة سحابية آمنة لمحفظتك وبياناتك المالية'
-              : 'Secure cloud synchronization for your personal finance'}
+              ? 'نظام المصادقة السحابي الموحد والمشفر لحماية ومزامنة مصاريفك'
+              : 'Secure Cloud Authentication & Sync for your Personal Finances'}
           </Text>
         </View>
 
-        {/* Glassmorphic Form Card */}
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>
-            {isLogin
-              ? (isAr ? 'تسجيل الدخول' : 'Sign In')
-              : (isAr ? 'إنشاء حساب جديد' : 'Sign Up')}
+        {/* Social Cloud OAuth Buttons (Google, Apple, Microsoft/Hotmail) */}
+        <View style={styles.oauthContainer}>
+          <Text style={styles.oauthSectionTitle}>
+            {isAr ? 'تسجيل الدخول السحابي السريع' : 'Fast Cloud Sign-In'}
           </Text>
+          <View style={styles.oauthButtonsGrid}>
+            {/* Google OAuth */}
+            <Pressable
+              onPress={() => handleOAuthSignIn('google')}
+              disabled={oauthLoading !== null}
+              style={({ pressed }) => [
+                styles.oauthBtn,
+                styles.oauthBtnGoogle,
+                (pressed || oauthLoading === 'google') && { opacity: 0.8 },
+              ]}
+            >
+              {oauthLoading === 'google' ? (
+                <ActivityIndicator size="small" color="#EA4335" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#EA4335" />
+                  <Text style={[styles.oauthBtnText, { color: colors.text }]}>Google</Text>
+                </>
+              )}
+            </Pressable>
 
-          {/* Username Input */}
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-            <TextInput
-              value={username}
-              onChangeText={setUsername}
-              placeholder={isAr ? 'اسم المستخدم' : 'Username'}
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+            {/* Apple OAuth */}
+            <Pressable
+              onPress={() => handleOAuthSignIn('apple')}
+              disabled={oauthLoading !== null}
+              style={({ pressed }) => [
+                styles.oauthBtn,
+                styles.oauthBtnApple,
+                (pressed || oauthLoading === 'apple') && { opacity: 0.8 },
+              ]}
+            >
+              {oauthLoading === 'apple' ? (
+                <ActivityIndicator size="small" color={colors.text} />
+              ) : (
+                <>
+                  <Ionicons name="logo-apple" size={20} color={colors.text} />
+                  <Text style={[styles.oauthBtnText, { color: colors.text }]}>Apple</Text>
+                </>
+              )}
+            </Pressable>
 
-          {/* Password Input */}
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={isAr ? 'كلمة المرور' : 'Password'}
-              placeholderTextColor={colors.textTertiary}
-              secureTextEntry={!showPassword}
-              style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSecondary} />
+            {/* Microsoft / Hotmail / Outlook OAuth */}
+            <Pressable
+              onPress={() => handleOAuthSignIn('azure')}
+              disabled={oauthLoading !== null}
+              style={({ pressed }) => [
+                styles.oauthBtn,
+                styles.oauthBtnMicrosoft,
+                (pressed || oauthLoading === 'azure') && { opacity: 0.8 },
+              ]}
+            >
+              {oauthLoading === 'azure' ? (
+                <ActivityIndicator size="small" color="#00A4EF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="microsoft" size={20} color="#00A4EF" />
+                  <Text style={[styles.oauthBtnText, { color: colors.text }]}>Hotmail / Outlook</Text>
+                </>
+              )}
             </Pressable>
           </View>
+        </View>
 
-          {/* Confirm Password (only for Register) */}
-          {!isLogin && (
+        {/* Divider */}
+        <View style={styles.socialDividerContainer}>
+          <View style={styles.socialDividerLine} />
+          <Text style={styles.socialDividerText}>
+            {isAr ? 'أو عبر البريد الإلكتروني' : 'Or with Email & Password'}
+          </Text>
+          <View style={styles.socialDividerLine} />
+        </View>
+
+        {/* Auth Mode Tabs */}
+        <View style={styles.tabContainer}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setAuthMode('login');
+            }}
+            style={[styles.tabButton, authMode === 'login' && styles.tabButtonActive]}
+          >
+            <Text style={[styles.tabButtonText, authMode === 'login' && styles.tabButtonTextActive]}>
+              {isAr ? 'تسجيل الدخول' : 'Sign In'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setAuthMode('register');
+            }}
+            style={[styles.tabButton, authMode === 'register' && styles.tabButtonActive]}
+          >
+            <Text style={[styles.tabButtonText, authMode === 'register' && styles.tabButtonTextActive]}>
+              {isAr ? 'حساب جديد' : 'Sign Up'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Main Auth Form Card */}
+        <View style={styles.formCard}>
+          {authMode === 'forgot' ? (
+            <View style={styles.forgotHeader}>
+              <Ionicons name="key-outline" size={32} color={colors.primary} />
+              <Text style={styles.formTitle}>
+                {isAr ? 'استعادة كلمة المرور' : 'Reset Password'}
+              </Text>
+              <Text style={styles.formSubtitle}>
+                {isAr
+                  ? 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً آمناً لإعادة تعيين كلمة المرور'
+                  : 'Enter your registered email to receive a password reset link'}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Username Input (Only on Registration) */}
+          {authMode === 'register' && (
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder={isAr ? 'اسمك أو اسم المستخدم (مثال: أحمد)' : 'Your Name or Username'}
+                placeholderTextColor={colors.textTertiary}
+                style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+          )}
+
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder={isAr ? 'البريد الإلكتروني (Gmail, Hotmail, Outlook)' : 'Email Address'}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* Password Input (Hidden in Forgot Mode) */}
+          {authMode !== 'forgot' && (
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={isAr ? 'كلمة المرور' : 'Password'}
+                placeholderTextColor={colors.textTertiary}
+                secureTextEntry={!showPassword}
+                style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Confirm Password (Only in Register Mode) */}
+          {authMode === 'register' && (
+            <View style={styles.inputContainer}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -286,128 +581,139 @@ export default function AuthScreen() {
             </View>
           )}
 
+          {/* Forgot Password Link (Only in Login Mode) */}
+          {authMode === 'login' && (
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAuthMode('forgot');
+              }}
+              style={styles.forgotLink}
+            >
+              <Text style={styles.forgotLinkText}>
+                {isAr ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
+              </Text>
+            </Pressable>
+          )}
+
           {/* Submit Button */}
           <Pressable
             onPress={handleAuth}
             disabled={loading}
             style={({ pressed }) => [
               styles.submitButton,
-              { opacity: pressed || loading ? 0.9 : 1 }
+              { opacity: pressed || loading ? 0.88 : 1 },
             ]}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.submitButtonText}>
-                {isLogin
-                  ? (isAr ? 'دخول الحساب' : 'Sign In')
-                  : (isAr ? 'إنشاء وتأمين الحساب' : 'Create Account')}
-              </Text>
+              <View style={styles.submitButtonContent}>
+                <Ionicons
+                  name={
+                    authMode === 'login'
+                      ? 'log-in-outline'
+                      : authMode === 'register'
+                      ? 'person-add-outline'
+                      : 'paper-plane-outline'
+                  }
+                  size={20}
+                  color="#FFF"
+                />
+                <Text style={styles.submitButtonText}>
+                  {authMode === 'login'
+                    ? (isAr ? 'تسجيل الدخول السحابي' : 'Sign In to Cloud')
+                    : authMode === 'register'
+                    ? (isAr ? 'إنشاء حساب جديد مشفر' : 'Create Secure Account')
+                    : (isAr ? 'إرسال رابط الاستعادة' : 'Send Recovery Link')}
+                </Text>
+              </View>
             )}
           </Pressable>
 
-          {/* Social Auth Handlers */}
-          <View style={styles.socialDividerContainer}>
-            <View style={styles.socialDividerLine} />
-            <Text style={styles.socialDividerText}>
-              {isAr ? 'أو الدخول بنقرة واحدة' : 'Or Sign In with 1-Click'}
-            </Text>
-            <View style={styles.socialDividerLine} />
-          </View>
-
-          {/* Social Auth Icons Grid */}
-          <View style={styles.socialButtonsRow}>
-            {/* Google Sign In */}
+          {/* Back to Login from Forgot Mode */}
+          {authMode === 'forgot' && (
             <Pressable
-              onPress={() => openSocialAuth('google')}
-              style={({ pressed }) => [styles.socialCircleBtn, pressed && { opacity: 0.8 }]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAuthMode('login');
+              }}
+              style={styles.backToLoginBtn}
             >
-              <Ionicons name="logo-google" size={24} color="#EA4335" />
-              <Text style={styles.socialBtnLabel}>Google</Text>
+              <Text style={styles.backToLoginText}>
+                {isAr ? 'الرجوع لتسجيل الدخول' : 'Back to Sign In'}
+              </Text>
             </Pressable>
+          )}
 
-            {/* Email Sign In */}
+          {/* Biometric Quick Login */}
+          {biometricSupported && authMode === 'login' && (
             <Pressable
-              onPress={() => openSocialAuth('email')}
-              style={({ pressed }) => [styles.socialCircleBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleBiometricAuth}
+              style={({ pressed }) => [styles.biometricBtn, pressed && { opacity: 0.8 }]}
             >
-              <Ionicons name="mail" size={24} color="#4285F4" />
-              <Text style={styles.socialBtnLabel}>Email</Text>
+              <Ionicons name="finger-print" size={22} color={colors.primary} />
+              <Text style={styles.biometricBtnText}>
+                {isAr ? 'الدخول السريع بالبصمة / Face ID' : 'Quick Sign In with Biometrics'}
+              </Text>
             </Pressable>
-          </View>
-
-          {/* Apple Sign In Button */}
-          <Pressable
-            onPress={() => openSocialAuth('apple')}
-            style={({ pressed }) => [styles.appleBtn, pressed && { opacity: 0.8 }]}
-          >
-            <Ionicons name="logo-apple" size={20} color={theme === 'dark' ? '#000' : '#FFF'} />
-            <Text style={[styles.appleBtnText, { color: theme === 'dark' ? '#000' : '#FFF' }]}>
-              {isAr ? 'متابعة باستخدام Apple' : 'Sign in with Apple'}
-            </Text>
-          </Pressable>
-
-          {/* Switch mode */}
-          <Pressable
-            onPress={() => {
-              try { Haptics.selectionAsync(); } catch {}
-              setIsLogin(!isLogin);
-              setPassword('');
-              setConfirmPassword('');
-            }}
-            style={styles.switchModeContainer}
-          >
-            <Text style={styles.switchModeText}>
-              {isLogin
-                ? (isAr ? 'ليس لديك حساب؟ اضغط لإنشاء حساب جديد' : "Don't have an account? Sign Up")
-                : (isAr ? 'لديك حساب بالفعل؟ اضغط لتسجيل الدخول' : 'Already have an account? Sign In')}
-            </Text>
-          </Pressable>
+          )}
         </View>
-      </View>
 
-      {/* Interactive Social Login Email Modal */}
+        {/* Offline Guest Option */}
+        <Pressable
+          onPress={handleGuestMode}
+          style={({ pressed }) => [styles.guestBtn, pressed && { opacity: 0.75 }]}
+        >
+          <Ionicons name="cloud-offline-outline" size={18} color={colors.textSecondary} />
+          <Text style={styles.guestBtnText}>
+            {isAr ? 'المتابعة كحساب محلي بدون إنترنت (Guest Mode)' : 'Continue with Local Account (Offline Mode)'}
+          </Text>
+        </Pressable>
+      </ScrollView>
+
+      {/* Fallback Direct Link Modal */}
       <Modal
-        visible={socialModalVisible}
+        visible={fallbackModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setSocialModalVisible(false)}
+        onRequestClose={() => setFallbackModalVisible(false)}
       >
-        <Pressable
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 24 }}
-          onPress={() => setSocialModalVisible(false)}
-        >
-          <Pressable
-            style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: colors.border, gap: 16 }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setFallbackModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
               <Ionicons
-                name={socialProvider === 'google' ? 'logo-google' : socialProvider === 'apple' ? 'logo-apple' : 'mail'}
-                size={28}
-                color={socialProvider === 'google' ? '#EA4335' : colors.primary}
+                name={fallbackProvider === 'google' ? 'logo-google' : fallbackProvider === 'apple' ? 'logo-apple' : 'mail'}
+                size={26}
+                color={fallbackProvider === 'google' ? '#EA4335' : fallbackProvider === 'apple' ? colors.text : '#00A4EF'}
               />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.text }}>
-                {socialProvider === 'google'
-                  ? (isAr ? 'الدخول بحساب Google' : 'Google Sign-In')
-                  : socialProvider === 'apple'
-                  ? (isAr ? 'الدخول بحساب Apple' : 'Apple Sign-In')
-                  : (isAr ? 'الدخول بالبريد الإلكتروني' : 'Email Sign-In')}
+              <Text style={styles.modalTitle}>
+                {fallbackProvider === 'google'
+                  ? (isAr ? 'ربط حساب Google' : 'Link Google Account')
+                  : fallbackProvider === 'apple'
+                  ? (isAr ? 'ربط حساب Apple' : 'Link Apple Account')
+                  : (isAr ? 'ربط حساب Hotmail / Microsoft' : 'Link Microsoft Account')}
               </Text>
             </View>
 
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+            <Text style={styles.modalSubtitle}>
               {isAr
-                ? 'أدخل عنوان بريدك الإلكتروني لربطه سحابياً واستخدام نفس الحساب على أي هاتف أو متصفح:'
-                : 'Enter your email address to sync and use the exact same account across any device:'}
+                ? 'أدخل بريدك الإلكتروني لتأكيد الربط ومزامنة جميع معاملاتك المالية فوراً:'
+                : 'Enter your email address to sync your finances immediately:'}
             </Text>
 
             <View style={[styles.inputContainer, { marginBottom: 0 }]}>
               <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
               <TextInput
-                value={emailInput}
-                onChangeText={setEmailInput}
-                placeholder={socialProvider === 'google' ? 'yourname@gmail.com' : 'user@domain.com'}
+                value={fallbackEmail}
+                onChangeText={setFallbackEmail}
+                placeholder={
+                  fallbackProvider === 'google'
+                    ? 'yourname@gmail.com'
+                    : fallbackProvider === 'apple'
+                    ? 'user@icloud.com'
+                    : 'user@outlook.com'
+                }
                 placeholderTextColor={colors.textTertiary}
                 style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
                 autoCapitalize="none"
@@ -416,23 +722,13 @@ export default function AuthScreen() {
               />
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <Pressable
-                onPress={() => setSocialModalVisible(false)}
-                style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border }}
-              >
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.textSecondary }}>
-                  {isAr ? 'إلغاء' : 'Cancel'}
-                </Text>
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => setFallbackModalVisible(false)} style={styles.modalCancelBtn}>
+                <Text style={styles.modalCancelText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
               </Pressable>
 
-              <Pressable
-                onPress={handleSocialSubmit}
-                style={{ flex: 1.5, height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
-                  {isAr ? 'تأكيد ودخول' : 'Confirm & Sync'}
-                </Text>
+              <Pressable onPress={handleFallbackSubmit} style={styles.modalConfirmBtn}>
+                <Text style={styles.modalConfirmText}>{isAr ? 'تأكيد ومزامنة' : 'Confirm & Sync'}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -442,179 +738,331 @@ export default function AuthScreen() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-    gap: 8,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  appName: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 24,
-    color: colors.text,
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 18,
-  },
-  formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
-  formTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 18,
-    color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    color: colors.text,
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 14,
-  },
-  inputAr: {
-    textAlign: 'right',
-  },
-  inputEn: {
-    textAlign: 'left',
-  },
-  eyeIcon: {
-    padding: 8,
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
-    color: '#FFF',
-  },
-  switchModeContainer: {
-    marginTop: 18,
-    alignItems: 'center',
-  },
-  switchModeText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-    color: colors.primary,
-  },
-  socialDividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 18,
-    gap: 10,
-  },
-  socialDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  socialDividerText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    color: colors.textTertiary,
-  },
-  socialButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginBottom: 12,
-  },
-  socialCircleBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  socialBtnLabel: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: colors.text,
-  },
-  appleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: colors.text,
-    marginTop: 4,
-  },
-  appleBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-  },
-});
+const getStyles = (colors: any, theme: string) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 20,
+      paddingTop: Platform.OS === 'ios' ? 56 : 36,
+      paddingBottom: 40,
+      justifyContent: 'center',
+    },
+    backButton: {
+      position: 'absolute',
+      top: Platform.OS === 'ios' ? 50 : 20,
+      right: 20,
+      zIndex: 10,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 20,
+      gap: 6,
+    },
+    logoContainer: {
+      width: 74,
+      height: 74,
+      borderRadius: 37,
+      backgroundColor: colors.primary + '18',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+      borderWidth: 1,
+      borderColor: colors.primary + '33',
+    },
+    appName: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 24,
+      color: colors.text,
+      letterSpacing: 1.5,
+    },
+    subtitle: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: 16,
+      lineHeight: 18,
+    },
+    oauthContainer: {
+      marginBottom: 16,
+      gap: 8,
+    },
+    oauthSectionTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    oauthButtonsGrid: {
+      gap: 8,
+    },
+    oauthBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      height: 46,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    oauthBtnGoogle: {
+      borderColor: '#EA433533',
+    },
+    oauthBtnApple: {
+      borderColor: colors.border,
+    },
+    oauthBtnMicrosoft: {
+      borderColor: '#00A4EF33',
+    },
+    oauthBtnText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 14,
+      padding: 4,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tabButton: {
+      flex: 1,
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderRadius: 10,
+    },
+    tabButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    tabButtonText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    tabButtonTextActive: {
+      color: '#FFFFFF',
+      fontFamily: 'Cairo_700Bold',
+    },
+    formCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 22,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+    },
+    forgotHeader: {
+      alignItems: 'center',
+      marginBottom: 16,
+      gap: 6,
+    },
+    formTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 17,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    formSubtitle: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      marginBottom: 12,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    inputIcon: {
+      marginRight: 8,
+    },
+    input: {
+      flex: 1,
+      height: 48,
+      color: colors.text,
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 14,
+    },
+    inputAr: {
+      textAlign: 'right',
+    },
+    inputEn: {
+      textAlign: 'left',
+    },
+    eyeIcon: {
+      padding: 8,
+    },
+    forgotLink: {
+      alignSelf: 'flex-start',
+      marginBottom: 12,
+      marginTop: -4,
+    },
+    forgotLinkText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      color: colors.primary,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      height: 48,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    submitButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    submitButtonText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 15,
+      color: '#FFF',
+    },
+    backToLoginBtn: {
+      marginTop: 14,
+      alignItems: 'center',
+    },
+    backToLoginText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.primary,
+    },
+    biometricBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 12,
+      height: 44,
+      marginTop: 12,
+      borderWidth: 1,
+      borderColor: colors.primary + '40',
+    },
+    biometricBtnText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.primary,
+    },
+    guestBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 16,
+      paddingVertical: 10,
+    },
+    guestBtnText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 13,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
+    },
+    socialDividerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 14,
+      gap: 10,
+    },
+    socialDividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    socialDividerText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 11,
+      color: colors.textTertiary,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      justifyContent: 'center',
+      paddingHorizontal: 22,
+    },
+    modalCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 14,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    modalTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 17,
+      color: colors.text,
+    },
+    modalSubtitle: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 6,
+    },
+    modalCancelBtn: {
+      flex: 1,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalCancelText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    modalConfirmBtn: {
+      flex: 1.5,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalConfirmText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#FFF',
+    },
+  });

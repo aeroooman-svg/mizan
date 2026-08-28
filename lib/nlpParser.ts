@@ -11,22 +11,28 @@ export interface ParsedTransaction {
   toWalletId?: string | null;
 }
 
-// Map of single Arabic number words to values
+// Map of single Arabic number words to values across dialects
 const BASIC_ARABIC_NUMBERS: Record<string, number> = {
   'صفر': 0,
   'واحد': 1,
   'واحدة': 1,
   'واحده': 1,
+  'فرد': 1,
   'اثنان': 2,
   'اثنين': 2,
   'اتنين': 2,
   'اثنتان': 2,
+  'زوج': 2,
   'ثلاثة': 3,
   'ثلاث': 3,
   'تلاتة': 3,
   'تلات': 3,
+  'تلاته': 3,
+  'تلاتين': 30,
   'اربعة': 4,
   'اربع': 4,
+  'أربعة': 4,
+  'أربع': 4,
   'خمسة': 5,
   'خمس': 5,
   'ستة': 6,
@@ -37,35 +43,46 @@ const BASIC_ARABIC_NUMBERS: Record<string, number> = {
   'ثمان': 8,
   'تمنية': 8,
   'تمن': 8,
+  'تمانية': 8,
   'تسعة': 9,
   'تسع': 9,
   'عشرة': 10,
   'عشر': 10,
   'احد عشر': 11,
   'احداعش': 11,
+  'داعش': 11,
   'اثنا عشر': 12,
   'اثناعش': 12,
+  'طناش': 12,
   'ثلاثة عشر': 13,
   'ثلطاش': 13,
+  'تلاتاشر': 13,
+  'تلاتطاش': 13,
   'اربعة عشر': 14,
   'اربعطاش': 14,
+  'اربعتاشر': 14,
   'خمسة عشر': 15,
   'خمسطاش': 15,
+  'خمستاشر': 15,
   'ستة عشر': 16,
   'ستطاش': 16,
+  'ستاشر': 16,
   'سبعة عشر': 17,
   'سبعطاش': 17,
+  'سبعتاشر': 17,
   'ثمانية عشر': 18,
   'تمنطاش': 18,
+  'تمنتاشر': 18,
   'تسعة عشر': 19,
   'تسعطاش': 19,
+  'تسعتاشر': 19,
   'عشرين': 20,
   'عشرون': 20,
   'ثلاثين': 30,
   'ثلاثون': 30,
-  'تلاتين': 30,
   'اربعين': 40,
   'اربعون': 40,
+  'أربعين': 40,
   'خمسين': 50,
   'خمسون': 50,
   'ستين': 60,
@@ -81,39 +98,54 @@ const BASIC_ARABIC_NUMBERS: Record<string, number> = {
   'مائه': 100,
   'مية': 100,
   'ميه': 100,
+  'مئة': 100,
   'مئتان': 200,
   'مئتين': 200,
   'ميتين': 200,
+  'ماتين': 200,
   'ثلاثمائة': 300,
   'تلتمية': 300,
+  'تلت مية': 300,
   'اربعمائة': 400,
   'اربعمية': 400,
+  'اربع مية': 400,
   'خمسمائة': 500,
   'خمسمية': 500,
+  'خمس مية': 500,
   'ستمائة': 600,
   'ستمية': 600,
+  'ست مية': 600,
   'سبعمائة': 700,
   'سبعمية': 700,
+  'سبع مية': 700,
   'ثمانمائة': 800,
   'تمنمية': 800,
+  'تمن مية': 800,
   'تسعمائة': 900,
   'تسعمية': 900,
+  'تسع مية': 900,
   'الف': 1000,
   'ألف': 1000,
   'الفين': 2000,
   'ألفين': 2000,
   'الاف': 1000,
   'آلاف': 1000,
+  'باكو': 1000, // Egyptian slang for 1000 EGP
+  'باكوان': 2000,
+  'باكوين': 2000,
+  'ارنب': 1000000, // Egyptian slang for 1M EGP
   'مليون': 1000000,
   'مليونين': 2000000,
   'ملايين': 1000000,
+  'مليار': 1000000000,
 };
 
-// Spoken fractions
+// Spoken fractions & multipliers
 const ARABIC_FRACTIONS: Record<string, number> = {
   'نصف': 0.5,
   'نص': 0.5,
   'ربع': 0.25,
+  'أربع': 0.25,
   'اربع': 0.25,
   'ثلث': 0.333,
   'تلت': 0.333,
@@ -121,28 +153,55 @@ const ARABIC_FRACTIONS: Record<string, number> = {
   'ثلاثة ارباع': 0.75,
 };
 
-// Spoken currency units (singular = 1, dual = 2)
+// Spoken currency units
 const CURRENCY_UNIT_VALUES: Record<string, number> = {
   'دينار': 1,
   'دينارين': 2,
   'ديناران': 2,
+  'دنانير': 1,
   'جنيه': 1,
   'جنيهين': 2,
   'جنيهان': 2,
+  'جنيهات': 1,
   'ريال': 1,
   'ريالين': 2,
   'ريالان': 2,
+  'ريالات': 1,
   'درهم': 1,
   'درهمين': 2,
   'درهمان': 2,
+  'دراهم': 1,
   'دولار': 1,
   'دولارين': 2,
   'دولاران': 2,
+  'دولارات': 1,
   'يورو': 1,
   'يوروين': 2,
+  'يوروهات': 1,
+  'ليرة': 1,
+  'ليرتين': 2,
+  'ليرات': 1,
+  'شيكل': 1,
+  'شيكلين': 2,
+  'شواكل': 1,
+  'فرنك': 1,
+  'فرنكات': 1,
 };
 
-// Normalized maps for resilient matching with cleanArabicText
+export function cleanArabicText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, '') // Remove tashkeel/diacritics
+    .replace(/[أإآ]/g, 'ا') // Normalize Alef
+    .replace(/ة/g, 'ه') // Normalize Ta Marbouta
+    .replace(/ى/g, 'ي') // Normalize Ya
+    .replace(/[^\w\s\u0600-\u06FF]/gi, ' ') // Replace punctuation with space
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Normalized maps
 const NORMALIZED_BASIC_NUMBERS: Record<string, number> = {};
 for (const [k, v] of Object.entries(BASIC_ARABIC_NUMBERS)) {
   NORMALIZED_BASIC_NUMBERS[cleanArabicText(k)] = v;
@@ -161,450 +220,330 @@ for (const [k, v] of Object.entries(CURRENCY_UNIT_VALUES)) {
   NORMALIZED_CURRENCIES[k] = v;
 }
 
+// Comprehensive Category Keywords covering Egyptian, Gulf, Levantine, Maghrebi, Fusha & Franco
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   food: [
+    // Egyptian
     'اكل', 'شرب', 'طعام', 'شاي', 'قهوه', 'قهوة', 'مطبخ', 'سوبرماركت', 'خضار', 'فاكهه', 'فاكهة',
-    'لحمه', 'لحمة', 'فراخ', 'دجاج', 'مطعم', 'غدا', 'عشا', 'فطار', 'دليفري', 'كافيه', 'مكندونالدز',
-    'ماكدونالدز', 'كنتاكي', 'بيتزا', 'كريب', 'حلو', 'حلويات', 'شوكولاته', 'مياه', 'بقاله', 'بقالة',
-    'كشري', 'فول', 'طعمية', 'طعميه', 'عيش', 'لبن', 'جبنة', 'جبنه', 'طلبات', 'talabat', 'نسكافيه',
-    'اندومي', 'مخبز', 'حلواني', 'تيك اواي', 'وجبات', 'سناك', 'اكل بيتي',
-    'food', 'restaurant', 'cafe', 'grocery', 'groceries', 'dinner', 'breakfast', 'lunch', 'eat', 'drink', 'pizza', 'starbucks',
-    'mcdonalds', 'mcdonald', "mcdonald's", 'مترو ماركت', 'ماركت', 'market', 'سوبر ماركت', 'كارفور', 'carrefour',
-    'شطه', 'شطة', 'مشاوي', 'شاورما', 'برجر', 'فلافل', 'عصير', 'عصائر', 'وجبة', 'وجبه'
+    'لحمه', 'لحمة', 'فراخ', 'دجاج', 'مطعم', 'غدا', 'غداء', 'عشا', 'عشاء', 'فطار', 'فطور', 'سحور',
+    'دليفري', 'كافيه', 'ماكدونالدز', 'كنتاكي', 'بيتزا', 'كريب', 'حلو', 'حلويات', 'شوكولاته', 'مياه',
+    'بقاله', 'بقالة', 'كشري', 'فول', 'طعمية', 'طعميه', 'عيش', 'لبن', 'جبنة', 'جبنه', 'طلبات', 'talabat',
+    'نسكافيه', 'اندومي', 'مخبز', 'حلواني', 'تيك اواي', 'وجبات', 'سناك', 'اكل بيتي', 'كوفي',
+    // Gulf / Saudi / Emirati / Kuwaiti
+    'شاورما', 'برجر', 'مندي', 'كبسه', 'كبسة', 'مظبي', 'حاشي', 'تموينات', 'بقالة_الحارة', 'عصائر',
+    'كشته', 'ذبايح', 'ذبيحة', 'قهوة_مختصة', 'درايف_ثرو', 'هنقرستيشن', 'hungerstation', 'جاهز', 'jahez',
+    'كاريدج', 'مرسول', 'مخبوزات', 'تميس', 'فول_وتميس', 'حليب', 'زبادي', 'توصيل_اكل', 'بوفيه',
+    // Levantine (Syrian, Lebanese, Jordanian, Palestinian)
+    'ترويقة', 'ترويقه', 'منقوشة', 'مناقيش', 'شيش_طاووق', 'مشاوي', 'فلافل', 'حمص', 'فتة', 'سيران', 'سناك',
+    // Maghrebi (Moroccan, Algerian, Tunisian)
+    'كسكسي', 'طاجين', 'اتاي', 'قهوة_كحلة', 'كوزينة', 'حليب_وخبز', 'حوت', 'بسطيلة', 'مارشي',
+    // English & Franco
+    'food', 'restaurant', 'cafe', 'coffee', 'grocery', 'groceries', 'dinner', 'breakfast', 'lunch',
+    'eat', 'drink', 'pizza', 'starbucks', 'mcdonalds', 'kfc', 'burger', 'snack', 'bakery', 'market',
+    'supermarket', 'carrefour', 'lulu', 'panda', 'danube', 'othaim', 'hypermarket', 'akil', 'mat3am'
   ],
   transport: [
-    'مواصلات', 'تاكسي', 'اوبر', 'سويفل', 'مترو', 'بنزين', 'تذكره', 'تذكرة', 'اتوبيس', 'سفر', 'باص',
-    'توصيله', 'توصيلة', 'كار', 'car', 'taxi', 'uber', 'gas', 'petrol', 'metro', 'bus', 'transport', 'flight', 'oil',
-    'كريم', 'careem', 'ديدي', 'didi', 'انريف', 'indrive', 'قطار', 'طيران', 'مواقف', 'ميكروباص', 'مشوار', 'كارته'
+    // Egyptian
+    'مواصلات', 'تاكسي', 'اوبر', 'uber', 'سويفل', 'مترو', 'بنزين', 'تذكره', 'تذكرة', 'اتوبيس', 'سفر',
+    'باص', 'توصيله', 'كار', 'كريم', 'careem', 'ديدي', 'didi', 'اندرايف', 'indrive', 'قطار', 'طيران',
+    'ميكروباص', 'مشوار', 'كارته', 'كارتة', 'تغيير_زيت', 'صيانة_سيارة', 'كاوتش',
+    // Gulf
+    'عبيت_بنزين', 'بترول', 'محطة_الدريس', 'ساسكو', 'ادنوك', 'اينوك', 'وقود', 'سالك', 'salik', 'درب',
+    'مواقف', 'موقف', 'غسيل_سيارة', 'تأجير_سيارات', 'سياكل', 'سكوتر', 'قطار_الحرمين', 'مترو_الرياض',
+    // Levantine & Maghrebi
+    'سرفيس', 'شوفير', 'اجرة_طريق', 'ترانسبور', 'طاكسي', 'كار_سياحي', 'بيياج', 'تول',
+    // English & Franco
+    'transport', 'taxi', 'gas', 'petrol', 'fuel', 'metro', 'bus', 'flight', 'airline', 'parking', 'careem', 'benzine'
   ],
   bills: [
-    'فاتوره', 'فاتورة', 'فواتير', 'كهرباء', 'كهربا', 'مياه', 'ميه', 'غاز', 'غاز_منزلي', 'انترنت', 'نت', 'وي',
-    'تليفون ارضي', 'تليفون أرضي', 'اشتراك', 'اشتراكات', 'شحن_نت', 'راوتر', 'bills', 'bill', 'electricity', 'water', 'internet', 'net', 'wifi', 'subscription',
-    'صيانة', 'بلدية', 'ايجار', 'قسط'
+    // Egyptian & Arabic
+    'فاتوره', 'فاتورة', 'فواتير', 'كهرباء', 'كهربا', 'مياه', 'ميه', 'غاز', 'انترنت', 'نت', 'وي',
+    'تليفون ارضي', 'اشتراك', 'اشتراكات', 'شحن_نت', 'راوتر', 'صيانة', 'مرفقات', 'بلدية', 'فاتورة_الكهرباء',
+    // Gulf
+    'سداد', 'sadad', 'فواتير_سداد', 'كهرباء_السعودية', 'مياه_الوطنية', 'ايجار', 'إيجار', 'ايجار_البيت',
+    'قسط', 'اقساط', 'رسوم_خدمات', 'بلدية_دبي', 'ديوا', 'dewa', 'كهرماء', 'مواقف_بلدية',
+    // Levantine & Maghrebi
+    'اشتراك_المولد', 'اشتراك_موتور', 'ماء_وكهرباء', 'سونلغاز', 'ليدك', 'فاتورة_الماء', 'فاتورة_الضو',
+    // English & Franco
+    'bill', 'bills', 'electricity', 'water', 'internet', 'net', 'wifi', 'subscription', 'rent', 'installment', 'sadad'
   ],
   shopping: [
-    'تسوق', 'شوبينج', 'شوبنج', 'سوبر ماركت كبير', 'امازون', 'نون', 'مول', 'سوبرماركت_كبير', 'مشتريات',
-    'اغراض', 'أغراض', 'سوبر ماركت', 'سوق', 'طلبات البيت', 'shopping', 'amazon', 'noon', 'mall', 'buy', 'purchase', 'اكسسوارات', 'الكترونيات', 'جوميا'
+    // General & Arab
+    'تسوق', 'شوبينج', 'شوبنج', 'سوبر ماركت كبير', 'امازون', 'amazon', 'نون', 'noon', 'مول', 'مشتريات',
+    'اغراض', 'أغراض', 'مقاضي', 'سوق', 'طلبات_البيت', 'اكسسوارات', 'الكترونيات', 'جوميا', 'نمشي', 'namshi',
+    'شي_ان', 'shein', 'ترينديول', 'trendyol', 'ايكيا', 'ikea', 'اكسترا', 'extra', 'جرير', 'jarir',
+    // Dialects
+    'تقضيت', 'مقاضي_البيت', 'حوايج', 'صوالح', 'قضيان', 'شروة', 'شروات', 'بسطة',
+    // English
+    'shopping', 'mall', 'buy', 'purchase', 'store', 'electronics', 'furniture', 'clothes', 'fashion'
   ],
   health: [
     'دوا', 'دواء', 'ادوية', 'أدوية', 'صيدليه', 'صيدلية', 'دكتور', 'طبيب', 'كشف', 'تحليل', 'تحاليل',
-    'اشعه', 'أشعة', 'مستشفي', 'مستشفى', 'علاج', 'سنان', 'اسنان', 'أعصاب', 'روشتة', 'health', 'medicine', 'pharmacy', 'doctor', 'hospital', 'clinic', 'dentist', 'ill',
-    'نظارة', 'عيادة', 'فحص'
+    'اشعه', 'أشعة', 'مستشفي', 'مستشفى', 'علاج', 'سنان', 'اسنان', 'أعصاب', 'روشتة', 'نظارة', 'عيادة',
+    'فحص', 'طوارئ', 'تأمين_صحي', 'بوبا', 'النهدي', 'صيدلية_النهدي', 'الدواء', 'العزبي', '19011', 'صيدلية_سيف',
+    'health', 'medicine', 'pharmacy', 'doctor', 'hospital', 'clinic', 'dentist', 'ill', 'glasses', 'medication'
   ],
   education: [
-    'تعليم', 'مدرسه', 'مدرسة', 'كليه', 'كلية', 'جامعه', 'جامعة', 'كتاب', 'كتب', 'حصه', 'حصة', 'درس', 'دروس',
-    'كورس', 'كورسات', 'محاضره', 'محاضرة', 'امتحان', 'education', 'school', 'college', 'university', 'course', 'book', 'books', 'ملازم', 'قرطاسية'
+    'تعليم', 'مدرسه', 'مدرسة', 'كليه', 'كلية', 'جامعه', 'جامعة', 'كتاب', 'كتب', 'حصه', 'حصة', 'درس',
+    'دروس', 'كورس', 'كورسات', 'محاضره', 'محاضرة', 'امتحان', 'ملازم', 'قرطاسية', 'مكتبة', 'اقلام',
+    'دفاتر', 'رسوم_جامعية', 'مصاريف_المدرسة', 'يوديمي', 'udemy', 'coursera', 'دورات', 'دورة_تدريبية',
+    'education', 'school', 'college', 'university', 'course', 'book', 'books', 'tuition', 'study'
   ],
   entertainment: [
-    'ترفيه', 'خروجه', 'خروجة', 'سينما', 'رحلة', 'رحله', 'لعبة', 'العاب', 'ألعاب', 'سفرية', 'سفريه', 'مصيف',
-    'بحر', 'بلايستيشن', 'نتفليكس', 'فسحة', 'فسحه', 'العاب_فيديو', 'entertainment', 'cinema', 'movie', 'game', 'netflix', 'fun', 'trip', 'ملاهي'
+    'ترفيه', 'خروجه', 'خروجة', 'سينما', 'cinema', 'فوكس', 'vox', 'موفيز', 'muvi', 'رحلة', 'رحله',
+    'لعبة', 'العاب', 'ألعاب', 'سفرية', 'مصيف', 'بحر', 'شاليه', 'شاليهات', 'استراحة', 'مزرعة', 'بوليفارد',
+    'بلايستيشن', 'playstation', 'نتفليكس', 'netflix', 'شاهد', 'shahid', 'فسحة', 'ملاهي', 'بولينج',
+    'entertainment', 'movie', 'game', 'gaming', 'fun', 'trip', 'travel', 'vacation', 'resort', 'steam'
   ],
   rent: [
-    'ايجار', 'إيجار', 'شقه', 'شقة', 'سكن', 'rent', 'flat'
+    'ايجار', 'إيجار', 'اجار', 'أجار', 'شقة', 'شقه', 'سكن', 'عمارة', 'عمارة_سكنية', 'ايجار_شقة',
+    'إيجار_البيت', 'كريت', 'كراء', 'ايجار_شهري', 'rent', 'housing', 'apartment', 'flat'
   ],
   phone: [
-    'موبايل', 'رصيد', 'شحن', 'اتصالات', 'فودافون', 'اورنج', 'وي رصيد', 'شحن_رصيد', 'شريحة', 'شريحه', 'كارت شحن', 'باقة نت', 'باقة', 'phone', 'mobile', 'credit', 'vodafone', 'orange', 'recharge', 'زين', 'stc', 'zain', 'ooredoo', 'اوريدو'
+    'رصيد', 'شحن_رصيد', 'باقه', 'باقة', 'مكالمات', 'فودافون', 'vodafone', 'اورانج', 'orange',
+    'اتصالات', 'etisalat', 'stc', 'اس_تي_سي', 'موبايلي', 'mobily', 'زين', 'zain', 'اوريدو', 'ooredoo',
+    'du', 'دو', 'اتصالات_الامارات', 'جازي', 'djezzy', 'موبيليس', 'اتصالات_المغرب', 'انوي', 'inwi',
+    'phone', 'recharge', 'telecom', 'mobile', 'topup'
   ],
   clothes: [
-    'ملابس', 'لبس', 'هدوم', 'بدله', 'بدلة', 'قميص', 'بنطلون', 'فستان', 'جزمة', 'حذاء', 'كوتشي', 'تيشيرت', 'clothes', 'tshirt', 'shoes', 'dress', 'jacket'
+    'هدوم', 'ملابس', 'لبس', 'قميص', 'بنطلون', 'فستان', 'عباية', 'عبايه', 'ثوب', 'شماغ', 'طرحة',
+    'حذاء', 'شوز', 'كوتشي', 'شنطة', 'زارا', 'zara', 'h&m', 'اتش_اند_ام', 'مانجو', 'mango',
+    'حوايج', 'كسوة', 'clothes', 'shoes', 'fashion', 'dress', 'jacket', 'outfit'
   ],
+  charity: [
+    'صدقة', 'صدقه', 'زكاة', 'زكاه', 'تبرع', 'تبرعات', 'احسان', 'إحسان', 'رسالة', 'مصر_الخير',
+    'بيت_الزكاة', 'اطعام', 'فقراء', 'ايتام', 'أيتام', 'عيدية', 'عيديه', 'charity', 'zakat', 'donation'
+  ],
+};
+
+const INCOME_CATEGORY_KEYWORDS: Record<string, string[]> = {
   salary: [
-    'مرتب', 'راتب', 'شهري', 'المرتب', 'الراتب', 'قبض', 'قبضت', 'سالياري', 'salary', 'wage', 'paycheck', 'معاش'
+    'مرتب', 'راتب', 'معاش', 'الراتب', 'نزول_الراتب', 'نزل_الراتب', 'قبضت_المرتب', 'صالير', 'salaire',
+    'salary', 'paycheck', 'wage', 'monthly_income', 'قبضت_معاشي'
   ],
   freelance: [
-    'عمل حر', 'فري لانس', 'فريلانس', 'مشروع جانبي', 'عميل', 'تصميم', 'برمجة', 'كتابة', 'freelance', 'client', 'gig'
+    'فريلانس', 'شغل_حر', 'برمجة', 'تصميم', 'مشروع_جانبي', 'استشارة', 'اتعاب', 'أتعاب', 'عمولة', 'عموله',
+    'freelance', 'project', 'client', 'gig', 'upwork', 'fiverr', 'mostaql', 'مستقل'
   ],
   investment: [
-    'استثمار', 'بورصة', 'اسهم', 'أسهم', 'ذهب', 'ربح استثماري', 'فوائد', 'ارباح', 'أرباح', 'investment', 'stock', 'crypto', 'gold', 'profit'
+    'استثمار', 'ارباح', 'أرباح', 'توزيعات', 'اسهم', 'أسهم', 'ذهب', 'عقارات', 'فوائد', 'عائد',
+    'ربح', 'مكسب', 'تجارة', 'dividends', 'investment', 'stocks', 'crypto', 'profit', 'trading'
   ],
   gift: [
-    'هديه', 'هدية', 'عيدية', 'عيديه', 'gift', 'present'
+    'هدية', 'هديه', 'عيدية', 'عيديه', 'مكافأة', 'مكافاه', 'بونص', 'منحة', 'عطية', 'نقطة',
+    'gift', 'bonus', 'reward', 'present'
   ],
-  bonus: [
-    'مكافاه', 'مكافأة', 'بونص', 'ارباح سنوية', 'أرباح سنوية', 'bonus'
+  other_income: [
+    'دخل_اخر', 'ايراد', 'إيراد', 'فلوس_راجعة', 'استرجاع', 'سلفة_مستردة', 'مبيعات', 'refund', 'other_income'
   ]
 };
 
-
-// Normalize text helper
-export function cleanArabicText(text: string): string {
-  let cleaned = text.toLowerCase();
-  // Normalize arabic characters: ة -> ه, أ/إ/آ -> ا, ى -> ي
-  cleaned = cleaned.replace(/[أإآ]/g, 'ا');
-  cleaned = cleaned.replace(/ة/g, 'ه');
-  cleaned = cleaned.replace(/ى/g, 'ي');
-  cleaned = cleaned.replace(/[\u064B-\u065F]/g, ''); // Remove harakat / diacritics
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  return cleaned;
-}
-
-export interface SmsPattern {
+// Bank SMS Regex Patterns covering Arab Banks
+interface BankSMSPattern {
   name: string;
-  regex: RegExp;
-  handler: (match: RegExpExecArray) => {
-    amount: number;
-    type: 'income' | 'expense';
-    description: string;
-    walletKeywords: string[];
-    categoryHint?: string;
-  };
+  pattern: RegExp;
+  amountGroup: number;
+  type: 'expense' | 'income';
+  categoryDefault: string;
 }
 
-function cleanDescription(desc: string): string {
-  let cleaned = desc.trim();
-  cleaned = cleaned.replace(/\s+(?:في|بتاريخ|بتاريخ\s+\d+\/\d+|\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}|\d{2}\/\d{2}).*$/i, '');
-  cleaned = cleaned.replace(/\s+at\s+\d{2}:\d{2}.*$/i, '');
-  cleaned = cleaned.replace(/\s+on\s+\d{2}\/\d{2}.*$/i, '');
-  cleaned = cleaned.replace(/\s+value\s+date.*$/i, '');
-  return cleaned.trim();
-}
-
-export const SMS_PATTERNS: SmsPattern[] = [
-  // 1. InstaPay Arabic Transfer Out
+const BANK_PATTERNS: BankSMSPattern[] = [
+  // Al Rajhi / Saudi Banks
   {
-    name: 'instapay_ar_transfer_out',
-    regex: /تمت\s+عملية\s+تحويل\s+بنجاح\s+(?:من\s+حسابك\s+)?بقيمة\s+([\d,.]+)\s*(?:ج\.م|جم|EGP|د\.ك|KWD|USD|\$)\s+إلى\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(`تحويل إلى ${match[2].trim()}`),
-      walletKeywords: ['انستاباي', 'instapay', 'بنك', 'حساب']
-    })
+    name: 'Al Rajhi Purchase',
+    pattern: /(?:شراء|خصم|عملية شراء|شراء عبر الإنترنت|بطاقة مدى).*?مبلغ\s*(?:SAR|ر\.س)?\s*([0-9.,]+)/i,
+    amountGroup: 1,
+    type: 'expense',
+    categoryDefault: 'shopping'
   },
-  // 2. InstaPay Arabic Deposit In
   {
-    name: 'instapay_ar_deposit_in',
-    regex: /تم\s+استقبال\s+تحويل\s+بقيمة\s+([\d,.]+)\s*(?:ج\.م|جم|EGP|د\.ك|KWD|USD|\$)\s+(?:على\s+حسابك\s+)?(?:في\s+[^.\n]+)?\s+من\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'income',
-      description: cleanDescription(`تحويل من ${match[2].trim()}`),
-      walletKeywords: ['انستاباي', 'instapay', 'بنك', 'حساب']
-    })
+    name: 'Al Rajhi Salary/Deposit',
+    pattern: /(?:إيداع|راتب|حوالة واردة).*?مبلغ\s*(?:SAR|ر\.س)?\s*([0-9.,]+)/i,
+    amountGroup: 1,
+    type: 'income',
+    categoryDefault: 'salary'
   },
-  // 3. InstaPay English Transfer Out
+  // NBE / CIB / Banque Misr (Egypt)
   {
-    name: 'instapay_en_transfer_out',
-    regex: /successful\s+transfer\s+of\s+(?:EGP|USD|KWD|SAR|AED|ج\.م|جم)\s*([\d,.]+)\s+(?:from\s+your\s+account\s+)?to\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(`Transfer to ${match[2].trim()}`),
-      walletKeywords: ['instapay', 'انستاباي', 'bank', 'account']
-    })
+    name: 'Egypt Bank Purchase',
+    pattern: /(?:purchase of|خصم مبلغ|عملية شراء بمبلغ|تم خصم)\s*(?:EGP|ج\.م)?\s*([0-9.,]+)/i,
+    amountGroup: 1,
+    type: 'expense',
+    categoryDefault: 'shopping'
   },
-  // 4. InstaPay English Deposit In
   {
-    name: 'instapay_en_deposit_in',
-    regex: /successful\s+deposit\s+of\s+(?:EGP|USD|KWD|SAR|AED|ج\.م|جم)\s*([\d,.]+)\s+(?:to\s+your\s+account\s+)?from\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'income',
-      description: cleanDescription(`Deposit from ${match[2].trim()}`),
-      walletKeywords: ['instapay', 'انستاباي', 'bank', 'account']
-    })
+    name: 'Vodafone Cash / InstaPay',
+    pattern: /(?:تم تحويل مبلغ|تم خصم|تم دفع فاتورة)\s*([0-9.,]+)\s*(?:جنيه|ج\.م|EGP)/i,
+    amountGroup: 1,
+    type: 'expense',
+    categoryDefault: 'bills'
   },
-  // 5. CIB Arabic Purchase
+  // Kuwait Banks (NBK / Boubyan)
   {
-    name: 'cib_ar_purchase',
-    regex: /تمت\s+عملية\s+شراء\s+بقيمة\s+([\d,.]+)\s*(?:ج\.م|جم|EGP)\s+من\s+بطاقتك\s+رقم\s+\d+\s+لدى\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(match[2]),
-      walletKeywords: ['cib', 'التجاري الدولي', 'كريديت', 'فيزا', 'visa']
-    })
+    name: 'Kuwait POS/Debit',
+    pattern: /(?:POS Purchase|Debit|خصم|شراء).*?(?:KD|KWD|د\.ك)\s*([0-9.,]+)/i,
+    amountGroup: 1,
+    type: 'expense',
+    categoryDefault: 'shopping'
   },
-  // 6. CIB English Purchase
+  // UAE Banks (Emirates NBD, ADCB)
   {
-    name: 'cib_en_purchase',
-    regex: /purchase\s+of\s+(?:EGP|USD|EUR)\s*([\d,.]+)\s+was\s+done\s+on\s+card\s+\d+\s+at\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(match[2]),
-      walletKeywords: ['cib', 'credit', 'visa', 'card']
-    })
-  },
-  // 7. Banque Misr Arabic Purchase
-  {
-    name: 'misr_ar_purchase',
-    regex: /عملية\s+شراء\s+بمبلغ\s+([\d,.]+)\s*(?:ج\.م|جم|EGP)\s+من\s+بطاقتك\s+رقم\s+.*?\s+لدى\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(match[2]),
-      walletKeywords: ['مصر', 'misr', 'بنك مصر']
-    })
-  },
-  // 8. NBE Arabic Purchase (البنك الأهلي)
-  {
-    name: 'nbe_ar_purchase',
-    regex: /خصم\s+مبلغ\s+([\d,.]+)\s*(?:جم|ج\.م|EGP)\s+من\s+بطاقتك\s+رقم\s+.*?\s+في\s+([^.\n]+?)(?:\s+بتاريخ|\.|$)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(match[2]),
-      walletKeywords: ['الاهلي', 'nbe', 'ahli', 'national bank']
-    })
-  },
-  // 9. NBE English Purchase
-  {
-    name: 'nbe_en_purchase',
-    regex: /debit\s+transaction\s+of\s+(?:EGP|USD)\s*([\d,.]+)\s+on\s+card\s+.*?\s+at\s+([^.\n]+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: cleanDescription(match[2]),
-      walletKeywords: ['nbe', 'ahli', 'national bank', 'الاهلي']
-    })
-  },
-  // 10. Vodafone Cash Transfer Out (Arabic)
-  {
-    name: 'vfcash_ar_transfer',
-    regex: /تم\s+تحويل\s+([\d,.]+)\s*جنيه\s+لـ\s*(\d+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'expense',
-      description: `تحويل فودافون كاش لـ ${match[2]}`,
-      walletKeywords: ['فودافون', 'vodafone', 'كاش', 'cash']
-    })
-  },
-  // 11. Vodafone Cash Receive (Arabic)
-  {
-    name: 'vfcash_ar_receive',
-    regex: /تم\s+استقبال\s+([\d,.]+)\s*جنيه\s+من\s*(\d+)/i,
-    handler: (match) => ({
-      amount: parseFloat(match[1].replace(/,/g, '')),
-      type: 'income',
-      description: `استقبال فودافون كاش من ${match[2]}`,
-      walletKeywords: ['فودافون', 'vodafone', 'كاش', 'cash']
-    })
-  },
-  // 12. Gulf / Kuwaiti / Saudi / UAE Bank Purchase
-  {
-    name: 'gulf_pos_purchase',
-    regex: /(?:شراء|عملية\s+شراء|خصم|دفع|POS\s+Purchase|Purchase)\s*(?:بقيمة|بمبلغ|of)?\s*([A-Z]{3}|د\.ك|ر\.س|د\.إ|ج\.م)?\s*([\d,.]+)\s*([A-Z]{3}|د\.ك|ر\.س|د\.إ|ج\.م)?\s*(?:لدى|في|من|at)\s+([^.\n]+)/i,
-    handler: (match) => {
-      const amtStr = match[2];
-      const merchant = match[4] || '';
-      return {
-        amount: parseFloat(amtStr.replace(/,/g, '')),
-        type: 'expense',
-        description: cleanDescription(merchant),
-        walletKeywords: ['بنك', 'bank', 'knet', 'كي نت', 'فيزا', 'ماستركارد', 'بطاقة']
-      };
-    }
+    name: 'UAE Bank Debit',
+    pattern: /(?:debited with|purchase on card).*?(?:AED|د\.إ)\s*([0-9.,]+)/i,
+    amountGroup: 1,
+    type: 'expense',
+    categoryDefault: 'shopping'
   }
 ];
 
-export function matchCategoryFromText(
-  text: string,
-  type: 'income' | 'expense',
-  customCategories: Category[] = []
-): string {
-  const cleaned = cleanArabicText(text);
-  let category = type === 'income' ? 'other_income' : 'other_expense';
-  let bestMatchScore = 0;
-
-  const allCategories = [...expenseCategories, ...incomeCategories, ...customCategories];
-  for (const cat of allCategories) {
-    const keywords = CATEGORY_KEYWORDS[cat.id] || [];
-    const names = [cat.name, cat.nameAr];
-    const catWords = [...keywords, ...names].map(cleanArabicText);
-
-    for (const keyword of catWords) {
-      if (!keyword) continue;
-      if (cleaned.includes(keyword)) {
-        if (keyword.length > bestMatchScore) {
-          category = cat.id;
-          bestMatchScore = keyword.length;
-        }
+function parseBankSMS(text: string, wallets: Wallet[], customCategories: Category[]): ParsedTransaction | null {
+  for (const bp of BANK_PATTERNS) {
+    const match = text.match(bp.pattern);
+    if (match && match[bp.amountGroup]) {
+      const rawAmt = match[bp.amountGroup].replace(/,/g, '');
+      const parsedAmt = parseFloat(rawAmt);
+      if (!isNaN(parsedAmt) && parsedAmt > 0) {
+        return {
+          amount: parsedAmt,
+          type: bp.type,
+          category: matchCategoryFromText(text, bp.type, customCategories) || bp.categoryDefault,
+          description: text.substring(0, 60).trim(),
+          walletId: wallets[0]?.id || null,
+        };
       }
     }
   }
-  return category;
-}
-
-export function parseBankSMS(
-  text: string,
-  wallets: Wallet[],
-  customCategories: Category[] = []
-): ParsedTransaction | null {
-  const normalized = normalizeArabicNumbers(text);
-  const cleaned = cleanArabicText(normalized);
-
-  for (const pattern of SMS_PATTERNS) {
-    const match = pattern.regex.exec(normalized) || pattern.regex.exec(text);
-    if (match) {
-      const result = pattern.handler(match);
-      
-      // Select best wallet
-      let walletId: string | null = null;
-      if (wallets.length > 0) {
-        let bestWalletScore = 0;
-        
-        for (const kw of result.walletKeywords) {
-          const kwClean = cleanArabicText(kw);
-          for (const wallet of wallets) {
-            const walletNameClean = cleanArabicText(wallet.name);
-            if (walletNameClean.includes(kwClean) || kwClean.includes(walletNameClean)) {
-              const score = walletNameClean.length;
-              if (score > bestWalletScore) {
-                walletId = wallet.id;
-                bestWalletScore = score;
-              }
-            }
-          }
-        }
-
-        if (!walletId) {
-          for (const wallet of wallets) {
-            const walletNameClean = cleanArabicText(wallet.name);
-            if (cleaned.includes(walletNameClean)) {
-              if (walletNameClean.length > bestWalletScore) {
-                walletId = wallet.id;
-                bestWalletScore = walletNameClean.length;
-              }
-            }
-          }
-        }
-      }
-
-      const category = matchCategoryFromText(result.description, result.type, customCategories);
-
-      return {
-        amount: result.amount,
-        type: result.type,
-        category,
-        description: result.description,
-        walletId
-      };
-    }
-  }
-
   return null;
 }
 
-/**
- * Parses spoken or written Arabic numbers and amounts.
- * Examples:
- * - "دينار و" -> 1.0
- * - "دينار ونص" -> 1.5
- * - "دينارين وربع" -> 2.25
- * - "دينارين" -> 2.0
- * - "٥٠٠ فلس" -> 0.500
- * - "٢٥٠ فلس" -> 0.250
- * - "خمسة وعشرين دينار" -> 25
- * - "مية وخمسين جنيه" -> 150
- * - "ألفين" -> 2000
- * - "1.500" -> 1.5
- */
-export function extractArabicAmount(rawText: string): { amount: number | null; matchedPhrase: string } {
-  const normalized = normalizeArabicNumbers(rawText);
-  const cleaned = cleanArabicText(normalized);
+export function matchCategoryFromText(text: string, type: 'income' | 'expense' | 'transfer', customCategories: Category[] = []): string {
+  const clean = cleanArabicText(text);
+  const words = clean.split(/\s+/);
 
-  // 1. Check for specific fils subunit (e.g. "500 فلس", "250 فلس", "100 فلس")
-  const filsMatch = cleaned.match(/(\d+(?:\.\d+)?)\s*فلس/);
-  if (filsMatch) {
-    const filsVal = parseFloat(filsMatch[1]);
-    return { amount: filsVal / 1000, matchedPhrase: filsMatch[0] };
-  }
-
-  // 2. Check for subunit "قرش" (e.g. "50 قرش")
-  const qirshMatch = cleaned.match(/(\d+(?:\.\d+)?)\s*قرش/);
-  if (qirshMatch) {
-    const qirshVal = parseFloat(qirshMatch[1]);
-    return { amount: qirshVal / 100, matchedPhrase: qirshMatch[0] };
-  }
-
-  // 3. Check for standalone fractions with currency (e.g. "نص دينار", "نصف جنيه", "ربع ريال")
-  const fractionBeforeCurrencyMatch = cleaned.match(/(نصف|نص|ربع|ثلث|تلت)\s*(دينار|جنيه|ريال|درهم|دولار|يورو)/);
-  if (fractionBeforeCurrencyMatch) {
-    const fracWord = fractionBeforeCurrencyMatch[1];
-    const fracVal = NORMALIZED_FRACTIONS[fracWord] || 0.5;
-    return { amount: fracVal, matchedPhrase: fractionBeforeCurrencyMatch[0] };
-  }
-
-  // 4. Check for currency + fraction combinations (e.g. "دينار ونص", "دينارين وربع", "جنيه ونص", "ريالين ونصف")
-  const currencyAndFractionMatch = cleaned.match(/(دينارين|دينار|جنيهين|جنيه|ريالين|ريال|درهمين|درهم|دولارين|دولار|يوروين|يورو)\s*(?:و|\+)\s*(نصف|نص|ربع|ثلث|تلت)/);
-  if (currencyAndFractionMatch) {
-    const unitWord = currencyAndFractionMatch[1];
-    const fracWord = currencyAndFractionMatch[2];
-    const baseVal = NORMALIZED_CURRENCIES[unitWord] || 1;
-    const fracVal = NORMALIZED_FRACTIONS[fracWord] || 0.5;
-    return { amount: baseVal + fracVal, matchedPhrase: currencyAndFractionMatch[0] };
-  }
-
-  // 5. Check for digit + fraction (e.g. "5 ونص", "10 وربع", "3 ونصف")
-  const digitAndFractionMatch = cleaned.match(/(\d+(?:\.\d+)?)\s*(?:و|\+)\s*(نصف|نص|ربع|ثلث|تلت)/);
-  if (digitAndFractionMatch) {
-    const baseVal = parseFloat(digitAndFractionMatch[1]);
-    const fracWord = digitAndFractionMatch[2];
-    const fracVal = NORMALIZED_FRACTIONS[fracWord] || 0.5;
-    return { amount: baseVal + fracVal, matchedPhrase: digitAndFractionMatch[0] };
-  }
-
-  // 6. Check for number followed by currency or standard digit (e.g. "15.5", "100", "25 دينار", "45 جنيه")
-  const digitMatch = normalized.match(/\b\d+(?:\.\d+)?\b/);
-  if (digitMatch) {
-    const parsedNum = parseFloat(digitMatch[0]);
-    if (!isNaN(parsedNum) && parsedNum > 0) {
-      return { amount: parsedNum, matchedPhrase: digitMatch[0] };
+  // Check custom categories first
+  for (const cat of customCategories) {
+    const cleanCatName = cleanArabicText(cat.name);
+    const cleanCatNameAr = cat.nameAr ? cleanArabicText(cat.nameAr) : '';
+    if (clean.includes(cleanCatName) || (cleanCatNameAr && clean.includes(cleanCatNameAr))) {
+      return cat.id;
     }
   }
 
-  // 7. Compound Arabic words processing (e.g., "خمسة وعشرين", "مية وخمسين", "الفين وثلاثمية", "ثلاثة الاف", "عشرة دنانير")
-  const words = cleaned.split(/\s+/);
-  let totalAmount = 0;
-  let currentGroup = 0;
-  let foundAnyWordNumber = false;
-  let matchedWordList: string[] = [];
+  const keywordMap = type === 'income' ? INCOME_CATEGORY_KEYWORDS : CATEGORY_KEYWORDS;
 
-  for (let i = 0; i < words.length; i++) {
-    let w = words[i].replace(/^و/, ''); // Strip leading 'و'
-    if (NORMALIZED_BASIC_NUMBERS[w] !== undefined) {
-      foundAnyWordNumber = true;
-      matchedWordList.push(words[i]);
-      const val = NORMALIZED_BASIC_NUMBERS[w];
-      if (val >= 1000) {
-        if (currentGroup === 0) currentGroup = 1;
-        totalAmount += currentGroup * val;
-        currentGroup = 0;
-      } else {
-        currentGroup += val;
+  let bestMatchCategory = type === 'income' ? 'other_income' : 'other';
+  let maxMatchedScore = 0;
+
+  for (const [catId, keywords] of Object.entries(keywordMap)) {
+    let score = 0;
+    for (const kw of keywords) {
+      const cleanKw = cleanArabicText(kw);
+      if (cleanKw.length === 0) continue;
+
+      if (clean === cleanKw) {
+        score += 10;
+      } else if (clean.includes(cleanKw)) {
+        score += cleanKw.length >= 4 ? 4 : 2;
       }
-    } else if (NORMALIZED_FRACTIONS[w] !== undefined) {
-      foundAnyWordNumber = true;
-      matchedWordList.push(words[i]);
-      currentGroup += NORMALIZED_FRACTIONS[w];
+      for (const w of words) {
+        if (w === cleanKw) {
+          score += 3;
+        }
+      }
+    }
+
+    if (score > maxMatchedScore) {
+      maxMatchedScore = score;
+      bestMatchCategory = catId;
     }
   }
 
-  totalAmount += currentGroup;
-
-  if (foundAnyWordNumber && totalAmount > 0) {
-    return { amount: totalAmount, matchedPhrase: matchedWordList.join(' ') };
-  }
-
-  // 8. Check for spoken currency unit words alone or with trailing 'و' (e.g. "دينار و", "دينارين", "جنيه", "ريالين", "دينار")
-  const singleCurrencyMatch = cleaned.match(/(دينارين|دينار|جنيهين|جنيه|ريالين|ريال|درهمين|درهم|دولارين|دولار|يوروين|يورو)(?:\s+و)?/);
-  if (singleCurrencyMatch) {
-    const word = singleCurrencyMatch[1];
-    if (NORMALIZED_CURRENCIES[word]) {
-      return { amount: NORMALIZED_CURRENCIES[word], matchedPhrase: singleCurrencyMatch[0] };
-    }
-  }
-
-  return { amount: null, matchedPhrase: '' };
+  return bestMatchCategory;
 }
 
+/**
+ * Extracts numeric or spoken amount from any Arabic dialect string
+ */
+export function extractArabicAmount(text: string): { amount: number | null; matchedPhrase: string | null } {
+  const normalized = normalizeArabicNumbers(text);
+
+  // 1. Direct regex for numbers (e.g., 150, 150.50, 150ج, 150 ريال)
+  const numericPattern = /(?:بـ?|ب|بقيمة|بمبلغ|حق|حساب|سعر|بـ)?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:جنيه|جنيهات|ج\.م|ريال|ريالات|ر\.س|دينار|دنانير|د\.ك|درهم|دراهم|د\.إ|دولار|دولارات|يورو|ليرة|شيكل|قرش|فلس|egp|sar|kwd|aed|usd|eur)?/i;
+  const numMatch = normalized.match(numericPattern);
+  if (numMatch && numMatch[1]) {
+    const val = parseFloat(numMatch[1]);
+    if (!isNaN(val) && val > 0) {
+      return { amount: val, matchedPhrase: numMatch[0] };
+    }
+  }
+
+  // 2. Dialect spoken composite amounts (e.g. ألفين وخمسمية، تلتمية وخمسين، ميتين، باكوين)
+  const cleaned = cleanArabicText(normalized);
+  const words = cleaned.split(/\s+/);
+
+  let totalSpokenAmount = 0;
+  let currentSegment = 0;
+  let hasFoundNumber = false;
+  let matchedTokens: string[] = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const numVal = NORMALIZED_BASIC_NUMBERS[w];
+    const fracVal = NORMALIZED_FRACTIONS[w];
+    const currVal = NORMALIZED_CURRENCIES[w];
+
+    if (numVal !== undefined) {
+      hasFoundNumber = true;
+      matchedTokens.push(w);
+      if (numVal >= 1000) {
+        if (currentSegment === 0) currentSegment = 1;
+        totalSpokenAmount += currentSegment * numVal;
+        currentSegment = 0;
+      } else if (numVal >= 100) {
+        currentSegment += numVal;
+      } else {
+        currentSegment += numVal;
+      }
+    } else if (fracVal !== undefined) {
+      hasFoundNumber = true;
+      matchedTokens.push(w);
+      currentSegment += fracVal;
+    } else if (currVal !== undefined && (w.endsWith('ين') || w.endsWith('ان'))) {
+      // Dual currencies like دينارين، جنيهين
+      hasFoundNumber = true;
+      matchedTokens.push(w);
+      totalSpokenAmount += currVal;
+    }
+  }
+
+  totalSpokenAmount += currentSegment;
+
+  if (hasFoundNumber && totalSpokenAmount > 0) {
+    return { amount: totalSpokenAmount, matchedPhrase: matchedTokens.join(' ') };
+  }
+
+  return { amount: null, matchedPhrase: null };
+}
+
+/**
+ * Universal Arabic NLP Parser - Parses natural speech & text into structured transaction data
+ */
 export function parseTransactionText(
   text: string,
   wallets: Wallet[],
   customCategories: Category[] = []
 ): ParsedTransaction {
-  // First attempt to parse as a banking SMS
+  if (!text || !text.trim()) {
+    return {
+      amount: null,
+      type: 'expense',
+      category: 'other',
+      description: '',
+      walletId: wallets[0]?.id || null,
+    };
+  }
+
+  // 1. Try Banking SMS Parsing
   const smsParsed = parseBankSMS(text, wallets, customCategories);
   if (smsParsed) {
     return smsParsed;
@@ -613,125 +552,92 @@ export function parseTransactionText(
   const normalized = normalizeArabicNumbers(text);
   const cleaned = cleanArabicText(normalized);
 
-  // 1. Extract Amount accurately
+  // 2. Extract Amount
   const { amount, matchedPhrase } = extractArabicAmount(normalized);
 
-  // 2. Extract Type (Expense vs Income vs Transfer)
+  // 3. Determine Type (Income, Expense, Transfer) across Arabic Dialects & Franco
   let type: 'income' | 'expense' | 'transfer' = 'expense';
-  const transferIndicators = ['تحويل', 'حول', 'نقل', 'تحويلات', 'transfer', 'move', 'حولت', 'نقلت'];
-  const incomeIndicators = [
-    'قبضت', 'قبض', 'جالي', 'مرتب', 'راتب', 'دخل', 'ربح', 'مكسب', 'هديه', 'هدية', 'بونص', 'مكافاه', 'مكافأة',
-    'salary', 'income', 'bonus', 'gift', 'freelance', 'received', 'earned', 'deposit', 'استلمت', 'ايداع',
-    'حولي', 'اتحولي', 'تحويلي', 'سلفة من', 'استلفت', 'ايراد', 'مبيعات'
+
+  const transferKeywords = [
+    'تحويل', 'حول', 'حولت', 'نقلت', 'حولي', 'اتحول', 'ارسال', 'ارسلت', 'transfer', 'move', '7awelt', 'send'
   ];
 
-  
-  const cleanedTransfer = transferIndicators.map(cleanArabicText);
-  if (cleanedTransfer.some(ind => cleaned.includes(ind))) {
+  const incomeKeywords = [
+    // Egyptian
+    'قبضت', 'قبض', 'جالي', 'مرتب', 'معاش', 'دخل', 'مكسب', 'ربح', 'بونص', 'مكافاه', 'مكافأة',
+    'هديه', 'هدية', 'الجمعية', 'استلفت', 'سلفة', 'ايراد', 'مبيعات',
+    // Gulf & Saudi
+    'نزل_الراتب', 'نزل الراتب', 'راتبي', 'استلمت', 'حوالة واردة', 'ايداع', 'إيداع', 'كاش باك', 'عيدية',
+    // Levantine & Maghrebi
+    'قبضت_المعاش', 'صالير', 'دخل_اضافي', 'ارباح',
+    // English & Franco
+    'salary', 'income', 'bonus', 'gift', 'earned', 'freelance', 'deposit', 'received', 'salart'
+  ];
+
+  if (transferKeywords.some(k => cleaned.includes(cleanArabicText(k)))) {
     type = 'transfer';
-  } else {
-    const cleanedIncome = incomeIndicators.map(cleanArabicText);
-    for (const ind of cleanedIncome) {
-      if (cleaned.includes(ind)) {
-        type = 'income';
-        break;
-      }
-    }
+  } else if (incomeKeywords.some(k => cleaned.includes(cleanArabicText(k)))) {
+    type = 'income';
   }
 
-  // 3. Extract Category
+  // 4. Extract Category
   const category = type === 'transfer' ? 'transfer' : matchCategoryFromText(text, type, customCategories);
 
-  // 4. Extract Wallet & Target Wallet
+  // 5. Match Wallet / Account
   let walletId: string | null = null;
   let toWalletId: string | null = null;
 
-  function findWalletMatch(textClean: string, wallet: Wallet): { found: boolean; index: number; score: number } {
-    const wNameClean = cleanArabicText(wallet.name);
-    const exactIdx = textClean.indexOf(wNameClean);
-    if (exactIdx !== -1) {
-      return { found: true, index: exactIdx, score: wNameClean.length };
-    }
-    const tokens = wallet.name.split(/[\s\-()]+/).map(cleanArabicText).filter(t => t.length >= 3);
-    let bestScore = 0;
-    let bestIdx = -1;
-    for (const tok of tokens) {
-      const tokIdx = textClean.indexOf(tok);
-      if (tokIdx !== -1 && tok.length > bestScore) {
-        bestScore = tok.length;
-        bestIdx = tokIdx;
+  if (wallets && wallets.length > 0) {
+    for (const w of wallets) {
+      const cleanWName = cleanArabicText(w.name);
+      if (cleaned.includes(cleanWName)) {
+        if (!walletId) {
+          walletId = w.id;
+        } else if (type === 'transfer' && !toWalletId && walletId !== w.id) {
+          toWalletId = w.id;
+        }
       }
     }
-    if (bestIdx !== -1) {
-      return { found: true, index: bestIdx, score: bestScore };
-    }
-    return { found: false, index: -1, score: 0 };
-  }
 
-  if (wallets.length > 0) {
-    if (type === 'transfer') {
-      const matchedWallets: { wallet: Wallet; index: number }[] = [];
-      for (const wallet of wallets) {
-        const matchRes = findWalletMatch(cleaned, wallet);
-        if (matchRes.found) {
-          matchedWallets.push({ wallet, index: matchRes.index });
-        }
+    // Default heuristics if specific wallet name not mentioned
+    if (!walletId) {
+      if (cleaned.includes('كاش') || cleaned.includes('نقد') || cleaned.includes('cash') || cleaned.includes('فلوس')) {
+        const cashW = wallets.find(w => cleanArabicText(w.name).includes('كاش') || cleanArabicText(w.name).includes('نقد') || cleanArabicText(w.name).includes('cash'));
+        if (cashW) walletId = cashW.id;
+      } else if (cleaned.includes('بنك') || cleaned.includes('فيزا') || cleaned.includes('بطاقة') || cleaned.includes('راجحي') || cleaned.includes('مدى') || cleaned.includes('bank') || cleaned.includes('card')) {
+        const bankW = wallets.find(w => cleanArabicText(w.name).includes('بنك') || cleanArabicText(w.name).includes('فيزا') || cleanArabicText(w.name).includes('بطاقة') || cleanArabicText(w.name).includes('bank'));
+        if (bankW) walletId = bankW.id;
       }
-      matchedWallets.sort((a, b) => a.index - b.index);
-      if (matchedWallets.length >= 2) {
-        walletId = matchedWallets[0].wallet.id;
-        toWalletId = matchedWallets[1].wallet.id;
-      } else if (matchedWallets.length === 1) {
-        walletId = matchedWallets[0].wallet.id;
-      }
-    } else {
-      let bestWalletScore = 0;
-      for (const wallet of wallets) {
-        const matchRes = findWalletMatch(cleaned, wallet);
-        if (matchRes.found && matchRes.score > bestWalletScore) {
-          walletId = wallet.id;
-          bestWalletScore = matchRes.score;
-        }
-      }
-      if (!walletId) {
-        if (cleaned.includes('كاش') || cleaned.includes('نقدي') || cleaned.includes('كش') || cleaned.includes('cash')) {
-          const cashWallet = wallets.find(w => cleanArabicText(w.name).includes('كاش') || cleanArabicText(w.name).includes('cash') || cleanArabicText(w.name).includes('نقد'));
-          if (cashWallet) walletId = cashWallet.id;
-        } else if (cleaned.includes('بنك') || cleaned.includes('فيزا') || cleaned.includes('حساب') || cleaned.includes('bank') || cleaned.includes('card') || cleaned.includes('visa')) {
-          const bankWallet = wallets.find(w => cleanArabicText(w.name).includes('بنك') || cleanArabicText(w.name).includes('bank') || cleanArabicText(w.name).includes('فيزا') || cleanArabicText(w.name).includes('بطاقة'));
-          if (bankWallet) walletId = bankWallet.id;
-        }
+
+      // Default to first active wallet
+      if (!walletId && wallets[0]) {
+        walletId = wallets[0].id;
       }
     }
   }
 
-  // 5. Clean and Extract Description
+  // 6. Clean Description
   let description = text.trim();
-  
-  // Remove matched amount digits / phrase
+  if (matchedPhrase) {
+    description = description.replace(new RegExp(matchedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '');
+  }
   if (amount !== null) {
-    if (matchedPhrase) {
-      description = description.replace(new RegExp(matchedPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
-    }
     description = description.replace(new RegExp(amount.toString(), 'g'), '');
   }
 
-  // Remove common action keywords from description
-  const noiseWords = [
-    'مصاريف', 'مصروف', 'صرفت', 'دفعت', 'اشتريت', 'شراء', 'حق', 'حساب', 'دفع', 'سداد', 'فاتورة', 'فاتوره',
-    'من الكاش', 'من كاش', 'من البنك', 'من المحفظة', 'كاش', 'cash', 'دينار', 'دينارين', 'دنانير', 'جنيه', 'جنيهين',
-    'ريال', 'ريالين', 'درهم', 'درهمين', 'دولار', 'دولارين', 'د.ك', 'ج.م', 'ر.س', 'د.إ', 'EGP', 'KWD', 'SAR', 'USD',
-    'فلس', 'قرش', 'و'
+  const noiseKeywords = [
+    'صرفت', 'دفعت', 'شريت', 'اشتريت', 'جبت', 'تقضيت', 'حاسبت', 'سددت', 'خلصت', 'كريت', 'حول', 'حولت',
+    'جنيه', 'جنيهات', 'ريال', 'ريالات', 'دينار', 'دنانير', 'درهم', 'دراهم', 'دولار', 'دولارات', 'يورو',
+    'كاش', 'cash', 'من', 'في', 'على', 'بـ', 'ب', 'حق', 'حساب', 'سعر', 'قيمة', 'مصاريف', 'مصروف'
   ];
 
-  let descWords = description.split(/\s+/).filter(w => {
+  const descWords = description.split(/\s+/).filter(w => {
     const cleanW = cleanArabicText(w);
-    return !noiseWords.includes(cleanW) && cleanW.length > 0;
+    return !noiseKeywords.includes(cleanW) && cleanW.length > 0;
   });
 
   let cleanDesc = descWords.join(' ').trim();
   if (!cleanDesc) {
-    // If stripped everything, fallback to original text
     cleanDesc = text.trim();
   }
 
@@ -741,6 +647,6 @@ export function parseTransactionText(
     category,
     description: cleanDesc,
     walletId,
-    toWalletId: toWalletId || undefined
+    toWalletId: toWalletId || undefined,
   };
 }

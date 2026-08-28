@@ -18,6 +18,16 @@ export async function isBiometricEnrolled(): Promise<boolean> {
   }
 }
 
+export async function isBiometricAvailable(): Promise<boolean> {
+  try {
+    const hasHardware = await hasBiometricHardware();
+    const isEnrolled = await isBiometricEnrolled();
+    return hasHardware && isEnrolled;
+  } catch {
+    return false;
+  }
+}
+
 export async function getSupportedBiometrics(): Promise<LocalAuthentication.AuthenticationType[]> {
   try {
     return await LocalAuthentication.supportedAuthenticationTypesAsync();
