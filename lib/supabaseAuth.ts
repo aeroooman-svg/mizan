@@ -123,48 +123,44 @@ export async function supabaseOAuthSignIn(
   provider: OAuthProvider
 ): Promise<{ user: SupabaseUser | null; session: AuthSession | null; error?: string }> {
   try {
-    // Generate valid redirect URL for mobile / web deep linking
     const redirectUrl = Linking.createURL('auth-callback');
     const authUrl = `${AUTH_URL}/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
 
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.location.href = authUrl;
-        return { user: null, session: null };
-      }
-    }
+    // In native mobile app with WebBrowser
+    if (Platform.OS !== 'web') {
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
+        showInRecents: true,
+        preferEphemeralSession: false,
+      });
 
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
-      showInRecents: true,
-      preferEphemeralSession: false,
-    });
+      if (result.type === 'success' && result.url) {
+        const { accessToken, refreshToken, error } = parseAuthUrl(result.url);
 
-    if (result.type === 'success' && result.url) {
-      const { accessToken, refreshToken, error } = parseAuthUrl(result.url);
-
-      if (error) {
-        return { user: null, session: null, error };
-      }
-
-      if (accessToken) {
-        const user = await supabaseGetUser(accessToken);
-        if (user) {
-          const session: AuthSession = {
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-            user,
-          };
-          await saveSession(session, provider);
-          return { user, session };
+        if (error) {
+          return { user: null, session: null, error };
         }
+
+        if (accessToken) {
+          const user = await supabaseGetUser(accessToken);
+          if (user) {
+            const session: AuthSession = {
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+              user,
+            };
+            await saveSession(session, provider);
+            return { user, session };
+          }
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        return { user: null, session: null, error: 'تم إلغاء عملية تسجيل الدخول' };
       }
-    } else if (result.type === 'cancel' || result.type === 'dismiss') {
-      return { user: null, session: null, error: 'تم إلغاء عملية تسجيل الدخول' };
     }
 
-    return { user: null, session: null, error: 'تعذر إكمال تسجيل الدخول عبر المزود' };
+    // On Web or fallback, indicate fallback modal should be used
+    return { user: null, session: null, error: 'USE_FALLBACK' };
   } catch (err: any) {
-    return { user: null, session: null, error: err?.message || 'فشل الاتصال بخدمة المصادقة' };
+    return { user: null, session: null, error: err?.message || 'USE_FALLBACK' };
   }
 }
 

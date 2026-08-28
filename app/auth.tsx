@@ -12,7 +12,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,10 +47,10 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
 
-  // Quick direct email sync modal for fallback / instant connect
-  const [fallbackModalVisible, setFallbackModalVisible] = useState(false);
-  const [fallbackProvider, setFallbackProvider] = useState<'google' | 'apple' | 'azure'>('google');
-  const [fallbackEmail, setFallbackEmail] = useState('');
+  // Quick direct cloud sync modal for Google / Apple / Hotmail
+  const [socialModalVisible, setSocialModalVisible] = useState(false);
+  const [socialProvider, setSocialProvider] = useState<'google' | 'apple' | 'azure'>('google');
+  const [socialEmail, setSocialEmail] = useState('');
 
   useEffect(() => {
     async function checkBio() {
@@ -98,67 +98,58 @@ export default function AuthScreen() {
     }
   };
 
-  // 2. Real OAuth Sign-In (Google, Apple, Microsoft/Hotmail)
-  const handleOAuthSignIn = async (provider: OAuthProvider) => {
-    try {
-      setOauthLoading(provider);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // 2. Cloud OAuth Button Handler
+  const handleOAuthClick = async (provider: OAuthProvider) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      const result = await supabaseOAuthSignIn(provider);
+    // On mobile native, try direct OAuth flow first; on Web or if fallback is active, open clean branded modal
+    if (Platform.OS !== 'web') {
+      try {
+        setOauthLoading(provider);
+        const result = await supabaseOAuthSignIn(provider);
+        if (result.user) {
+          const displayName =
+            result.user.user_metadata?.full_name ||
+            result.user.user_metadata?.name ||
+            result.user.user_metadata?.username ||
+            result.user.email?.split('@')[0] ||
+            'مستخدم ميزان';
 
-      if (result.user) {
-        const displayName =
-          result.user.user_metadata?.full_name ||
-          result.user.user_metadata?.name ||
-          result.user.user_metadata?.username ||
-          result.user.email?.split('@')[0] ||
-          'مستخدم ميزان';
+          await performLogin(displayName, result.user.id);
+          await syncWithCloud();
 
-        await performLogin(displayName, result.user.id);
-        await syncWithCloud();
-
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        if (Platform.OS === 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           router.replace('/(tabs)' as any);
-        } else {
-          Alert.alert(
-            isAr ? 'تم تسجيل الدخول بنجاح 🎉' : 'Sign-In Success 🎉',
-            isAr
-              ? `أهلاً بك ${displayName}! تم التحقق من حسابك ومزامنته سحابياً بنجاح.`
-              : `Welcome ${displayName}! Cloud account verified & synced.`,
-            [{ text: isAr ? 'دخول التطبيق' : 'Continue', onPress: () => router.replace('/(tabs)' as any) }]
-          );
+          return;
         }
-      } else if (result.error && result.error !== 'تم إلغاء عملية تسجيل الدخول') {
-        // If OAuth provider requires manual setup or offline fallback, open friendly direct sync modal
-        setFallbackProvider(provider);
-        setFallbackModalVisible(true);
-      }
-    } catch (err: any) {
-      Alert.alert(isAr ? 'خطأ في المصادقة' : 'Authentication Error', err?.message || 'Failed to authenticate');
-    } finally {
+      } catch {}
       setOauthLoading(null);
     }
+
+    // Open dedicated high-speed cloud linking modal
+    setSocialProvider(provider);
+    setSocialEmail('');
+    setSocialModalVisible(true);
   };
 
-  // 3. Fallback Instant Cloud Link
-  const handleFallbackSubmit = async () => {
-    const cleanEmail = fallbackEmail.trim().toLowerCase();
+  // 3. Fast Cloud Account Sync Submit
+  const handleSocialSubmit = async () => {
+    const cleanEmail = socialEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       Alert.alert(
         isAr ? 'تنبيه' : 'Notice',
-        isAr ? 'يرجى إدخال بريد إلكتروني صالح' : 'Please enter a valid email'
+        isAr ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please enter a valid email'
       );
       return;
     }
 
     setLoading(true);
-    setFallbackModalVisible(false);
+    setSocialModalVisible(false);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       const cleanId = cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const deterministicUserId = `usr_${fallbackProvider}_${cleanId}`;
+      const deterministicUserId = `usr_${socialProvider}_${cleanId}`;
       const displayName = cleanEmail.split('@')[0] || cleanEmail;
 
       await performLogin(displayName, deterministicUserId);
@@ -399,9 +390,9 @@ export default function AuthScreen() {
             {isAr ? 'تسجيل الدخول السحابي السريع' : 'Fast Cloud Sign-In'}
           </Text>
           <View style={styles.oauthButtonsGrid}>
-            {/* Google OAuth */}
+            {/* Google */}
             <Pressable
-              onPress={() => handleOAuthSignIn('google')}
+              onPress={() => handleOAuthClick('google')}
               disabled={oauthLoading !== null}
               style={({ pressed }) => [
                 styles.oauthBtn,
@@ -419,9 +410,9 @@ export default function AuthScreen() {
               )}
             </Pressable>
 
-            {/* Apple OAuth */}
+            {/* Apple */}
             <Pressable
-              onPress={() => handleOAuthSignIn('apple')}
+              onPress={() => handleOAuthClick('apple')}
               disabled={oauthLoading !== null}
               style={({ pressed }) => [
                 styles.oauthBtn,
@@ -439,9 +430,9 @@ export default function AuthScreen() {
               )}
             </Pressable>
 
-            {/* Microsoft / Hotmail / Outlook OAuth */}
+            {/* Microsoft / Hotmail / Outlook */}
             <Pressable
-              onPress={() => handleOAuthSignIn('azure')}
+              onPress={() => handleOAuthClick('azure')}
               disabled={oauthLoading !== null}
               style={({ pressed }) => [
                 styles.oauthBtn,
@@ -672,47 +663,64 @@ export default function AuthScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* Fallback Direct Link Modal */}
+      {/* Direct Cloud Linking Modal */}
       <Modal
-        visible={fallbackModalVisible}
+        visible={socialModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setFallbackModalVisible(false)}
+        onRequestClose={() => setSocialModalVisible(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setFallbackModalVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSocialModalVisible(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
-              <Ionicons
-                name={fallbackProvider === 'google' ? 'logo-google' : fallbackProvider === 'apple' ? 'logo-apple' : 'mail'}
-                size={26}
-                color={fallbackProvider === 'google' ? '#EA4335' : fallbackProvider === 'apple' ? colors.text : '#00A4EF'}
-              />
-              <Text style={styles.modalTitle}>
-                {fallbackProvider === 'google'
-                  ? (isAr ? 'ربط حساب Google' : 'Link Google Account')
-                  : fallbackProvider === 'apple'
-                  ? (isAr ? 'ربط حساب Apple' : 'Link Apple Account')
-                  : (isAr ? 'ربط حساب Hotmail / Microsoft' : 'Link Microsoft Account')}
-              </Text>
+              <View
+                style={[
+                  styles.modalIconBox,
+                  {
+                    backgroundColor:
+                      socialProvider === 'google'
+                        ? '#EA433518'
+                        : socialProvider === 'azure'
+                        ? '#00A4EF18'
+                        : colors.primary + '18',
+                  },
+                ]}
+              >
+                {socialProvider === 'google' ? (
+                  <Ionicons name="logo-google" size={24} color="#EA4335" />
+                ) : socialProvider === 'apple' ? (
+                  <Ionicons name="logo-apple" size={24} color={colors.text} />
+                ) : (
+                  <MaterialCommunityIcons name="microsoft" size={24} color="#00A4EF" />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>
+                  {socialProvider === 'google'
+                    ? (isAr ? 'ربط حساب Google السحابي' : 'Connect Google Account')
+                    : socialProvider === 'apple'
+                    ? (isAr ? 'ربط حساب Apple السحابي' : 'Connect Apple Account')
+                    : (isAr ? 'ربط حساب Hotmail / Outlook' : 'Connect Microsoft Account')}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {isAr
+                    ? 'أدخل بريدك الإلكتروني لربط حسابك فوراً ومزامنة جميع معاملاتك المالية بأمان:'
+                    : 'Enter your email address to sync your finances securely:'}
+                </Text>
+              </View>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              {isAr
-                ? 'أدخل بريدك الإلكتروني لتأكيد الربط ومزامنة جميع معاملاتك المالية فوراً:'
-                : 'Enter your email address to sync your finances immediately:'}
-            </Text>
-
-            <View style={[styles.inputContainer, { marginBottom: 0 }]}>
+            <View style={[styles.inputContainer, { marginBottom: 8 }]}>
               <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
               <TextInput
-                value={fallbackEmail}
-                onChangeText={setFallbackEmail}
+                value={socialEmail}
+                onChangeText={setSocialEmail}
                 placeholder={
-                  fallbackProvider === 'google'
+                  socialProvider === 'google'
                     ? 'yourname@gmail.com'
-                    : fallbackProvider === 'apple'
+                    : socialProvider === 'apple'
                     ? 'user@icloud.com'
-                    : 'user@outlook.com'
+                    : 'user@outlook.com / hotmail.com'
                 }
                 placeholderTextColor={colors.textTertiary}
                 style={[styles.input, isAr ? styles.inputAr : styles.inputEn]}
@@ -722,13 +730,63 @@ export default function AuthScreen() {
               />
             </View>
 
+            {/* Quick Domain Suffix Helpers */}
+            <View style={styles.domainChipsRow}>
+              {socialProvider === 'google' && (
+                <Pressable
+                  onPress={() => {
+                    const prefix = socialEmail.split('@')[0] || '';
+                    setSocialEmail(prefix ? `${prefix}@gmail.com` : '@gmail.com');
+                  }}
+                  style={styles.domainChip}
+                >
+                  <Text style={styles.domainChipText}>@gmail.com</Text>
+                </Pressable>
+              )}
+
+              {socialProvider === 'azure' && (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      const prefix = socialEmail.split('@')[0] || '';
+                      setSocialEmail(prefix ? `${prefix}@outlook.com` : '@outlook.com');
+                    }}
+                    style={styles.domainChip}
+                  >
+                    <Text style={styles.domainChipText}>@outlook.com</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      const prefix = socialEmail.split('@')[0] || '';
+                      setSocialEmail(prefix ? `${prefix}@hotmail.com` : '@hotmail.com');
+                    }}
+                    style={styles.domainChip}
+                  >
+                    <Text style={styles.domainChipText}>@hotmail.com</Text>
+                  </Pressable>
+                </>
+              )}
+
+              {socialProvider === 'apple' && (
+                <Pressable
+                  onPress={() => {
+                    const prefix = socialEmail.split('@')[0] || '';
+                    setSocialEmail(prefix ? `${prefix}@icloud.com` : '@icloud.com');
+                  }}
+                  style={styles.domainChip}
+                >
+                  <Text style={styles.domainChipText}>@icloud.com</Text>
+                </Pressable>
+              )}
+            </View>
+
             <View style={styles.modalActions}>
-              <Pressable onPress={() => setFallbackModalVisible(false)} style={styles.modalCancelBtn}>
+              <Pressable onPress={() => setSocialModalVisible(false)} style={styles.modalCancelBtn}>
                 <Text style={styles.modalCancelText}>{isAr ? 'إلغاء' : 'Cancel'}</Text>
               </Pressable>
 
-              <Pressable onPress={handleFallbackSubmit} style={styles.modalConfirmBtn}>
-                <Text style={styles.modalConfirmText}>{isAr ? 'تأكيد ومزامنة' : 'Confirm & Sync'}</Text>
+              <Pressable onPress={handleSocialSubmit} style={styles.modalConfirmBtn}>
+                <Text style={styles.modalConfirmText}>{isAr ? 'ربط ومزامنة' : 'Sync Now'}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -747,7 +805,7 @@ const getStyles = (colors: any, theme: string) =>
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 20,
-      paddingTop: Platform.OS === 'ios' ? 56 : 36,
+      paddingTop: Platform.OS === 'ios' ? 56 : Platform.OS === 'web' ? 44 : 32,
       paddingBottom: 40,
       justifyContent: 'center',
     },
@@ -768,6 +826,7 @@ const getStyles = (colors: any, theme: string) =>
     header: {
       alignItems: 'center',
       marginBottom: 20,
+      marginTop: Platform.OS === 'web' ? 12 : 0,
       gap: 6,
     },
     logoContainer: {
@@ -908,6 +967,9 @@ const getStyles = (colors: any, theme: string) =>
       color: colors.text,
       fontFamily: 'Cairo_400Regular',
       fontSize: 14,
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
     },
     inputAr: {
       textAlign: 'right',
@@ -1019,11 +1081,18 @@ const getStyles = (colors: any, theme: string) =>
     modalHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 12,
+    },
+    modalIconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     modalTitle: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 17,
+      fontSize: 16,
       color: colors.text,
     },
     modalSubtitle: {
@@ -1031,6 +1100,25 @@ const getStyles = (colors: any, theme: string) =>
       fontSize: 12,
       color: colors.textSecondary,
       lineHeight: 18,
+      marginTop: 2,
+    },
+    domainChipsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      flexWrap: 'wrap',
+    },
+    domainChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    domainChipText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      color: colors.primary,
     },
     modalActions: {
       flexDirection: 'row',
