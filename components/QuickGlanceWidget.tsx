@@ -118,17 +118,17 @@ export default function QuickGlanceWidget({
           </View>
         </View>
 
-        {/* Row 2: Prominent Action Buttons (Expense, Voice Transaction, and Income) */}
-        <View style={styles.mainActionsRow}>
-          {/* Expense Button (مصروف) */}
+        {/* Row 2: Custom Capsule Shape (Expense Wing | Center Mic Circle | Income Wing) */}
+        <View style={styles.capsuleActionsRow}>
+          {/* Left Wing: Expense Button (مصروف) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push('/add-transaction?type=expense&prefillType=expense&isQuick=true');
             }}
             style={({ pressed }) => [
-              styles.bigActionButton,
-              styles.expenseBigBtn,
+              styles.wingActionButton,
+              styles.expenseWingBtn,
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
           >
@@ -136,14 +136,14 @@ export default function QuickGlanceWidget({
               colors={['#EF4444', '#DC2626']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.bigBtnGradient}
+              style={styles.wingBtnGradient}
             >
               <Ionicons name="remove-circle" size={20} color="#FFF" />
-              <Text style={styles.bigBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
+              <Text style={styles.wingBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
             </LinearGradient>
           </Pressable>
 
-          {/* Voice Transaction Button (صوت) */}
+          {/* Center Circle: Voice Mic Button (دائرة الميكروفون بالمنتصف) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -154,31 +154,29 @@ export default function QuickGlanceWidget({
               }
             }}
             style={({ pressed }) => [
-              styles.bigActionButton,
-              styles.voiceBigBtn,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              styles.centerVoiceCircle,
+              pressed && { transform: [{ scale: 0.92 }], opacity: 0.9 },
             ]}
           >
             <LinearGradient
               colors={['#0EA5E9', '#2563EB']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.bigBtnGradient}
+              style={styles.centerVoiceCircleInner}
             >
-              <Ionicons name="mic" size={20} color="#FFF" />
-              <Text style={styles.bigBtnText}>{isAr ? 'صوت' : 'Voice'}</Text>
+              <Ionicons name="mic" size={25} color="#FFF" />
             </LinearGradient>
           </Pressable>
 
-          {/* Income Button (دخل) */}
+          {/* Right Wing: Income Button (دخل) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push('/add-transaction?type=income&prefillType=income&isQuick=true');
             }}
             style={({ pressed }) => [
-              styles.bigActionButton,
-              styles.incomeBigBtn,
+              styles.wingActionButton,
+              styles.incomeWingBtn,
               pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
             ]}
           >
@@ -186,10 +184,10 @@ export default function QuickGlanceWidget({
               colors={['#10B981', '#059669']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.bigBtnGradient}
+              style={styles.wingBtnGradient}
             >
               <Ionicons name="add-circle" size={20} color="#FFF" />
-              <Text style={styles.bigBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
+              <Text style={styles.wingBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
             </LinearGradient>
           </Pressable>
         </View>
@@ -343,38 +341,70 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
     fontFamily: 'Cairo_600SemiBold',
     color: colors.textSecondary,
   },
-  mainActionsRow: {
+  capsuleActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     marginTop: 4,
   },
-  bigActionButton: {
+  wingActionButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 52,
     overflow: 'hidden',
-    elevation: 3,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  incomeBigBtn: {},
-  expenseBigBtn: {},
-  voiceBigBtn: {},
-  bigBtnGradient: {
+  expenseWingBtn: {
+    borderTopLeftRadius: 26,
+    borderBottomLeftRadius: 26,
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  incomeWingBtn: {
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
+    borderTopRightRadius: 26,
+    borderBottomRightRadius: 26,
+  },
+  wingBtnGradient: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
   },
-  bigBtnText: {
+  wingBtnText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
     color: '#FFFFFF',
+  },
+  centerVoiceCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    padding: 3,
+    backgroundColor: theme === 'dark' ? 'rgba(14, 165, 233, 0.25)' : 'rgba(14, 165, 233, 0.15)',
+    borderWidth: 2,
+    borderColor: '#38BDF8',
+    elevation: 6,
+    shadowColor: '#0284C7',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerVoiceCircleInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   lightDivider: {
     height: 1,
