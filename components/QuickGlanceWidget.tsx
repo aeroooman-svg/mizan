@@ -33,6 +33,7 @@ interface QuickGlanceWidgetProps {
   debts?: Debt[];
   totalConsolidatedBalance?: number;
   onAddPress?: () => void;
+  onVoicePress?: () => void;
 }
 
 export default function QuickGlanceWidget({
@@ -41,6 +42,7 @@ export default function QuickGlanceWidget({
   goals = [],
   debts = [],
   totalConsolidatedBalance,
+  onVoicePress,
 }: QuickGlanceWidgetProps) {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
@@ -116,9 +118,9 @@ export default function QuickGlanceWidget({
           </View>
         </View>
 
-        {/* Row 2: Large Prominent Action Buttons (Expense & Income Side-by-Side) */}
+        {/* Row 2: Prominent Action Buttons (Expense, Voice Transaction, and Income) */}
         <View style={styles.mainActionsRow}>
-          {/* Expense Button (مصروف) - Large */}
+          {/* Expense Button (مصروف) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -136,12 +138,39 @@ export default function QuickGlanceWidget({
               end={{ x: 1, y: 1 }}
               style={styles.bigBtnGradient}
             >
-              <Ionicons name="remove-circle" size={24} color="#FFF" />
+              <Ionicons name="remove-circle" size={20} color="#FFF" />
               <Text style={styles.bigBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
             </LinearGradient>
           </Pressable>
 
-          {/* Income Button (دخل) - Large */}
+          {/* Voice Transaction Button (صوت) */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (onVoicePress) {
+                onVoicePress();
+              } else {
+                router.push('/add-transaction?isVoice=true');
+              }
+            }}
+            style={({ pressed }) => [
+              styles.bigActionButton,
+              styles.voiceBigBtn,
+              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+            ]}
+          >
+            <LinearGradient
+              colors={['#0EA5E9', '#2563EB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.bigBtnGradient}
+            >
+              <Ionicons name="mic" size={20} color="#FFF" />
+              <Text style={styles.bigBtnText}>{isAr ? 'صوت' : 'Voice'}</Text>
+            </LinearGradient>
+          </Pressable>
+
+          {/* Income Button (دخل) */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -159,7 +188,7 @@ export default function QuickGlanceWidget({
               end={{ x: 1, y: 1 }}
               style={styles.bigBtnGradient}
             >
-              <Ionicons name="add-circle" size={24} color="#FFF" />
+              <Ionicons name="add-circle" size={20} color="#FFF" />
               <Text style={styles.bigBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
             </LinearGradient>
           </Pressable>
@@ -317,33 +346,34 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   mainActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     marginTop: 4,
   },
   bigActionButton: {
     flex: 1,
-    height: 52,
-    borderRadius: 16,
+    height: 48,
+    borderRadius: 14,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   incomeBigBtn: {},
   expenseBigBtn: {},
+  voiceBigBtn: {},
   bigBtnGradient: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
+    gap: 6,
+    paddingHorizontal: 8,
   },
   bigBtnText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   lightDivider: {

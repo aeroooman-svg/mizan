@@ -892,19 +892,6 @@ export default function HomeScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Pressable
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setIsVoiceModalOpen(true);
-              }}
-              style={({ pressed }) => [
-                styles.headerIconBtn,
-                { backgroundColor: '#00E67618', borderColor: '#00E67640', borderWidth: 1 },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="mic" size={20} color="#00E676" />
-            </Pressable>
-            <Pressable
-              onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push('/notifications');
               }}
@@ -945,7 +932,7 @@ export default function HomeScreen() {
           onAddWallet={handleAddWallet}
         />
 
-        {/* Quick Glance Widget (Expense / Income Action Buttons) */}
+        {/* Quick Glance Widget (Expense / Voice / Income Action Buttons) */}
         {widgetConfig.showQuickGlance !== false && (
           <QuickGlanceWidget
             data={getWidgetData(
@@ -961,6 +948,10 @@ export default function HomeScreen() {
             totalConsolidatedBalance={totalConsolidatedBalance}
             language={language as 'ar' | 'en'}
             onAddPress={() => router.push('/add-transaction')}
+            onVoicePress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setIsVoiceModalOpen(true);
+            }}
           />
         )}
 
