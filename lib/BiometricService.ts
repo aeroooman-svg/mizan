@@ -1,7 +1,9 @@
 import * as LocalAuthentication from 'expo-local-authentication';
+import { Platform } from 'react-native';
 
 export async function hasBiometricHardware(): Promise<boolean> {
   try {
+    if (Platform.OS === 'web') return false;
     return await LocalAuthentication.hasHardwareAsync();
   } catch (e) {
     console.error('Error checking biometric hardware:', e);
@@ -11,6 +13,7 @@ export async function hasBiometricHardware(): Promise<boolean> {
 
 export async function isBiometricEnrolled(): Promise<boolean> {
   try {
+    if (Platform.OS === 'web') return false;
     return await LocalAuthentication.isEnrolledAsync();
   } catch (e) {
     console.error('Error checking biometric enrollment:', e);
@@ -20,6 +23,7 @@ export async function isBiometricEnrolled(): Promise<boolean> {
 
 export async function isBiometricAvailable(): Promise<boolean> {
   try {
+    if (Platform.OS === 'web') return false;
     const hasHardware = await hasBiometricHardware();
     const isEnrolled = await isBiometricEnrolled();
     return hasHardware && isEnrolled;
@@ -30,6 +34,7 @@ export async function isBiometricAvailable(): Promise<boolean> {
 
 export async function getSupportedBiometrics(): Promise<LocalAuthentication.AuthenticationType[]> {
   try {
+    if (Platform.OS === 'web') return [];
     return await LocalAuthentication.supportedAuthenticationTypesAsync();
   } catch (e) {
     return [];
@@ -40,6 +45,10 @@ export async function authenticateWithBiometrics(
   promptMessage: string = 'فتح تطبيق ميزان'
 ): Promise<boolean> {
   try {
+    if (Platform.OS === 'web') {
+      return false;
+    }
+
     const hasHardware = await hasBiometricHardware();
     const isEnrolled = await isBiometricEnrolled();
 
@@ -49,7 +58,7 @@ export async function authenticateWithBiometrics(
 
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage,
-      fallbackLabel: 'رمز PIN',
+      fallbackLabel: 'استخدام رمز PIN',
       disableDeviceFallback: false,
       cancelLabel: 'إلغاء',
     });
@@ -60,3 +69,4 @@ export async function authenticateWithBiometrics(
     return false;
   }
 }
+

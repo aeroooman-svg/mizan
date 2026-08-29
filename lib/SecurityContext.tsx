@@ -200,8 +200,12 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
 
   const enableBiometrics = useCallback(async (enabled: boolean): Promise<boolean> => {
     if (enabled) {
+      if (Platform.OS === 'web') {
+        // On web, biometric hardware is not available
+        return false;
+      }
       const success = await authenticateWithBiometrics(
-        Platform.OS === 'android' ? 'تأكيد البصمة لتفعيل القفل' : 'Confirm biometrics to enable lock'
+        'تأكيد بصمة الوجه (Face ID) أو الإصبع لتفعيل القفل'
       );
       if (success) {
         await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, 'true');

@@ -224,12 +224,34 @@ export default function SettingsScreen() {
   const handleToggleBiometrics = async (value: boolean) => {
     safeHaptic.selection();
     if (value) {
+      if (!isPinEnabled) {
+        Alert.alert(
+          isAr ? 'تنبيه الأمان' : 'Security Notice',
+          isAr
+            ? 'يرجى تفعيل قفل رمز PIN أولاً ليكون وسيلة الدخول الاحتياطية قبل تفعيل Face ID.'
+            : 'Please enable PIN Lock first as a backup before enabling Face ID / Biometrics.'
+        );
+        return;
+      }
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          isAr ? 'تنبيه Face ID' : 'Face ID Notice',
+          isAr
+            ? 'ميزة Face ID والبصمة تعمل حصرياً على تطبيق الهاتف (iOS / Android) المزود بمستشعر البصمة أو الوجه.'
+            : 'Face ID / Biometrics works natively on mobile devices (iOS / Android) with biometric sensors.'
+        );
+        return;
+      }
       const ok = await enableBiometrics(true);
       if (!ok) {
         Alert.alert(
           isAr ? 'تنبيه' : 'Alert',
-          isAr ? 'تعذر تفعيل البصمة. تأكد من إعدادها في إعدادات جهازك أولاً.' : 'Could not enable biometrics. Check your device settings.'
+          isAr
+            ? 'تعذر تفعيل Face ID / البصمة. تأكد من إعداد بصمة الوجه أو الأصبع في إعدادات الهاتف أولاً.'
+            : 'Could not enable Face ID. Make sure Face ID or Fingerprint is configured in your device settings.'
         );
+      } else {
+        safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
       }
     } else {
       await enableBiometrics(false);
@@ -558,6 +580,17 @@ export default function SettingsScreen() {
               <Switch
                 value={isPinEnabled}
                 onValueChange={handleTogglePin}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.compactSwitchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>{isAr ? 'بصمة الوجه / الأصبع (Face ID)' : 'Face ID / Biometrics'}</Text>
+              </View>
+              <Switch
+                value={isBiometricEnabled}
+                onValueChange={handleToggleBiometrics}
                 trackColor={{ false: colors.border, true: colors.primary }}
               />
             </View>
