@@ -542,7 +542,7 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          {/* 3. Security (merged with Privacy) */}
+          {/* 3. Security & Privacy */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconBadge}>
@@ -562,34 +562,7 @@ export default function SettingsScreen() {
               />
             </View>
 
-            <View style={styles.compactSwitchRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.switchLabel}>{isAr ? 'البصمة البيومترية' : 'Face / Touch ID'}</Text>
-              </View>
-              <Switch
-                value={isBiometricEnabled}
-                onValueChange={handleToggleBiometrics}
-                trackColor={{ false: colors.border, true: colors.primary }}
-              />
-            </View>
-
             <View style={styles.compactLinksGroup}>
-              <Pressable
-                onPress={() => {
-                  safeHaptic.selection();
-                  router.push('/wallet-collaboration' as any);
-                }}
-                style={({ pressed }) => [styles.compactMenuRow, pressed && { opacity: 0.7 }]}
-              >
-                <View style={styles.menuRowLeft}>
-                  <Ionicons name="people-outline" size={17} color={colors.primary} />
-                  <Text style={styles.compactMenuText}>
-                    {isAr ? 'إدارة مشاركة المحفظة' : 'Shared Wallet Permissions'}
-                  </Text>
-                </View>
-                <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.textTertiary} />
-              </Pressable>
-
               <Pressable
                 onPress={() => {
                   safeHaptic.selection();
@@ -643,19 +616,6 @@ export default function SettingsScreen() {
                 trackColor={{ false: colors.border, true: colors.primary }}
               />
             </View>
-
-            <Pressable
-              onPress={handleTestNotification}
-              style={({ pressed }) => [styles.compactMenuRow, { backgroundColor: colors.primary + '0A' }, pressed && { opacity: 0.7 }]}
-            >
-              <View style={styles.menuRowLeft}>
-                <Ionicons name="paper-plane-outline" size={15} color={colors.primary} />
-                <Text style={[styles.compactMenuText, { color: colors.primary, fontFamily: 'Cairo_700Bold' }]}>
-                  {isAr ? 'إرسال إشعار تجريبي' : 'Send Test Notification'}
-                </Text>
-              </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.primary} />
-            </Pressable>
           </View>
 
           {/* 5. Data & Export (compacted) */}
