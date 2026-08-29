@@ -59,9 +59,10 @@ export default function FinancialJourneySlider({
   onOpenMonthlyReport,
 }: FinancialJourneySliderProps) {
   const { width: windowWidth } = useWindowDimensions();
-  const cardWidth = Math.min(360, Math.max(290, windowWidth - 48));
+  const effectiveWidth = Math.min(windowWidth, 480);
   const cardGap = 16;
-  const styles = getStyles(colors, cardWidth);
+  const cardWidth = Math.max(280, effectiveWidth - 32);
+  const styles = useMemo(() => getStyles(colors, cardWidth), [colors, cardWidth]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [pulseTab, setPulseTab] = useState<'weekly' | 'monthly'>('weekly');
@@ -730,7 +731,7 @@ const getStyles = (colors: any, cardWidth: number) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       marginBottom: 12,
     },
     titleRow: {
@@ -761,17 +762,22 @@ const getStyles = (colors: any, cardWidth: number) =>
       opacity: 0.3,
     },
     scrollContainer: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       gap: 16,
     },
     card: {
       width: cardWidth,
       backgroundColor: colors.surface,
-      borderRadius: 22,
+      borderRadius: 24,
       padding: 16,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
       justifyContent: 'space-between',
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
     },
     cardHeader: {
       flexDirection: 'row',
