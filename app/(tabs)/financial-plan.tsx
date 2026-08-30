@@ -1916,137 +1916,189 @@ export default function FinancialPlanScreen() {
           )}
         </View>
 
-        {/* Ultra-Readable 3D Monthly Breakdown Timeline */}
-        <View style={[styles.timelineSection, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, padding: 18, borderRadius: 22, gap: 14 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+        {/* Horizontal Gamified Monthly Breakdown Timeline & Progress Bar */}
+        {(() => {
+          const currentMonthNumber = Math.min(totalMonths, monthsElapsed + 1);
+          const planProgressPct = Math.min(100, Math.max(0, Math.round((currentMonthNumber / totalMonths) * 100)));
+          const maxDisplayMonths = Math.min(36, totalMonths);
+
+          return (
+            <View style={[styles.timelineSection, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, padding: 16, borderRadius: 22, gap: 14 }]}>
+              {/* Section Header with Title & Gamified Progress Badge */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.timelineTitle, { color: colors.text, marginBottom: 0, fontSize: 15 }]}>
+                    {t.monthlyBreakdown}
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#10B98140' }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
+                    🔥 {planProgressPct}% {language === 'ar' ? 'مكتمل' : 'Completed'}
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.timelineTitle, { color: colors.text, marginBottom: 0, fontSize: 15 }]}>{t.monthlyBreakdown}</Text>
-            </View>
-            <View style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                {language === 'ar' ? `12 شهر من أصل ${totalMonths}` : `12 of ${totalMonths} mos`}
-              </Text>
-            </View>
-          </View>
 
-          <View style={{ gap: 10 }}>
-            {Array.from({ length: Math.min(12, totalMonths) }, (_, i) => {
-              const monthDate = new Date(created);
-              monthDate.setMonth(created.getMonth() + i);
-              const m = monthDate.getMonth();
-              const y = monthDate.getFullYear();
-              const monthName = t.months[m];
-              const monthKey = `${y}-${(m + 1).toString().padStart(2, '0')}`;
-              const isPast = i < monthsElapsed;
-              const isCurrent = i === monthsElapsed;
+              {/* Gamified Glowing Progress Bar & Motivational Counter */}
+              <View style={{ gap: 6 }}>
+                <View style={{ height: 8, backgroundColor: colors.surfaceAlt, borderRadius: 4, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}>
+                  <LinearGradient
+                    colors={['#10B981', '#06B6D4']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ width: `${Math.max(4, planProgressPct)}%`, height: '100%', borderRadius: 4 }}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                    {language === 'ar'
+                      ? `الشهر ${currentMonthNumber} من أصل ${totalMonths} شهر 🎯`
+                      : `Month ${currentMonthNumber} of ${totalMonths} mos 🎯`}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+                    {language === 'ar' ? 'اسحب أفقياً لاستعراض الأشهر ➔' : 'Swipe horizontally ➔'}
+                  </Text>
+                </View>
+              </View>
 
-              // Check if custom override exists for this month
-              const customOverride = plan.customMonthlyOverrides?.[monthKey];
-              const plannedInc = customOverride?.income ?? plan.monthlyIncome;
-              const plannedExp = customOverride?.expense ?? plan.monthlyExpense;
-              const plannedSaving = plannedInc - plannedExp;
+              {/* Horizontal Scroll Cards Carousel */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+              >
+                {Array.from({ length: maxDisplayMonths }, (_, i) => {
+                  const monthDate = new Date(created);
+                  monthDate.setMonth(created.getMonth() + i);
+                  const m = monthDate.getMonth();
+                  const y = monthDate.getFullYear();
+                  const monthName = t.months[m];
+                  const monthKey = `${y}-${(m + 1).toString().padStart(2, '0')}`;
+                  const isPast = i < monthsElapsed;
+                  const isCurrent = i === monthsElapsed;
 
-              const monthTx = walletTransactions.filter(tx => {
-                const d = new Date(tx.date);
-                return d.getMonth() === m && d.getFullYear() === y;
-              });
-              const actualMonthIncome = monthTx.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
-              const actualMonthExpense = monthTx.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
-              const actualMonthSaving = actualMonthIncome - actualMonthExpense;
-              const hasActualData = monthTx.length > 0;
-              // Precalculate exact cumulative savings for month i using actuals for past & current months, and planned/overrides for future months
-              const initialWalletBalance = selectedWallet?.initialBalance || 0;
-              let cumulativeSavings = initialWalletBalance;
+                  // Check if custom override exists for this month
+                  const customOverride = plan.customMonthlyOverrides?.[monthKey];
+                  const plannedInc = customOverride?.income ?? plan.monthlyIncome;
+                  const plannedExp = customOverride?.expense ?? plan.monthlyExpense;
+                  const plannedSaving = plannedInc - plannedExp;
 
-              for (let k = 0; k <= i; k++) {
-                const monthDateK = new Date(created);
-                monthDateK.setMonth(created.getMonth() + k);
-                const mK = monthDateK.getMonth();
-                const yK = monthDateK.getFullYear();
-                const monthKeyK = `${yK}-${(mK + 1).toString().padStart(2, '0')}`;
+                  const monthTx = walletTransactions.filter(tx => {
+                    const d = new Date(tx.date);
+                    return d.getMonth() === m && d.getFullYear() === y;
+                  });
+                  const actualMonthIncome = monthTx.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                  const actualMonthExpense = monthTx.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                  const actualMonthSaving = actualMonthIncome - actualMonthExpense;
+                  const hasActualData = monthTx.length > 0;
 
-                const customOverrideK = plan.customMonthlyOverrides?.[monthKeyK];
-                const plannedIncK = customOverrideK?.income ?? plan.monthlyIncome;
-                const plannedExpK = customOverrideK?.expense ?? plan.monthlyExpense;
-                const plannedSavingK = plannedIncK - plannedExpK;
+                  // Cumulative savings
+                  const initialWalletBalance = selectedWallet?.initialBalance || 0;
+                  let cumulativeSavings = initialWalletBalance;
 
-                const monthTxK = walletTransactions.filter(tx => {
-                  const d = new Date(tx.date);
-                  return d.getMonth() === mK && d.getFullYear() === yK;
-                });
-                const hasActualK = monthTxK.length > 0;
+                  for (let k = 0; k <= i; k++) {
+                    const monthDateK = new Date(created);
+                    monthDateK.setMonth(created.getMonth() + k);
+                    const mK = monthDateK.getMonth();
+                    const yK = monthDateK.getFullYear();
+                    const monthKeyK = `${yK}-${(mK + 1).toString().padStart(2, '0')}`;
 
-                if (k <= monthsElapsed) {
-                  if (hasActualK) {
-                    const actualIncK = monthTxK.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
-                    const actualExpK = monthTxK.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
-                    cumulativeSavings += (actualIncK - actualExpK);
-                  } else {
-                    cumulativeSavings += plannedSavingK;
+                    const customOverrideK = plan.customMonthlyOverrides?.[monthKeyK];
+                    const plannedIncK = customOverrideK?.income ?? plan.monthlyIncome;
+                    const plannedExpK = customOverrideK?.expense ?? plan.monthlyExpense;
+                    const plannedSavingK = plannedIncK - plannedExpK;
+
+                    const monthTxK = walletTransactions.filter(tx => {
+                      const d = new Date(tx.date);
+                      return d.getMonth() === mK && d.getFullYear() === yK;
+                    });
+                    const hasActualK = monthTxK.length > 0;
+
+                    if (k <= monthsElapsed) {
+                      if (hasActualK) {
+                        const actualIncK = monthTxK.filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                        const actualExpK = monthTxK.filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id)).reduce((s, tx) => s + tx.amount, 0);
+                        cumulativeSavings += (actualIncK - actualExpK);
+                      } else {
+                        cumulativeSavings += plannedSavingK;
+                      }
+                    } else {
+                      cumulativeSavings += plannedSavingK;
+                    }
                   }
-                } else {
-                  cumulativeSavings += plannedSavingK;
-                }
-              }
 
-              return (
-                <Pressable
-                  key={i}
-                  onPress={() => handleOpenSingleMonthModal(monthKey, `${monthName} ${y}`, plannedInc, plannedExp)}
-                  style={({ pressed }) => [
-                    styles.timelineRow,
-                    {
-                      backgroundColor: isCurrent ? colors.primary + '18' : isPast ? colors.surfaceAlt : colors.surface,
-                      borderColor: isCurrent ? colors.primary : customOverride ? colors.accent : (isPast ? colors.border : colors.border + '60'),
-                      borderWidth: isCurrent || customOverride ? 1.5 : 1,
-                      borderRadius: 16,
-                      padding: 12,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      opacity: pressed ? 0.9 : 1,
-                    },
-                  ]}
-                >
-                  {/* Left Column: Month Indicator & Info */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                    <View
-                      style={[
-                        styles.timelineDot,
+                  return (
+                    <Pressable
+                      key={i}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        handleOpenSingleMonthModal(monthKey, `${monthName} ${y}`, plannedInc, plannedExp);
+                      }}
+                      style={({ pressed }) => [
                         {
-                          width: 26,
-                          height: 26,
-                          borderRadius: 13,
-                          backgroundColor: isPast ? '#10B981' : isCurrent ? colors.primary : colors.surfaceAlt,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderWidth: isCurrent ? 2 : 1,
-                          borderColor: isCurrent ? '#FFF' : colors.border,
+                          width: 220,
+                          backgroundColor: isCurrent ? colors.primary + '18' : isPast ? colors.surfaceAlt + '90' : colors.surfaceAlt + '40',
+                          borderColor: isCurrent ? colors.primary : customOverride ? colors.accent : colors.border,
+                          borderWidth: isCurrent || customOverride ? 1.5 : 1,
+                          borderRadius: 18,
+                          padding: 14,
+                          gap: 10,
+                          justifyContent: 'space-between',
+                          opacity: pressed ? 0.9 : 1,
                         },
                       ]}
                     >
-                      {isPast ? (
-                        <Ionicons name="checkmark" size={14} color="#FFF" />
-                      ) : isCurrent ? (
-                        <Ionicons name="sparkles" size={12} color="#FFF" />
-                      ) : (
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textSecondary }} />
-                      )}
-                    </View>
+                      {/* Top: Month Header & Badge */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 11,
+                              backgroundColor: isPast ? '#10B981' : isCurrent ? colors.primary : colors.surfaceAlt,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {isPast ? (
+                              <Ionicons name="checkmark" size={13} color="#FFF" />
+                            ) : isCurrent ? (
+                              <Ionicons name="sparkles" size={11} color="#FFF" />
+                            ) : (
+                              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: colors.textSecondary }}>{i + 1}</Text>
+                            )}
+                          </View>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: isCurrent ? colors.primary : colors.text }}>
+                            {monthName} {y}
+                          </Text>
+                        </View>
 
-                    <View style={{ gap: 2, flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.timelineMonth, { color: isCurrent ? colors.primary : colors.text, fontFamily: 'Cairo_700Bold', fontSize: 14 }]}>
-                          {monthName} {y}
-                        </Text>
-                        {isCurrent && (
-                          <View style={{ backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: '#FFF' }}>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="create-outline" size={14} color={colors.primary} />
+                        </View>
+                      </View>
+
+                      {/* Status / Override Tag */}
+                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                        {isCurrent ? (
+                          <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#FFF' }}>
                               {language === 'ar' ? 'الشهر الحالي 🟢' : 'Current 🟢'}
+                            </Text>
+                          </View>
+                        ) : isPast ? (
+                          <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
+                              {language === 'ar' ? 'مكتمل ✅' : 'Completed ✅'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                              {language === 'ar' ? `شهر ${i + 1}` : `Month ${i + 1}`}
                             </Text>
                           </View>
                         )}
@@ -2059,55 +2111,44 @@ export default function FinancialPlanScreen() {
                         )}
                       </View>
 
-                      {/* Simplified Clean Savings Summary */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                      {/* Planned & Actual Savings */}
+                      <View style={{ gap: 4, backgroundColor: colors.surface, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
                             {language === 'ar' ? 'المخطط:' : 'Planned:'}
                           </Text>
                           <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: plannedSaving >= 0 ? '#10B981' : '#EF4444' }}>
                             {plannedSaving >= 0 ? '+' : ''}{formatCurrency(plannedSaving)} {sym}
                           </Text>
                         </View>
-
                         {(isPast || isCurrent) && hasActualData && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: actualMonthSaving >= 0 ? '#10B98115' : '#EF444415', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444' }}>
-                              {language === 'ar' ? 'الفعلي:' : 'Actual:'} {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 3 }}>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                              {language === 'ar' ? 'الفعلي:' : 'Actual:'}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444' }}>
+                              {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
                             </Text>
                           </View>
                         )}
                       </View>
-                    </View>
-                  </View>
 
-                  {/* Right Column: High Contrast Cumulative Total Badge & Edit Icon */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ backgroundColor: isCurrent ? colors.primary + '25' : colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: isCurrent ? colors.primary + '50' : colors.border, alignItems: 'flex-end', gap: 2 }}>
-                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
-                        {language === 'ar' ? 'الرصيد التراكمي' : 'Cumulative Total'}
-                      </Text>
-                      <Text style={[styles.timelineTotal, { color: isCurrent ? colors.primary : colors.text, fontFamily: 'Cairo_700Bold', fontSize: 13 }]}>
-                        {formatCurrency(cumulativeSavings)} {sym}
-                      </Text>
-                    </View>
-                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="create-outline" size={16} color={colors.primary} />
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {totalMonths > 12 && (
-            <View style={styles.moreMonths}>
-              <Text style={styles.moreMonthsText}>
-                +{totalMonths - 12} {language === 'ar' ? 'شهر آخر في الخطة الممتدة' : 'more months in long-term plan'}
-              </Text>
+                      {/* Bottom Cumulative Total Box */}
+                      <View style={{ backgroundColor: isCurrent ? colors.primary + '20' : colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: isCurrent ? colors.primary + '40' : colors.border }}>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
+                          {language === 'ar' ? 'الرصيد التراكمي' : 'Cumulative Total'}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: isCurrent ? colors.primary : colors.text }}>
+                          {formatCurrency(cumulativeSavings)} {sym}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-          )}
-        </View>
+          );
+        })()}
       </ScrollView>
     );
   };
