@@ -1691,30 +1691,48 @@ export default function FinancialPlanScreen() {
               <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="stats-chart" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.integrationTitle}>
+              <Text style={styles.integrationTitle} numberOfLines={1}>
                 {language === 'ar' ? 'ملاءة الأصول والأداء الفعلي' : 'Financial Assets & Performance'}
               </Text>
             </View>
           </View>
 
           {/* 3-Pillar Monthly Cash Flow KPI Overview */}
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{t.monthlyIncome}</Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>+{formatCurrency(totalIncome)} {sym}</Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyIncome)}` : `Plan: ${formatCurrency(plan.monthlyIncome)}`}</Text>
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? 'الدخل' : 'Income'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>
+                +{formatCurrency(totalIncome)} {sym}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyIncome)}` : `Plan: ${formatCurrency(plan.monthlyIncome)}`}
+              </Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{t.monthlyExpense}</Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > plan.monthlyExpense ? colors.expense : colors.text }} numberOfLines={1}>-{formatCurrency(totalExpense)} {sym}</Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyExpense)}` : `Plan: ${formatCurrency(plan.monthlyExpense)}`}</Text>
+
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? 'المصاريف' : 'Expenses'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > plan.monthlyExpense ? colors.expense : colors.text }} numberOfLines={1}>
+                -{formatCurrency(totalExpense)} {sym}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyExpense)}` : `Plan: ${formatCurrency(plan.monthlyExpense)}`}
+              </Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 2 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{language === 'ar' ? 'الصافي الشهري' : 'Monthly Net'}</Text>
+
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? 'الصافي' : 'Net'}
+              </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
                 {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)} {sym}
               </Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>{language === 'ar' ? `الهدف: ${formatCurrency(plan.monthlySaving)}` : `Target: ${formatCurrency(plan.monthlySaving)}`}</Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                {language === 'ar' ? `الهدف: ${formatCurrency(plan.monthlySaving)}` : `Target: ${formatCurrency(plan.monthlySaving)}`}
+              </Text>
             </View>
           </View>
 
@@ -3055,6 +3073,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
     color: colors.text,
+    flexShrink: 1,
   },
   integrationRow: {
     flexDirection: 'row',
