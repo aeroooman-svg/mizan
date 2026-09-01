@@ -1,26 +1,52 @@
 -- ============================================================
--- MIZAN: Grant anon role permissions for wallet sharing
+-- MIZAN: Enable Row Level Security (RLS) & Security Policies
 -- Run this in Supabase SQL Editor (Dashboard > SQL Editor > New Query)
 -- ============================================================
 
--- Disable RLS on all tables (safe for this use case since data is public by share code)
-ALTER TABLE public.wallets DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.wallet_shares DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+-- 1. Enable Row Level Security (RLS) on all tables
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallet_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Grant full CRUD permissions to the anon role
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.wallets TO anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.wallet_shares TO anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO anon;
+-- 2. Drop existing policies if any to prevent conflicts
+DROP POLICY IF EXISTS "Allow all operations on wallets" ON public.wallets;
+DROP POLICY IF EXISTS "Allow all operations on transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Allow all operations on wallet_shares" ON public.wallet_shares;
+DROP POLICY IF EXISTS "Allow all operations on users" ON public.users;
 
--- Also grant to authenticated role (for future auth support)
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.wallets TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.transactions TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.wallet_shares TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO authenticated;
+-- 3. Create RLS Policies allowing application access (anon + authenticated)
+CREATE POLICY "Allow all operations on wallets"
+  ON public.wallets
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
--- Grant usage on the public schema
-GRANT USAGE ON SCHEMA public TO anon;
-GRANT USAGE ON SCHEMA public TO authenticated;
+CREATE POLICY "Allow all operations on transactions"
+  ON public.transactions
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on wallet_shares"
+  ON public.wallet_shares
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on users"
+  ON public.users
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- 4. Grant CRUD permissions to anon and authenticated roles
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON TABLE public.wallets TO anon, authenticated;
+GRANT ALL ON TABLE public.transactions TO anon, authenticated;
+GRANT ALL ON TABLE public.wallet_shares TO anon, authenticated;
+GRANT ALL ON TABLE public.users TO anon, authenticated;

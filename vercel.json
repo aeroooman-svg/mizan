@@ -1,6 +1,35 @@
 {
   "buildCommand": "npx expo export -p web && cp privacy-policy.html dist/privacy-policy.html",
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/(.*\\.html|/)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/_expo/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!privacy-policy\\.html).*)",
@@ -8,3 +37,4 @@
     }
   ]
 }
+
