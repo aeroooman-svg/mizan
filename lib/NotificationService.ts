@@ -279,3 +279,111 @@ export async function cancelDebtReminder(debtId: string) {
   }
 }
 
+export async function scheduleInstallmentReminder(
+  planId: string,
+  title: string,
+  monthlyAmount: number,
+  currencySymbol: string,
+  dueDay: number,
+  providerName: string = 'التقسيط'
+) {
+  if (Platform.OS === 'web') return;
+
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) return;
+
+  await cancelInstallmentReminder(planId);
+
+  const now = new Date();
+  let nextDate = new Date(now.getFullYear(), now.getMonth(), dueDay, 10, 0, 0);
+  if (nextDate.getTime() <= now.getTime()) {
+    nextDate = new Date(now.getFullYear(), now.getMonth() + 1, dueDay, 10, 0, 0);
+  }
+
+  const notifTitle = `💳 موعد سداد قسط (${title})`;
+  const notifBody = `تذكير بموعد سداد قسط ${title} بقيمة ${monthlyAmount} ${currencySymbol} عبر ${providerName}.`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: `installment_${planId}`,
+    content: {
+      title: notifTitle,
+      body: notifBody,
+      sound: true,
+      data: { type: 'installment', planId },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: nextDate,
+    } as any,
+  });
+}
+
+export async function cancelInstallmentReminder(planId: string) {
+  if (Platform.OS === 'web') return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(`installment_${planId}`);
+  } catch (e) {
+    console.error('Error canceling installment reminder:', e);
+  }
+}
+
+export async function scheduleJameyaTurnReminder(
+  jameyaId: string,
+  jameyaName: string,
+  monthlyAmount: number,
+  currencySymbol: string,
+  isPayoutMonth: boolean
+) {
+  if (Platform.OS === 'web') return;
+
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) return;
+
+  const title = isPayoutMonth ? '🎉 حان موعد قبض جمعيتك!' : '🤝 موعد دفع قسط الجمعية';
+  const body = isPayoutMonth
+    ? `مبروك! هذا الشهر هو موعد استلام وقبض جمعية (${jameyaName}) المباركة.`
+    : `تذكير بموعد دفع قسط جمعية (${jameyaName}) بقيمة ${monthlyAmount} ${currencySymbol}.`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: `jameya_${jameyaId}`,
+    content: {
+      title,
+      body,
+      sound: true,
+      data: { type: 'jameya', jameyaId },
+    },
+    trigger: null,
+  });
+}
+
+export async function scheduleGoalMilestoneNotification(
+  goalTitle: string,
+  percent: number,
+  language: 'ar' | 'en' = 'ar'
+) {
+  if (Platform.OS === 'web') return;
+
+  const title = language === 'ar' ? '🎯 إنجاز رائع في هدفك المالي!' : '🎯 Great Goal Milestone!';
+  const body = language === 'ar'
+    ? `وصلت إلى ${percent}% من هدفك (${goalTitle})! واصل التقدم لتحقيق طموحك 🚀`
+    : `You reached ${percent}% of your goal (${goalTitle})! Keep going 🚀`;
+
+  await sendImmediateNotification(title, body, { type: 'goal_milestone', goalTitle });
+}
+
+export async function scheduleZakatReminder(
+  nisabAmount: number,
+  currencySymbol: string,
+  language: 'ar' | 'en' = 'ar'
+) {
+  if (Platform.OS === 'web') return;
+
+  const title = language === 'ar' ? '🕌 تنبيه نصاب الزكاة الشرعية' : '🕌 Zakat Nisab Threshold Alert';
+  const body = language === 'ar'
+    ? `بلغت مدخراتك النصاب الشرعي المقدر بـ ${Math.round(nisabAmount)} ${currencySymbol}. تفقد حاسبة الزكاة لحساب مقدار الواجب إخراجه بدقة.`
+    : `Your savings reached the legal Zakat threshold (${Math.round(nisabAmount)} ${currencySymbol}). Check the Zakat calculator to calculate your due.`;
+
+  await sendImmediateNotification(title, body, { type: 'zakat_nisab' });
+}
+
+
