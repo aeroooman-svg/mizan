@@ -30,6 +30,11 @@ import { getDebts, Debt } from '@/lib/debtStorage';
 import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+import { BarChartMonthly } from '@/components/stats/BarChartMonthly';
+import { YearlyOverview } from '@/components/stats/YearlyOverview';
+import { TagBreakdown } from '@/components/stats/TagBreakdown';
+import { DonutChart } from '@/components/stats/DonutChart';
+import { BudgetManagerModal } from '@/components/stats/BudgetManagerModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_SIZE = 180;
@@ -140,10 +145,6 @@ export default function StatsScreen() {
   // Budgets state
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [manageBudgetsVisible, setManageBudgetsVisible] = useState(false);
-  const [editBudgetVisible, setEditBudgetVisible] = useState(false);
-  const [activeCategoryForBudget, setActiveCategoryForBudget] = useState<Category | null>(null);
-  const [budgetLimitInput, setBudgetLimitInput] = useState('');
-  const [cameFromManage, setCameFromManage] = useState(false);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isMonthlyDigestOpen, setIsMonthlyDigestOpen] = useState(false);
 
@@ -719,28 +720,6 @@ export default function StatsScreen() {
     return entries;
   }, [monthlyTransactions, viewType, totalAmount, availableTags]);
 
-  const groupWidth = dailyData.length > 0 ? (BAR_CHART_WIDTH - 20) / dailyData.length : 30;
-  const barWidth = Math.max(3, (groupWidth - 6) / 2);
-
-  const handleSaveBudget = async () => {
-    if (!activeCategoryForBudget || !selectedWallet) return;
-    const limit = parseFloat(budgetLimitInput) || 0;
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (limit > 0) {
-      await setCategoryBudget(selectedWallet.id, activeCategoryForBudget.id, limit);
-    } else {
-      await removeCategoryBudget(selectedWallet.id, activeCategoryForBudget.id);
-    }
-
-    await loadBudgets();
-    setEditBudgetVisible(false);
-    if (cameFromManage) {
-      setManageBudgetsVisible(true);
-      setCameFromManage(false);
-    }
-  };
-
   const allExpenseCategories = useMemo(() => {
     const userCats = customCategories.filter(c => c.type === 'expense');
     return [...expenseCategories, ...userCats];
@@ -1072,192 +1051,19 @@ export default function StatsScreen() {
 
         {/* YEARLY ZOOM OUT VIEW */}
         {scope === 'yearly' ? (
-          <View style={{ marginHorizontal: 20, marginTop: 12, gap: 16 }}>
-            {/* Yearly Totals Overview Cards */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              <View style={{ flex: 1, minWidth: '45%', backgroundColor: colors.surface, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                  <Ionicons name="arrow-down-circle" size={15} color={colors.income} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'إجمالي دخل السنة' : 'Yearly Income'}
-                  </Text>
-                </View>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.income }} numberOfLines={1} adjustsFontSizeToFit>
-                  +{formatCurrency(yearlyTotals.totalIncome)} {currencySymbol}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1, minWidth: '45%', backgroundColor: colors.surface, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                  <Ionicons name="arrow-up-circle" size={15} color={colors.expense} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'إجمالي مصاريف السنة' : 'Yearly Expense'}
-                  </Text>
-                </View>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.expense }} numberOfLines={1} adjustsFontSizeToFit>
-                  -{formatCurrency(yearlyTotals.totalExpense)} {currencySymbol}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1, minWidth: '45%', backgroundColor: colors.surface, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                  <Ionicons name="wallet-outline" size={15} color={colors.primary} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'صافي الادخار السنوي' : 'Net Yearly Savings'}
-                  </Text>
-                </View>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: yearlyTotals.totalSavings >= 0 ? colors.primary : colors.expense }} numberOfLines={1} adjustsFontSizeToFit>
-                  {formatCurrency(yearlyTotals.totalSavings)} {currencySymbol}
-                </Text>
-              </View>
-
-              <View style={{ flex: 1, minWidth: '45%', backgroundColor: colors.surface, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                  <Ionicons name="pie-chart-outline" size={15} color={colors.accent} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'معدل الادخار السنوي' : 'Savings Rate'}
-                  </Text>
-                </View>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: yearlyTotals.totalSavings >= 0 ? colors.accent : colors.expense }} numberOfLines={1} adjustsFontSizeToFit>
-                  {yearlyTotals.totalIncome > 0 ? `${yearlyTotals.savingsRate}%` : '0%'}
-                </Text>
-              </View>
-            </View>
-
-            {/* 12-Month Yearly Visualizer Bar Chart */}
-            <View style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                  {language === 'ar' ? '📊 مقارنة 12 شهراً للسنة' : '📊 12-Month Yearly Comparison'}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.income }} />
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'دخل' : 'Inc'}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.expense }} />
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'منصرف' : 'Exp'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Bars Display */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 160, gap: 12, paddingTop: 20, paddingBottom: 6 }}>
-                  {yearlyMonthsData.map((m) => {
-                    const incHeight = yearlyTotals.maxVal > 0 ? Math.max(4, Math.round((m.income / yearlyTotals.maxVal) * 110)) : 4;
-                    const expHeight = yearlyTotals.maxVal > 0 ? Math.max(4, Math.round((m.expense / yearlyTotals.maxVal) * 110)) : 4;
-                    const isSelectedMonth = m.monthIndex === currentMonth;
-
-                    return (
-                      <Pressable
-                        key={m.monthIndex}
-                        onPress={() => {
-                          Haptics.selectionAsync();
-                          setViewMonth(m.monthIndex);
-                          setScope('monthly');
-                        }}
-                        style={{ width: 44, alignItems: 'center', gap: 6 }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 110 }}>
-                          <View style={{ width: 9, height: incHeight, backgroundColor: colors.income, borderRadius: 4 }} />
-                          <View style={{ width: 9, height: expHeight, backgroundColor: colors.expense, borderRadius: 4 }} />
-                        </View>
-                        <View style={{ paddingHorizontal: 4, paddingVertical: 2, borderRadius: 6, backgroundColor: isSelectedMonth ? colors.primary + '20' : 'transparent' }}>
-                          <Text style={{ fontFamily: isSelectedMonth ? 'Cairo_700Bold' : 'Cairo_600SemiBold', fontSize: 10, color: isSelectedMonth ? colors.primary : colors.textSecondary }}>
-                            {language === 'ar' 
-                              ? ['ينا', 'فبر', 'مار', 'أبر', 'ماي', 'يون', 'يول', 'أغس', 'سبت', 'أكت', 'نوف', 'ديس'][m.monthIndex]
-                              : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m.monthIndex]}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* 12-Month Detailed Breakdown List */}
-            <View style={{ gap: 10 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                {language === 'ar' ? '📑 كشف حساب كل شهر بالسنة' : '📑 Monthly Breakdown List'}
-              </Text>
-
-              {yearlyMonthsData.map((m) => (
-                <Pressable
-                  key={m.monthIndex}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setViewMonth(m.monthIndex);
-                    setScope('monthly');
-                  }}
-                  style={({ pressed }) => [
-                    { backgroundColor: colors.surface, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, gap: 8 },
-                    pressed && { opacity: 0.9 }
-                  ]}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                      </View>
-                      <View style={{ alignItems: 'flex-start' }}>
-                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-                          {m.monthName} {currentYear}
-                        </Text>
-                        <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                          {language === 'ar' ? `${m.txCount} معاملة مسجلة` : `${m.txCount} transactions`}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                      <Ionicons name="search-outline" size={12} color={colors.primary} />
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                        {language === 'ar' ? 'تفصيل (Zoom In)' : 'Zoom In'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ height: 1, backgroundColor: colors.borderLight }} />
-
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ alignItems: 'flex-start' }}>
-                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                        {language === 'ar' ? 'الدخل' : 'Income'}
-                      </Text>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.income }}>
-                        +{formatCurrency(m.income)} {currencySymbol}
-                      </Text>
-                    </View>
-
-                    <View style={{ alignItems: 'flex-start' }}>
-                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                        {language === 'ar' ? 'المصروف' : 'Expense'}
-                      </Text>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.expense }}>
-                        -{formatCurrency(m.expense)} {currencySymbol}
-                      </Text>
-                    </View>
-
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                        {language === 'ar' ? 'الادخار الصافي' : 'Net Saved'}
-                      </Text>
-                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: m.savings >= 0 ? colors.primary : colors.expense }}>
-                        {formatCurrency(m.savings)} {currencySymbol}
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          <YearlyOverview
+            yearlyTotals={yearlyTotals}
+            yearlyMonthsData={yearlyMonthsData}
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            currencySymbol={currencySymbol}
+            language={language}
+            colors={colors}
+            onSelectMonth={(monthIndex) => {
+              setViewMonth(monthIndex);
+              setScope('monthly');
+            }}
+          />
         ) : null}
 
         {/* MONTHLY ZOOM IN VIEW */}
@@ -1411,248 +1217,34 @@ export default function StatsScreen() {
               )}
             </View>
 
-        {/* Main Chart Section */}
-        {categoryStats.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="analytics-outline" size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyTitle}>{t.noData}</Text>
-            <Text style={styles.emptySubtitle}>{t.addTransactionsForStats}</Text>
-          </View>
-        ) : (
-          <View style={styles.donutSection}>
-            <View style={styles.donutCard}>
-              {Platform.OS === 'ios' && (
-                <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-              )}
-              <View style={styles.chartContainer}>
-                <Svg width={CHART_SIZE} height={CHART_SIZE}>
-                  <Circle
-                    cx={CHART_SIZE / 2}
-                    cy={CHART_SIZE / 2}
-                    r={RADIUS}
-                    fill="none"
-                    stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
-                    strokeWidth={STROKE_WIDTH}
-                  />
-                  {(() => {
-                    let accumulatedOffset = 0;
-                    return categoryStatsWithColors.map((stat) => {
-                      const segmentLength = (stat.percentage / 100) * CIRCUMFERENCE;
-                      const offset = accumulatedOffset;
-                      accumulatedOffset += segmentLength;
-                      return (
-                        <Circle
-                          key={stat.category.id}
-                          cx={CHART_SIZE / 2}
-                          cy={CHART_SIZE / 2}
-                          r={RADIUS}
-                          fill="none"
-                          stroke={stat.displayColor}
-                          strokeWidth={STROKE_WIDTH}
-                          strokeDasharray={`${Math.max(1, segmentLength - 2)} ${CIRCUMFERENCE - Math.max(1, segmentLength - 2)}`}
-                          strokeDashoffset={-offset}
-                          strokeLinecap="round"
-                          transform={`rotate(-90 ${CHART_SIZE / 2} ${CHART_SIZE / 2})`}
-                        />
-                      );
-                    });
-                  })()}
-                </Svg>
-                <View style={styles.chartCenter}>
-                  <Text style={[styles.chartTotal, { fontFamily: 'Cairo_700Bold' }]}>{formatCurrency(totalAmount)}</Text>
-                  <Text style={[styles.chartLabel, { color: colors.textSecondary }]}>{currencySymbol}</Text>
-                </View>
-              </View>
+        {/* Donut Chart & Category Breakdown */}
+        <DonutChart
+          categoryStatsWithColors={categoryStatsWithColors}
+          totalAmount={totalAmount}
+          currencySymbol={currencySymbol}
+          language={language}
+          colors={colors}
+          theme={theme}
+          t={t}
+          budgets={budgets}
+        />
 
-              {/* Distinct Category Color Legend Badges Grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-                {categoryStatsWithColors.map(stat => (
-                  <View
-                    key={stat.category.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      backgroundColor: stat.displayColor + '15',
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      borderColor: stat.displayColor + '30',
-                    }}
-                  >
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stat.displayColor }} />
-                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }}>
-                      {getCategoryName(stat.category.id, language)} ({Math.round(stat.percentage)}%)
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Categories Breakdown details list */}
-            <View style={styles.categoriesSection}>
-              <Text style={styles.sectionTitle}>{t.details}</Text>
-              <View style={styles.categoriesList}>
-                {categoryStatsWithColors.map((stat) => {
-                  const budgetLimit = budgets[stat.category.id] || 0;
-                  const hasBudget = budgetLimit > 0;
-                  const isOverBudget = hasBudget && stat.total > budgetLimit;
-
-                  return (
-                    <View key={stat.category.id} style={styles.premiumCategoryCard}>
-                      <View style={styles.categoryRowTop}>
-                        <View style={[styles.catIconWrap, { backgroundColor: stat.displayColor + '18' }]}>
-                          <MaterialIcons name={stat.category.icon as any} size={18} color={stat.displayColor} />
-                        </View>
-                        <View style={{ flex: 1, paddingHorizontal: 4 }}>
-                          <Text style={styles.categoryName} numberOfLines={1}>{getCategoryName(stat.category.id, language)}</Text>
-                          <Text style={[styles.categoryPercent, { color: stat.displayColor, fontFamily: 'Cairo_700Bold' }]}>{Math.round(stat.percentage)}%</Text>
-                        </View>
-                        <Text style={styles.categoryAmount}>{formatCurrency(stat.total)} {currencySymbol}</Text>
-                      </View>
-                      <View style={styles.categoryBarBg}>
-                        <View
-                          style={[styles.categoryBarFill, {
-                            width: `${stat.percentage}%`,
-                            backgroundColor: stat.displayColor,
-                          }]}
-                        />
-                      </View>
-                      {hasBudget && (
-                        <View style={styles.budgetStatusRow}>
-                          <View style={{ flex: 1 }}>
-                            <View style={styles.budgetProgressBgSmall}>
-                              <View 
-                                style={[
-                                  styles.budgetProgressFillSmall, 
-                                  { 
-                                    width: `${Math.min(100, (stat.total / budgetLimit) * 100)}%`,
-                                    backgroundColor: isOverBudget ? colors.expense : colors.primary
-                                  }
-                                ]} 
-                              />
-                            </View>
-                          </View>
-                          <Text style={[styles.budgetStatusText, isOverBudget && { color: colors.expense, fontFamily: 'Cairo_700Bold' }]}>
-                            {isOverBudget 
-                              ? (language === 'ar' ? '⚠️ تجاوزت الحد!' : '⚠️ Over limit!')
-                              : (language === 'ar' ? `ميزانية: ${formatCurrency(budgetLimit)}` : `Budget: ${formatCurrency(budgetLimit)}`)}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Smart Tags Analytics Section */}
-            {tagStats.length > 0 && (
-              <View style={[styles.categoriesSection, { marginTop: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <Ionicons name="pricetags" size={18} color={colors.accent} />
-                  <Text style={styles.sectionTitle}>
-                    {language === 'ar' ? 'الإنفاق حسب الوسوم الذكية (Tags)' : 'Spending by Smart Tags'}
-                  </Text>
-                </View>
-                <View style={styles.categoriesList}>
-                  {tagStats.map(stat => {
-                    const tagColor = stat.tagObj?.color || colors.primary;
-                    const tagName = stat.tagObj ? (language === 'ar' ? stat.tagObj.nameAr : stat.tagObj.nameEn) : `#${stat.tagId}`;
-                    return (
-                      <View key={stat.tagId} style={styles.premiumCategoryCard}>
-                        <View style={styles.categoryRowTop}>
-                          <View style={[styles.catIconWrap, { backgroundColor: tagColor + '18' }]}>
-                            <Ionicons name="pricetag" size={16} color={tagColor} />
-                          </View>
-                          <View style={{ flex: 1, paddingHorizontal: 4 }}>
-                            <Text style={styles.categoryName} numberOfLines={1}>{tagName}</Text>
-                            <Text style={[styles.categoryPercent, { color: tagColor, fontFamily: 'Cairo_700Bold' }]}>
-                              {Math.round(stat.percentage)}%
-                            </Text>
-                          </View>
-                          <Text style={styles.categoryAmount}>
-                            {formatCurrency(stat.amount)} {currencySymbol}
-                          </Text>
-                        </View>
-                        <View style={styles.categoryBarBg}>
-                          <View
-                            style={[styles.categoryBarFill, {
-                              width: `${Math.min(100, Math.max(2, stat.percentage))}%`,
-                              backgroundColor: tagColor,
-                            }]}
-                          />
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
+        {/* Smart Tags Analytics Section */}
+        <TagBreakdown
+          tagStats={tagStats}
+          currencySymbol={currencySymbol}
+          language={language}
+          colors={colors}
+        />
 
         {/* Daily Spending Bar Chart Section */}
-        {dailyData.length > 0 && monthlyTransactions.length > 0 && (
-          <View style={styles.barChartSection}>
-            <Text style={styles.sectionTitle}>{t.dailySpending}</Text>
-            <View style={styles.barChartLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
-                <Text style={styles.legendText}>{t.incomeType}</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
-                <Text style={styles.legendText}>{t.expenses}</Text>
-              </View>
-            </View>
-            <View style={styles.barChartCard}>
-              {Platform.OS === 'ios' && (
-                <BlurView intensity={theme === 'dark' ? 15 : 40} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-              )}
-              <Svg width={BAR_CHART_WIDTH} height={BAR_CHART_HEIGHT + 35}>
-                {dailyData.map((d, i) => {
-                  const x = i * groupWidth + 12;
-                  const incomeH = (d.income / maxDailyValue) * BAR_CHART_HEIGHT;
-                  const expenseH = (d.expense / maxDailyValue) * BAR_CHART_HEIGHT;
-                  return (
-                    <React.Fragment key={d.day}>
-                      <Rect
-                        x={x}
-                        y={BAR_CHART_HEIGHT - incomeH}
-                        width={barWidth}
-                        height={Math.max(incomeH, 3)}
-                        rx={barWidth / 2}
-                        fill={colors.income}
-                        opacity={0.85}
-                      />
-                      <Rect
-                        x={x + barWidth + 3}
-                        y={BAR_CHART_HEIGHT - expenseH}
-                        width={barWidth}
-                        height={Math.max(expenseH, 3)}
-                        rx={barWidth / 2}
-                        fill={colors.expense}
-                        opacity={0.85}
-                      />
-                      <SvgText
-                        x={x + barWidth + 1.5}
-                        y={BAR_CHART_HEIGHT + 22}
-                        fontSize={9}
-                        fontFamily="Cairo_600SemiBold"
-                        fill={colors.textSecondary}
-                        textAnchor="middle"
-                      >
-                        {d.day}
-                      </SvgText>
-                    </React.Fragment>
-                  );
-                })}
-              </Svg>
-            </View>
-          </View>
-        )}
+        <BarChartMonthly
+          dailyData={dailyData}
+          maxDailyValue={maxDailyValue}
+          colors={colors}
+          theme={theme}
+          t={t}
+        />
         </>
         )}
 
@@ -1713,9 +1305,7 @@ export default function StatsScreen() {
                         <Pressable
                           onPress={() => {
                             Haptics.selectionAsync();
-                            setActiveCategoryForBudget(cat);
-                            setBudgetLimitInput(limit.toString());
-                            setEditBudgetVisible(true);
+                            setManageBudgetsVisible(true);
                           }}
                           hitSlop={12}
                         >
@@ -1754,96 +1344,26 @@ export default function StatsScreen() {
       </ScrollView>
 
       {/* Manage Budgets Modal */}
-      <Modal visible={manageBudgetsVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <SafeAreaView style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Pressable onPress={() => setManageBudgetsVisible(false)} hitSlop={12} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-              <Text style={styles.modalTitle}>{t.setBudget}</Text>
-              <View style={{ width: 40 }} />
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.budgetsList}>
-              {allExpenseCategories.map(cat => {
-                const limit = budgets[cat.id] || 0;
-                return (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setActiveCategoryForBudget(cat);
-                      setBudgetLimitInput(limit > 0 ? limit.toString() : '');
-                      setCameFromManage(true);
-                      setManageBudgetsVisible(false);
-                      setTimeout(() => {
-                        setEditBudgetVisible(true);
-                      }, 120);
-                    }}
-                    style={({ pressed }) => [styles.budgetListItem, pressed && styles.pressedItem]}
-                  >
-                    <View style={[styles.catIcon, { backgroundColor: cat.color + '18' }]}>
-                      <MaterialIcons name={cat.icon as any} size={20} color={cat.color} />
-                    </View>
-                    <Text style={styles.budgetCatName}>{getCategoryName(cat.id, language)}</Text>
-                    <View style={styles.budgetLimitValueContainer}>
-                      <Text style={styles.budgetLimitValue}>
-                        {limit > 0 ? `${formatCurrency(limit)} ${currencySymbol}` : t.noBudget}
-                      </Text>
-                      <MaterialIcons name={language === 'ar' ? "chevron-left" : "chevron-right"} size={20} color={colors.textTertiary} />
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
-
-      {/* Edit Single Budget Sub-Modal */}
-      <Modal visible={editBudgetVisible} animationType="fade" transparent>
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.editBudgetCard}>
-            <Text style={styles.editBudgetTitle}>
-              {activeCategoryForBudget ? getCategoryName(activeCategoryForBudget.id, language) : ''}
-            </Text>
-            <Text style={styles.editBudgetSubtitle}>{t.budgetLimit} ({currencySymbol})</Text>
-
-            <TextInput
-              style={styles.budgetInput}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={colors.textTertiary}
-              value={budgetLimitInput}
-              onChangeText={setBudgetLimitInput}
-              autoFocus
-              textAlign="center"
-            />
-
-            <View style={styles.modalActionRow}>
-              <Pressable
-                onPress={() => {
-                  setEditBudgetVisible(false);
-                  if (cameFromManage) {
-                    setManageBudgetsVisible(true);
-                    setCameFromManage(false);
-                  }
-                }}
-                style={[styles.modalActionBtn, styles.modalActionCancel]}
-              >
-                <Text style={styles.modalActionCancelText}>{t.cancel}</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSaveBudget}
-                style={[styles.modalActionBtn, styles.modalActionSave, { backgroundColor: activeCategoryForBudget?.color || colors.primary }]}
-              >
-                <Text style={styles.modalActionSaveText}>{t.save}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <BudgetManagerModal
+        visible={manageBudgetsVisible}
+        onClose={() => setManageBudgetsVisible(false)}
+        allExpenseCategories={allExpenseCategories}
+        budgets={budgets}
+        currencySymbol={currencySymbol}
+        language={language}
+        colors={colors}
+        t={t}
+        onSaveBudget={async (cat, limit) => {
+          if (!selectedWallet) return;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (limit > 0) {
+            await setCategoryBudget(selectedWallet.id, cat.id, limit);
+          } else {
+            await removeCategoryBudget(selectedWallet.id, cat.id);
+          }
+          await loadBudgets();
+        }}
+      />
 
       {/* Detailed Net Worth & Solvency Interactive Modal */}
       <Modal visible={netWorthModalVisible} animationType="slide" transparent onRequestClose={() => setNetWorthModalVisible(false)}>

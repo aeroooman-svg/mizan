@@ -7,6 +7,9 @@ import {
   Dimensions,
   ScrollView,
   StatusBar,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,19 +19,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useTransactions } from '@/lib/TransactionContext';
+import { CurrencyCode, CURRENCIES } from '@/lib/storage';
+import { normalizeAmountInput } from '@/lib/arabicNumbers';
+import { scheduleWeeklyDigestNotification, scheduleDailyReminder } from '@/lib/NotificationService';
 
 const { width } = Dimensions.get('window');
+
+type OnboardingStep = 'slides' | 'goal' | 'currency' | 'income';
+
+const CURRENCY_OPTIONS: { code: CurrencyCode; flag: string; nameAr: string; nameEn: string }[] = [
+  { code: 'EGP', flag: '🇪🇬', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound' },
+  { code: 'SAR', flag: '🇸🇦', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal' },
+  { code: 'AED', flag: '🇦🇪', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham' },
+  { code: 'KWD', flag: '🇰🇼', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar' },
+  { code: 'USD', flag: '🇺🇸', nameAr: 'دولار أمريكي', nameEn: 'US Dollar' },
+  { code: 'EUR', flag: '🇪🇺', nameAr: 'يورو', nameEn: 'Euro' },
+  { code: 'GBP', flag: '🇬🇧', nameAr: 'جنيه إسترليني', nameEn: 'British Pound' },
+  { code: 'QAR', flag: '🇶🇦', nameAr: 'ريال قطري', nameEn: 'Qatari Riyal' },
+  { code: 'BHD', flag: '🇧🇭', nameAr: 'دينار بحريني', nameEn: 'Bahraini Dinar' },
+  { code: 'OMR', flag: '🇴🇲', nameAr: 'ريال عماني', nameEn: 'Omani Rial' },
+];
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { language, setLanguage } = useLanguage();
-  const { wallets } = useTransactions();
+  const { wallets, addWallet } = useTransactions();
   const isAr = language === 'ar';
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
-  const [showGoalStep, setShowGoalStep] = useState(false);
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('slides');
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('EGP');
+  const [monthlyIncomeInput, setMonthlyIncomeInput] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const slides = [
@@ -85,6 +108,10 @@ export default function OnboardingScreen() {
     },
   ];
 
+  // Step indicator: slides(1) → goal(2) → currency(3) → income(4)
+  const stepNumber = currentStep === 'slides' ? 1 : currentStep === 'goal' ? 2 : currentStep === 'currency' ? 3 : 4;
+  const totalSteps = 4;
+
   const handleGoToSlide = (index: number) => {
     Haptics.selectionAsync().catch(() => {});
     setActiveIndex(index);
@@ -98,8 +125,18 @@ export default function OnboardingScreen() {
       setActiveIndex(nextIndex);
       scrollViewRef.current?.scrollTo({ x: nextIndex * width, animated: true });
     } else {
-      setShowGoalStep(true);
+      setCurrentStep('goal');
     }
+  };
+
+  const handleGoalNext = () => {
+    Haptics.selectionAsync().catch(() => {});
+    setCurrentStep('currency');
+  };
+
+  const handleCurrencyNext = () => {
+    Haptics.selectionAsync().catch(() => {});
+    setCurrentStep('income');
   };
 
   const handleToggleLanguage = async () => {
@@ -115,6 +152,12 @@ export default function OnboardingScreen() {
       const goalToSave = selectedGoal || 'saving';
       await AsyncStorage.setItem('@mizan_user_goal', goalToSave);
 
+      // Save monthly income for smart advisor
+      const incomeValue = parseFloat(normalizeAmountInput(monthlyIncomeInput)) || 0;
+      if (incomeValue > 0) {
+        await AsyncStorage.setItem('@mizan_monthly_income', String(incomeValue));
+      }
+
       const targetWalletId = wallets.length > 0 ? wallets[0].id : undefined;
       const nowStr = new Date().toISOString();
 
@@ -128,7 +171,7 @@ export default function OnboardingScreen() {
               id: String(Date.now()),
               walletId: targetWalletId,
               name: isAr ? '🎯 صندوق الطوارئ والادخار' : '🎯 Emergency Savings Fund',
-              targetAmount: 1000,
+              targetAmount: incomeValue > 0 ? Math.round(incomeValue * 3) : 1000,
               savedAmount: 0,
               deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
               createdAt: nowStr,
@@ -159,29 +202,39 @@ export default function OnboardingScreen() {
           const { getFinancialPlan, saveFinancialPlan } = await import('@/lib/planStorage');
           const currentPlan = await getFinancialPlan(targetWalletId);
           if (!currentPlan) {
+            const mi = incomeValue > 0 ? incomeValue : 1000;
+            const me = Math.round(mi * 0.7);
+            const ms = Math.round(mi * 0.3);
+            const currInfo = CURRENCIES.find(c => c.code === selectedCurrency);
             await saveFinancialPlan({
               id: String(Date.now()),
               walletId: targetWalletId,
               goalName: isAr ? '📊 تنظيم وتتبع المصاريف (Kakeibo)' : '📊 Kakeibo Budget Organizer Plan',
               durationMonths: 12,
-              monthlyIncome: 1000,
-              monthlyExpense: 700,
-              monthlySaving: 300,
-              savingsGoal: 3600,
-              currency: wallets[0].currency || 'USD',
-              currencySymbol: 'ج.م',
+              monthlyIncome: mi,
+              monthlyExpense: me,
+              monthlySaving: ms,
+              savingsGoal: ms * 12,
+              currency: selectedCurrency,
+              currencySymbol: currInfo?.symbol || 'ج.م',
               createdAt: nowStr,
               isKakeiboEnabled: true,
               kakeiboBudgets: {
-                survival: 350, // Needs 50%
-                wants: 210,    // Wants 30%
-                culture: 70,   // Culture 10%
-                extra: 70,     // Extra 10%
+                survival: Math.round(me * 0.5),
+                wants: Math.round(me * 0.3),
+                culture: Math.round(me * 0.1),
+                extra: Math.round(me * 0.1),
               },
             });
           }
         }
       }
+
+      // Schedule smart notifications
+      try {
+        await scheduleDailyReminder(21, 0);
+        await scheduleWeeklyDigestNotification();
+      } catch {}
     } catch (e) {
       console.error('Error completing onboarding setup:', e);
     }
@@ -192,6 +245,9 @@ export default function OnboardingScreen() {
       router.replace('/(tabs)');
     }
   };
+
+  // Get currency symbol for display
+  const selectedCurrencyInfo = CURRENCY_OPTIONS.find(c => c.code === selectedCurrency);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -220,9 +276,9 @@ export default function OnboardingScreen() {
           </Pressable>
 
           {/* Skip Button */}
-          {!showGoalStep && (
+          {currentStep === 'slides' && (
             <Pressable
-              onPress={() => setShowGoalStep(true)}
+              onPress={() => setCurrentStep('goal')}
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
             >
               <Text style={[styles.skipText, { color: colors.textSecondary }]}>
@@ -233,9 +289,26 @@ export default function OnboardingScreen() {
         </View>
       </View>
 
-      {!showGoalStep ? (
+      {/* Step Progress Indicator */}
+      {currentStep !== 'slides' && (
+        <View style={styles.stepIndicator}>
+          {[1, 2, 3, 4].map(s => (
+            <View
+              key={s}
+              style={[
+                styles.stepDot,
+                s <= stepNumber
+                  ? { backgroundColor: colors.primary, flex: s === stepNumber ? 2 : 1 }
+                  : { backgroundColor: colors.border, flex: 1 },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+
+      {/* STEP 1: Feature Slides */}
+      {currentStep === 'slides' && (
         <>
-          {/* Swipeable ScrollView */}
           <ScrollView
             ref={scrollViewRef}
             horizontal
@@ -266,17 +339,13 @@ export default function OnboardingScreen() {
             ))}
           </ScrollView>
 
-          {/* Pagination Indicators & Next Button */}
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 20 }]}>
             <View style={styles.dotsContainer}>
               {slides.map((_, i) => (
                 <Pressable
                   key={i}
                   onPress={() => handleGoToSlide(i)}
-                  style={({ pressed }) => [
-                    styles.dotTouch,
-                    pressed && { opacity: 0.7 },
-                  ]}
+                  style={({ pressed }) => [styles.dotTouch, pressed && { opacity: 0.7 }]}
                 >
                   <View
                     style={[
@@ -311,14 +380,13 @@ export default function OnboardingScreen() {
             </Pressable>
           </View>
         </>
-      ) : (
-        /* Financial Goal Picker Step */
+      )}
+
+      {/* STEP 2: Goal Picker */}
+      {currentStep === 'goal' && (
         <ScrollView
           style={styles.goalScrollView}
-          contentContainerStyle={[
-            styles.goalStepContent,
-            { paddingBottom: Math.max(insets.bottom, 20) + 24 },
-          ]}
+          contentContainerStyle={[styles.goalStepContent, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
@@ -363,7 +431,7 @@ export default function OnboardingScreen() {
           </View>
 
           <Pressable
-            onPress={handleCompleteOnboarding}
+            onPress={handleGoalNext}
             style={({ pressed }) => [
               styles.primaryBtn,
               { backgroundColor: colors.primary, width: '100%', marginTop: 24 },
@@ -371,10 +439,174 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.primaryBtnText}>
-              {isAr ? 'ابدأ استخدام ميزان الآن 🚀' : 'Get Started with Mizan 🚀'}
+              {isAr ? 'التالي' : 'Next'}
             </Text>
+            <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
           </Pressable>
         </ScrollView>
+      )}
+
+      {/* STEP 3: Currency Picker */}
+      {currentStep === 'currency' && (
+        <ScrollView
+          style={styles.goalScrollView}
+          contentContainerStyle={[styles.goalStepContent, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          <View style={styles.goalTopSection}>
+            <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
+              {isAr ? '💰 اختر عملتك الأساسية' : '💰 Choose Your Main Currency'}
+            </Text>
+            <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
+              {isAr
+                ? 'سيتم إنشاء محفظتك الأولى بهذه العملة. يمكنك إضافة محافظ بعملات أخرى لاحقاً.'
+                : 'Your first wallet will use this currency. You can add more wallets with different currencies later.'}
+            </Text>
+
+            <View style={styles.currencyGrid}>
+              {CURRENCY_OPTIONS.map((curr) => {
+                const isSelected = selectedCurrency === curr.code;
+                return (
+                  <Pressable
+                    key={curr.code}
+                    onPress={() => {
+                      Haptics.selectionAsync().catch(() => {});
+                      setSelectedCurrency(curr.code);
+                    }}
+                    style={[
+                      styles.currencyCard,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                    ]}
+                  >
+                    <Text style={styles.currencyFlag}>{curr.flag}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.currencyCode, { color: colors.text }]}>{curr.code}</Text>
+                      <Text style={[styles.currencyName, { color: colors.textSecondary }]}>
+                        {isAr ? curr.nameAr : curr.nameEn}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <Pressable
+            onPress={handleCurrencyNext}
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              { backgroundColor: colors.primary, width: '100%', marginTop: 24 },
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <Text style={styles.primaryBtnText}>
+              {isAr ? 'التالي' : 'Next'}
+            </Text>
+            <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
+          </Pressable>
+        </ScrollView>
+      )}
+
+      {/* STEP 4: Monthly Income (Optional) */}
+      {currentStep === 'income' && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            style={styles.goalScrollView}
+            contentContainerStyle={[styles.goalStepContent, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.goalTopSection}>
+              <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
+                {isAr ? '📊 كم دخلك الشهري تقريباً؟' : '📊 What\'s your approximate monthly income?'}
+              </Text>
+              <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
+                {isAr
+                  ? 'هذا يساعدنا في إعداد ميزانية مخصصة ونصائح مالية ذكية. (اختياري — يمكنك تخطي هذه الخطوة)'
+                  : 'This helps us set up personalized budgets and smart financial advice. (Optional — you can skip this step)'}
+              </Text>
+
+              <View style={styles.incomeInputContainer}>
+                <View style={[styles.incomeInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[styles.incomeSymbol, { color: colors.primary }]}>
+                    {selectedCurrencyInfo?.flag} {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
+                  </Text>
+                  <TextInput
+                    value={monthlyIncomeInput}
+                    onChangeText={(text) => setMonthlyIncomeInput(normalizeAmountInput(text))}
+                    placeholder={isAr ? 'مثلاً: 5000' : 'e.g. 5000'}
+                    placeholderTextColor={colors.textSecondary + '80'}
+                    keyboardType="numeric"
+                    style={[styles.incomeInput, { color: colors.text }]}
+                    maxLength={10}
+                  />
+                </View>
+
+                {/* Quick amount suggestions */}
+                <View style={styles.quickAmounts}>
+                  {[3000, 5000, 10000, 20000].map(amount => (
+                    <Pressable
+                      key={amount}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => {});
+                        setMonthlyIncomeInput(String(amount));
+                      }}
+                      style={[
+                        styles.quickAmountBtn,
+                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                        monthlyIncomeInput === String(amount) && { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+                      ]}
+                    >
+                      <Text style={[styles.quickAmountText, { color: colors.text }]}>
+                        {amount.toLocaleString()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={{ gap: 12, width: '100%' }}>
+              <Pressable
+                onPress={handleCompleteOnboarding}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: colors.primary, width: '100%' },
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+                ]}
+              >
+                <Text style={styles.primaryBtnText}>
+                  {isAr ? 'ابدأ استخدام ميزان الآن 🚀' : 'Get Started with Mizan 🚀'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setMonthlyIncomeInput('');
+                  handleCompleteOnboarding();
+                }}
+                style={({ pressed }) => [
+                  styles.skipBtn,
+                  { alignSelf: 'center', paddingVertical: 8 },
+                  pressed && { opacity: 0.6 },
+                ]}
+              >
+                <Text style={[styles.skipText, { color: colors.textSecondary, fontSize: 14 }]}>
+                  {isAr ? 'تخطي هذه الخطوة' : 'Skip this step'}
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );
@@ -425,6 +657,16 @@ const styles = StyleSheet.create({
   skipText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 14,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 6,
+    marginBottom: 8,
+  },
+  stepDot: {
+    height: 4,
+    borderRadius: 2,
   },
   scrollContainer: {
     flex: 1,
@@ -528,5 +770,68 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     flex: 1,
     marginRight: 10,
+  },
+  // Currency Picker styles
+  currencyGrid: {
+    gap: 10,
+  },
+  currencyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  currencyFlag: {
+    fontSize: 28,
+  },
+  currencyCode: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+  },
+  currencyName: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+  },
+  // Income Input styles
+  incomeInputContainer: {
+    gap: 20,
+    marginTop: 8,
+  },
+  incomeInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    height: 64,
+    gap: 12,
+  },
+  incomeSymbol: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 18,
+  },
+  incomeInput: {
+    flex: 1,
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 28,
+    textAlign: 'left',
+  },
+  quickAmounts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickAmountBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  quickAmountText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 14,
   },
 });

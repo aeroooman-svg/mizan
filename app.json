@@ -32,6 +32,12 @@
         "USE_FINGERPRINT",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#090E17",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -67,7 +73,8 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false
         }
-      ]
+      ],
+      "./plugins/withRemoveAudioForegroundServices"
     ],
     "experiments": {
       "typedRoutes": true

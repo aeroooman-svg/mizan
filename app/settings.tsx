@@ -133,6 +133,24 @@ export default function SettingsScreen() {
     setNotifSettings(updated);
   };
 
+  const handleToggleWeeklyDigest = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ weeklyDigestEnabled: val });
+    setNotifSettings(updated);
+  };
+
+  const handleToggleSavingsMilestones = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ savingsMilestonesEnabled: val });
+    setNotifSettings(updated);
+  };
+
+  const handleToggleSmartInsights = async (val: boolean) => {
+    safeHaptic.selection();
+    const updated = await saveNotificationSettings({ smartInsightsEnabled: val });
+    setNotifSettings(updated);
+  };
+
   const handleTestNotification = async () => {
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     await sendImmediateNotification(
@@ -646,6 +664,33 @@ export default function SettingsScreen() {
               <Switch
                 value={notifSettings.monthlyDigestEnabled}
                 onValueChange={handleToggleMonthlyDigest}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.compactSwitchRow}>
+              <Text style={styles.switchLabel}>{isAr ? 'الملخص الأسبوعي (كل جمعة)' : 'Weekly Digest (Fridays)'}</Text>
+              <Switch
+                value={notifSettings.weeklyDigestEnabled}
+                onValueChange={handleToggleWeeklyDigest}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.compactSwitchRow}>
+              <Text style={styles.switchLabel}>{isAr ? 'إنجازات الادخار' : 'Savings Milestones'}</Text>
+              <Switch
+                value={notifSettings.savingsMilestonesEnabled}
+                onValueChange={handleToggleSavingsMilestones}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+            </View>
+
+            <View style={styles.compactSwitchRow}>
+              <Text style={styles.switchLabel}>{isAr ? 'تحليل الإنفاق الذكي' : 'Smart Spending Insights'}</Text>
+              <Switch
+                value={notifSettings.smartInsightsEnabled}
+                onValueChange={handleToggleSmartInsights}
                 trackColor={{ false: colors.border, true: colors.primary }}
               />
             </View>
