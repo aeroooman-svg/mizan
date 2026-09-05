@@ -14,7 +14,7 @@ interface HealthForecastRowProps {
   currencySymbol: string;
   balance: number;
   forecast: CashflowForecast | null;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
 }
 
@@ -34,6 +34,12 @@ export default function HealthForecastRow({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsExpanded(!isExpanded);
   };
+
+  const forecastMessage = forecast
+    ? (language === 'hi' ? (forecast.messageHi || forecast.messageEn) : language === 'ar' ? forecast.messageAr : forecast.messageEn)
+    : '';
+
+  const forecastDetailTitle = language === 'hi' ? 'विस्तृत नकदी प्रवाह पूर्वानुमान' : language === 'ar' ? 'توقعات السيولة والمصاريف' : 'Detailed Cashflow Forecast';
 
   return (
     <>
@@ -69,18 +75,20 @@ export default function HealthForecastRow({
               }
             />
             <Text style={styles.forecastDetailTitle}>
-              {language === 'ar' ? 'توقعات السيولة والمصاريف' : 'Detailed Cashflow Forecast'}
+              {forecastDetailTitle}
             </Text>
           </View>
           <Text style={styles.forecastDetailMessage}>
-            {language === 'ar' ? forecast.messageAr : forecast.messageEn}
+            {forecastMessage}
           </Text>
 
           {forecast.recommendedDailyReduction > 0 && (
             <View style={styles.reductionCard}>
               <Ionicons name="trending-down" size={18} color="#FF9800" />
               <Text style={styles.reductionText}>
-                {language === 'ar'
+                {language === 'hi'
+                  ? `दैनिक खर्च में ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} की बचत करने से आपका वॉलेट सुरक्षित रहेगा।`
+                  : language === 'ar'
                   ? `تقليل إنفاقك اليومي بـ ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} سيحميك من نفاد المحفظة.`
                   : `Saving ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} daily will keep your wallet funded.`}
               </Text>

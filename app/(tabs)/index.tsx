@@ -77,6 +77,11 @@ export default function HomeScreen() {
     addTransaction,
   } = useTransactions();
   const { t, language } = useLanguage();
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
   const [syncState, setSyncState] = useState<SyncState>('synced');
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
@@ -274,9 +279,18 @@ export default function HomeScreen() {
       "💡 Cashflow Insight: Your wallet health is stable. Maintain current spending rates to avoid potential deficits.",
       "💡 Debt Tip: Settling small debts first (Snowball method) builds mental momentum to clear all your liabilities."
     ];
+    const tipsHi = [
+      "💡 राउंड-अप सक्रिय: प्रत्येक खरीदारी को अगली संख्या पर गोल किया जाता है और अंतर सीधे आपकी बचत में जाता है!",
+      "💡 बजट चेतावनी: किसी श्रेणी का बजट पार करने पर अनुशासन बनाए रखने के लिए बचत में अतिरिक्त राशि जमा होगी।",
+      "💡 बचत सुझाव: खर्च करने से पहले हमेशा अपनी मासिक आय का 20% बचाएं (50/30/20 नियम)।",
+      "💡 नकदी प्रवाह जानकारी: आपके वॉलेट का स्वास्थ्य स्थिर है। वित्तीय घाटे से बचने के लिए वर्तमान खर्च दर बनाए रखें।",
+      "💡 ऋण सुझाव: पहले छोटे कर्जों का भुगतान करना (स्नोबॉल विधि) सभी देनदारियों को चुकाने का आत्मविश्वास देता है।"
+    ];
     const score = healthScore || 70;
     const idx = Math.min(tipsAr.length - 1, Math.floor((100 - score) / 20));
-    return language === 'ar' ? tipsAr[idx] : tipsEn[idx];
+    if (language === 'hi') return tipsHi[idx];
+    if (language === 'ar') return tipsAr[idx];
+    return tipsEn[idx];
   };
   const challengesCompletedCount = useMemo(() => {
     let count = 0;
@@ -385,16 +399,18 @@ export default function HomeScreen() {
 
   const handleDeleteWallet = (id: string, name: string) => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch { }
-    const title = language === 'ar' ? 'حذف المحفظة' : t.deleteWallet;
-    const message = language === 'ar'
-      ? `هل أنت متأكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`
-      : `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`;
+    const title = loc('حذف المحفظة', 'Delete Wallet', 'वॉलेट हटाएं');
+    const message = loc(
+      `هل أنت متأكد من حذف محفظة "${name}"؟\nسيتم حذف جميع المعاملات والميزانيات والأقساط والأهداف المرتبطة بهذه المحفظة نهائياً.`,
+      `Are you sure you want to delete "${name}"? All related transactions, budgets, installments, and goals will be permanently deleted.`,
+      `क्या आप वाकई "${name}" को हटाना चाहते हैं? इस वॉलेट से जुड़े सभी लेनदेन, बजट, किस्तें और लक्ष्य हमेशा के लिए हटा दिए जाएंगे।`
+    );
 
     setConfirmModalState({
       visible: true,
       title,
       message,
-      confirmText: language === 'ar' ? 'حذف المحفظة' : 'Delete Wallet',
+      confirmText: loc('حذف المحفظة', 'Delete Wallet', 'वॉलेट हटाएं'),
       isDestructive: true,
       onConfirm: async () => {
         setConfirmModalState(prev => ({ ...prev, visible: false }));
@@ -408,7 +424,7 @@ export default function HomeScreen() {
     await approveRecurringTransaction(item);
     setUndoState({
       visible: true,
-      message: language === 'ar' ? `تم تأكيد مصروف ${getCategoryName(item.category, language)} بنجاح` : 'Transaction confirmed successfully',
+      message: loc(`تم تأكيد مصروف ${getCategoryName(item.category, language)} بنجاح`, 'Transaction confirmed successfully', 'लेनदेन सफलतापूर्वक पुष्टि की गई'),
       action: () => { },
     });
   };
@@ -422,14 +438,14 @@ export default function HomeScreen() {
   const handleSaveAdjustedAmount = async () => {
     const amt = parseFloat(adjustAmount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert(language === 'ar' ? 'خطأ' : 'Error', language === 'ar' ? 'الرجاء إدخال مبلغ صحيح' : 'Please enter a valid amount');
+      Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('الرجاء إدخال مبلغ صحيح', 'Please enter a valid amount', 'कृपया एक मान्य राशि दर्ज करें'));
       return;
     }
     if (adjustingItem) {
       await approveRecurringTransaction(adjustingItem, amt);
       setUndoState({
         visible: true,
-        message: language === 'ar' ? 'تم تعديل وتأكيد الفاتورة بنجاح' : 'Adjusted bill confirmed',
+        message: loc('تم تعديل وتأكيد الفاتورة بنجاح', 'Adjusted bill confirmed', 'संशोधित बिल की पुष्टि हुई'),
         action: () => { },
       });
     }
@@ -441,7 +457,7 @@ export default function HomeScreen() {
     await approveRecurringTransaction(item, undefined, true);
     setUndoState({
       visible: true,
-      message: language === 'ar' ? `تم تخطي مصروف ${getCategoryName(item.category, language)}` : 'Transaction skipped',
+      message: loc(`تم تخطي مصروف ${getCategoryName(item.category, language)}`, 'Transaction skipped', 'लेनदेन छोड़ दिया गया'),
       action: () => { },
     });
   };
@@ -505,11 +521,9 @@ export default function HomeScreen() {
             >
               <Ionicons name="trophy-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
+                {loc('تحديات الادخار والأوسمة', 'Challenges & Badges', 'बचत चुनौतियाँ और बैज')}
               </Text>
             </Pressable>
-
-
 
             <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
@@ -520,7 +534,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="people-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'الديون والسلف الشخصية' : 'Personal Debts & Loans'}
+                {loc('الديون والسلف الشخصية', 'Personal Debts & Loans', 'व्यक्तिगत ऋण और उधार')}
               </Text>
             </Pressable>
 
@@ -533,7 +547,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="people-circle-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'الجمعيات والالتزامات' : 'Savings Associations (ROSCA)'}
+                {loc('الجمعيات والالتزامات', 'Savings Associations (ROSCA)', 'बचत समितियाँ (कमेटी / चिट फंड)')}
               </Text>
             </Pressable>
 
@@ -546,7 +560,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="heart-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'أهداف الادخار وحصالة الفكة' : 'Savings & Piggy Goals'}
+                {loc('أهداف الادخار وحصالة الفكة', 'Savings & Piggy Goals', 'बचत लक्ष्य और गुल्लक')}
               </Text>
             </Pressable>
 
@@ -559,7 +573,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="sparkles-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'مستشار الذكاء الاصطناعي' : 'AI Financial Advisor'}
+                {loc('مستشار الذكاء الاصطناعي', 'AI Financial Advisor', 'एआई वित्तीय सलाहकार')}
               </Text>
             </Pressable>
 
@@ -572,7 +586,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="calculator-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'حساب الزكاة والصدقات' : 'Zakat & Charity Calculator'}
+                {loc('حساب الزكاة والصدقات', 'Zakat & Charity Calculator', 'ज़कात और दान कैलकुलेटर')}
               </Text>
             </Pressable>
 
@@ -585,7 +599,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="link-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
+                {loc('الانضمام لمحفظة مشتركة كود', 'Join Shared Wallet with Code', 'कोड से साझा वॉलेट से जुड़ें')}
               </Text>
             </Pressable>
 
@@ -598,16 +612,15 @@ export default function HomeScreen() {
             >
               <Ionicons name="repeat-outline" size={22} color={Colors.primary} />
               <Text style={styles.drawerLinkText}>
-                {language === 'ar' ? 'محول العملات الحي' : 'Live Currency Converter'}
+                {loc('محول العملات الحي', 'Live Currency Converter', 'लाइव मुद्रा परिवर्तक')}
               </Text>
             </Pressable>
-
 
           </ScrollView>
 
           <Pressable onPress={() => setIsMenuOpen(false)} style={styles.drawerCloseBtn}>
             <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
-            <Text style={styles.drawerCloseText}>{language === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}</Text>
+            <Text style={styles.drawerCloseText}>{loc('إغلاق القائمة', 'Close Menu', 'मेनू बंद करें')}</Text>
           </Pressable>
         </View>
       </View>
@@ -650,7 +663,7 @@ export default function HomeScreen() {
                   styles.syncStatusText,
                   { color: syncState === 'synced' ? '#10B981' : '#FBBF24' }
                 ]}>
-                  {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') : (language === 'ar' ? 'محلي' : 'Local')}
+                  {syncState === 'synced' ? loc('متزامن', 'Synced', 'सिंक हो गया') : loc('محلي', 'Local', 'स्थानीय')}
                 </Text>
               </View>
             </View>
@@ -724,13 +737,15 @@ export default function HomeScreen() {
               }}
             >
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 22, color: '#FFF', textAlign: 'center', marginBottom: 8 }}>
-                {language === 'ar' ? 'مرحباً بك في مِيزان ⚖️' : 'Welcome to MIZAN ⚖️'}
+                {loc('مرحباً بك في مِيزان ⚖️', 'Welcome to MIZAN ⚖️', 'मीज़ान में आपका स्वागत है ⚖️')}
               </Text>
 
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 22, paddingHorizontal: 10, marginBottom: 20 }}>
-                {language === 'ar'
-                  ? 'مساعدك المالي الذكي لإدارة مصاريفك، المحافظ المتعددة، والادخار بسهولة وأمان.'
-                  : 'Your intelligent multi-currency financial assistant to track expenses and manage wallets effortlessly.'}
+                {loc(
+                  'مساعدك المالي الذكي لإدارة مصاريفك، المحافظ المتعددة، والادخار بسهولة وأمان.',
+                  'Your intelligent multi-currency financial assistant to track expenses and manage wallets effortlessly.',
+                  'खर्चों को ट्रैक करने और कई मुद्राओं में वॉलेट प्रबंधित करने के लिए आपका बुद्धिमान वित्तीय सहायक।'
+                )}
               </Text>
 
               {/* Action Buttons */}
@@ -756,7 +771,7 @@ export default function HomeScreen() {
                 >
                   <Ionicons name="add-circle" size={22} color="#FFF" />
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF' }}>
-                    {language === 'ar' ? 'إنشاء محفظتك الأولى' : 'Create Your First Wallet'}
+                    {loc('إنشاء محفظتك الأولى', 'Create Your First Wallet', 'पहला वॉलेट बनाएं')}
                   </Text>
                 </Pressable>
 
@@ -778,7 +793,7 @@ export default function HomeScreen() {
                 >
                   <Ionicons name="people-outline" size={18} color="#FFF" />
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 14, color: '#FFF' }}>
-                    {language === 'ar' ? 'الانضمام لمحفظة عبر كود' : 'Join Shared Wallet via Code'}
+                    {loc('الانضمام لمحفظة عبر كود', 'Join Shared Wallet via Code', 'कोड द्वारा साझा वॉलेट से जुड़ें')}
                   </Text>
                 </Pressable>
               </View>
@@ -788,7 +803,7 @@ export default function HomeScreen() {
           {/* Quick Feature Highlights Cards */}
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.text, textAlign: 'left', marginBottom: 2 }}>
-              {language === 'ar' ? 'لماذا تختار مِيزان؟' : 'Why Choose MIZAN?'}
+              {loc('لماذا تختار مِيزان؟', 'Why Choose MIZAN?', 'मीज़ान क्यों चुनें?')}
             </Text>
 
             {/* Feature 1: Multi-Currency */}
@@ -798,10 +813,14 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'تعدد المحافظ والعملات' : 'Multi-Currency Wallets'}
+                  {loc('تعدد المحافظ والعملات', 'Multi-Currency Wallets', 'मल्टी-करेंसी वॉलेट्स')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
-                  {language === 'ar' ? 'إدارة مصاريفك بالدينار، الجنيه، الدولار، والريال مع تحويل فوري حقيقي.' : 'Manage wallets in KWD, EGP, USD, SAR with live conversion.'}
+                  {loc(
+                    'إدارة مصاريفك بالدينار، الجنيه، الدولار، والريال مع تحويل فوري حقيقي.',
+                    'Manage wallets in KWD, EGP, USD, SAR with live conversion.',
+                    'INR, USD, SAR, AED आदि में लाइव रूपांतरण के साथ खर्च प्रबंधित करें।'
+                  )}
                 </Text>
               </View>
             </View>
@@ -813,10 +832,14 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'أتمتة ذكية ومسح الفواتير' : 'Smart Automation & Scan'}
+                  {loc('أتمتة ذكية ومسح الفواتير', 'Smart Automation & Scan', 'स्मार्ट ऑटोमेशन और स्कैनिंग')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
-                  {language === 'ar' ? 'قراءة رسائل البنك تلقائياً ومسح الفواتير بالذكاء الاصطناعي.' : 'Auto bank SMS parsing and OCR receipt scanning.'}
+                  {loc(
+                    'قراءة رسائل البنك تلقائياً ومسح الفواتير بالذكاء الاصطناعي.',
+                    'Auto bank SMS parsing and OCR receipt scanning.',
+                    'स्वचालित बैंक एसएमएस और रसीद स्कैनिंग।'
+                  )}
                 </Text>
               </View>
             </View>
@@ -828,10 +851,14 @@ export default function HomeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? 'حاسبة الزكاة والتخطيط المالي' : 'Zakat & Financial Plan'}
+                  {loc('حاسبة الزكاة والتخطيط المالي', 'Zakat & Financial Plan', 'ज़कात और वित्तीय योजना')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
-                  {language === 'ar' ? 'حساب زكاة المال بدقة شرعية وضبط الميزانية بقاعدة 50/30/20.' : 'Calculate Zakat and plan budgets with 50/30/20 rule.'}
+                  {loc(
+                    'حساب زكاة المال بدقة شرعية وضبط الميزانية بقاعدة 50/30/20.',
+                    'Calculate Zakat and plan budgets with 50/30/20 rule.',
+                    'सटीक ज़कात की गणना करें और 50/30/20 नियम से बजट की योजना बनाएं।'
+                  )}
                 </Text>
               </View>
             </View>
@@ -883,9 +910,9 @@ export default function HomeScreen() {
                 styles.syncStatusText,
                 { color: syncState === 'synced' ? '#10B981' : syncState === 'syncing' ? '#60A5FA' : '#FBBF24' }
               ]}>
-                {syncState === 'synced' ? (language === 'ar' ? 'متزامن' : 'Synced') :
-                  syncState === 'syncing' ? (language === 'ar' ? 'جاري المزامنة...' : 'Syncing...') :
-                    (language === 'ar' ? 'محلي' : 'Local')}
+                {syncState === 'synced' ? loc('متزامن', 'Synced', 'सिंक हो गया') :
+                  syncState === 'syncing' ? loc('جاري المزامنة...', 'Syncing...', 'सिंक हो रहा है...') :
+                    loc('محلي', 'Local', 'स्थानीय')}
               </Text>
             </View>
           </View>
@@ -923,7 +950,7 @@ export default function HomeScreen() {
           selectedWallet={selectedWallet}
           transactions={transactions}
           currentUser={currentUser}
-          language={language as 'ar' | 'en'}
+          language={language}
           colors={colors}
           healthScore={healthScore}
           onSelectWallet={selectWallet}
@@ -946,7 +973,7 @@ export default function HomeScreen() {
             goals={goals}
             debts={debts}
             totalConsolidatedBalance={totalConsolidatedBalance}
-            language={language as 'ar' | 'en'}
+            language={language}
             onAddPress={() => router.push('/add-transaction')}
             onVoicePress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -959,7 +986,7 @@ export default function HomeScreen() {
         <PendingRecurringSection
           walletPending={walletPending}
           currencySymbol={currencySymbol}
-          language={language as 'ar' | 'en'}
+          language={language}
           colors={colors}
           wallets={wallets}
           onApproveConfirm={handleApproveConfirm}
@@ -981,7 +1008,7 @@ export default function HomeScreen() {
             totalExpenseVal={totalExpense}
             healthScore={healthScore}
             currencySymbol={currencySymbol}
-            language={language as 'ar' | 'en'}
+            language={language}
             colors={colors}
             onOpenConverterModal={() => setIsCurrencyConverterOpen(true)}
             onOpenMonthlyReport={() => setIsMonthlyDigestOpen(true)}
@@ -1052,7 +1079,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="trophy-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'تحديات الادخار والأوسمة' : 'Challenges & Badges'}
+                  {loc('تحديات الادخار والأوسمة', 'Challenges & Badges', 'बचत चुनौतियाँ और बैज')}
                 </Text>
               </Pressable>
 
@@ -1065,7 +1092,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'المصاريف والفواتير المتكررة' : 'Recurring Subscriptions'}
+                  {loc('المصاريف والفواتير المتكررة', 'Recurring Subscriptions', 'आवर्ती खर्च और सदस्यता')}
                 </Text>
               </Pressable>
 
@@ -1078,7 +1105,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="flag-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'الخطة المالية الذكية' : 'Smart Financial Plan'}
+                  {loc('الخطة المالية الذكية', 'Smart Financial Plan', 'स्मार्ट वित्तीय योजना')}
                 </Text>
               </Pressable>
 
@@ -1091,7 +1118,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="people-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'الديون والسلف الشخصية' : 'Personal Debts & Loans'}
+                  {loc('الديون والسلف الشخصية', 'Personal Debts & Loans', 'व्यक्तिगत ऋण और उधार')}
                 </Text>
               </Pressable>
 
@@ -1104,7 +1131,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="people-circle-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'الجمعيات والالتزامات' : 'Savings Associations (ROSCA)'}
+                  {loc('الجمعيات والالتزامات', 'Savings Associations (ROSCA)', 'बचत समितियाँ (कमेटी / चिट फंड)')}
                 </Text>
               </Pressable>
 
@@ -1117,7 +1144,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="heart-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'أهداف الادخار وحصالة الفكة' : 'Savings & Piggy Goals'}
+                  {loc('أهداف الادخار وحصالة الفكة', 'Savings & Piggy Goals', 'बचत लक्ष्य और गुल्लक')}
                 </Text>
               </Pressable>
 
@@ -1130,7 +1157,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="sparkles-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'مستشار الذكاء الاصطناعي' : 'AI Financial Advisor'}
+                  {loc('مستشار الذكاء الاصطناعي', 'AI Financial Advisor', 'एआई वित्तीय सलाहकार')}
                 </Text>
               </Pressable>
 
@@ -1143,7 +1170,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="calculator-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'حساب الزكاة والصدقات' : 'Zakat & Charity Calculator'}
+                  {loc('حساب الزكاة والصدقات', 'Zakat & Charity Calculator', 'ज़कात और दान कैलकुलेटर')}
                 </Text>
               </Pressable>
 
@@ -1156,7 +1183,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="link-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'الانضمام لمحفظة مشتركة كود' : 'Join Shared Wallet with Code'}
+                  {loc('الانضمام لمحفظة مشتركة كود', 'Join Shared Wallet with Code', 'कोड से साझा वॉलेट से जुड़ें')}
                 </Text>
               </Pressable>
 
@@ -1169,10 +1196,9 @@ export default function HomeScreen() {
               >
                 <Ionicons name="repeat-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'محول العملات الحي' : 'Live Currency Converter'}
+                  {loc('محول العملات الحي', 'Live Currency Converter', 'लाइव मुद्रा परिवर्तक')}
                 </Text>
               </Pressable>
-
 
               <Pressable
                 style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
@@ -1183,7 +1209,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? '📱 ودجت الشاشة الرئيسية والقفل' : '📱 Live Home & Lock Screen Widgets'}
+                  {loc('📱 ودجت الشاشة الرئيسية والقفل', '📱 Live Home & Lock Screen Widgets', '📱 होम और लॉक स्क्रीन विजेट')}
                 </Text>
               </Pressable>
 
@@ -1196,7 +1222,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="sparkles-outline" size={22} color="#F59E0B" />
                 <Text style={[styles.drawerLinkText, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
-                  {language === 'ar' ? '📊 التقرير المالي الشهري المقارن' : '📊 Monthly Financial Digest'}
+                  {loc('📊 التقرير المالي الشهري المقارن', '📊 Monthly Financial Digest', '📊 मासिक वित्तीय रिपोर्ट')}
                 </Text>
               </Pressable>
 
@@ -1209,7 +1235,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'تحليل الميزانية والرسوم' : 'Budget Analytics'}
+                  {loc('تحليل الميزانية والرسوم', 'Budget Analytics', 'बजट और व्यय विश्लेषण')}
                 </Text>
               </Pressable>
 
@@ -1222,7 +1248,7 @@ export default function HomeScreen() {
               >
                 <Ionicons name="settings-outline" size={22} color={Colors.primary} />
                 <Text style={styles.drawerLinkText}>
-                  {language === 'ar' ? 'إعدادات التطبيق والأمان' : 'Settings & Security'}
+                  {loc('إعدادات التطبيق والأمان', 'Settings & Security', 'ऐप सेटिंग्स और सुरक्षा')}
                 </Text>
               </Pressable>
             </ScrollView>
@@ -1248,7 +1274,7 @@ export default function HomeScreen() {
                 fontSize: 11,
                 color: '#14B8A6',
               }}>
-                {language === 'ar' ? 'اسحب للأسفل لعرض باقي الأدوات ↓' : 'Scroll down for more features ↓'}
+                {loc('اسحب للأسفل لعرض باقي الأدوات ↓', 'Scroll down for more features ↓', 'अधिक सुविधाओं के लिए नीचे स्क्रॉल करें ↓')}
               </Text>
             </View>
 
@@ -1258,7 +1284,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="close-circle-outline" size={22} color="#EF4444" />
               <Text style={styles.drawerCloseText}>
-                {language === 'ar' ? 'إغلاق القائمة' : 'Close Menu'}
+                {loc('إغلاق القائمة', 'Close Menu', 'मेनू बंद करें')}
               </Text>
             </Pressable>
           </View>
@@ -1271,7 +1297,7 @@ export default function HomeScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.adjustModalContent}>
               <Text style={styles.adjustModalTitle}>
-                {language === 'ar' ? 'تعديل قيمة الفاتورة' : 'Adjust Bill Amount'}
+                {loc('تعديل قيمة الفاتورة', 'Adjust Bill Amount', 'बिल की राशि संशोधित करें')}
               </Text>
               <Text style={styles.adjustModalSub}>
                 {getCategoryName(adjustingItem.category, language)}
@@ -1292,13 +1318,13 @@ export default function HomeScreen() {
                   style={[styles.adjustBtn, styles.adjustBtnCancel]}
                   onPress={() => setAdjustingItem(null)}
                 >
-                  <Text style={styles.adjustBtnTextCancel}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Text>
+                  <Text style={styles.adjustBtnTextCancel}>{loc('إلغاء', 'Cancel', 'रद्द करें')}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.adjustBtn, styles.adjustBtnConfirm]}
                   onPress={handleSaveAdjustedAmount}
                 >
-                  <Text style={styles.adjustBtnTextConfirm}>{language === 'ar' ? 'حفظ وتسجيل' : 'Save & Log'}</Text>
+                  <Text style={styles.adjustBtnTextConfirm}>{loc('حفظ وتسجيل', 'Save & Log', 'सहेजें और दर्ज करें')}</Text>
                 </Pressable>
               </View>
 

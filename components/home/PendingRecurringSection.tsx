@@ -20,7 +20,7 @@ import { getCategoryName } from '@/lib/i18n';
 interface PendingRecurringSectionProps {
   walletPending: RecurringTransaction[];
   currencySymbol: string;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
   wallets?: Wallet[];
   onApproveConfirm: (item: RecurringTransaction) => void;
@@ -38,6 +38,12 @@ export default function PendingRecurringSection({
   onApproveSkip,
   onSaveAdjustedAmount,
 }: PendingRecurringSectionProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const [adjustingItem, setAdjustingItem] = useState<RecurringTransaction | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
   const styles = getStyles(colors);
@@ -54,8 +60,8 @@ export default function PendingRecurringSection({
     const amt = parseFloat(adjustAmount);
     if (isNaN(amt) || amt <= 0) {
       Alert.alert(
-        language === 'ar' ? 'خطأ' : 'Error',
-        language === 'ar' ? 'الرجاء إدخال مبلغ صحيح' : 'Please enter a valid amount'
+        loc('خطأ', 'Error', 'त्रुटि'),
+        loc('الرجاء إدخال مبلغ صحيح', 'Please enter a valid amount', 'कृपया एक मान्य राशि दर्ज करें')
       );
       return;
     }
@@ -70,9 +76,7 @@ export default function PendingRecurringSection({
       <View style={styles.pendingHeader}>
         <Ionicons name="alert-circle" size={20} color="#FF9800" />
         <Text style={styles.pendingTitle}>
-          {language === 'ar'
-            ? 'لديك مصاريف معلقة للمراجعة والتأكيد!'
-            : 'You have expenses pending confirmation!'}
+          {loc('لديك مصاريف معلقة للمراجعة والتأكيد!', 'You have expenses pending confirmation!', 'आपके पास पुष्टि हेतु लंबित खर्च हैं!')}
         </Text>
       </View>
       <ScrollView
@@ -85,8 +89,8 @@ export default function PendingRecurringSection({
           const targetWallet = isTransfer && item.toWalletId ? wallets?.find(w => w.id === item.toWalletId) : null;
           const itemName = isTransfer
             ? (targetWallet
-                ? (language === 'ar' ? `تحويل إلى ${targetWallet.name}` : `Transfer to ${targetWallet.name}`)
-                : (language === 'ar' ? 'تحويل محفظة' : 'Wallet Transfer'))
+                ? loc(`تحويل إلى ${targetWallet.name}`, `Transfer to ${targetWallet.name}`, `${targetWallet.name} को स्थानांतरण`)
+                : loc('تحويل محفظة', 'Wallet Transfer', 'वॉलेट स्थानांतरण'))
             : getCategoryName(item.category, language);
 
           return (
@@ -100,9 +104,9 @@ export default function PendingRecurringSection({
                 </Text>
               </View>
             <Text style={styles.pendingItemDate}>
-              {language === 'ar' ? 'مستحق: ' : 'Due: '}
+              {loc('مستحق: ', 'Due: ', 'देय: ')}
               {new Date(item.nextDueDate).toLocaleDateString(
-                language === 'ar' ? 'ar-EG' : 'en-US'
+                language === 'ar' ? 'ar-EG' : language === 'hi' ? 'hi-IN' : 'en-US'
               )}
             </Text>
             <View style={styles.pendingItemActions}>
@@ -115,7 +119,7 @@ export default function PendingRecurringSection({
                 onPress={() => onApproveConfirm(item)}
               >
                 <Text style={styles.pendingActionText}>
-                  {language === 'ar' ? 'تأكيد' : 'Confirm'}
+                  {loc('تأكيد', 'Confirm', 'पुष्टि करें')}
                 </Text>
               </Pressable>
               <Pressable
@@ -127,7 +131,7 @@ export default function PendingRecurringSection({
                 onPress={() => handleAdjustPress(item)}
               >
                 <Text style={styles.pendingActionTextAdjust}>
-                  {language === 'ar' ? 'تعديل' : 'Edit'}
+                  {loc('تعديل', 'Edit', 'संशोधित करें')}
                 </Text>
               </Pressable>
               <Pressable
@@ -139,7 +143,7 @@ export default function PendingRecurringSection({
                 onPress={() => onApproveSkip(item)}
               >
                 <Text style={styles.pendingActionTextSkip}>
-                  {language === 'ar' ? 'تخطي' : 'Skip'}
+                  {loc('تخطي', 'Skip', 'छोड़ें')}
                 </Text>
               </Pressable>
             </View>
@@ -154,7 +158,7 @@ export default function PendingRecurringSection({
           <View style={styles.modalOverlay}>
             <View style={styles.adjustModalContent}>
               <Text style={styles.adjustModalTitle}>
-                {language === 'ar' ? 'تعديل قيمة الفاتورة' : 'Adjust Bill Amount'}
+                {loc('تعديل قيمة الفاتورة', 'Adjust Bill Amount', 'बिल राशि संशोधित करें')}
               </Text>
               <Text style={styles.adjustModalSub}>
                 {getCategoryName(adjustingItem.category, language)}
@@ -176,7 +180,7 @@ export default function PendingRecurringSection({
                   onPress={() => setAdjustingItem(null)}
                 >
                   <Text style={styles.adjustBtnTextCancel}>
-                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    {loc('إلغاء', 'Cancel', 'रद्द करें')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -184,7 +188,7 @@ export default function PendingRecurringSection({
                   onPress={handleSaveAdjust}
                 >
                   <Text style={styles.adjustBtnTextConfirm}>
-                    {language === 'ar' ? 'حفظ وتسجيل' : 'Save & Log'}
+                    {loc('حفظ وتسجيل', 'Save & Log', 'सहेजें और दर्ज करें')}
                   </Text>
                 </Pressable>
               </View>

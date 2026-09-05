@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/categories';
 interface ConsolidatedBalanceCardProps {
   totalConsolidatedBalance: number;
   currencySymbol: string;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
 }
 
@@ -19,12 +19,14 @@ export default function ConsolidatedBalanceCard({
 }: ConsolidatedBalanceCardProps) {
   const styles = getStyles(colors);
 
+  const label = language === 'hi' ? 'समेकित कुल संपत्ति' : language === 'ar' ? 'إجمالي الثروة الموحدة' : 'Consolidated Net Worth';
+
   return (
     <View style={styles.consolidatedCard}>
       <View style={styles.consolidatedHeader}>
         <Ionicons name="stats-chart" size={14} color={Colors.primary} />
         <Text style={styles.consolidatedLabel}>
-          {language === 'ar' ? 'إجمالي الثروة الموحدة' : 'Consolidated Net Worth'}
+          {label}
         </Text>
       </View>
       <Text style={styles.consolidatedValue}>

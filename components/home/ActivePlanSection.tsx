@@ -16,7 +16,7 @@ interface ActivePlanSectionProps {
   walletTransactions: Transaction[];
   selectedWalletId: string | undefined;
   currencySymbol: string;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
 }
 
@@ -30,6 +30,12 @@ export default function ActivePlanSection({
   language,
   colors,
 }: ActivePlanSectionProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const styles = getStyles(colors);
 
   if (!plan) return null;
@@ -100,10 +106,10 @@ export default function ActivePlanSection({
     <View>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>
-          {language === 'ar' ? '📊 خطتك المالية النشطة' : 'ACTIVE FINANCIAL PLAN'}
+          {loc('📊 خطتك المالية النشطة', 'ACTIVE FINANCIAL PLAN', '📊 सक्रिय वित्तीय योजना')}
         </Text>
         <Pressable onPress={() => router.push('/(tabs)/financial-plan')}>
-          <Text style={styles.seeAll}>{language === 'ar' ? 'عرض التفاصيل' : 'View Plan'}</Text>
+          <Text style={styles.seeAll}>{loc('عرض التفاصيل', 'View Plan', 'योजना देखें')}</Text>
         </Pressable>
       </View>
 
@@ -129,7 +135,7 @@ export default function ActivePlanSection({
                   textAlign: 'left',
                 }}
               >
-                {language === 'ar' ? 'الصافي الادخاري: ' : 'Net Saved: '}
+                {loc('الصافي الادخاري: ', 'Net Saved: ', 'शुद्ध बचत: ')}
                 <Text style={{ color: Colors.primary }}>
                   {formatCurrency(actualSavings, language)} {currencySymbol}
                 </Text>
@@ -152,16 +158,10 @@ export default function ActivePlanSection({
                   }}
                 >
                   {isCompleted
-                    ? language === 'ar'
-                      ? '🏆 مكتملة'
-                      : '🏆 COMPLETED'
+                    ? loc('🏆 مكتملة', '🏆 COMPLETED', '🏆 पूर्ण')
                     : isRealistic
-                    ? language === 'ar'
-                      ? '✅ خطة منطقية'
-                      : '✅ REALISTIC PLAN'
-                    : language === 'ar'
-                    ? '⚠️ غير منطقية ومتاخرة'
-                    : '⚠️ UNREALISTIC / BEHIND'}
+                    ? loc('✅ خطة منطقية', '✅ REALISTIC PLAN', '✅ यथार्थवादी योजना')
+                    : loc('⚠️ غير منطقية ومتاخرة', '⚠️ UNREALISTIC / BEHIND', '⚠️ अवास्तविक / पीछे')}
                 </Text>
               </View>
             </View>
@@ -221,7 +221,7 @@ export default function ActivePlanSection({
           const completionDate = new Date();
           completionDate.setMonth(completionDate.getMonth() + monthsToGoal);
           const completionStr = completionDate.toLocaleDateString(
-            language === 'ar' ? 'ar-EG' : 'en-US',
+            language === 'ar' ? 'ar-EG' : language === 'hi' ? 'hi-IN' : 'en-US',
             { month: 'long', year: 'numeric' }
           );
           const isOnSchedule = isRealistic;
@@ -244,9 +244,7 @@ export default function ActivePlanSection({
                 }}
               >
                 {isOnSchedule ? '✅ ' : '⚠️ '}
-                {language === 'ar'
-                  ? `متوقع التحقيق: ${completionStr}`
-                  : `Est. completion: ${completionStr}`}
+                {loc(`متوقع التحقيق: ${completionStr}`, `Est. completion: ${completionStr}`, `अनुमानित पूर्णता: ${completionStr}`)}
               </Text>
             </View>
           );

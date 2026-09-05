@@ -29,7 +29,7 @@ interface WalletCarouselProps {
   selectedWallet: Wallet | null;
   transactions: Transaction[];
   currentUser: { id: string; username: string } | null;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
   healthScore?: number;
   onSelectWallet: (id: string) => void;
@@ -51,6 +51,12 @@ export default function WalletCarousel({
   onAddWallet,
   onEditWallet,
 }: WalletCarouselProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const { width: windowWidth } = useWindowDimensions();
   const cardWidth = Math.min(440, Math.max(280, windowWidth - 32));
   const cardGap = 24;
@@ -211,7 +217,7 @@ export default function WalletCarousel({
                 if (otherMembers.length === 2) {
                   return otherMembers.join('، ');
                 }
-                return language === 'ar' ? `${otherMembers.length} أعضاء` : `${otherMembers.length} members`;
+                return loc(`${otherMembers.length} أعضاء`, `${otherMembers.length} members`, `${otherMembers.length} सदस्य`);
               }
             } catch (e) {}
             return undefined;
@@ -248,7 +254,7 @@ export default function WalletCarousel({
                 color={wallet.color}
                 icon={wallet.icon || 'account-balance-wallet'}
                 isShared={Boolean(sharedText)}
-                sharedLabel={sharedText ? (language === 'ar' ? `مشترك: ${sharedText}` : `Shared: ${sharedText}`) : undefined}
+                sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `साझा: ${sharedText}`) : undefined}
                 height={190}
               />
             </Pressable>
@@ -259,7 +265,7 @@ export default function WalletCarousel({
             <Ionicons name="add" size={32} color={Colors.primary} />
           </View>
           <Text style={styles.addWallet3DText}>
-            {language === 'ar' ? 'محفظة جديدة' : 'New Wallet'}
+            {loc('محفظة جديدة', 'New Wallet', 'नया वॉलेट')}
           </Text>
         </Pressable>
       </ScrollView>
@@ -412,7 +418,7 @@ export default function WalletCarousel({
                       color: colors.primary,
                     }}
                   >
-                    {language === 'ar' ? 'تعديل الرصيد المتاح يدوياً ✏️' : 'Quick Adjust Balance ✏️'}
+                    {loc('تعديل الرصيد المتاح يدوياً ✏️', 'Quick Adjust Balance ✏️', 'शेष राशि त्वरित समायोजित करें ✏️')}
                   </Text>
                 </Pressable>
 
@@ -449,7 +455,7 @@ export default function WalletCarousel({
                       color: colors.text,
                     }}
                   >
-                    {language === 'ar' ? 'تعديل المحفظة' : 'Edit Wallet'}
+                    {loc('تعديل المحفظة', 'Edit Wallet', 'वॉलेट संपादित करें')}
                   </Text>
                 </Pressable>
 
@@ -479,7 +485,7 @@ export default function WalletCarousel({
                         color: colors.text,
                       }}
                     >
-                      {language === 'ar' ? 'تعيين كمحفظة نشطة' : 'Set as Active Wallet'}
+                      {loc('تعيين كمحفظة نشطة', 'Set as Active Wallet', 'सक्रिय वॉलेट के रूप में सेट करें')}
                     </Text>
                   </Pressable>
                 )}
@@ -511,10 +517,10 @@ export default function WalletCarousel({
                     }}
                   >
                     {actionWallet.isJoined
-                      ? (language === 'ar' ? 'عرض تفاصيل وأعضاء المحفظة' : 'View Shared Wallet Members')
+                      ? loc('عرض تفاصيل وأعضاء المحفظة', 'View Shared Wallet Members', 'साझा वॉलेट सदस्य देखें')
                       : (actionWallet.shareCode || actionWallet.sharedWith)
-                      ? (language === 'ar' ? 'إدارة المشاركة والأعضاء' : 'Manage Sharing & Members')
-                      : (language === 'ar' ? 'مشاركة المحفظة' : 'Share Wallet')}
+                      ? loc('إدارة المشاركة والأعضاء', 'Manage Sharing & Members', 'साझाकरण और सदस्य प्रबंधित करें')
+                      : loc('مشاركة المحفظة', 'Share Wallet', 'वॉलेट साझा करें')}
                   </Text>
                 </Pressable>
 
@@ -547,8 +553,8 @@ export default function WalletCarousel({
                       }}
                     >
                       {actionWallet.isJoined
-                        ? (language === 'ar' ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet')
-                        : (language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet')}
+                        ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'साझा वॉलेट छोड़ें')
+                        : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'वॉलेट साझा करना बंद करें')}
                     </Text>
                   </Pressable>
                 )}
@@ -587,9 +593,9 @@ export default function WalletCarousel({
                       color: colors.text,
                     }}
                   >
-                    {language === 'ar'
-                      ? (actionWallet.excludeFromTotal ? 'تضمين في الإجمالي الشامل' : 'استبعاد من الإجمالي الشامل')
-                      : (actionWallet.excludeFromTotal ? 'Include in Consolidated Total' : 'Exclude from Consolidated Total')}
+                    {actionWallet.excludeFromTotal
+                      ? loc('تضمين في الإجمالي الشامل', 'Include in Consolidated Total', 'समेकित कुल में शामिल करें')
+                      : loc('استبعاد من الإجمالي الشامل', 'Exclude from Consolidated Total', 'समेकित कुल से बाहर रखें')}
                   </Text>
                 </Pressable>
 
@@ -619,9 +625,7 @@ export default function WalletCarousel({
                       color: '#EF4444',
                     }}
                   >
-                    {language === 'ar'
-                      ? 'حذف المحفظة وكافة بياناتها'
-                      : 'Delete Wallet & All Data'}
+                    {loc('حذف المحفظة وكافة بياناتها', 'Delete Wallet & All Data', 'वॉलेट और सारा डेटा हटाएं')}
                   </Text>
                 </Pressable>
               </>
@@ -654,7 +658,7 @@ export default function WalletCarousel({
                     </View>
                     <View>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
-                        {language === 'ar' ? 'تعديل الرصيد المتاح يدوياً' : 'Edit Available Balance'}
+                        {loc('تعديل الرصيد المتاح يدوياً', 'Edit Available Balance', 'उपलब्ध शेष राशि संपादित करें')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary }}>
                         {adjustWallet.name} ({adjustWallet.currency})
@@ -667,14 +671,16 @@ export default function WalletCarousel({
                 </View>
 
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 20 }}>
-                  {language === 'ar'
-                    ? `أدخل المبلغ الإجمالي الفعلي الموجود بحوزتك الآن في محفظة "${adjustWallet.name}". سيتم تعديل رصيد المحفظة المتاح فوراً دون المساس بمعاملاتك التاريخية.`
-                    : `Enter the actual total balance you currently hold in "${adjustWallet.name}".`}
+                  {loc(
+                    `أدخل المبلغ الإجمالي الفعلي الموجود بحوزتك الآن في محفظة "${adjustWallet.name}". سيتم تعديل رصيد المحفظة المتاح فوراً دون المساس بمعاملاتك التاريخية.`,
+                    `Enter the actual total balance you currently hold in "${adjustWallet.name}".`,
+                    `"${adjustWallet.name}" में आपके पास वर्तमान में मौजूद वास्तविक कुल शेष राशि दर्ज करें।`
+                  )}
                 </Text>
 
                 <View style={{ gap: 6 }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.text }}>
-                    {language === 'ar' ? `الرصيد الفعلي الآن (${adjustWallet.currency}):` : `Actual Balance Now (${adjustWallet.currency}):`}
+                    {loc(`الرصيد الفعلي الآن (${adjustWallet.currency}):`, `Actual Balance Now (${adjustWallet.currency}):`, `वर्तमान वास्तविक शेष (${adjustWallet.currency}):`)}
                   </Text>
                   <TextInput
                     style={{
@@ -703,7 +709,7 @@ export default function WalletCarousel({
                     style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
                   >
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', color: colors.textSecondary }}>
-                      {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                      {loc('إلغاء', 'Cancel', 'रद्द करें')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -711,7 +717,7 @@ export default function WalletCarousel({
                     style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}
                   >
                     <Text style={{ fontFamily: 'Cairo_700Bold', color: '#FFF' }}>
-                      {language === 'ar' ? 'حفظ الرصيد الجديد 💾' : 'Save New Balance 💾'}
+                      {loc('حفظ الرصيد الجديد 💾', 'Save New Balance 💾', 'नया शेष सहेजें 💾')}
                     </Text>
                   </Pressable>
                 </View>
@@ -773,8 +779,8 @@ export default function WalletCarousel({
                 }}
               >
                 {confirmStopShareWallet?.isJoined
-                  ? (language === 'ar' ? 'مغادرة المحفظة المشتركة' : 'Leave Shared Wallet')
-                  : (language === 'ar' ? 'إلغاء مشاركة المحفظة' : 'Stop Sharing Wallet')}
+                  ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'साझा वॉलेट छोड़ें')
+                  : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'वॉलेट साझा करना बंद करें')}
               </Text>
               <Text
                 style={{
@@ -786,12 +792,16 @@ export default function WalletCarousel({
                 }}
               >
                 {confirmStopShareWallet?.isJoined
-                  ? (language === 'ar'
-                    ? `هل أنت متأكد من مغادرة محفظة "${confirmStopShareWallet?.name}"؟ سيتم حذف المحفظة ومعاملاتها من جهازك.`
-                    : `Are you sure you want to leave "${confirmStopShareWallet?.name}"? The wallet and its transactions will be removed from your device.`)
-                  : (language === 'ar'
-                    ? `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`
-                    : `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`)}
+                  ? loc(
+                      `هل أنت متأكد من مغادرة محفظة "${confirmStopShareWallet?.name}"؟ سيتم حذف المحفظة ومعاملاتها من جهازك.`,
+                      `Are you sure you want to leave "${confirmStopShareWallet?.name}"? The wallet and its transactions will be removed from your device.`,
+                      `क्या आप "${confirmStopShareWallet?.name}" छोड़ने के लिए सुनिश्चित हैं? वॉलेट और उसके लेन-देन आपके डिवाइस से हटा दिए जाएंगे।`
+                    )
+                  : loc(
+                      `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`,
+                      `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`,
+                      `क्या आप "${confirmStopShareWallet?.name}" को साझा करना बंद करने के लिए सुनिश्चित हैं? साझाकरण कोड अमान्य कर दिया जाएगा और सदस्य हटा दिए जाएंगे।`
+                    )}
               </Text>
             </View>
 
@@ -814,7 +824,7 @@ export default function WalletCarousel({
                     color: colors.textSecondary,
                   }}
                 >
-                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                  {loc('إلغاء', 'Cancel', 'रद्द करें')}
                 </Text>
               </Pressable>
 
@@ -830,8 +840,8 @@ export default function WalletCarousel({
                       await refresh();
                       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
                       Alert.alert(
-                        language === 'ar' ? 'تم بنجاح' : 'Success',
-                        language === 'ar' ? 'تمت مغادرة المحفظة بنجاح' : 'You have left the wallet'
+                        loc('تم بنجاح', 'Success', 'सफल'),
+                        loc('تمت مغادرة المحفظة بنجاح', 'You have left the wallet', 'आप सफलतापूर्वक वॉलेट से बाहर हो गए हैं')
                       );
                     } else {
                       const { stopSharingWallet } = await import('@/lib/sharingService');
@@ -843,8 +853,8 @@ export default function WalletCarousel({
                       await refresh();
                       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
                       Alert.alert(
-                        language === 'ar' ? 'تم بنجاح' : 'Success',
-                        language === 'ar' ? 'تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط' : 'Wallet sharing has been stopped'
+                        loc('تم بنجاح', 'Success', 'सफल'),
+                        loc('تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط', 'Wallet sharing has been stopped', 'वॉलेट साझाकरण रोक दिया गया है और अब यह केवल आपका है')
                       );
                     }
                   } catch (e) {
@@ -868,8 +878,8 @@ export default function WalletCarousel({
                   }}
                 >
                   {confirmStopShareWallet?.isJoined
-                    ? (language === 'ar' ? 'مغادرة' : 'Leave')
-                    : (language === 'ar' ? 'إيقاف المشاركة' : 'Stop Sharing')}
+                    ? loc('مغادرة', 'Leave', 'छोड़ें')
+                    : loc('إيقاف المشاركة', 'Stop Sharing', 'साझाकरण रोकें')}
                 </Text>
               </Pressable>
             </View>

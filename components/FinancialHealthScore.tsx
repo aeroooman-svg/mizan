@@ -7,7 +7,7 @@ import Colors from '@/constants/colors';
 
 interface FinancialHealthScoreProps {
   healthScore: number;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   onPress?: () => void;
 }
 
@@ -22,10 +22,12 @@ export default function FinancialHealthScore({ healthScore, language, onPress }:
   const statusBg = isExcellent ? '#10B98115' : isGood ? '#F59E0B15' : '#EF444415';
   
   const statusLabel = isExcellent 
-    ? (language === 'ar' ? 'ممتاز' : 'EXCELLENT') 
+    ? (language === 'hi' ? 'उत्कृष्ट' : language === 'ar' ? 'ممتاز' : 'EXCELLENT') 
     : isGood 
-      ? (language === 'ar' ? 'مستقر' : 'GOOD') 
-      : (language === 'ar' ? 'خطر' : 'WARNING');
+      ? (language === 'hi' ? 'अच्छा' : language === 'ar' ? 'مستقر' : 'GOOD') 
+      : (language === 'hi' ? 'चेतावनी' : language === 'ar' ? 'خطر' : 'WARNING');
+
+  const titleLabel = language === 'hi' ? 'वित्तीय स्वास्थ्य' : language === 'ar' ? 'الصحة المالية' : 'FINANCIAL HEALTH';
 
   return (
     <Pressable 
@@ -33,7 +35,7 @@ export default function FinancialHealthScore({ healthScore, language, onPress }:
       onPress={onPress}
     >
       <Text style={styles.cardHeaderTitle2Col}>
-        {language === 'ar' ? 'الصحة المالية' : 'FINANCIAL HEALTH'}
+        {titleLabel}
       </Text>
       
       <View style={styles.healthCircleContainer}>

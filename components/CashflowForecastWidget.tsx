@@ -18,7 +18,7 @@ interface CashflowForecastWidgetProps {
   currencySymbol: string;
   balance: number;
   forecast: CashflowForecast | null;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   onPress?: () => void;
 }
 
@@ -40,10 +40,14 @@ export default function CashflowForecastWidget({
   const statusBg = isSafe ? '#10B98115' : isRisk ? '#FF980015' : '#EF444415';
   
   const statusText = isSafe
-    ? (language === 'ar' ? '✅ الوضع المالي آمن' : '✅ STATUS SAFE')
+    ? (language === 'hi' ? '✅ स्थिति सुरक्षित' : language === 'ar' ? '✅ الوضع المالي آمن' : '✅ STATUS SAFE')
     : isRisk
-      ? (language === 'ar' ? `⚠️ نفاد خلال ${forecast.daysRemaining} يوم` : `⚠️ Runout in ${forecast.daysRemaining}d`)
-      : (language === 'ar' ? '🚨 الرصيد منتهٍ!' : '🚨 BALANCE DEPLETED');
+      ? (language === 'hi' ? `⚠️ ${forecast.daysRemaining} दिनों में समाप्त` : language === 'ar' ? `⚠️ نفاد خلال ${forecast.daysRemaining} يوم` : `⚠️ Runout in ${forecast.daysRemaining}d`)
+      : (language === 'hi' ? '🚨 शेष राशि समाप्त!' : language === 'ar' ? '🚨 الرصيد منتهٍ!' : '🚨 BALANCE DEPLETED');
+
+  const headerTitle = language === 'hi' ? 'नकदी प्रवाह का पूर्वानुमान' : language === 'ar' ? 'توقعات السيولة' : 'CASHFLOW FORECAST';
+  const totalBalanceLabel = language === 'hi' ? 'कुल शेष' : language === 'ar' ? 'إجمالي الرصيد' : 'TOTAL BALANCE';
+  const netFlowLabel = language === 'hi' ? 'शुद्ध प्रवाह' : language === 'ar' ? 'التدفق الصافي' : 'NET FLOW';
 
   return (
     <Pressable 
@@ -51,18 +55,18 @@ export default function CashflowForecastWidget({
       onPress={onPress}
     >
       <Text style={styles.cardHeaderTitle2Col}>
-        {language === 'ar' ? 'توقعات السيولة' : 'CASHFLOW FORECAST'}
+        {headerTitle}
       </Text>
       
       <View style={styles.forecastSummaryRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.forecastSubLabel}>{language === 'ar' ? 'إجمالي الرصيد' : 'TOTAL BALANCE'}</Text>
+          <Text style={styles.forecastSubLabel}>{totalBalanceLabel}</Text>
           <Text style={styles.forecastValueText} numberOfLines={1}>
             {formatCurrency(selectedWalletBalance, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-          <Text style={styles.forecastSubLabel}>{language === 'ar' ? 'التدفق الصافي' : 'NET FLOW'}</Text>
+          <Text style={styles.forecastSubLabel}>{netFlowLabel}</Text>
           <Text 
             style={[
               styles.forecastNetFlowText, 

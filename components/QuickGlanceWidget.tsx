@@ -28,7 +28,7 @@ import { Debt } from '@/lib/debtStorage';
 
 interface QuickGlanceWidgetProps {
   data: WidgetData;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   goals?: SavingsGoal[];
   debts?: Debt[];
   totalConsolidatedBalance?: number;
@@ -44,6 +44,12 @@ export default function QuickGlanceWidget({
   totalConsolidatedBalance,
   onVoicePress,
 }: QuickGlanceWidgetProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const [showFullPicture, setShowFullPicture] = useState(false);
@@ -113,7 +119,7 @@ export default function QuickGlanceWidget({
           <View style={[styles.walletBadge, { backgroundColor: colors.surfaceAlt }]}>
             <Ionicons name="wallet-outline" size={16} color={colors.primary} />
             <Text style={[styles.walletBadgeText, { color: colors.text }]} numberOfLines={1}>
-              {data.walletName || (isAr ? 'المحفظة الرئيسية' : 'Main Wallet')}
+              {data.walletName || loc('المحفظة الرئيسية', 'Main Wallet', 'मुख्य वॉलेट')}
             </Text>
           </View>
         </View>
@@ -139,7 +145,7 @@ export default function QuickGlanceWidget({
               style={styles.wingBtnGradient}
             >
               <Ionicons name="remove-circle" size={20} color="#FFF" />
-              <Text style={styles.wingBtnText}>{isAr ? 'مصروف' : 'Expense'}</Text>
+              <Text style={styles.wingBtnText}>{loc('مصروف', 'Expense', 'खर्च')}</Text>
             </LinearGradient>
           </Pressable>
 
@@ -187,7 +193,7 @@ export default function QuickGlanceWidget({
               style={styles.wingBtnGradient}
             >
               <Ionicons name="add-circle" size={20} color="#FFF" />
-              <Text style={styles.wingBtnText}>{isAr ? 'دخل' : 'Income'}</Text>
+              <Text style={styles.wingBtnText}>{loc('دخل', 'Income', 'आय')}</Text>
             </LinearGradient>
           </Pressable>
         </View>
@@ -228,7 +234,7 @@ export default function QuickGlanceWidget({
               style={styles.quickActionCardText}
               numberOfLines={1}
             >
-              {isAr ? 'مصاريف متكررة' : 'Recurring'}
+              {loc('مصاريف متكررة', 'Recurring', 'आवर्ती खर्च')}
             </Text>
           </Pressable>
 
@@ -263,7 +269,7 @@ export default function QuickGlanceWidget({
               style={styles.quickActionCardText}
               numberOfLines={1}
             >
-              {isAr ? 'أقساط وجمعيات' : 'Installments & Savings'}
+              {loc('أقساط وجمعيات', 'Installments & Savings', 'किस्तें और समितियां')}
             </Text>
           </Pressable>
         </View>

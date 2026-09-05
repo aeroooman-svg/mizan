@@ -35,7 +35,7 @@ interface FinancialJourneySliderProps {
   totalExpenseVal?: number;
   healthScore?: number;
   currencySymbol: string;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
   onOpenConverterModal: () => void;
   onOpenMonthlyReport?: () => void;
@@ -58,6 +58,12 @@ export default function FinancialJourneySlider({
   onOpenConverterModal,
   onOpenMonthlyReport,
 }: FinancialJourneySliderProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const { width: windowWidth } = useWindowDimensions();
   const effectiveWidth = Math.min(windowWidth, 480);
   const cardGap = 16;
@@ -210,7 +216,7 @@ export default function FinancialJourneySlider({
         <View style={styles.titleRow}>
           <Ionicons name="sparkles" size={18} color="#F59E0B" />
           <Text style={styles.sliderTitle}>
-            {isAr ? 'رؤيتك المالية والادخار 🎯' : 'Financial & Savings Outlook 🎯'}
+            {loc('رؤيتك المالية والادخار 🎯', 'Financial & Savings Outlook 🎯', 'वित्तीय और बचत दृष्टिकोण 🎯')}
           </Text>
         </View>
 
@@ -275,7 +281,7 @@ export default function FinancialJourneySlider({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons name="flash" size={17} color="#10B981" />
               <Text style={styles.cardTitle}>
-                {isAr ? 'النبض المالي ومعدل الصرف' : 'Financial Pulse & Pace'}
+                {loc('النبض المالي ومعدل الصرف', 'Financial Pulse & Pace', 'वित्तीय नब्ज और खर्च गति')}
               </Text>
             </View>
 
@@ -294,7 +300,7 @@ export default function FinancialJourneySlider({
                 }}
               >
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: pulseTab === 'weekly' ? '#FFF' : colors.textSecondary }}>
-                  {isAr ? '7 أيام' : '7 Days'}
+                  {loc('7 أيام', '7 Days', '7 दिन')}
                 </Text>
               </Pressable>
 
@@ -311,7 +317,7 @@ export default function FinancialJourneySlider({
                 }}
               >
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: pulseTab === 'monthly' ? '#FFF' : colors.textSecondary }}>
-                  {isAr ? 'الشهري' : 'Monthly'}
+                  {loc('الشهري', 'Monthly', 'मासिक')}
                 </Text>
               </Pressable>
             </View>
@@ -324,7 +330,7 @@ export default function FinancialJourneySlider({
                 <View style={{ backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                      {isAr ? 'منصرف الـ 7 أيام الماضية:' : 'Past 7 Days Spending:'}
+                      {loc('منصرف الـ 7 أيام الماضية:', 'Past 7 Days Spending:', 'पिछले 7 दिनों का खर्च:')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.expense, marginTop: 1 }}>
                       {formatCurrency(pulseStats.thisWeekSpent, language)} <Text style={{ fontSize: 11 }}>{currencySymbol}</Text>
@@ -334,7 +340,7 @@ export default function FinancialJourneySlider({
                   {pulseStats.biggestTx && (
                     <View style={{ alignItems: 'flex-end', backgroundColor: '#EF444412', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
-                        {isAr ? 'أكبر عملية' : 'Largest'}
+                        {loc('أكبر عملية', 'Largest', 'सबसे बड़ा')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.expense }}>
                         {formatCurrency(pulseStats.biggestTx.amount, language)} {currencySymbol}
@@ -352,7 +358,7 @@ export default function FinancialJourneySlider({
                       color={pulseTopCategoryObj?.color || colors.primary}
                     />
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, flex: 1 }}>
-                      {isAr ? 'أعلى فئة صرف:' : 'Top Category:'}{' '}
+                      {loc('أعلى فئة صرف:', 'Top Category:', 'शीर्ष खर्च श्रेणी:')}{' '}
                       <Text style={{ fontFamily: 'Cairo_700Bold', color: colors.text }}>
                         {getCategoryName(pulseStats.topCatId, language)}
                       </Text>
@@ -385,10 +391,10 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="sparkles" size={13} color="#FFF" />
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
-                      {isAr ? 'عرض التقرير الشهري الشامل' : 'View Monthly Digest'}
+                      {loc('عرض التقرير الشهري الشامل', 'View Monthly Digest', 'मासिक सारांश रिपोर्ट देखें')}
                     </Text>
                   </View>
-                  <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
+                  <Ionicons name={language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
                 </Pressable>
               )}
             </View>
@@ -399,16 +405,16 @@ export default function FinancialJourneySlider({
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: colors.textSecondary }}>
-                      {isAr ? 'معدل الصرف اليومي' : 'Daily Pace'}
+                      {loc('معدل الصرف اليومي', 'Daily Pace', 'दैनिक खर्च दर')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, marginTop: 2 }}>
-                      {formatCurrency(pulseStats.dailyAverage, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}/يوم</Text>
+                      {formatCurrency(pulseStats.dailyAverage, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}{loc('/يوم', '/day', '/दिन')}</Text>
                     </Text>
                   </View>
 
                   <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: colors.textSecondary }}>
-                      {isAr ? 'التوقع لنهاية الشهر' : 'Projected End'}
+                      {loc('التوقع لنهاية الشهر', 'Projected End', 'महीने के अंत तक अनुमान')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, marginTop: 2 }}>
                       {formatCurrency(pulseStats.projectedTotal, language)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
@@ -419,7 +425,7 @@ export default function FinancialJourneySlider({
                 {/* MoM Comparison info */}
                 <View style={{ backgroundColor: colors.surfaceAlt, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                    {isAr ? 'نفس الفترة الشهر الماضي:' : 'Same Period Last Month:'}
+                    {loc('نفس الفترة الشهر الماضي:', 'Same Period Last Month:', 'पिछले महीने की समान अवधि:')}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.textSecondary }}>
                     {formatCurrency(pulseStats.prevMonthToDateTotal, language)} {currencySymbol}
@@ -448,10 +454,10 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="sparkles" size={13} color="#FFF" />
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
-                      {isAr ? 'عرض التقرير الشهري الشامل' : 'View Monthly Digest'}
+                      {loc('عرض التقرير الشهري الشامل', 'View Monthly Digest', 'मासिक सारांश रिपोर्ट देखें')}
                     </Text>
                   </View>
-                  <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
+                  <Ionicons name={language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={14} color="#FFF" />
                 </Pressable>
               )}
             </View>
@@ -462,17 +468,17 @@ export default function FinancialJourneySlider({
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>
-              {isAr ? 'الصورة الكاملة للوضع المالي' : 'Full Financial Picture'}
+              {loc('الصورة الكاملة للوضع المالي', 'Full Financial Picture', 'वित्तीय स्थिति का संपूर्ण दृश्य')}
             </Text>
             <Pressable onPress={() => router.push('/(tabs)/stats')}>
-              <Text style={styles.cardAction}>{isAr ? 'التحليلات' : 'Analytics'}</Text>
+              <Text style={styles.cardAction}>{loc('التحليلات', 'Analytics', 'विश्लेषण')}</Text>
             </Pressable>
           </View>
 
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             <View style={{ backgroundColor: colors.primary + '12', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.primary + '25', alignItems: 'center' }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary, marginBottom: 1 }}>
-                {isAr ? 'إجمالي الرصيد الشامل للمحافظ' : 'Total Consolidated Balance'}
+                {loc('إجمالي الرصيد الشامل للمحافظ', 'Total Consolidated Balance', 'समेकित कुल शेष')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 20, color: totalConsolidatedBalance >= 0 ? colors.income : colors.expense }}>
                 {totalConsolidatedBalance >= 0 ? '' : '-'}
@@ -482,7 +488,7 @@ export default function FinancialJourneySlider({
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt + '60', padding: 8, borderRadius: 12 }}>
               <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الدخل' : 'Income'}</Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{loc('الدخل', 'Income', 'आय')}</Text>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#10B981', marginTop: 1 }}>
                   +{formatCurrency(totalIncomeVal, language)}
                 </Text>
@@ -491,7 +497,7 @@ export default function FinancialJourneySlider({
               <View style={{ width: 1, height: 20, backgroundColor: colors.border }} />
 
               <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'المصروف' : 'Expense'}</Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{loc('المصروف', 'Expense', 'खर्च')}</Text>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#EF4444', marginTop: 1 }}>
                   -{formatCurrency(totalExpenseVal, language)}
                 </Text>
@@ -500,7 +506,7 @@ export default function FinancialJourneySlider({
               <View style={{ width: 1, height: 20, backgroundColor: colors.border }} />
 
               <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{isAr ? 'الصحة' : 'Health'}</Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>{loc('الصحة', 'Health', 'स्वास्थ्य')}</Text>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#F59E0B', marginTop: 1 }}>
                   {healthScore}%
                 </Text>
@@ -527,7 +533,9 @@ export default function FinancialJourneySlider({
               }}
             >
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                {isAr ? (isDetailsExpanded ? 'إخفاء التفاصيل 🔼' : 'عرض باقي تفاصيل الوضع المالي 🔽') : (isDetailsExpanded ? 'Hide Details 🔼' : 'Show Full Breakdown 🔽')}
+                {isDetailsExpanded
+                  ? loc('إخفاء التفاصيل 🔼', 'Hide Details 🔼', 'विवरण छिपाएं 🔼')
+                  : loc('عرض باقي تفاصيل الوضع المالي 🔽', 'Show Full Breakdown 🔽', 'पूर्ण वित्तीय विवरण देखें 🔽')}
               </Text>
             </Pressable>
 
@@ -539,7 +547,7 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="gift-outline" size={13} color="#10B981" />
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                      {isAr ? `الحصالات الادخارية (${goals.length}):` : `Savings Jars (${goals.length}):`}
+                      {loc(`الحصالات الادخارية (${goals.length}):`, `Savings Jars (${goals.length}):`, `बचत गुल्लक (${goals.length}):`)}
                     </Text>
                   </View>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
@@ -552,7 +560,7 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <MaterialCommunityIcons name="piggy-bank" size={13} color="#0D7C66" />
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                      {isAr ? `مدفوعات الجمعيات (ادخار ${jameyaItems.length}):` : `ROSCA Savings (${jameyaItems.length}):`}
+                      {loc(`مدفوعات الجمعيات (ادخار ${jameyaItems.length}):`, `ROSCA Savings (${jameyaItems.length}):`, `समिति बचत (${jameyaItems.length}):`)}
                     </Text>
                   </View>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#0D7C66' }}>
@@ -565,7 +573,7 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="receipt-outline" size={13} color={totalOwed > 0 ? '#EF4444' : colors.textSecondary} />
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: totalOwed > 0 ? '#EF4444' : colors.textSecondary }}>
-                      {isAr ? 'ديون مستحقة عليّ:' : 'Debts I Owe:'}
+                      {loc('ديون مستحقة عليّ:', 'Debts I Owe:', 'मुझे चुकाना है:')}
                     </Text>
                   </View>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: totalOwed > 0 ? '#EF4444' : colors.textSecondary }}>
@@ -578,7 +586,7 @@ export default function FinancialJourneySlider({
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="cash-outline" size={13} color={totalCollect > 0 ? '#10B981' : colors.textSecondary} />
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: totalCollect > 0 ? '#10B981' : colors.textSecondary }}>
-                      {isAr ? 'أموال لي بالخارج:' : 'Loans Owed to Me:'}
+                      {loc('أموال لي بالخارج:', 'Loans Owed to Me:', 'मुझे मिलना है:')}
                     </Text>
                   </View>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: totalCollect > 0 ? '#10B981' : colors.textSecondary }}>
@@ -591,7 +599,7 @@ export default function FinancialJourneySlider({
                 {/* Total Net Savings */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }}>
-                    {isAr ? 'الصافي الادخاري الكلي الحقيقي:' : 'Total Net Savings:'}
+                    {loc('الصافي الادخاري الكلي الحقيقي:', 'Total Net Savings:', 'वास्तविक कुल शुद्ध बचत:')}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: totalNetSavings >= 0 ? colors.income : colors.expense }}>
                     {formatCurrency(totalNetSavings, language)} {currencySymbol}
@@ -608,11 +616,11 @@ export default function FinancialJourneySlider({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons name="trophy" size={18} color="#F59E0B" />
               <Text style={styles.cardTitle}>
-                {isAr ? 'أهداف الادخار والحصالات' : 'Savings Goals & Jars'}
+                {loc('أهداف الادخار والحصالات', 'Savings Goals & Jars', 'बचत लक्ष्य और गुल्लक')}
               </Text>
             </View>
             <Pressable onPress={() => router.push('/savings-goals')}>
-              <Text style={styles.cardAction}>{isAr ? 'إدارة ⚙️' : 'Manage ⚙️'}</Text>
+              <Text style={styles.cardAction}>{loc('إدارة ⚙️', 'Manage ⚙️', 'प्रबंधन ⚙️')}</Text>
             </Pressable>
           </View>
 
@@ -641,13 +649,13 @@ export default function FinancialJourneySlider({
 
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={styles.goalCountText}>
-                    {isAr ? `تم توفير بـ ${goals.length} حصالات:` : `Saved in ${goals.length} Jars:`}
+                    {loc(`تم توفير بـ ${goals.length} حصالات:`, `Saved in ${goals.length} Jars:`, `${goals.length} लक्ष्यों में बचत:`)}
                   </Text>
                   <Text style={styles.goalSavedSub}>
                     {formatCurrency(totalGoalSaved, language)} {currencySymbol}
                   </Text>
                   <Text style={styles.goalTargetSub}>
-                    {isAr ? `إجمالي المستهدف: ${formatCurrency(totalGoalTarget, language)}` : `Target: ${formatCurrency(totalGoalTarget, language)}`}
+                    {loc(`إجمالي المستهدف: ${formatCurrency(totalGoalTarget, language)}`, `Target: ${formatCurrency(totalGoalTarget, language)}`, `कुल लक्ष्य: ${formatCurrency(totalGoalTarget, language)}`)}
                   </Text>
                 </View>
               </View>
@@ -692,13 +700,13 @@ export default function FinancialJourneySlider({
                 <Ionicons name="trophy-outline" size={22} color="#F59E0B" />
               </View>
               <Text style={styles.emptyCardText}>
-                {isAr ? 'لا توجد أهداف ادخار مفعلة بعد' : 'No savings goals created yet'}
+                {loc('لا توجد أهداف ادخار مفعلة بعد', 'No savings goals created yet', 'अभी तक कोई बचत लक्ष्य नहीं बनाया गया')}
               </Text>
               <Pressable
                 onPress={() => router.push('/savings-goals')}
                 style={styles.cardBtn}
               >
-                <Text style={styles.cardBtnText}>{isAr ? '+ إنشاء هدف ادخار' : '+ New Goal'}</Text>
+                <Text style={styles.cardBtnText}>{loc('+ إنشاء هدف ادخار', '+ New Goal', '+ नया बचत लक्ष्य')}</Text>
               </Pressable>
             </View>
           )}

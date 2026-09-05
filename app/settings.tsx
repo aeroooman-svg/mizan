@@ -60,6 +60,11 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { language, setLanguage, t } = useLanguage();
   const isAr = language === 'ar';
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
 
   const {
     isPinEnabled,
@@ -154,18 +159,18 @@ export default function SettingsScreen() {
   const handleTestNotification = async () => {
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     await sendImmediateNotification(
-      isAr ? '🔔 تجربة تنبيه ميزان المالي' : '🔔 Mizan Notification Test',
-      isAr
-        ? 'نظام التنبيهات الذكي يعمل بكفاءة! ستصلك التذكيرات وتنبيهات الميزانية في مواعيدها.'
-        : 'Smart notifications are working properly! You will receive timely budget alerts.'
+      loc('🔔 تجربة تنبيه ميزان المالي', '🔔 Mizan Notification Test', '🔔 मीज़ान सूचना परीक्षण'),
+      loc(
+        'نظام التنبيهات الذكي يعمل بكفاءة! ستصلك التذكيرات وتنبيهات الميزانية في مواعيدها.',
+        'Smart notifications are working properly! You will receive timely budget alerts.',
+        'स्मार्ट सूचना प्रणाली सुचारू रूप से काम कर रही है! आपको समय पर बजट अलर्ट प्राप्त होंगे।'
+      )
     );
     Alert.alert(
-      isAr ? 'تم الإرسال 🚀' : 'Sent 🚀',
-      isAr ? 'تم إرسال إشعار تجريبي إلى جهازك بنجاح.' : 'A test notification has been dispatched to your device.'
+      loc('تم الإرسال 🚀', 'Sent 🚀', 'भेजा गया 🚀'),
+      loc('تم إرسال إشعار تجريبي إلى جهازك بنجاح.', 'A test notification has been dispatched to your device.', 'आपके डिवाइस पर एक परीक्षण सूचना सफलतापूर्वक भेजी गई है।')
     );
   };
-
-
 
   const handleToggleLanguage = async (lang: 'ar' | 'en' | 'hi') => {
     safeHaptic.selection();
@@ -185,14 +190,14 @@ export default function SettingsScreen() {
     if (result) {
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        isAr ? 'تمت المزامنة' : 'Synced',
-        isAr ? 'تمت مزامنة البيانات السحابية بنجاح!' : 'Cloud data synced successfully!'
+        loc('تمت المزامنة', 'Synced', 'सिंक हो गया'),
+        loc('تمت مزامنة البيانات السحابية بنجاح!', 'Cloud data synced successfully!', 'क्लाउड डेटा सफलतापूर्वक सिंक हो गया!')
       );
     } else {
       safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
-        isAr ? 'خطأ' : 'Error',
-        isAr ? 'فشلت المزامنة، يرجى التحقق من اتصالك بالإنترنت' : 'Sync failed, please check your connection'
+        loc('خطأ', 'Error', 'त्रुटि'),
+        loc('فشلت المزامنة، يرجى التحقق من اتصالك بالإنترنت', 'Sync failed, please check your connection', 'सिंक विफल रहा, कृपया अपना इंटरनेट कनेक्शन जांचें')
       );
     }
   };
@@ -201,9 +206,9 @@ export default function SettingsScreen() {
     safeHaptic.selection();
     setConfirmModalState({
       visible: true,
-      title: isAr ? 'تسجيل الخروج' : 'Logout',
-      message: isAr ? 'هل أنت متأكد من رغبتك في تسجيل الخروج؟' : 'Are you sure you want to logout?',
-      confirmText: isAr ? 'تسجيل الخروج' : 'Logout',
+      title: loc('تسجيل الخروج', 'Logout', 'लॉगआउट'),
+      message: loc('هل أنت متأكد من رغبتك في تسجيل الخروج؟', 'Are you sure you want to logout?', 'क्या आप वाकई लॉगआउट करना चाहते हैं?'),
+      confirmText: loc('تسجيل الخروج', 'Logout', 'लॉगआउट'),
       isDestructive: true,
       onConfirm: async () => {
         setConfirmModalState(prev => ({ ...prev, visible: false }));
@@ -226,9 +231,9 @@ export default function SettingsScreen() {
     } else {
       setConfirmModalState({
         visible: true,
-        title: isAr ? 'تعطيل رمز PIN' : 'Disable PIN',
-        message: isAr ? 'هل أنت متأكد من رغبتك في إيقاف قفل رمز PIN؟' : 'Are you sure you want to disable PIN lock?',
-        confirmText: isAr ? 'تعطيل' : 'Disable',
+        title: loc('تعطيل رمز PIN', 'Disable PIN', 'पिन अक्षम करें'),
+        message: loc('هل أنت متأكد من رغبتك في إيقاف قفل رمز PIN؟', 'Are you sure you want to disable PIN lock?', 'क्या आप वाकई पिन लॉक बंद करना चाहते हैं?'),
+        confirmText: loc('تعطيل', 'Disable', 'अक्षम करें'),
         isDestructive: true,
         onConfirm: async () => {
           setConfirmModalState(prev => ({ ...prev, visible: false }));
@@ -244,29 +249,35 @@ export default function SettingsScreen() {
     if (value) {
       if (!isPinEnabled) {
         Alert.alert(
-          isAr ? 'تنبيه الأمان' : 'Security Notice',
-          isAr
-            ? 'يرجى تفعيل قفل رمز PIN أولاً ليكون وسيلة الدخول الاحتياطية قبل تفعيل Face ID.'
-            : 'Please enable PIN Lock first as a backup before enabling Face ID / Biometrics.'
+          loc('تنبيه الأمان', 'Security Notice', 'सुरक्षा सूचना'),
+          loc(
+            'يرجى تفعيل قفل رمز PIN أولاً ليكون وسيلة الدخول الاحتياطية قبل تفعيل Face ID.',
+            'Please enable PIN Lock first as a backup before enabling Face ID / Biometrics.',
+            'फेस आईडी सक्षम करने से पहले कृपया बैकअप के रूप में पिन लॉक सक्षम करें।'
+          )
         );
         return;
       }
       if (Platform.OS === 'web') {
         Alert.alert(
-          isAr ? 'تنبيه Face ID' : 'Face ID Notice',
-          isAr
-            ? 'ميزة Face ID والبصمة تعمل حصرياً على تطبيق الهاتف (iOS / Android) المزود بمستشعر البصمة أو الوجه.'
-            : 'Face ID / Biometrics works natively on mobile devices (iOS / Android) with biometric sensors.'
+          loc('تنبيه Face ID', 'Face ID Notice', 'फेस आईडी सूचना'),
+          loc(
+            'ميزة Face ID والبصمة تعمل حصرياً على تطبيق الهاتف (iOS / Android) المزود بمستشعر البصمة أو الوجه.',
+            'Face ID / Biometrics works natively on mobile devices (iOS / Android) with biometric sensors.',
+            'फेस आईडी केवल बायोमेट्रिक सेंसर वाले मोबाइल उपकरणों पर काम करता है।'
+          )
         );
         return;
       }
       const ok = await enableBiometrics(true);
       if (!ok) {
         Alert.alert(
-          isAr ? 'تنبيه' : 'Alert',
-          isAr
-            ? 'تعذر تفعيل Face ID / البصمة. تأكد من إعداد بصمة الوجه أو الأصبع في إعدادات الهاتف أولاً.'
-            : 'Could not enable Face ID. Make sure Face ID or Fingerprint is configured in your device settings.'
+          loc('تنبيه', 'Alert', 'सूचना'),
+          loc(
+            'تعذر تفعيل Face ID / البصمة. تأكد من إعداد بصمة الوجه أو الأصبع في إعدادات الهاتف أولاً.',
+            'Could not enable Face ID. Make sure Face ID or Fingerprint is configured in your device settings.',
+            'फेस आईडी सक्षम नहीं हो सका। सुनिश्चित करें कि यह आपके डिवाइस में कॉन्फ़िगर है।'
+          )
         );
       } else {
         safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
@@ -299,7 +310,7 @@ export default function SettingsScreen() {
             setIsPinModalOpen(false);
             safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
           } else {
-            setPinError(isAr ? 'الرمز غير متطابق، يرجى المحاولة ثانية' : 'PINs do not match, try again');
+            setPinError(loc('الرمز غير متطابق، يرجى المحاولة ثانية', 'PINs do not match, try again', 'पिन मेल नहीं खाता, पुनः प्रयास करें'));
             safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
             setConfirmedPin('');
           }
@@ -319,28 +330,28 @@ export default function SettingsScreen() {
 
   // Export handlers
   const handleExportPDF = async () => {
-    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: isAr ? 'المحفظة' : 'Wallet', currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
+    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: loc('المحفظة', 'Wallet', 'वॉलेट'), currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
     setExporting(true);
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await exportTransactionsToPDF(transactions, targetWallet, language);
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير ملف PDF' : 'Failed to export PDF');
+      Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('فشل تصدير ملف PDF', 'Failed to export PDF', 'पीडीएफ निर्यात विफल रहा'));
     } finally {
       setExporting(false);
     }
   };
 
   const handleExportCSV = async () => {
-    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: isAr ? 'المحفظة' : 'Wallet', currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
+    const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: loc('المحفظة', 'Wallet', 'वॉलेट'), currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
     setExporting(true);
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await exportTransactionsToCSV(transactions, targetWallet, language);
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل تصدير ملف CSV' : 'Failed to export CSV');
+      Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('فشل تصدير ملف CSV', 'Failed to export CSV', 'सीएसवी निर्यात विफल रहा'));
     } finally {
       setExporting(false);
     }
@@ -352,13 +363,13 @@ export default function SettingsScreen() {
       await createFullBackup();
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'فشل إنشاء النسخة الاحتياطية' : 'Failed to create backup');
+      Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('فشل إنشاء النسخة الاحتياطية', 'Failed to create backup', 'बैकअप बनाने में विफल'));
     }
   };
 
   const handlePerformRestore = async () => {
     if (!restoreJsonInput.trim()) {
-      Alert.alert(isAr ? 'تنبيه' : 'Alert', isAr ? 'يرجى لصق نص كود النسخة الاحتياطية (JSON)' : 'Please paste backup JSON content');
+      Alert.alert(loc('تنبيه', 'Alert', 'सूचना'), loc('يرجى لصق نص كود النسخة الاحتياطية (JSON)', 'Please paste backup JSON content', 'कृपया बैकअप JSON डेटा पेस्ट करें'));
       return;
     }
     setIsRestoring(true);
@@ -371,15 +382,15 @@ export default function SettingsScreen() {
         setIsRestoreModalOpen(false);
         setRestoreJsonInput('');
         Alert.alert(
-          isAr ? 'تمت الاستعادة بنجاح 🎉' : 'Restore Successful 🎉',
-          isAr ? 'تم استرجاع كامل معاملاتك ومحافظك وخططك بنجاح!' : 'All transactions, wallets, and plans restored successfully!'
+          loc('تمت الاستعادة بنجاح 🎉', 'Restore Successful 🎉', 'सफलतापूर्वक पुनर्स्थापित किया गया 🎉'),
+          loc('تم استرجاع كامل معاملاتك ومحافظك وخططك بنجاح!', 'All transactions, wallets, and plans restored successfully!', 'आपके सभी लेनदेन, वॉलेट और योजनाएं सफलतापूर्वक पुनर्स्थापित हो गईं!')
         );
       } else {
         safeHaptic.notification(Haptics.NotificationFeedbackType.Error);
-        Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'ملف النسخة الاحتياطية غير صالح أو تالف' : 'Invalid backup JSON file');
+        Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('ملف النسخة الاحتياطية غير صالح أو تالف', 'Invalid backup JSON file', 'अमान्य बैकअप JSON फ़ाइल'));
       }
     } catch (e) {
-      Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ أثناء استعادة البيانات' : 'Failed to restore backup');
+      Alert.alert(loc('خطأ', 'Error', 'त्रुटि'), loc('حدث خطأ أثناء استعادة البيانات', 'Failed to restore backup', 'डेटा पुनर्स्थापित करते समय त्रुटि हुई'));
     } finally {
       setIsRestoring(false);
     }
@@ -389,9 +400,9 @@ export default function SettingsScreen() {
     safeHaptic.notification(Haptics.NotificationFeedbackType.Warning);
     setConfirmModalState({
       visible: true,
-      title: isAr ? 'مسح جميع البيانات' : 'Clear All Data',
-      message: isAr ? 'هل أنت متأكد تماماً؟ سيتم مسح كافة المعاملات والمحافظ نهائياً من هذا الجهاز.' : 'Are you sure? All transactions and wallets will be permanently deleted.',
-      confirmText: isAr ? 'مسح نهائي' : 'Clear All',
+      title: loc('مسح جميع البيانات', 'Clear All Data', 'सभी डेटा मिटाएं'),
+      message: loc('هل أنت متأكد تماماً؟ سيتم مسح كافة المعاملات والمحافظ نهائياً من هذا الجهاز.', 'Are you sure? All transactions and wallets will be permanently deleted.', 'क्या आप पूरी तरह सुनिश्चित हैं? इस डिवाइस से सभी लेनदेन और वॉलेट स्थायी रूप से हटा दिए जाएंगे।'),
+      confirmText: loc('مسح نهائي', 'Clear All', 'स्थायी रूप से हटाएं'),
       isDestructive: true,
       onConfirm: async () => {
         setConfirmModalState(prev => ({ ...prev, visible: false }));
@@ -437,7 +448,7 @@ export default function SettingsScreen() {
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="cloud-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'الحساب والمزامنة السحابية' : 'Account & Cloud Sync'}</Text>
+              <Text style={styles.sectionTitle}>{loc('الحساب والمزامنة السحابية', 'Account & Cloud Sync', 'खाता और क्लाउड सिंक')}</Text>
             </View>
 
             {user ? (
@@ -449,7 +460,7 @@ export default function SettingsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.userName}>{user.username}</Text>
                     <Text style={styles.userSubtext}>
-                      {isAr ? '🟢 حساب نشط ومتصل' : '🟢 Active & Synced'}
+                      {loc('🟢 حساب نشط ومتصل', '🟢 Active & Synced', '🟢 सक्रिय और सिंक किया गया')}
                     </Text>
                   </View>
                 </View>
@@ -465,21 +476,21 @@ export default function SettingsScreen() {
                     ) : (
                       <>
                         <Ionicons name="sync" size={16} color="#FFF" />
-                        <Text style={styles.primaryActionBtnText}>{isAr ? 'مزامنة الآن' : 'Sync Now'}</Text>
+                        <Text style={styles.primaryActionBtnText}>{loc('مزامنة الآن', 'Sync Now', 'अभी सिंक करें')}</Text>
                       </>
                     )}
                   </Pressable>
 
                   <Pressable onPress={handleLogout} style={({ pressed }) => [styles.secondaryActionBtn, pressed && { opacity: 0.8 }]}>
                     <Ionicons name="log-out-outline" size={16} color={colors.expense} />
-                    <Text style={styles.secondaryActionBtnText}>{isAr ? 'خروج' : 'Logout'}</Text>
+                    <Text style={styles.secondaryActionBtnText}>{loc('خروج', 'Logout', 'लॉगआउट')}</Text>
                   </Pressable>
                 </View>
               </View>
             ) : (
               <View style={styles.noUserBox}>
                 <Text style={styles.noUserText}>
-                  {isAr ? 'سجل حسابك لحفظ بياناتك ومزامنتها سحابياً بأمان تام' : 'Login to secure and sync your data seamlessly'}
+                  {loc('سجل حسابك لحفظ بياناتك ومزامنتها سحابياً بأمان تام', 'Login to secure and sync your data seamlessly', 'अपना डेटा सुरक्षित रखने और सिंक करने के लिए लॉगिन करें')}
                 </Text>
                 <Pressable
                   onPress={() => {
@@ -490,7 +501,7 @@ export default function SettingsScreen() {
                 >
                   <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
                   <Text style={styles.primaryActionBtnText}>
-                    {isAr ? 'تسجيل الدخول / إنشاء حساب' : 'Login / Register'}
+                    {loc('تسجيل الدخول / إنشاء حساب', 'Login / Register', 'लॉगिन / पंजीकरण')}
                   </Text>
                 </Pressable>
               </View>
@@ -503,12 +514,12 @@ export default function SettingsScreen() {
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'المظهر واللغة' : 'Appearance & Language'}</Text>
+              <Text style={styles.sectionTitle}>{loc('المظهر واللغة', 'Appearance & Language', 'दिखावट और भाषा')}</Text>
             </View>
 
             {/* Language Selector */}
             <View style={styles.settingBlock}>
-              <Text style={styles.settingBlockLabel}>{isAr ? 'لغة التطبيق' : 'App Language'}</Text>
+              <Text style={styles.settingBlockLabel}>{loc('لغة التطبيق', 'App Language', 'ऐप की भाषा')}</Text>
               <View style={styles.langRow}>
                 <Pressable
                   onPress={() => handleToggleLanguage('ar')}
@@ -539,11 +550,11 @@ export default function SettingsScreen() {
 
             {/* Theme Selector */}
             <View style={styles.settingBlock}>
-              <Text style={styles.settingBlockLabel}>{isAr ? 'ثيم التطبيق' : 'Color Theme'}</Text>
+              <Text style={styles.settingBlockLabel}>{loc('ثيم التطبيق', 'Color Theme', 'रंग थीम')}</Text>
               <View style={styles.themeGrid}>
                 {[
-                  { id: 'light', nameAr: 'نهاري', nameEn: 'Light', icon: 'sunny-outline', primary: '#10B981', bg: '#F8FAFC' },
-                  { id: 'dark', nameAr: 'ليلي', nameEn: 'Dark', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
+                  { id: 'light', nameAr: 'نهاري', nameEn: 'Light', nameHi: 'हल्का', icon: 'sunny-outline', primary: '#10B981', bg: '#F8FAFC' },
+                  { id: 'dark', nameAr: 'ليلي', nameEn: 'Dark', nameHi: 'गहरा', icon: 'moon-outline', primary: '#10B981', bg: '#090E17' },
                 ].map(tItem => {
                   const isActive = theme === tItem.id;
                   return (
@@ -564,7 +575,7 @@ export default function SettingsScreen() {
                         </View>
                       </View>
                       <Text numberOfLines={1} style={[styles.themeCardText, isActive && styles.themeCardTextActive]}>
-                        {isAr ? tItem.nameAr : tItem.nameEn}
+                        {loc(tItem.nameAr, tItem.nameEn, tItem.nameHi)}
                       </Text>
                     </Pressable>
                   );
@@ -583,7 +594,7 @@ export default function SettingsScreen() {
               <View style={styles.menuRowLeft}>
                 <Ionicons name="apps-outline" size={17} color="#3B82F6" />
                 <Text style={[styles.compactMenuText, { color: '#3B82F6' }]}>
-                  {isAr ? 'إعداد ودجت الشاشة الرئيسية' : 'Home Screen Widgets'}
+                  {loc('إعداد ودجت الشاشة الرئيسية', 'Home Screen Widgets', 'होम स्क्रीन विजेट्स')}
                 </Text>
               </View>
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color="#3B82F6" />
@@ -596,12 +607,12 @@ export default function SettingsScreen() {
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'الأمان والخصوصية' : 'Security & Privacy'}</Text>
+              <Text style={styles.sectionTitle}>{loc('الأمان والخصوصية', 'Security & Privacy', 'सुरक्षा और गोपनीयता')}</Text>
             </View>
 
             <View style={styles.compactSwitchRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.switchLabel}>{isAr ? 'قفل رمز PIN' : 'PIN Lock'}</Text>
+                <Text style={styles.switchLabel}>{loc('قفل رمز PIN', 'PIN Lock', 'पिन लॉक')}</Text>
               </View>
               <Switch
                 value={isPinEnabled}
@@ -612,7 +623,7 @@ export default function SettingsScreen() {
 
             <View style={styles.compactSwitchRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.switchLabel}>{isAr ? 'بصمة الوجه / الأصبع (Face ID)' : 'Face ID / Biometrics'}</Text>
+                <Text style={styles.switchLabel}>{loc('بصمة الوجه / الأصبع (Face ID)', 'Face ID / Biometrics', 'फेस आईडी / बायोमेट्रिक्स')}</Text>
               </View>
               <Switch
                 value={isBiometricEnabled}
@@ -632,7 +643,7 @@ export default function SettingsScreen() {
                 <View style={styles.menuRowLeft}>
                   <Ionicons name="shield-outline" size={17} color={colors.textSecondary} />
                   <Text style={styles.compactMenuText}>
-                    {isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                    {loc('سياسة الخصوصية', 'Privacy Policy', 'गोपनीयता नीति')}
                   </Text>
                 </View>
                 <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.textTertiary} />
@@ -646,11 +657,11 @@ export default function SettingsScreen() {
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="notifications-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'الإشعارات' : 'Notifications'}</Text>
+              <Text style={styles.sectionTitle}>{loc('الإشعارات', 'Notifications', 'सूचनाएं')}</Text>
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'تذكير مسائي يومي' : 'Daily Reminder'}</Text>
+              <Text style={styles.switchLabel}>{loc('تذكير مسائي يومي', 'Daily Reminder', 'दैनिक अनुस्मारक')}</Text>
               <Switch
                 value={notifSettings.dailyReminderEnabled}
                 onValueChange={handleToggleDailyReminder}
@@ -659,7 +670,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'تنبيهات تجاوز الميزانية' : 'Budget Alerts'}</Text>
+              <Text style={styles.switchLabel}>{loc('تنبيهات تجاوز الميزانية', 'Budget Alerts', 'बजट अलर्ट')}</Text>
               <Switch
                 value={notifSettings.budgetAlertsEnabled}
                 onValueChange={handleToggleBudgetAlerts}
@@ -668,7 +679,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'التقرير الشهري' : 'Monthly Digest'}</Text>
+              <Text style={styles.switchLabel}>{loc('التقرير الشهري', 'Monthly Digest', 'मासिक रिपोर्ट')}</Text>
               <Switch
                 value={notifSettings.monthlyDigestEnabled}
                 onValueChange={handleToggleMonthlyDigest}
@@ -677,7 +688,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'الملخص الأسبوعي (كل جمعة)' : 'Weekly Digest (Fridays)'}</Text>
+              <Text style={styles.switchLabel}>{loc('الملخص الأسبوعي (كل جمعة)', 'Weekly Digest (Fridays)', 'साप्ताहिक सारांश (शुक्रवार)')}</Text>
               <Switch
                 value={notifSettings.weeklyDigestEnabled}
                 onValueChange={handleToggleWeeklyDigest}
@@ -686,7 +697,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'إنجازات الادخار' : 'Savings Milestones'}</Text>
+              <Text style={styles.switchLabel}>{loc('إنجازات الادخار', 'Savings Milestones', 'बचत उपलब्धियां')}</Text>
               <Switch
                 value={notifSettings.savingsMilestonesEnabled}
                 onValueChange={handleToggleSavingsMilestones}
@@ -695,7 +706,7 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.compactSwitchRow}>
-              <Text style={styles.switchLabel}>{isAr ? 'تحليل الإنفاق الذكي' : 'Smart Spending Insights'}</Text>
+              <Text style={styles.switchLabel}>{loc('تحليل الإنفاق الذكي', 'Smart Spending Insights', 'स्मार्ट व्यय विश्लेषण')}</Text>
               <Switch
                 value={notifSettings.smartInsightsEnabled}
                 onValueChange={handleToggleSmartInsights}
@@ -710,7 +721,7 @@ export default function SettingsScreen() {
               <View style={styles.sectionIconBadge}>
                 <Ionicons name="document-text-outline" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>{isAr ? 'تصدير وإدارة البيانات' : 'Data & Export'}</Text>
+              <Text style={styles.sectionTitle}>{loc('تصدير وإدارة البيانات', 'Data & Export', 'डेटा और निर्यात')}</Text>
             </View>
 
             <View style={styles.compactExportGrid}>
@@ -750,7 +761,7 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="cloud-download-outline" size={16} color={colors.primary} />
                 <Text style={[styles.compactExportBtnText, { color: colors.primary }]}>
-                  {isAr ? 'نسخ' : 'Backup'}
+                  {loc('نسخ', 'Backup', 'बैकअप')}
                 </Text>
               </Pressable>
 
@@ -763,7 +774,7 @@ export default function SettingsScreen() {
               >
                 <Ionicons name="cloud-upload-outline" size={16} color="#3B82F6" />
                 <Text style={[styles.compactExportBtnText, { color: '#3B82F6' }]}>
-                  {isAr ? 'استعادة' : 'Restore'}
+                  {loc('استعادة', 'Restore', 'पुनर्स्थापित करें')}
                 </Text>
               </Pressable>
             </View>
@@ -783,7 +794,7 @@ export default function SettingsScreen() {
                   <Ionicons name="alert-circle-outline" size={18} color={colors.expense} />
                 </View>
                 <Text style={[styles.sectionTitle, { color: colors.expense }]}>
-                  {isAr ? 'منطقة الخطر' : 'Danger Zone'}
+                  {loc('منطقة الخطر', 'Danger Zone', 'खतरे का क्षेत्र')}
                 </Text>
               </View>
               <Ionicons
@@ -796,9 +807,11 @@ export default function SettingsScreen() {
             {isDangerExpanded && (
               <View style={{ gap: 10, marginTop: 4 }}>
                 <Text style={styles.dangerSubtext}>
-                  {isAr
-                    ? 'حذف جميع المعاملات والمحافظ نهائياً وإعادة التطبيق للحالة الافتراضية.'
-                    : 'Permanently remove all data and reset the app.'}
+                  {loc(
+                    'حذف جميع المعاملات والمحافظ نهائياً وإعادة التطبيق للحالة الافتراضية.',
+                    'Permanently remove all data and reset the app.',
+                    'सभी डेटा स्थायी रूप से हटाएं और ऐप रीसेट करें।'
+                  )}
                 </Text>
                 <Pressable
                   onPress={handleClearAllData}
@@ -806,7 +819,7 @@ export default function SettingsScreen() {
                 >
                   <Ionicons name="trash-outline" size={16} color="#FFF" />
                   <Text style={styles.clearBtnText}>
-                    {isAr ? 'مسح جميع البيانات نهائياً' : 'Clear All Data'}
+                    {loc('مسح جميع البيانات نهائياً', 'Clear All Data', 'सभी डेटा मिटाएं')}
                   </Text>
                 </Pressable>
               </View>
@@ -815,9 +828,9 @@ export default function SettingsScreen() {
 
           {/* App Branding Footer */}
           <View style={styles.aboutContainer}>
-            <Text style={styles.aboutTitle}>{isAr ? 'ميزان - Mizan' : 'Mizan App'}</Text>
+            <Text style={styles.aboutTitle}>{loc('ميزان - Mizan', 'Mizan App', 'मीज़ान ऐप')}</Text>
             <Text style={styles.versionText}>
-              {isAr ? 'الإصدار 1.0.0' : 'Version 1.0.0'}
+              {loc('الإصدار 1.0.0', 'Version 1.0.0', 'संस्करण 1.0.0')}
             </Text>
           </View>
         </ScrollView>
@@ -845,13 +858,13 @@ export default function SettingsScreen() {
                 </View>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 20, color: colors.text }}>
                   {pinStep === 'enter'
-                    ? (isAr ? 'إنشاء رمز PIN الجديد' : 'Create New PIN')
-                    : (isAr ? 'تأكيد رمز PIN' : 'Confirm PIN Code')}
+                    ? loc('إنشاء رمز PIN الجديد', 'Create New PIN', 'नया पिन बनाएं')
+                    : loc('تأكيد رمز PIN', 'Confirm PIN Code', 'पिन कोड की पुष्टि करें')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 20, lineHeight: 18 }}>
                   {pinStep === 'enter'
-                    ? (isAr ? 'أدخل رمز PIN المكون من 4 أرقام لحماية بياناتك:' : 'Enter a 4-digit PIN code to secure your data:')
-                    : (isAr ? 'أعد كتابة رمز PIN للتأكيد:' : 'Re-enter your PIN code to confirm:')}
+                    ? loc('أدخل رمز PIN المكون من 4 أرقام لحماية بياناتك:', 'Enter a 4-digit PIN code to secure your data:', 'डेटा सुरक्षित करने के लिए 4 अंकों का पिन दर्ज करें:')
+                    : loc('أعد كتابة رمز PIN للتأكيد:', 'Re-enter your PIN code to confirm:', 'पुष्टि करने के लिए पुनः पिन दर्ज करें:')}
                 </Text>
               </View>
 
@@ -940,7 +953,7 @@ export default function SettingsScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Ionicons name="cloud-upload" size={22} color="#3B82F6" />
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
-                    {isAr ? 'استعادة النسخة الاحتياطية (JSON)' : 'Restore JSON Backup'}
+                    {loc('استعادة النسخة الاحتياطية (JSON)', 'Restore JSON Backup', 'बैकअप पुनर्स्थापित करें (JSON)')}
                   </Text>
                 </View>
                 <Pressable onPress={() => setIsRestoreModalOpen(false)}>
@@ -949,9 +962,11 @@ export default function SettingsScreen() {
               </View>
 
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
-                {isAr
-                  ? 'الصق كود الـ JSON الخفي أو محتوى ملف النسخة الاحتياطية هنا لاستعادة كافة البيانات فوراً:'
-                  : 'Paste your JSON backup data string below to restore transactions and wallets:'}
+                {loc(
+                  'الصق كود الـ JSON الخفي أو محتوى ملف النسخة الاحتياطية هنا لاستعادة كافة البيانات فوراً:',
+                  'Paste your JSON backup data string below to restore transactions and wallets:',
+                  'सभी डेटा पुनर्स्थापित करने के लिए बैकअप JSON यहाँ चिपकाएँ:'
+                )}
               </Text>
 
               <TextInput
@@ -980,7 +995,7 @@ export default function SettingsScreen() {
                   style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.textSecondary }}>
-                    {isAr ? 'إلغاء' : 'Cancel'}
+                    {loc('إلغاء', 'Cancel', 'रद्द करें')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -994,7 +1009,7 @@ export default function SettingsScreen() {
                     <>
                       <Ionicons name="checkmark-circle" size={18} color="#FFF" />
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
-                        {isAr ? 'تأكيد الاستعادة' : 'Confirm Restore'}
+                        {loc('تأكيد الاستعادة', 'Confirm Restore', 'पुनर्स्थापना की पुष्टि करें')}
                       </Text>
                     </>
                   )}

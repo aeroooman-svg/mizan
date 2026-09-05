@@ -16,7 +16,7 @@ interface GoalsDebtsSectionsProps {
   walletTransactions: Transaction[];
   selectedWalletId: string | undefined;
   currencySymbol: string;
-  language: 'ar' | 'en';
+  language: 'ar' | 'en' | 'hi';
   colors: any;
 }
 
@@ -30,6 +30,12 @@ export default function GoalsDebtsSections({
   language,
   colors,
 }: GoalsDebtsSectionsProps) {
+  const loc = (ar: string, en: string, hi: string) => {
+    if (language === 'hi') return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const styles = getStyles(colors);
 
   const totalOwed = debts
@@ -45,10 +51,10 @@ export default function GoalsDebtsSections({
       <View>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {language === 'ar' ? '🎯 حصالات وأهداف الادخار' : 'SAVINGS GOALS'}
+            {loc('🎯 حصالات وأهداف الادخار', 'SAVINGS GOALS', '🎯 बचत लक्ष्य और गुल्लक')}
           </Text>
           <Pressable onPress={() => router.push('/savings-goals')}>
-            <Text style={styles.seeAll}>{language === 'ar' ? 'إدارة' : 'Manage'}</Text>
+            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'प्रबंधन')}</Text>
           </Pressable>
         </View>
 
@@ -61,10 +67,10 @@ export default function GoalsDebtsSections({
               style={{ marginBottom: 4 }}
             />
             <Text style={styles.emptyTitle}>
-              {language === 'ar' ? 'لا توجد أهداف ادخار نشطة' : 'No active savings goals'}
+              {loc('لا توجد أهداف ادخار نشطة', 'No active savings goals', 'कोई सक्रिय बचत लक्ष्य नहीं')}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {language === 'ar' ? 'ابدأ بإنشاء حصالتك الأولى الآن!' : 'Start your first savings goal now!'}
+              {loc('ابدأ بإنشاء حصالتك الأولى الآن!', 'Start your first savings goal now!', 'अपना पहला बचत लक्ष्य अभी शुरू करें!')}
             </Text>
           </View>
         ) : (
@@ -159,10 +165,10 @@ export default function GoalsDebtsSections({
       <View style={{ marginTop: 20 }}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {language === 'ar' ? '🤝 سجل الديون والالتزامات' : 'DEBTS & LOANS'}
+            {loc('🤝 سجل الديون والالتزامات', 'DEBTS & LOANS', '🤝 ऋण और देनदारियां')}
           </Text>
           <Pressable onPress={() => router.push('/debts')}>
-            <Text style={styles.seeAll}>{language === 'ar' ? 'إدارة' : 'Manage'}</Text>
+            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'प्रबंधन')}</Text>
           </Pressable>
         </View>
 
@@ -186,7 +192,7 @@ export default function GoalsDebtsSections({
                 textAlign: 'left',
               }}
             >
-              {language === 'ar' ? 'ديون مستحقة عليّ' : 'I OWE (DEBTS)'}
+              {loc('ديون مستحقة عليّ', 'I OWE (DEBTS)', 'मुझे चुकाना है (ऋण)')}
             </Text>
             <Text
               style={{
@@ -218,7 +224,7 @@ export default function GoalsDebtsSections({
                 textAlign: 'left',
               }}
             >
-              {language === 'ar' ? 'أموال لي بالخارج' : 'OWED TO ME (LOANS)'}
+              {loc('أموال لي بالخارج', 'OWED TO ME (LOANS)', 'मुझे मिलना है (उधार)')}
             </Text>
             <Text
               style={{
