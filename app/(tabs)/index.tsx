@@ -803,61 +803,82 @@ export default function HomeScreen() {
           {/* Quick Feature Highlights Cards */}
           <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.text, textAlign: 'left', marginBottom: 2 }}>
-              {loc('لماذا تختار مِيزان؟', 'Why Choose MIZAN?', 'मीज़ान क्यों चुनें?')}
+              {loc('لماذا تختار مِيزان؟ ⚖️', 'Why Choose MIZAN? ⚖️', 'मीज़ान क्यों चुनें? ⚖️')}
             </Text>
 
-            {/* Feature 1: Multi-Currency */}
+            {/* Feature 1: AI Smart Robot Advisor */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#6366F118', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="hardware-chip-outline" size={22} color="#6366F1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                    {loc('روبوت ومستشار AI الذكي 🤖', 'Smart AI Robot Advisor 🤖', 'स्मार्ट एआई रोबोट सलाहकार 🤖')}
+                  </Text>
+                </View>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {loc(
+                    'تحليل عاداتك المالية لحظياً، قراءة رسائل البنك ومسح الفواتير بالذكاء الاصطناعي.',
+                    'Real-time spending analysis, auto bank SMS parsing, and OCR receipt scanning.',
+                    'वास्तविक समय में खर्च का विश्लेषण, बैंक एसएमएस और रसीद स्कैनिंग।'
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 2: Spending Heatmap */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#EF444418', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="flame-outline" size={22} color="#EF4444" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {loc('خريطة الإنفاق الحرارية (Heatmap) 🔥', 'Daily Spending Heatmap 🔥', 'दैनिक व्यय हीटमैप (Heatmap) 🔥')}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {loc(
+                    'تقويم حراري بصري يكشف أيام ذروة الصرف وأيام الادخار الهادئة لميزانية متوازنة.',
+                    'Visual calendar heatmap revealing peak spending and quiet saving days.',
+                    'कैलेंडर हीटमैप जो उच्चतम खर्च और शांत बचत के दिनों को दर्शाता है।'
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 3: Smooth Curve Chart & Forecast */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#06B6D418', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="trending-up-outline" size={22} color="#06B6D4" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
+                  {loc('كيرف التدفق والتنبؤ المالي 📈', 'Cashflow Spline & Forecast 📈', 'कर्व चार्ट और नकदी प्रवाह 📈')}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
+                  {loc(
+                    'منحنى بياني ذكي يتنبأ برصيدك المستقبلي ومسار نمو ثروتك لـ 30 يوماً قادمة.',
+                    'Dynamic spline curves projecting your upcoming 30-day cashflows and net worth.',
+                    '30 दिनों के नकदी प्रवाह और बचत वृद्धि का पूर्वानुमान लगाने वाला स्मार्ट ग्राफ।'
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            {/* Feature 4: Multi-Currency Wallets */}
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#10B98118', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="card-outline" size={22} color="#10B981" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {loc('تعدد المحافظ والعملات', 'Multi-Currency Wallets', 'मल्टी-करेंसी वॉलेट्स')}
+                  {loc('تعدد المحافظ والعملات الحية 💳', 'Multi-Currency Live Wallets 💳', 'मल्टी-करेंसी वॉलेट्स 💳')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
                   {loc(
-                    'إدارة مصاريفك بالدينار، الجنيه، الدولار، والريال مع تحويل فوري حقيقي.',
-                    'Manage wallets in KWD, EGP, USD, SAR with live conversion.',
-                    'INR, USD, SAR, AED आदि में लाइव रूपांतरण के साथ खर्च प्रबंधित करें।'
-                  )}
-                </Text>
-              </View>
-            </View>
-
-            {/* Feature 2: Smart SMS & AI */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#6366F118', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="sparkles-outline" size={22} color="#6366F1" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {loc('أتمتة ذكية ومسح الفواتير', 'Smart Automation & Scan', 'स्मार्ट ऑटोमेशन और स्कैनिंग')}
-                </Text>
-                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
-                  {loc(
-                    'قراءة رسائل البنك تلقائياً ومسح الفواتير بالذكاء الاصطناعي.',
-                    'Auto bank SMS parsing and OCR receipt scanning.',
-                    'स्वचालित बैंक एसएमएस और रसीद स्कैनिंग।'
-                  )}
-                </Text>
-              </View>
-            </View>
-
-            {/* Feature 3: Zakat & 50/30/20 Plan */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 14 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="calculator-outline" size={22} color="#F59E0B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
-                  {loc('حاسبة الزكاة والتخطيط المالي', 'Zakat & Financial Plan', 'ज़कात और वित्तीय योजना')}
-                </Text>
-                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left', marginTop: 2 }}>
-                  {loc(
-                    'حساب زكاة المال بدقة شرعية وضبط الميزانية بقاعدة 50/30/20.',
-                    'Calculate Zakat and plan budgets with 50/30/20 rule.',
-                    'सटीक ज़कात की गणना करें और 50/30/20 नियम से बजट की योजना बनाएं।'
+                    'إدارة مصاريفك بالجنيه، الروبية الهندية (₹)، الدولار، والريال مع تحويل فوري حقيقي.',
+                    'Manage wallets in EGP, INR ₹, USD, SAR with live currency conversion.',
+                    'INR, USD, SAR, EGP आदि में लाइव रूपांतरण के साथ खर्च प्रबंधيت करें।'
                   )}
                 </Text>
               </View>

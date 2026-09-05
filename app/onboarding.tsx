@@ -22,6 +22,7 @@ import { useTransactions } from '@/lib/TransactionContext';
 import { CurrencyCode, CURRENCIES } from '@/lib/storage';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import { scheduleWeeklyDigestNotification, scheduleDailyReminder } from '@/lib/NotificationService';
+import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Circle, Line } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
@@ -62,6 +63,8 @@ export default function OnboardingScreen() {
     return en;
   };
 
+  const [demoCurrency, setDemoCurrency] = useState<CurrencyCode>('EGP');
+
   const slides = [
     {
       id: '1',
@@ -70,34 +73,58 @@ export default function OnboardingScreen() {
       titleAr: 'تتبع ذكي ومحافظ متعددة العملات',
       titleEn: 'Smart Multi-Currency Tracking',
       titleHi: 'स्मार्ट मल्टी-करेंसी ट्रैकिंग',
-      descAr: 'أدر إجمالي أموالك ومحافظك بسهولة بمختلف العملات (ج.م، ₹، $) وسجّل مصاريفك ونفقاتك اليومية بنقرة واحدة.',
-      descEn: 'Manage all your wallets across multiple currencies (EGP, INR ₹, USD) and log expenses effortlessly in real-time.',
+      descAr: 'أدر إجمالي أموالك ومحافظك بسهولة بمختلف العملات (ج.م، ₹، $، ر.س) وسجّل مصاريفك ونفقاتك اليومية بنقرة واحدة.',
+      descEn: 'Manage all your wallets across multiple currencies (EGP, INR ₹, USD, SAR) and log expenses effortlessly in real-time.',
       descHi: 'विभिन्न मुद्राओं (INR ₹, USD, आदि) में अपने सभी वॉलेट आसानी से प्रबंधित करें और अपने दैनिक खर्चों को तुरंत ट्रैक करें।',
       previewType: 'wallet' as const,
     },
     {
       id: '2',
-      icon: 'trending-up',
+      icon: 'hardware-chip',
       iconColor: '#6366F1',
-      titleAr: 'تخطيط مالي وتوقعات ذكية',
-      titleEn: 'Financial Planning & Cashflow AI',
-      titleHi: 'वित्तीय योजना और स्मार्ट बजट',
-      descAr: 'اضبط ميزانيتك بذكاء وفق قاعدة 50/30/20 وتوقع تدفقاتك النقدية ومعدل ادخارك لعدة سنوات قادمة.',
-      descEn: 'Structure your monthly budget using the 50/30/20 rule and forecast cashflows & savings goals for years ahead.',
-      descHi: '50/30/20 नियम के साथ अपने मासिक बजट को प्रबंधित करें और भविष्य के लिए नकदी प्रवाह का पूर्वानुमान लगाएं।',
-      previewType: 'budget' as const,
+      titleAr: 'مستشار مالي ذكي بروبوت AI 🤖',
+      titleEn: 'AI Smart Financial Robot 🤖',
+      titleHi: 'एआई स्मार्ट रोबोट वित्तीय सहायक 🤖',
+      descAr: 'روبوت ذكي يحلل عاداتك المالية لحظياً، يقرأ إشعارات البنك وفواتيرك تلقائياً، ويمنحك توصيات توفير فورية.',
+      descEn: 'An intelligent AI robot that analyzes your spending habits in real-time, scans receipts, and provides personalized savings tips.',
+      descHi: 'स्मार्ट एआई रोबोट आपके दैनिक खर्चों का वास्तविक समय में विश्लेषण करता है और स्वचालित रसीद स्कैनिंग के साथ बचत के सुझाव देता है।',
+      previewType: 'ai_robot' as const,
     },
     {
       id: '3',
-      icon: 'calculator',
+      icon: 'grid',
       iconColor: '#F59E0B',
-      titleAr: 'أهداف التوفير وإدارة الديون والزكاة',
-      titleEn: 'Savings Goals, Debts & Zakat',
-      titleHi: 'बचत लक्ष्य, ऋण प्रबंधन और योजनाएं',
-      descAr: 'احسب زكاة مالك، وتابع ديونك والتزاماتك واقبل التحديات المالية اليومية لبناء ثروتك وأمانك المالي.',
-      descEn: 'Calculate Zakat with ease, track personal debts and loans, and master daily financial savings challenges.',
-      descHi: 'अपने ऋणों और देनदारियों को ट्रैक करें, बचत लक्ष्यों को प्राप्त करें और वित्तीय स्थिरता हासिल करें।',
-      previewType: 'goals' as const,
+      titleAr: 'خريطة الإنفاق الحرارية (Heatmap) 🔥',
+      titleEn: 'Visual Spending Heatmap 🔥',
+      titleHi: 'दैनिक व्यय हीटमैप (Heatmap) 🔥',
+      descAr: 'اكتشف أيام ذروة الصرف وأيام الادخار الهادئة عبر خريطة تقويم حرارية تفاعلية تكشف سلوكك المالي بدقة.',
+      descEn: 'Identify peak spending days and quiet saving days at a glance with an interactive visual calendar heatmap matrix.',
+      descHi: 'कैलेंडर हीटमैप मैट्रिक्स के साथ अपने उच्चतम खर्च वाले दिनों और बचत के शांत दिनों को आसानी से ट्रैक करें।',
+      previewType: 'heatmap' as const,
+    },
+    {
+      id: '4',
+      icon: 'trending-up',
+      iconColor: '#06B6D4',
+      titleAr: 'المنحنى البياني والتنبؤ المالي 📈',
+      titleEn: 'Smooth Curve Chart & Forecast 📈',
+      titleHi: 'कर्व चार्ट और नकदी प्रवाह पूर्वानुमान 📈',
+      descAr: 'راقب كيرف ثروتك وتدفقاتك النقدية القادمة بمنحنيات بيانية ديناميكية تتنبأ بمسار رصيدك ومدخراتك القادمة.',
+      descEn: 'Watch your wealth trajectory and upcoming cashflows with dynamic spline curves forecasting your financial growth.',
+      descHi: 'सुंदर कर्व चार्ट और वित्तीय विकास के पूर्वानुमान के साथ अपने नकदी प्रवाह और बचत की प्रवृत्ति को देखें।',
+      previewType: 'curve_chart' as const,
+    },
+    {
+      id: '5',
+      icon: 'calculator',
+      iconColor: '#10B981',
+      titleAr: 'تخطيط 50/30/20 وأهداف التوفير والزكاة 🎯',
+      titleEn: '50/30/20 Budget, Goals & Zakat 🎯',
+      titleHi: '50/30/20 बजट, बचत लक्ष्य और ऋण 🎯',
+      descAr: 'قسّم دخلك بقاعدة 50/30/20 الذهبية، ابنِ صندوق الطوارئ، واحسب زكاة مالك بدقة وتحدَّ نفسك يومياً.',
+      descEn: 'Structure your budget using the 50/30/20 rule, build your emergency fund, and calculate Zakat effortlessly.',
+      descHi: '50/30/20 नियम के साथ बजट बनाएं, अपने लक्ष्यों को प्राप्त करें और देनदारियों को प्रबंधित करें।',
+      previewType: 'budget_goals' as const,
     },
   ];
 
@@ -377,7 +404,13 @@ export default function OnboardingScreen() {
                             {getText('إجمالي الرصيد', 'Total Balance', 'कुल शेष')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: colors.text }]}>
-                            {language === 'hi' ? '₹ 45,280' : isAr ? '45,280 ج.م' : '$4,280.00'}
+                            {demoCurrency === 'INR'
+                              ? '₹ 45,280'
+                              : demoCurrency === 'USD'
+                              ? '$4,280.00'
+                              : demoCurrency === 'SAR'
+                              ? '16,050 ر.س'
+                              : '45,280 ج.م'}
                           </Text>
                         </View>
                         <View style={[styles.mockupBadge, { backgroundColor: '#10B98120' }]}>
@@ -401,7 +434,13 @@ export default function OnboardingScreen() {
                             </Text>
                           </View>
                           <Text style={[styles.mockupTxAmount, { color: '#EF4444' }]}>
-                            {language === 'hi' ? '-₹ 1,420' : isAr ? '-1,420 ج.م' : '-$45.00'}
+                            {demoCurrency === 'INR'
+                              ? '-₹ 1,420'
+                              : demoCurrency === 'USD'
+                              ? '-$45.00'
+                              : demoCurrency === 'SAR'
+                              ? '-170 ر.س'
+                              : '-1,420 ج.م'}
                           </Text>
                         </View>
 
@@ -418,88 +457,331 @@ export default function OnboardingScreen() {
                             </Text>
                           </View>
                           <Text style={[styles.mockupTxAmount, { color: '#10B981' }]}>
-                            {language === 'hi' ? '+₹ 35,000' : isAr ? '+35,000 ج.م' : '+$2,500'}
+                            {demoCurrency === 'INR'
+                              ? '+₹ 35,000'
+                              : demoCurrency === 'USD'
+                              ? '+$2,500'
+                              : demoCurrency === 'SAR'
+                              ? '+12,000 ر.س'
+                              : '+35,000 ج.م'}
                           </Text>
                         </View>
                       </View>
 
-                      {/* Multi-currency tags */}
+                      {/* Multi-currency tags with interactive tap */}
                       <View style={styles.mockupTagsRow}>
-                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.primary + '18' }]}>
-                          <Text style={[styles.mockupCurrencyTagText, { color: colors.primary }]}>🇮🇳 INR (₹)</Text>
+                        {(['EGP', 'INR', 'USD', 'SAR'] as const).map(curr => {
+                          const isCurActive = demoCurrency === curr;
+                          return (
+                            <Pressable
+                              key={curr}
+                              onPress={() => {
+                                Haptics.selectionAsync().catch(() => {});
+                                setDemoCurrency(curr);
+                              }}
+                              style={[
+                                styles.mockupCurrencyTag,
+                                {
+                                  backgroundColor: isCurActive ? colors.primary + '25' : colors.surfaceAlt,
+                                  borderColor: isCurActive ? colors.primary : 'transparent',
+                                  borderWidth: 1,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.mockupCurrencyTagText,
+                                  { color: isCurActive ? colors.primary : colors.textSecondary },
+                                ]}
+                              >
+                                {curr === 'INR'
+                                  ? '🇮🇳 INR (₹)'
+                                  : curr === 'EGP'
+                                  ? '🇪🇬 EGP'
+                                  : curr === 'USD'
+                                  ? '🇺🇸 USD ($)'
+                                  : '🇸🇦 SAR'}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* AI Smart Robot Mockup */}
+                  {item.previewType === 'ai_robot' && (
+                    <View style={styles.mockupInner}>
+                      {/* Top Header with Robot Face & Online Status */}
+                      <View style={styles.mockupBalanceRow}>
+                        <View style={styles.robotHeaderLeft}>
+                          {/* Robot Avatar */}
+                          <View style={styles.robotAvatarContainer}>
+                            <View style={styles.robotAntennaOrb} />
+                            <View style={styles.robotAntennaStem} />
+                            <View style={styles.robotFaceBox}>
+                              <View style={styles.robotVisor}>
+                                <View style={styles.robotEye} />
+                                <View style={styles.robotEye} />
+                              </View>
+                              <View style={styles.robotSmile} />
+                            </View>
+                          </View>
+                          <View style={{ gap: 2 }}>
+                            <Text style={[styles.robotTitle, { color: colors.text }]}>
+                              {getText('مساعد ميزان AI 🤖', 'Mizan AI Robot 🤖', 'मिज़ान एआई बॉट 🤖')}
+                            </Text>
+                            <View style={styles.robotStatusRow}>
+                              <View style={styles.robotStatusPulse} />
+                              <Text style={[styles.robotStatusText, { color: '#10B981' }]}>
+                                {getText('نشط لحظياً • تحليل ذكي', 'Online • Smart Analysis', 'ऑनलाइन • रीयल-टाइम')}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
-                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.surfaceAlt }]}>
-                          <Text style={[styles.mockupCurrencyTagText, { color: colors.textSecondary }]}>🇪🇬 EGP</Text>
+                        <View style={[styles.mockupBadge, { backgroundColor: '#6366F120' }]}>
+                          <Ionicons name="sparkles" size={14} color="#6366F1" />
+                          <Text style={[styles.mockupBadgeText, { color: '#6366F1' }]}>GPT-4o</Text>
                         </View>
-                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.surfaceAlt }]}>
-                          <Text style={[styles.mockupCurrencyTagText, { color: colors.textSecondary }]}>🇺🇸 USD ($)</Text>
+                      </View>
+
+                      {/* Robot Dialogue Speech Bubble */}
+                      <View style={[styles.robotBubble, { backgroundColor: colors.surfaceAlt, borderColor: '#6366F140' }]}>
+                        <Text style={[styles.robotBubbleText, { color: colors.text }]}>
+                          {getText(
+                            '💡 مرحباً! قمت بفحص نمط مصاريفك: وفرت 18% هذا الأسبوع بتجنب النفقات العشوائية، وأقترح تحويل 500 ج.م لصندوق الطوارئ! 🚀',
+                            '💡 Spending Analyzed: You saved 18% this week by cutting impulse purchases. Ready to auto-allocate $50 into emergency savings? 🚀',
+                            '💡 खर्च विश्लेषण: आपने इस सप्ताह 18% बचाया! क्या आप आपातकालीन फंड में बचत जमा करना चाहते हैं? 🚀'
+                          )}
+                        </Text>
+                      </View>
+
+                      {/* Smart Action Badges */}
+                      <View style={styles.robotActionsRow}>
+                        <View style={[styles.robotActionChip, { backgroundColor: '#6366F115', borderColor: '#6366F135' }]}>
+                          <Ionicons name="flash-outline" size={14} color="#6366F1" />
+                          <Text style={[styles.robotActionChipText, { color: colors.text }]}>
+                            {getText('قراءة رسائل البنك (SMS)', 'Auto Bank SMS', 'बैंक एसएमएस पढ़ना')}
+                          </Text>
+                        </View>
+                        <View style={[styles.robotActionChip, { backgroundColor: '#10B98115', borderColor: '#10B98135' }]}>
+                          <Ionicons name="scan-outline" size={14} color="#10B981" />
+                          <Text style={[styles.robotActionChipText, { color: colors.text }]}>
+                            {getText('مسح الفواتير بالذكاء (OCR)', 'OCR Smart Scan', 'स्मार्ट रसीद स्कैन')}
+                          </Text>
                         </View>
                       </View>
                     </View>
                   )}
 
-                  {item.previewType === 'budget' && (
+                  {/* Spending Activity Heatmap Mockup */}
+                  {item.previewType === 'heatmap' && (
                     <View style={styles.mockupInner}>
+                      {/* Top Header */}
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('ميزانية الشهر (50/30/20)', 'Monthly 50/30/20 Plan', 'मासिक बजट योजना')}
+                            {getText('خريطة الإنفاق والنشاط (Heatmap)', 'Daily Spending Heatmap', 'दैनिक व्यय हीटमैप')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: colors.text }]}>
-                            {getText('65% متبقي', '65% Remaining', '65% शेष')}
+                            {getText('28 يوماً مرصودة', '28 Tracked Days', '28 ट्रैक किए गए दिन')}
                           </Text>
                         </View>
-                        <View style={[styles.mockupBadge, { backgroundColor: '#6366F120' }]}>
-                          <Ionicons name="sparkles" size={14} color="#6366F1" />
-                          <Text style={[styles.mockupBadgeText, { color: '#6366F1' }]}>AI Advisor</Text>
-                        </View>
-                      </View>
-
-                      {/* Progress bar */}
-                      <View style={[styles.mockupProgressBarTrack, { backgroundColor: colors.surfaceAlt }]}>
-                        <View style={[styles.mockupProgressBarFill, { width: '35%', backgroundColor: '#6366F1' }]} />
-                      </View>
-
-                      {/* Budget Categories */}
-                      <View style={styles.mockupBudgetGrid}>
-                        <View style={[styles.mockupBudgetItem, { backgroundColor: colors.surfaceAlt }]}>
-                          <Text style={[styles.mockupBudgetCatName, { color: colors.text }]}>
-                            {getText('احتياجات أساسية', 'Needs (50%)', 'आवश्यकताएं')}
-                          </Text>
-                          <Text style={[styles.mockupBudgetCatVal, { color: '#10B981' }]}>
-                            {language === 'hi' ? '₹ 15,000' : isAr ? '15,000 ج.م' : '$1,500'}
-                          </Text>
-                        </View>
-                        <View style={[styles.mockupBudgetItem, { backgroundColor: colors.surfaceAlt }]}>
-                          <Text style={[styles.mockupBudgetCatName, { color: colors.text }]}>
-                            {getText('رغبات وترفيه', 'Wants (30%)', 'इच्छाएं')}
-                          </Text>
-                          <Text style={[styles.mockupBudgetCatVal, { color: '#F59E0B' }]}>
-                            {language === 'hi' ? '₹ 9,000' : isAr ? '9,000 ج.م' : '$900'}
+                        <View style={[styles.mockupBadge, { backgroundColor: '#EF444420' }]}>
+                          <Ionicons name="flame" size={14} color="#EF4444" />
+                          <Text style={[styles.mockupBadgeText, { color: '#EF4444' }]}>
+                            {getText('4 ذروة إنفاق', '4 Peak Days', '4 पीक दिन')}
                           </Text>
                         </View>
                       </View>
 
-                      {/* Insight Pill */}
-                      <View style={[styles.mockupInsightPill, { backgroundColor: '#6366F115', borderColor: '#6366F130' }]}>
-                        <Ionicons name="bulb-outline" size={16} color="#6366F1" />
+                      {/* Heatmap Matrix Card */}
+                      <View style={[styles.heatmapCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                        {/* Days Header */}
+                        <View style={styles.heatmapDaysRow}>
+                          {(isAr
+                            ? ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج']
+                            : language === 'hi'
+                            ? ['र', 'सो', 'मं', 'बु', 'गु', 'शु', 'श']
+                            : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+                          ).map((d, i) => (
+                            <Text key={i} style={[styles.heatmapDayHeader, { color: colors.textSecondary }]}>
+                              {d}
+                            </Text>
+                          ))}
+                        </View>
+
+                        {/* 4 Weeks Grid */}
+                        {[
+                          [1, 0, 2, 1, 0, 3, 4],
+                          [0, 1, 1, 2, 0, 4, 3],
+                          [1, 0, 0, 1, 2, 3, 4],
+                          [0, 1, 2, 0, 1, 4, 2],
+                        ].map((week, wIdx) => (
+                          <View key={wIdx} style={styles.heatmapWeekRow}>
+                            {week.map((level, dIdx) => {
+                              const cellBg =
+                                level === 0
+                                  ? colors.card
+                                  : level === 1
+                                  ? '#10B98140'
+                                  : level === 2
+                                  ? '#10B981'
+                                  : level === 3
+                                  ? '#F59E0B'
+                                  : '#EF4444';
+                              return (
+                                <View
+                                  key={dIdx}
+                                  style={[
+                                    styles.heatmapCell,
+                                    { backgroundColor: cellBg },
+                                    level === 4 && { borderColor: '#FFF', borderWidth: 1 },
+                                  ]}
+                                >
+                                  {level === 4 && (
+                                    <Ionicons name="flame" size={9} color="#FFF" />
+                                  )}
+                                </View>
+                              );
+                            })}
+                          </View>
+                        ))}
+
+                        {/* Heatmap Legend */}
+                        <View style={styles.heatmapLegendRow}>
+                          <Text style={[styles.heatmapLegendText, { color: colors.textSecondary }]}>
+                            {getText('أقل صرف', 'Low Spend', 'कम खर्च')}
+                          </Text>
+                          <View style={styles.heatmapLegendDots}>
+                            {[colors.card, '#10B98140', '#10B981', '#F59E0B', '#EF4444'].map((col, idx) => (
+                              <View key={idx} style={[styles.heatmapLegendDot, { backgroundColor: col }]} />
+                            ))}
+                          </View>
+                          <Text style={[styles.heatmapLegendText, { color: colors.textSecondary }]}>
+                            {getText('أعلى صرف', 'Peak Spend', 'उच्च खर्च')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Heatmap Insight */}
+                      <View style={[styles.mockupInsightPill, { backgroundColor: '#EF444415', borderColor: '#EF444430' }]}>
+                        <Ionicons name="bulb-outline" size={16} color="#EF4444" />
                         <Text style={[styles.mockupInsightText, { color: colors.text }]}>
                           {getText(
-                            'أنت في المسار الصحيح لتوفير 20% هذا الشهر!',
-                            'You are on track to save 20% this month!',
-                            'आप इस महीने 20% बचाने के सही रास्ते पर हैं!'
+                            '🔥 ذروة الإنفاق تتكرر في عطلة نهاية الأسبوع • 18 يوماً كان إنفاقك منخفضاً ممتازاً!',
+                            '🔥 Weekend spending peaks detected • 18 low-spend days kept your budget safe!',
+                            '🔥 सप्ताहांत में खर्च बढ़ता है • 18 शांत बचत दिनों ने आपके बजट को सुरक्षित रखा!'
                           )}
                         </Text>
                       </View>
                     </View>
                   )}
 
-                  {item.previewType === 'goals' && (
+                  {/* Curve Chart Mockup */}
+                  {item.previewType === 'curve_chart' && (
+                    <View style={styles.mockupInner}>
+                      {/* Header */}
+                      <View style={styles.mockupBalanceRow}>
+                        <View>
+                          <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
+                            {getText('منحنى نمو الثروة والتدفق المالي', 'Cashflow & Net Worth Spline', 'नकदी प्रवाह और बचत कर्व')}
+                          </Text>
+                          <Text style={[styles.mockupAmount, { color: '#10B981' }]}>
+                            +34.8% {getText('تراكمي', 'Growth', 'वृद्धि')}
+                          </Text>
+                        </View>
+                        <View style={[styles.mockupBadge, { backgroundColor: '#10B98120' }]}>
+                          <Ionicons name="trending-up" size={14} color="#10B981" />
+                          <Text style={[styles.mockupBadgeText, { color: '#10B981' }]}>Forecast</Text>
+                        </View>
+                      </View>
+
+                      {/* SVG Curve Graph Card */}
+                      <View style={[styles.curveContainer, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                        <Svg viewBox="0 0 300 90" width="100%" height={90}>
+                          <Defs>
+                            <SvgGradient id="chartCurveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <Stop offset="0%" stopColor="#10B981" stopOpacity="0.45" />
+                              <Stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                            </SvgGradient>
+                          </Defs>
+
+                          {/* Gradient Area Fill */}
+                          <Path
+                            d="M 15,72 C 40,72 45,64 70,64 C 95,64 100,50 125,50 C 150,50 155,54 180,54 C 205,54 215,30 240,30 C 265,30 275,14 285,14 L 285,88 L 15,88 Z"
+                            fill="url(#chartCurveGrad)"
+                          />
+
+                          {/* Spline Stroke */}
+                          <Path
+                            d="M 15,72 C 40,72 45,64 70,64 C 95,64 100,50 125,50 C 150,50 155,54 180,54 C 205,54 215,30 240,30 C 265,30 275,14 285,14"
+                            stroke="#10B981"
+                            strokeWidth="3.5"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+
+                          {/* Milestone Dots */}
+                          <Circle cx="70" cy="64" r="3.5" fill="#10B981" />
+                          <Circle cx="125" cy="50" r="3.5" fill="#10B981" />
+                          <Circle cx="180" cy="54" r="3.5" fill="#10B981" />
+                          <Circle cx="240" cy="30" r="3.5" fill="#10B981" />
+
+                          {/* Dotted Guideline at Peak */}
+                          <Line
+                            x1="285"
+                            y1="14"
+                            x2="285"
+                            y2="88"
+                            stroke="#10B981"
+                            strokeDasharray="3,3"
+                            strokeOpacity="0.4"
+                            strokeWidth="1.5"
+                          />
+
+                          {/* Glowing Peak Dot */}
+                          <Circle cx="285" cy="14" r="9" fill="#10B981" fillOpacity="0.25" />
+                          <Circle cx="285" cy="14" r="5" fill="#10B981" />
+                          <Circle cx="285" cy="14" r="2.5" fill="#FFFFFF" />
+                        </Svg>
+
+                        {/* X-Axis Month Markers */}
+                        <View style={styles.curveXAxis}>
+                          {(isAr
+                            ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو']
+                            : language === 'hi'
+                            ? ['जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून']
+                            : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+                          ).map((m, i) => (
+                            <Text key={i} style={[styles.curveXAxisLabel, { color: colors.textSecondary }]}>
+                              {m}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+
+                      {/* Forecast Insight */}
+                      <View style={[styles.mockupInsightPill, { backgroundColor: '#06B6D415', borderColor: '#06B6D430' }]}>
+                        <Ionicons name="analytics-outline" size={16} color="#06B6D4" />
+                        <Text style={[styles.mockupInsightText, { color: colors.text }]}>
+                          {getText(
+                            'توقع ذكي: استمرارك على هذه الوتيرة يرفع فائضك لـ 3,200 ج.م نهاية الشهر!',
+                            'Smart Trajectory: Keeping this pace projects $3,200 in surplus by month-end!',
+                            'स्मार्ट पूर्वानुमान: इसी गति से चलने पर महीने के अंत तक अधिशेष बचत बढ़ेगी!'
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* 50/30/20 & Goals Mockup */}
+                  {item.previewType === 'budget_goals' && (
                     <View style={styles.mockupInner}>
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('صندوق الطوارئ والادخار', 'Emergency Savings Fund', 'आपातकालीन बचत फंड')}
+                            {getText('توزيع 50/30/20 وأهداف التوفير', '50/30/20 Plan & Targets', '50/30/20 योजना और लक्ष्य')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: '#10B981' }]}>
                             {language === 'hi' ? '₹ 75,000 / 100,000' : isAr ? '75,000 / 100,000 ج.م' : '$7,500 / 10,000'}
@@ -511,36 +793,39 @@ export default function OnboardingScreen() {
                         </View>
                       </View>
 
-                      {/* Target Progress Bar */}
-                      <View style={[styles.mockupProgressBarTrack, { backgroundColor: colors.surfaceAlt }]}>
-                        <View style={[styles.mockupProgressBarFill, { width: '75%', backgroundColor: '#10B981' }]} />
+                      {/* Segmented Progress Bar */}
+                      <View style={[styles.mockupProgressBarTrack, { backgroundColor: colors.surfaceAlt, flexDirection: 'row' }]}>
+                        <View style={{ width: '50%', height: '100%', backgroundColor: '#10B981' }} />
+                        <View style={{ width: '30%', height: '100%', backgroundColor: '#F59E0B' }} />
+                        <View style={{ width: '20%', height: '100%', backgroundColor: '#6366F1' }} />
                       </View>
 
-                      {/* Debt & Feature Row */}
+                      {/* 50/30/20 Labels */}
+                      <View style={styles.segmentedLabelsRow}>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#10B981' }}>
+                          50% {getText('ضروريات', 'Needs', 'आवश्यकता')}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#F59E0B' }}>
+                          30% {getText('رغبات', 'Wants', 'इच्छा')}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#6366F1' }}>
+                          20% {getText('ادخار', 'Savings', 'बचत')}
+                        </Text>
+                      </View>
+
+                      {/* Feature Item */}
                       <View style={[styles.mockupTxItem, { backgroundColor: colors.surfaceAlt }]}>
                         <View style={[styles.mockupTxIcon, { backgroundColor: '#10B98120' }]}>
-                          <Ionicons name="checkmark-done" size={16} color="#10B981" />
+                          <Ionicons name="trophy" size={16} color="#10B981" />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
-                            {getText('حاسبة الزكاة الذكية', 'Smart Zakat & Loans', 'स्मार्ट ऋण और लक्ष्य')}
+                            {getText('تحدي 30 يوم لبناء عادات مالية مستدامة', '30-Day Financial Habit Challenge', '30-दिवसीय वित्तीय आदत चुनौती')}
                           </Text>
                           <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
-                            {getText('حساب دقيق وجدول سداد منتظم', 'Accurate & structured payoff', 'सटीक गणना और समय पर भुगतान')}
+                            {getText('حاسبة الزكاة وجداول سداد الديون', 'Smart Zakat & debt repayment tables', 'स्मार्ट ज़कात और ऋण भुगतान')}
                           </Text>
                         </View>
-                      </View>
-
-                      {/* Daily Streak Pill */}
-                      <View style={[styles.mockupInsightPill, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B30' }]}>
-                        <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
-                        <Text style={[styles.mockupInsightText, { color: colors.text }]}>
-                          {getText(
-                            'تحدي 30 يوم لبناء عادات مالية مستدامة',
-                            '30-Day Financial Habit Challenge',
-                            '30-दिवसीय वित्तीय आदत चुनौती'
-                          )}
-                        </Text>
                       </View>
                     </View>
                   )}
@@ -1033,6 +1318,189 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
     flex: 1,
+  },
+  // Robot Mockup Styles
+  robotHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  robotAvatarContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 48,
+  },
+  robotAntennaOrb: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  robotAntennaStem: {
+    width: 2.5,
+    height: 5,
+    backgroundColor: '#6366F1',
+    borderRadius: 1,
+  },
+  robotFaceBox: {
+    width: 46,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#6366F115',
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  robotVisor: {
+    width: 32,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#0B0F19',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  robotEye: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#06B6D4',
+  },
+  robotSmile: {
+    width: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#6366F1',
+  },
+  robotTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 15,
+  },
+  robotStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  robotStatusPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  robotStatusText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+  },
+  robotBubble: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  robotBubbleText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  robotActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  robotActionChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  robotActionChipText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10.5,
+  },
+  // Heatmap Mockup Styles
+  heatmapCard: {
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  heatmapDaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  heatmapDayHeader: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    width: 28,
+    textAlign: 'center',
+  },
+  heatmapWeekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  heatmapCell: {
+    flex: 1,
+    height: 22,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heatmapLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  heatmapLegendText: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 10,
+  },
+  heatmapLegendDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heatmapLegendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+  },
+  // Curve Chart Styles
+  curveContainer: {
+    padding: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  curveXAxis: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+  },
+  curveXAxisLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+  },
+  // Segmented Labels
+  segmentedLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   slideTitle: {
     fontFamily: 'Cairo_700Bold',
