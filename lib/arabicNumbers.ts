@@ -20,14 +20,25 @@ const arabicToWestern: Record<string, string> = {
   '\u06F7': '7',
   '\u06F8': '8',
   '\u06F9': '9',
+  // Devanagari (Hindi) digits (० - ९)
+  '\u0966': '0',
+  '\u0967': '1',
+  '\u0968': '2',
+  '\u0969': '3',
+  '\u096A': '4',
+  '\u096B': '5',
+  '\u096C': '6',
+  '\u096D': '7',
+  '\u096E': '8',
+  '\u096F': '9',
 };
 
 /**
- * Converts Eastern Arabic and Persian digits to standard Western Arabic (0-9)
+ * Converts Eastern Arabic, Persian, and Devanagari (Hindi) digits to standard Western Arabic (0-9)
  */
 export function normalizeArabicNumbers(input: string): string {
   if (!input) return '';
-  return input.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (ch) => arabicToWestern[ch] || ch);
+  return input.replace(/[\u0660-\u0669\u06F0-\u06F9\u0966-\u096F]/g, (ch) => arabicToWestern[ch] || ch);
 }
 
 /**

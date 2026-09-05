@@ -2,24 +2,31 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { Platform } from 'react-native';
 import { Transaction, Wallet } from './storage';
-import { getCategoryName } from './i18n';
+import { Language, getCategoryName } from './i18n';
 
 export async function exportTransactionsToCSV(
   transactions: Transaction[],
   wallet: Wallet,
-  language: 'ar' | 'en'
+  language: Language
 ): Promise<void> {
   const isAr = language === 'ar';
+  const isHi = language === 'hi';
   
   // CSV Headers
   const headers = isAr
     ? ['المعرف', 'التاريخ', 'النوع', 'الفئة', 'المبلغ', 'العملة', 'الوصف', 'ملاحظات']
+    : isHi
+    ? ['आईडी', 'तारीख', 'प्रकार', 'श्रेणी', 'राशि', 'मुद्रा', 'विवरण', 'नोट्स']
     : ['ID', 'Date', 'Type', 'Category', 'Amount', 'Currency', 'Description', 'Notes'];
 
   // CSV Rows
   const rows = transactions.map((t) => {
     const formattedDate = new Date(t.date).toISOString().split('T')[0];
-    const typeStr = t.type === 'income' ? (isAr ? 'دخل' : 'Income') : t.type === 'expense' ? (isAr ? 'مصروف' : 'Expense') : (isAr ? 'تحويل' : 'Transfer');
+    const typeStr = t.type === 'income' 
+      ? (isAr ? 'دخل' : isHi ? 'आय' : 'Income') 
+      : t.type === 'expense' 
+      ? (isAr ? 'مصروف' : isHi ? 'व्यय' : 'Expense') 
+      : (isAr ? 'تحويل' : isHi ? 'स्थानांतरण' : 'Transfer');
     const categoryName = getCategoryName(t.category, language);
     const desc = (t.description || '').replace(/"/g, '""');
     const note = (t.note || '').replace(/"/g, '""');

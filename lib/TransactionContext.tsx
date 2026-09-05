@@ -108,9 +108,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
         for (const rec of recurringList) {
           if (!rec.isActive) continue;
-          
+
           let nextDue = new Date(rec.nextDueDate);
-          
+
           if (rec.isVariable) {
             if (nextDue <= now) {
               pending.push(rec);
@@ -121,7 +121,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
           let timesProcessed = 0;
           while (nextDue <= now) {
             if (timesProcessed > 50) break; // Infinite loop safety
-            
+
             const newTx: Transaction = {
               id: Crypto.randomUUID(),
               walletId: rec.walletId,
@@ -133,10 +133,10 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
               date: nextDue.toISOString(),
               createdAt: new Date().toISOString(),
             };
-            
+
             generatedTxns.push(newTx);
             timesProcessed++;
-            
+
             // Advance next due date
             if (rec.frequency === 'daily') {
               nextDue.setDate(nextDue.getDate() + 1);
@@ -148,10 +148,10 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
               nextDue.setFullYear(nextDue.getFullYear() + 1);
             }
           }
-          
+
           if (timesProcessed > 0) {
             rec.nextDueDate = nextDue.toISOString();
-            await updateRecurringTransaction(rec).catch(() => {});
+            await updateRecurringTransaction(rec).catch(() => { });
           }
         }
 
@@ -160,8 +160,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
         if (generatedTxns.length > 0) {
           // Save generated transactions
           for (const tx of generatedTxns) {
-            await saveTransaction(tx).catch(() => {});
-            pushSingleTransactionToSupabase(tx).catch(() => {});
+            await saveTransaction(tx).catch(() => { });
+            pushSingleTransactionToSupabase(tx).catch(() => { });
           }
           // Prepended generated ones to state list
           txns = [...generatedTxns, ...txns];
@@ -183,7 +183,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const matchRec = recurringList.find(r => r.toWalletId && r.walletId === t.walletId);
             if (matchRec && matchRec.toWalletId) {
               t.toWalletId = matchRec.toWalletId;
-              await updateInStorage(t).catch(() => {});
+              await updateInStorage(t).catch(() => { });
             }
           }
           // Self-healing: Upgrade any existing debt/loan transactions to category 'debt_loan'
@@ -193,7 +193,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             (t.description.includes('سلفة') || t.description.includes('دين') || t.description.includes('Loan') || t.description.includes('Debt'))
           ) {
             t.category = 'debt_loan';
-            await updateInStorage(t).catch(() => {});
+            await updateInStorage(t).catch(() => { });
           }
         }
       } catch (e) {
@@ -217,13 +217,13 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const remaining = prev.filter(w => !removedSet.has(w.id));
             if (remaining.length > 0 && selectedWalletId && removedSet.has(selectedWalletId)) {
               setSelectedWalletIdState(remaining[0].id);
-              setSelectedWalletIdStorage(remaining[0].id).catch(() => {});
+              setSelectedWalletIdStorage(remaining[0].id).catch(() => { });
             }
             return remaining;
           });
           setTransactions(prev => prev.filter(t => !removedSet.has(t.walletId) && (!t.toWalletId || !removedSet.has(t.toWalletId))));
         }
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err) {
       console.error('Failed to load transaction context data:', err);
     } finally {
@@ -257,8 +257,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const walletTransactions = useMemo(() => {
     if (!selectedWallet) return [];
-    return transactions.filter(t => 
-      t.walletId === selectedWallet.id || 
+    return transactions.filter(t =>
+      t.walletId === selectedWallet.id ||
       (t.type === 'transfer' && t.toWalletId === selectedWallet.id)
     );
   }, [transactions, selectedWallet]);
@@ -281,7 +281,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       try {
         const r = await getExchangeRates();
         setRates(r);
-      } catch (e) {}
+      } catch (e) { }
     }
     loadRates();
   }, []);
@@ -353,7 +353,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     // 1. Save the main transaction
     await saveTransaction(transaction);
     setTransactions(prev => [transaction, ...prev]);
-    pushSingleTransactionToSupabase(transaction).catch(() => {});
+    pushSingleTransactionToSupabase(transaction).catch(() => { });
 
     // 2. Process Auto-Savings Rules for Expenses
     if (transaction.type === 'expense') {
@@ -368,15 +368,15 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
         if (limit > 0) {
           const currentMonth = new Date().getMonth();
           const currentYear = new Date().getFullYear();
-          
+
           const spentBefore = transactions
             .filter(t => {
               const d = new Date(t.date);
               return t.walletId === transaction.walletId &&
-                     t.category === transaction.category &&
-                     t.type === 'expense' &&
-                     d.getMonth() === currentMonth &&
-                     d.getFullYear() === currentYear;
+                t.category === transaction.category &&
+                t.type === 'expense' &&
+                d.getMonth() === currentMonth &&
+                d.getFullYear() === currentYear;
             })
             .reduce((sum, t) => sum + t.amount, 0);
 
@@ -392,7 +392,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const body = language === 'ar'
               ? `لقد استهلكت ${Math.round(pctAfter)}% من ميزانية فئة (${categoryName}). المتبقي: ${formatCurrency(remaining, language)}`
               : `You have spent ${Math.round(pctAfter)}% of your (${categoryName}) budget. Remaining: ${formatCurrency(remaining, language)}`;
-            
+
             await sendImmediateNotification(title, body);
           } else if (pctBefore < 100 && pctAfter >= 100) {
             const cat = getCategoryById(transaction.category);
@@ -402,7 +402,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             const body = language === 'ar'
               ? `لقد تجاوزت ميزانية فئة (${categoryName}) بمقدار ${formatCurrency(overrun, language)}. إجمالي الصرف: ${formatCurrency(spentAfter, language)} (الميزانية: ${formatCurrency(limit, language)})`
               : `You have exceeded your (${categoryName}) budget by ${formatCurrency(overrun, language)}. Total spent: ${formatCurrency(spentAfter, language)} (Budget: ${formatCurrency(limit, language)})`;
-            
+
             await sendImmediateNotification(title, body);
           }
         }
@@ -424,10 +424,10 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
                 date: new Date().toISOString(),
                 createdAt: new Date().toISOString(),
               };
-              
+
               await saveTransaction(savingsTx);
               setTransactions(prev => [savingsTx, ...prev]);
-              pushSingleTransactionToSupabase(savingsTx).catch(() => {});
+              pushSingleTransactionToSupabase(savingsTx).catch(() => { });
               await import('./goalStorage').then(m => m.addFundsToGoal(rule.targetGoalId, diff));
             }
           }
@@ -437,15 +437,15 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
             if (limit > 0) {
               const currentMonth = new Date().getMonth();
               const currentYear = new Date().getFullYear();
-              
+
               const spent = transactions
                 .filter(t => {
                   const d = new Date(t.date);
                   return t.walletId === transaction.walletId &&
-                         t.category === transaction.category &&
-                         t.type === 'expense' &&
-                         d.getMonth() === currentMonth &&
-                         d.getFullYear() === currentYear;
+                    t.category === transaction.category &&
+                    t.type === 'expense' &&
+                    d.getMonth() === currentMonth &&
+                    d.getFullYear() === currentYear;
                 })
                 .reduce((sum, t) => sum + t.amount, 0) + transaction.amount;
 
@@ -464,7 +464,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
                 await saveTransaction(penaltyTx);
                 setTransactions(prev => [penaltyTx, ...prev]);
-                pushSingleTransactionToSupabase(penaltyTx).catch(() => {});
+                pushSingleTransactionToSupabase(penaltyTx).catch(() => { });
                 await import('./goalStorage').then(m => m.addFundsToGoal(rule.targetGoalId, penaltyAmount));
               }
             }
@@ -480,14 +480,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const removeTransaction = useCallback(async (id: string) => {
     await deleteFromStorage(id);
     setTransactions(prev => prev.filter(t => t.id !== id));
-    deleteTransactionFromSupabase(id).catch(() => {});
+    deleteTransactionFromSupabase(id).catch(() => { });
     triggerLiveSync();
   }, [triggerLiveSync]);
 
   const updateTransaction = useCallback(async (transaction: Transaction) => {
     await updateInStorage(transaction);
     setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
-    pushSingleTransactionToSupabase(transaction).catch(() => {});
+    pushSingleTransactionToSupabase(transaction).catch(() => { });
     triggerLiveSync();
   }, [triggerLiveSync]);
 
@@ -497,7 +497,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const stored = await AsyncStorage.getItem('@mizan_user_id') || await AsyncStorage.getItem('@masarif_user_id');
       if (stored) userId = stored;
-    } catch (e) {}
+    } catch (e) { }
 
     const wallet: Wallet = {
       id: Crypto.randomUUID(),
@@ -517,7 +517,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     await saveWalletToStorage(wallet);
     setWallets(prev => [...prev, wallet]);
     if (wallet.sharedWith) {
-      pushWalletToSupabase(wallet).catch(() => {});
+      pushWalletToSupabase(wallet).catch(() => { });
     }
     triggerLiveSync();
     return wallet;
@@ -527,7 +527,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     await updateWalletInStorage(updatedWallet);
     setWallets(prev => prev.map(w => w.id === updatedWallet.id ? updatedWallet : w));
     if (updatedWallet.shareCode || updatedWallet.sharedWith) {
-      pushWalletToSupabase(updatedWallet).catch(() => {});
+      pushWalletToSupabase(updatedWallet).catch(() => { });
     }
     triggerLiveSync();
   }, [triggerLiveSync]);
@@ -652,7 +652,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const approveRecurringTransaction = useCallback(async (rec: RecurringTransaction, customAmount?: number, skip?: boolean) => {
     const now = new Date();
     let nextDue = new Date(rec.nextDueDate);
-    
+
     if (!skip) {
       const finalAmount = customAmount !== undefined ? customAmount : rec.amount;
       const newTx: Transaction = {
@@ -666,11 +666,11 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
         date: now.toISOString(),
         createdAt: now.toISOString(),
       };
-      
+
       await saveTransaction(newTx);
       setTransactions(prev => [newTx, ...prev]);
     }
-    
+
     // Advance next due date
     if (rec.frequency === 'daily') {
       nextDue.setDate(nextDue.getDate() + 1);
@@ -681,10 +681,10 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     } else if (rec.frequency === 'yearly') {
       nextDue.setFullYear(nextDue.getFullYear() + 1);
     }
-    
+
     rec.nextDueDate = nextDue.toISOString();
     await updateRecurringTransaction(rec);
-    
+
     // Refresh pending list
     setPendingRecurring(prev => {
       const filtered = prev.filter(p => p.id !== rec.id);
@@ -694,7 +694,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       }
       return filtered;
     });
-    
+
     triggerLiveSync();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [triggerLiveSync]);

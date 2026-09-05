@@ -37,7 +37,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         if (!saved) {
           saved = await AsyncStorage.getItem(LEGACY_LANGUAGE_KEY);
         }
-        if (saved === 'ar' || saved === 'en') {
+        if (saved === 'ar' || saved === 'en' || saved === 'hi') {
           setLanguageState(saved);
           globalAppLanguage = saved;
           const isArabic = saved === 'ar';

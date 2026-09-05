@@ -144,6 +144,12 @@ const BANK_PATTERNS: { name: string; regex: RegExp }[] = [
   { name: 'Emirates NBD', regex: /Emirates NBD|الإمارات دبي الوطني/i },
   { name: 'بنك القاهرة', regex: /Banque du Caire|بنك القاهرة/i },
   { name: 'HSBC', regex: /HSBC/i },
+  // Indian Banks & UPI
+  { name: 'HDFC Bank', regex: /HDFC|HDFCBK/i },
+  { name: 'SBI Bank', regex: /SBI|State Bank of India|SBIN/i },
+  { name: 'ICICI Bank', regex: /ICICI/i },
+  { name: 'Axis Bank', regex: /AXIS|AxisBank/i },
+  { name: 'Paytm / UPI', regex: /Paytm|PhonePe|GPay|Google Pay|UPI/i },
 ];
 
 /**
@@ -176,7 +182,8 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
   let currency = 'EGP';
 
   // Currency detection
-  if (/kwd|د\.ك|دينار/i.test(normalizedText)) currency = 'KWD';
+  if (/inr|rs\.?|₹|rupees?|रुपये/i.test(normalizedText)) currency = 'INR';
+  else if (/kwd|د\.ك|دينار/i.test(normalizedText)) currency = 'KWD';
   else if (/sar|ر\.س|ريال/i.test(normalizedText)) currency = 'SAR';
   else if (/usd|\$|دولار/i.test(normalizedText)) currency = 'USD';
   else if (/aed|د\.إ|درهم/i.test(normalizedText)) currency = 'AED';
@@ -185,10 +192,10 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
 
   // Amount extraction regexes
   const amountRegexes = [
-    // EGP 150.50 or 150.50 EGP or 150.50ج.م
-    /(?:EGP|KWD|SAR|USD|AED|EUR|ج\.م|ر\.س|د\.ك|جنيه|ريال|دينار|\$)\s*([\d,]+\.?\d*)/i,
-    /([\d,]+\.?\d*)\s*(?:EGP|KWD|SAR|USD|AED|EUR|ج\.م|ر\.س|د\.ك|جنيه|ريال|دينار|\$)/i,
-    /(?:مبلغ|بقيمة|بمبلغ|amount|sum)\s*([\d,]+\.?\d*)/i,
+    // INR 150.50 or Rs. 150 or ₹150 or EGP 150.50
+    /(?:INR|Rs\.?|₹|EGP|KWD|SAR|USD|AED|EUR|ج\.م|ر\.س|د\.ك|جنيه|ريال|دينار|\$)\s*([\d,]+\.?\d*)/i,
+    /([\d,]+\.?\d*)\s*(?:INR|Rs\.?|₹|EGP|KWD|SAR|USD|AED|EUR|ج\.م|ر\.س|د\.ك|جنيه|ريال|دينار|\$)/i,
+    /(?:مبلغ|بقيمة|بمبلغ|amount|sum|spent|debited|paid)\s*([\d,]+\.?\d*)/i,
     /([\d,]+\.?\d*)\s*(?:LE|L\.E|SR)/i,
   ];
 

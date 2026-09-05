@@ -17,6 +17,7 @@ export const FALLBACK_RATES: Record<string, number> = {
   EUR: 0.856,
   GBP: 0.745,
   TRY: 38.2,
+  INR: 87.2,   // 1 USD = ~87.2 INR
   CAD: 1.38,
   CHF: 0.81,
   MAD: 9.85,

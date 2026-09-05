@@ -3,10 +3,10 @@ import { apiRequest } from './query-client';
 
 import { z } from 'zod';
 
-export type CurrencyCode = 'EGP' | 'KWD' | 'USD' | 'SAR' | 'AED' | 'EUR' | 'GBP' | 'QAR' | 'BHD' | 'OMR';
+export type CurrencyCode = 'EGP' | 'KWD' | 'USD' | 'SAR' | 'AED' | 'EUR' | 'GBP' | 'QAR' | 'BHD' | 'OMR' | 'INR';
 
 export const currencyCodeSchema = z.enum([
-  'EGP', 'KWD', 'USD', 'SAR', 'AED', 'EUR', 'GBP', 'QAR', 'BHD', 'OMR'
+  'EGP', 'KWD', 'USD', 'SAR', 'AED', 'EUR', 'GBP', 'QAR', 'BHD', 'OMR', 'INR'
 ]);
 
 export interface CurrencyInfo {
@@ -16,6 +16,7 @@ export interface CurrencyInfo {
 }
 
 export const CURRENCIES: CurrencyInfo[] = [
+  { code: 'INR', nameAr: 'روبية هندية', symbol: '₹' },
   { code: 'EGP', nameAr: 'جنيه مصري', symbol: 'ج.م' },
   { code: 'KWD', nameAr: 'دينار كويتي', symbol: 'د.ك' },
   { code: 'USD', nameAr: 'دولار أمريكي', symbol: '$' },

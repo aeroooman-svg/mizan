@@ -2,16 +2,16 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { Transaction, Wallet } from './storage';
-import { getCategoryName, getCurrencyName } from './i18n';
+import { Language, getCategoryName, getCurrencyName } from './i18n';
 import { formatCurrency } from './categories';
 
 export async function exportTransactionsToPDF(
   transactions: Transaction[],
   wallet: Wallet,
-  language: 'ar' | 'en'
+  language: Language
 ): Promise<void> {
   if (Platform.OS === 'web') {
-    alert(language === 'ar' ? 'تصدير PDF غير مدعوم على الويب' : 'PDF export is not supported on Web');
+    alert(language === 'ar' ? 'تصدير PDF غير مدعوم على الويب' : language === 'hi' ? 'वेब पर पीडीएफ निर्यात समर्थित नहीं है' : 'PDF export is not supported on Web');
     return;
   }
 
@@ -25,17 +25,17 @@ export async function exportTransactionsToPDF(
   const balance = totalIncome - totalExpense;
   const currencySymbol = wallet.currency;
 
-  const titleText = language === 'ar' ? `كشف حساب - ${wallet.name}` : `Statement - ${wallet.name}`;
-  const totalIncomeLabel = language === 'ar' ? 'إجمالي الدخل' : 'Total Income';
-  const totalExpenseLabel = language === 'ar' ? 'إجمالي المصاريف' : 'Total Expenses';
-  const balanceLabel = language === 'ar' ? 'صافي الرصيد' : 'Net Balance';
-  const dateLabel = language === 'ar' ? 'التاريخ' : 'Date';
-  const descriptionLabel = language === 'ar' ? 'الوصف' : 'Description';
-  const categoryLabel = language === 'ar' ? 'الفئة' : 'Category';
-  const amountLabel = language === 'ar' ? 'المبلغ' : 'Amount';
-  const typeLabel = language === 'ar' ? 'النوع' : 'Type';
-  const incomeText = language === 'ar' ? 'دخل' : 'Income';
-  const expenseText = language === 'ar' ? 'مصروف' : 'Expense';
+  const titleText = language === 'ar' ? `كشف حساب - ${wallet.name}` : language === 'hi' ? `खाता विवरण - ${wallet.name}` : `Statement - ${wallet.name}`;
+  const totalIncomeLabel = language === 'ar' ? 'إجمالي الدخل' : language === 'hi' ? 'कुल आय' : 'Total Income';
+  const totalExpenseLabel = language === 'ar' ? 'إجمالي المصاريف' : language === 'hi' ? 'कुल व्यय' : 'Total Expenses';
+  const balanceLabel = language === 'ar' ? 'صافي الرصيد' : language === 'hi' ? 'शुद्ध शेष' : 'Net Balance';
+  const dateLabel = language === 'ar' ? 'التاريخ' : language === 'hi' ? 'तारीख' : 'Date';
+  const descriptionLabel = language === 'ar' ? 'الوصف' : language === 'hi' ? 'विवरण' : 'Description';
+  const categoryLabel = language === 'ar' ? 'الفئة' : language === 'hi' ? 'श्रेणी' : 'Category';
+  const amountLabel = language === 'ar' ? 'المبلغ' : language === 'hi' ? 'राशि' : 'Amount';
+  const typeLabel = language === 'ar' ? 'النوع' : language === 'hi' ? 'प्रकार' : 'Type';
+  const incomeText = language === 'ar' ? 'دخل' : language === 'hi' ? 'आय' : 'Income';
+  const expenseText = language === 'ar' ? 'مصروف' : language === 'hi' ? 'व्यय' : 'Expense';
   
   // Format transactions rows
   const rowsHtml = transactions

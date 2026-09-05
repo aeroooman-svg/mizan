@@ -176,8 +176,10 @@ export default function AddTransactionScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [tags, setTags] = useState(existingTxn?.tags || '');
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  // UI Optimization States (Compact categories & collapsible extra details)
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showExtraDetails, setShowExtraDetails] = useState(Boolean(existingTxn?.description || existingTxn?.tags));
 
-  // New Tag Creator Modal state
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [newTagNameAr, setNewTagNameAr] = useState('');
   const [newTagNameEn, setNewTagNameEn] = useState('');
@@ -250,6 +252,7 @@ export default function AddTransactionScreen() {
           // Pre-populate realistic tag based on category
           const mockTags = ['أكل', 'مشتريات', 'مواصلات', 'ترفيه', 'فواتير'];
           setTags(mockTags[idx]);
+          setShowExtraDetails(true);
 
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           Alert.alert(
@@ -344,6 +347,7 @@ export default function AddTransactionScreen() {
         setType(smsParsed.type);
         if (smsParsed.category) setSelectedCategory(smsParsed.category);
         setDescription(`${smsParsed.merchant} (${smsParsed.bankName})`);
+        setShowExtraDetails(true);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         const categoryObj = displayedCategories.find(c => c.id === smsParsed.category) || 
@@ -753,7 +757,7 @@ export default function AddTransactionScreen() {
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20, paddingTop: 16 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 16, paddingTop: 14 }]}
           keyboardShouldPersistTaps="handled"
         >
           {selectedWallet && (
@@ -931,7 +935,7 @@ export default function AddTransactionScreen() {
               >
                 <Ionicons name="swap-horizontal" size={18} color={type === 'transfer' ? '#fff' : Colors.textSecondary} />
                 <Text style={[styles.typeText, type === 'transfer' && styles.typeTextActive]}>
-                  {language === 'ar' ? 'تحويل' : 'Transfer'}
+                  {language === 'ar' ? 'تحويل' : language === 'hi' ? 'स्थानांतरण' : 'Transfer'}
                 </Text>
               </Pressable>
             </View>
@@ -1014,10 +1018,30 @@ export default function AddTransactionScreen() {
             </View>
           ) : (
             <View style={styles.categorySection}>
-              <Text style={styles.label}>{t.category}</Text>
+              <View style={styles.categorySectionHeader}>
+                <Text style={[styles.label, { marginBottom: 0 }]}>{t.category}</Text>
+                {displayedCategories.length > 5 && (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowAllCategories(!showAllCategories);
+                    }}
+                    hitSlop={8}
+                    style={styles.showAllCatsBtn}
+                  >
+                    <Text style={[styles.showAllCatsText, { color: colors.primary }]}>
+                      {showAllCategories 
+                        ? (language === 'ar' ? 'عرض أقل ▴' : language === 'hi' ? 'कम दिखाएं ▴' : 'Show Less ▴') 
+                        : (language === 'ar' ? `المزيد (${displayedCategories.length - 5}) ▾` : language === 'hi' ? `और अधिक (${displayedCategories.length - 5}) ▾` : `More (${displayedCategories.length - 5}) ▾`)}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
               <View style={styles.categoryGrid}>
-                {displayedCategories.map((cat) => {
+                {(showAllCategories ? displayedCategories : displayedCategories.slice(0, 5)).map((cat) => {
                   const isCustom = Boolean((cat as any).isCustom);
+                  const isSelected = selectedCategory === cat.id;
                   return (
                     <Pressable
                       key={cat.id}
@@ -1033,7 +1057,7 @@ export default function AddTransactionScreen() {
                       }}
                       style={[
                         styles.categoryItem,
-                        selectedCategory === cat.id && { borderColor: cat.color, borderWidth: 2 },
+                        isSelected && { borderColor: cat.color, borderWidth: 2, backgroundColor: cat.color + '15' },
                         { position: 'relative' }
                       ]}
                     >
@@ -1062,15 +1086,44 @@ export default function AddTransactionScreen() {
                       <View style={[styles.categoryIcon, { backgroundColor: cat.color + '18' }]}>
                         <MaterialIcons name={cat.icon as any} size={22} color={cat.color} />
                       </View>
-                      <Text style={[
-                        styles.categoryName,
-                        selectedCategory === cat.id && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
-                      ]}>
+                      <Text 
+                        numberOfLines={1}
+                        style={[
+                          styles.categoryName,
+                          isSelected && { color: cat.color, fontFamily: 'Cairo_700Bold' as const },
+                        ]}
+                      >
                         {getCategoryName(cat.id, language)}
                       </Text>
                     </Pressable>
                   );
                 })}
+
+                {/* If selected category is outside the first 5 and collapsed, display it as selected chip */}
+                {!showAllCategories && selectedCategory && !displayedCategories.slice(0, 5).some(c => c.id === selectedCategory) && (() => {
+                  const activeCat = displayedCategories.find(c => c.id === selectedCategory);
+                  if (!activeCat) return null;
+                  return (
+                    <Pressable
+                      key={activeCat.id}
+                      onPress={() => Haptics.selectionAsync()}
+                      style={[
+                        styles.categoryItem,
+                        { borderColor: activeCat.color, borderWidth: 2, backgroundColor: activeCat.color + '15' }
+                      ]}
+                    >
+                      <View style={[styles.categoryIcon, { backgroundColor: activeCat.color + '18' }]}>
+                        <MaterialIcons name={activeCat.icon as any} size={22} color={activeCat.color} />
+                      </View>
+                      <Text 
+                        numberOfLines={1}
+                        style={[styles.categoryName, { color: activeCat.color, fontFamily: 'Cairo_700Bold' as const }]}
+                      >
+                        {getCategoryName(activeCat.id, language)}
+                      </Text>
+                    </Pressable>
+                  );
+                })()}
 
                 {/* Add Custom Category Card */}
                 <Pressable
@@ -1083,7 +1136,7 @@ export default function AddTransactionScreen() {
                   <View style={[styles.categoryIcon, { backgroundColor: Colors.primary + '15' }]}>
                     <Ionicons name="add" size={24} color={Colors.primary} />
                   </View>
-                  <Text style={[styles.categoryName, { color: Colors.primary, fontFamily: 'Cairo_700Bold' as const }]}>
+                  <Text numberOfLines={1} style={[styles.categoryName, { color: Colors.primary, fontFamily: 'Cairo_700Bold' as const }]}>
                     {t.newCategory}
                   </Text>
                 </Pressable>
@@ -1091,109 +1144,12 @@ export default function AddTransactionScreen() {
             </View>
           )}
 
-          {/* Description / Note */}
-          <View style={styles.descSection}>
-            <Text style={styles.label}>{t.noteOptional}</Text>
-            <TextInput
-              style={styles.descInput}
-              placeholder={t.notePlaceholder}
-              placeholderTextColor={Colors.textTertiary}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={2}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* Smart Tags Section */}
-          <View style={styles.descSection}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Text style={[styles.label, { marginBottom: 0 }]}>
-                {language === 'ar' ? 'الوسوم الذكية (Tags)' : 'Smart Tags'}
-              </Text>
-              <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setNewTagNameAr('');
-                  setNewTagNameEn('');
-                  setNewTagColor(WALLET_COLORS[0]);
-                  setTagModalVisible(true);
-                }}
-                hitSlop={6}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              >
-                <Ionicons name="add-circle" size={16} color={colors.primary} />
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                  {language === 'ar' ? 'وسم مخصص' : 'New Tag'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Selected / custom tags input */}
-            <TextInput
-              style={[styles.descInput, { height: 40, paddingVertical: 8 }]}
-              placeholder={language === 'ar' ? 'اختر من الأسفل أو اكتب وسوماً مفصولة بفاصلة...' : 'Pick below or type tags comma-separated...'}
-              placeholderTextColor={Colors.textTertiary}
-              value={tags}
-              onChangeText={setTags}
-            />
-
-            {/* Smart Tag Chips */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {availableTags.map(tagObj => {
-                const currentTags = parseTransactionTags(tags);
-                const isActive = currentTags.includes(tagObj.id) || currentTags.includes(tagObj.nameAr) || currentTags.includes(tagObj.nameEn);
-
-                return (
-                  <Pressable
-                    key={tagObj.id}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      let updated: string[];
-                      if (isActive) {
-                        updated = currentTags.filter(
-                          t => t !== tagObj.id && t !== tagObj.nameAr && t !== tagObj.nameEn
-                        );
-                      } else {
-                        updated = [...currentTags, tagObj.id];
-                      }
-                      setTags(formatTagsToString(updated));
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingVertical: 5,
-                      paddingHorizontal: 10,
-                      borderRadius: 10,
-                      backgroundColor: isActive ? tagObj.color + '25' : colors.surfaceAlt,
-                      borderWidth: 1,
-                      borderColor: isActive ? tagObj.color : colors.border,
-                    }}
-                  >
-                    <Ionicons name="pricetag" size={11} color={isActive ? tagObj.color : colors.textTertiary} />
-                    <Text
-                      style={{
-                        fontFamily: isActive ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
-                        fontSize: 11,
-                        color: isActive ? tagObj.color : colors.textSecondary,
-                      }}
-                    >
-                      {language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
           {/* Unified Date & Time Duo-Pill Section */}
           <View style={[styles.dateTimeCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <View style={styles.dateTimeHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                <Text style={[styles.label, { marginBottom: 0, color: colors.text }]}>
+                <Ionicons name="calendar-outline" size={15} color={colors.primary} />
+                <Text style={[styles.label, { marginBottom: 0, color: colors.text, fontSize: 13 }]}>
                   {language === 'ar' ? 'التاريخ والوقت' : 'Date & Time'}
                 </Text>
               </View>
@@ -1218,7 +1174,7 @@ export default function AddTransactionScreen() {
                   pressed && { opacity: 0.7 }
                 ]}
               >
-                <Ionicons name="flash" size={12} color={colors.primary} />
+                <Ionicons name="flash" size={11} color={colors.primary} />
                 <Text style={[styles.quickNowBadgeText, { color: colors.primary }]}>
                   {language === 'ar' ? 'الآن' : 'Now'}
                 </Text>
@@ -1238,16 +1194,16 @@ export default function AddTransactionScreen() {
                   pressed && { opacity: 0.8 }
                 ]}
               >
-                <Ionicons name="calendar" size={18} color={colors.primary} />
+                <Ionicons name="calendar" size={16} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
-                    {language === 'ar' ? 'التاريخ' : 'Date'}
+                    {language === 'ar' ? 'التاريخ' : language === 'hi' ? 'दिनांक' : 'Date'}
                   </Text>
                   <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
                     {selectedDateLabel}
                   </Text>
                 </View>
-                <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+                <Ionicons name="chevron-down" size={13} color={colors.textTertiary} />
               </Pressable>
 
               {/* Time Button Pill */}
@@ -1262,20 +1218,154 @@ export default function AddTransactionScreen() {
                   pressed && { opacity: 0.8 }
                 ]}
               >
-                <Ionicons name="time" size={18} color={colors.primary} />
+                <Ionicons name="time" size={16} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
-                    {language === 'ar' ? 'الوقت' : 'Time'}
+                    {language === 'ar' ? 'الوقت' : language === 'hi' ? 'समय' : 'Time'}
                   </Text>
                   <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
                     {selectedHour}:{selectedMinute.toString().padStart(2, '0')} {language === 'ar' ? (selectedPeriod === 'AM' ? 'ص' : 'م') : selectedPeriod}
                   </Text>
                 </View>
-                <Ionicons name="chevron-down" size={14} color={colors.textTertiary} />
+                <Ionicons name="chevron-down" size={13} color={colors.textTertiary} />
               </Pressable>
             </View>
           </View>
 
+          {/* Collapsible Smart Extra Details Section (Notes & Tags) */}
+          <View style={[styles.collapsibleDetailsCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setShowExtraDetails(!showExtraDetails);
+              }}
+              style={styles.collapsibleHeaderBtn}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                <Ionicons name="document-text-outline" size={16} color={colors.primary} />
+                <Text style={[styles.collapsibleHeaderTitle, { color: colors.text }]}>
+                  {language === 'ar' ? 'إضافة ملاحظة أو وسوم (اختياري)' : language === 'hi' ? 'नोट या टैग जोड़ें (वैकल्पिक)' : 'Add Note or Tags (Optional)'}
+                </Text>
+                {(description || tags) ? (
+                  <View style={[styles.detailsBadgeIndicator, { backgroundColor: colors.primary + '20' }]}>
+                    <Text style={[styles.detailsBadgeText, { color: colors.primary }]}>
+                      {language === 'ar' ? 'مضاف' : language === 'hi' ? 'जोड़ा गया' : 'Added'}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Ionicons 
+                name={showExtraDetails ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                color={colors.textSecondary} 
+              />
+            </Pressable>
+
+            {showExtraDetails && (
+              <View style={styles.collapsibleContent}>
+                {/* Description / Note */}
+                <View style={[styles.descSection, { marginBottom: 12 }]}>
+                  <Text style={[styles.label, { fontSize: 12, marginBottom: 6 }]}>{t.noteOptional}</Text>
+                  <TextInput
+                    style={[styles.descInput, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
+                    placeholder={t.notePlaceholder}
+                    placeholderTextColor={Colors.textTertiary}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={2}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {/* Smart Tags Section */}
+                <View style={[styles.descSection, { marginBottom: 4 }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={[styles.label, { marginBottom: 0, fontSize: 12 }]}>
+                      {language === 'ar' ? 'الوسوم الذكية (Tags)' : language === 'hi' ? 'स्मार्ट टैग (Tags)' : 'Smart Tags'}
+                    </Text>
+                    <Pressable
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setNewTagNameAr('');
+                        setNewTagNameEn('');
+                        setNewTagColor(WALLET_COLORS[0]);
+                        setTagModalVisible(true);
+                      }}
+                      hitSlop={6}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    >
+                      <Ionicons name="add-circle" size={15} color={colors.primary} />
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
+                        {language === 'ar' ? 'وسم مخصص' : language === 'hi' ? 'नया टैग' : 'New Tag'}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Selected / custom tags input */}
+                  <TextInput
+                    style={[styles.descInput, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, height: 38, paddingVertical: 6 }]}
+                    placeholder={language === 'ar' ? 'اختر من الأسفل أو اكتب وسوماً مفصولة بفاصلة...' : language === 'hi' ? 'नीचे से चुनें या अल्पविराम से अलग करके लिखें...' : 'Pick below or type tags comma-separated...'}
+                    placeholderTextColor={Colors.textTertiary}
+                    value={tags}
+                    onChangeText={setTags}
+                  />
+
+                  {/* Smart Tag Chips */}
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {availableTags.map(tagObj => {
+                      const currentTags = parseTransactionTags(tags);
+                      const isActive = currentTags.includes(tagObj.id) || currentTags.includes(tagObj.nameAr) || currentTags.includes(tagObj.nameEn);
+
+                      return (
+                        <Pressable
+                          key={tagObj.id}
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            let updated: string[];
+                            if (isActive) {
+                              updated = currentTags.filter(
+                                t => t !== tagObj.id && t !== tagObj.nameAr && t !== tagObj.nameEn
+                              );
+                            } else {
+                              updated = [...currentTags, tagObj.id];
+                            }
+                            setTags(formatTagsToString(updated));
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                            paddingVertical: 4,
+                            paddingHorizontal: 9,
+                            borderRadius: 8,
+                            backgroundColor: isActive ? tagObj.color + '25' : colors.surface,
+                            borderWidth: 1,
+                            borderColor: isActive ? tagObj.color : colors.border,
+                          }}
+                        >
+                          <Ionicons name="pricetag" size={10} color={isActive ? tagObj.color : colors.textTertiary} />
+                          <Text
+                            style={{
+                              fontFamily: isActive ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
+                              fontSize: 11,
+                              color: isActive ? tagObj.color : colors.textSecondary,
+                            }}
+                          >
+                            {language === 'ar' ? tagObj.nameAr : tagObj.nameEn}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Sticky Bottom Fast Action Bar (Never need to scroll to save) */}
+        <View style={[styles.stickyBottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) + 6 }]}>
           {(() => {
             const isDisabled = isSaving || !amount || parseFloat(amount) <= 0 || (type === 'transfer' ? !toWalletId : !selectedCategory);
             const btnColor = type === 'expense'
@@ -1285,25 +1375,36 @@ export default function AddTransactionScreen() {
                 : '#3b82f6'; // Transfer blue color
 
             let buttonLabel = '';
+            const formattedAmt = parseFloat(amount) > 0 ? ` (${formatCurrency(parseFloat(amount))} ${currencySymbol})` : '';
             if (language === 'ar') {
               if (isEditMode) {
-                if (type === 'expense') buttonLabel = 'تحديث المصروف';
-                else if (type === 'income') buttonLabel = 'تحديث الدخل';
-                else buttonLabel = 'تحديث التحويل';
+                if (type === 'expense') buttonLabel = `تحديث المصروف${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `تحديث الدخل${formattedAmt}`;
+                else buttonLabel = `تحديث التحويل${formattedAmt}`;
               } else {
-                if (type === 'expense') buttonLabel = 'حفظ المصروف';
-                else if (type === 'income') buttonLabel = 'حفظ الدخل';
-                else buttonLabel = 'حفظ التحويل';
+                if (type === 'expense') buttonLabel = `حفظ المصروف${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `حفظ الدخل${formattedAmt}`;
+                else buttonLabel = `حفظ التحويل${formattedAmt}`;
+              }
+            } else if (language === 'hi') {
+              if (isEditMode) {
+                if (type === 'expense') buttonLabel = `व्यय अपडेट करें${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `आय अपडेट करें${formattedAmt}`;
+                else buttonLabel = `स्थानांतरण अपडेट करें${formattedAmt}`;
+              } else {
+                if (type === 'expense') buttonLabel = `व्यय सहेजें${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `आय सहेजें${formattedAmt}`;
+                else buttonLabel = `स्थानांतरण सहेजें${formattedAmt}`;
               }
             } else {
               if (isEditMode) {
-                if (type === 'expense') buttonLabel = 'Update Expense';
-                else if (type === 'income') buttonLabel = 'Update Income';
-                else buttonLabel = 'Update Transfer';
+                if (type === 'expense') buttonLabel = `Update Expense${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `Update Income${formattedAmt}`;
+                else buttonLabel = `Update Transfer${formattedAmt}`;
               } else {
-                if (type === 'expense') buttonLabel = 'Save Expense';
-                else if (type === 'income') buttonLabel = 'Save Income';
-                else buttonLabel = 'Save Transfer';
+                if (type === 'expense') buttonLabel = `Save Expense${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `Save Income${formattedAmt}`;
+                else buttonLabel = `Save Transfer${formattedAmt}`;
               }
             }
 
@@ -1315,20 +1416,22 @@ export default function AddTransactionScreen() {
                   styles.saveButton,
                   {
                     backgroundColor: btnColor,
-                    opacity: isDisabled ? 0.5 : pressed ? 0.9 : 1,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                    opacity: isDisabled ? 0.45 : pressed ? 0.9 : 1,
+                    transform: [{ scale: pressed && !isDisabled ? 0.98 : 1 }],
+                    marginBottom: 0,
                   },
                 ]}
               >
-                <Ionicons name={type === 'transfer' ? "swap-horizontal" : "checkmark"} size={22} color="#fff" />
+                <Ionicons name={type === 'transfer' ? "swap-horizontal" : "checkmark-circle"} size={22} color="#fff" />
                 <Text style={styles.saveText}>
                   {buttonLabel}
                 </Text>
               </Pressable>
             );
           })()}
-        </ScrollView>
+        </View>
       </View>
+
 
       {/* Modern Calendar Date Picker Modal */}
       <ModernDatePickerModal
@@ -2091,19 +2194,73 @@ const getStyles = (colors: any) => StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
   },
+  categorySectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  showAllCatsBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  showAllCatsText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  collapsibleDetailsCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+  },
+  collapsibleHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  collapsibleHeaderTitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+  },
+  detailsBadgeIndicator: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  detailsBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 10,
+  },
+  collapsibleContent: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 10,
+  },
+  stickyBottomBar: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 14,
     gap: 8,
     marginBottom: 20,
   },
   saveText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 17,
-    color: colors.text,
+    fontSize: 16,
+    color: '#ffffff',
   },
   // Modal styles
   modalOverlay: {

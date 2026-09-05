@@ -167,7 +167,7 @@ export default function SettingsScreen() {
 
 
 
-  const handleToggleLanguage = async (lang: 'ar' | 'en') => {
+  const handleToggleLanguage = async (lang: 'ar' | 'en' | 'hi') => {
     safeHaptic.selection();
     await setLanguage(lang);
   };
@@ -524,6 +524,14 @@ export default function SettingsScreen() {
                 >
                   <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
                     English 🇺🇸
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleToggleLanguage('hi')}
+                  style={[styles.langOption, language === 'hi' && styles.langOptionActive]}
+                >
+                  <Text style={[styles.langText, language === 'hi' && styles.langTextActive]}>
+                    हिन्दी 🇮🇳
                   </Text>
                 </Pressable>
               </View>

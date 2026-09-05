@@ -47,17 +47,17 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
 
     if (route.name === "index") {
       iconName = isFocused ? "home" : "home-outline";
-      label = language === 'ar' ? "الرئيسية" : "Home";
+      label = language === 'ar' ? "الرئيسية" : language === 'hi' ? "होम" : "Home";
     } else if (route.name === "transactions") {
       iconName = isFocused ? "list" : "list-outline";
-      label = language === 'ar' ? "المعاملات" : "Trans";
+      label = language === 'ar' ? "المعاملات" : language === 'hi' ? "लेन-देन" : "Trans";
     } else if (route.name === "stats") {
       iconName = isFocused ? "pie-chart" : "pie-chart-outline";
-      label = language === 'ar' ? "إحصائيات" : "Stats";
+      label = language === 'ar' ? "إحصائيات" : language === 'hi' ? "आँकड़े" : "Stats";
     } else if (route.name === "financial-plan") {
       iconName = "flag";
       isMaterial = true;
-      label = language === 'ar' ? "الخطة" : "Plan";
+      label = language === 'ar' ? "الخطة" : language === 'hi' ? "योजना" : "Plan";
     }
 
     return (
@@ -115,7 +115,7 @@ function CustomTabBar({ state, descriptors, navigation, onAddPress }: CustomTabB
             pressed && { transform: [{ scale: 0.92 }] }
           ]}
           accessibilityRole="button"
-          accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : 'Add new transaction'}
+          accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : language === 'hi' ? 'नया लेन-देन जोड़ें' : 'Add new transaction'}
         >
           <LinearGradient
             colors={[colors.primary, colors.primaryDark]}
@@ -172,7 +172,7 @@ export default function TabLayout() {
           <View style={styles.actionMenuSheet}>
             <View style={styles.sheetHandle} />
             <Text style={styles.actionMenuTitle}>
-              {language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
+              {language === 'ar' ? 'إجراءات سريعة' : language === 'hi' ? 'त्वरित कार्य' : 'Quick Actions'}
             </Text>
             
             <View style={styles.actionMenuOptions}>
@@ -183,17 +183,17 @@ export default function TabLayout() {
                   router.push('/add-transaction');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : 'Add New Transaction'}
+                accessibilityLabel={language === 'ar' ? 'إضافة معاملة جديدة' : language === 'hi' ? 'नया लेन-देन जोड़ें' : 'Add New Transaction'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: colors.incomeLight }]}>
                   <Ionicons name="cash-outline" size={24} color={colors.primary} />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
-                    {language === 'ar' ? 'إضافة معاملة جديدة' : 'Add New Transaction'}
+                    {language === 'ar' ? 'إضافة معاملة جديدة' : language === 'hi' ? 'नया लेन-देन जोड़ें' : 'Add New Transaction'}
                   </Text>
                   <Text style={styles.actionOptionDesc}>
-                    {language === 'ar' ? 'سجل مصروفاتك أو مداخيلك اليومية فوراً' : 'Log your daily income or expenses instantly'}
+                    {language === 'ar' ? 'سجل مصروفاتك أو مداخيلك اليومية فوراً' : language === 'hi' ? 'अपनी दैनिक आय या व्यय तुरंत दर्ज करें' : 'Log your daily income or expenses instantly'}
                   </Text>
                 </View>
                 <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
@@ -206,17 +206,17 @@ export default function TabLayout() {
                   router.push('/scan-receipt');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'ar' ? 'مسح فاتورة بالكاميرا' : 'Scan Receipt'}
+                accessibilityLabel={language === 'ar' ? 'مسح فاتورة بالكاميرا' : language === 'hi' ? 'रसीद स्कैन करें' : 'Scan Receipt'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: '#8B5CF620' }]}>
                   <Ionicons name="camera-outline" size={24} color="#8B5CF6" />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
-                    {language === 'ar' ? 'مسح فاتورة بالكاميرا' : 'Scan Receipt'}
+                    {language === 'ar' ? 'مسح فاتورة بالكاميرا' : language === 'hi' ? 'रसीद स्कैन करें' : 'Scan Receipt'}
                   </Text>
                   <Text style={styles.actionOptionDesc}>
-                    {language === 'ar' ? 'التقط صورة للفاتورة واستخرج البيانات تلقائياً' : 'Scan a paper receipt to log expenses automatically'}
+                    {language === 'ar' ? 'التقط صورة للفاتورة واستخرج البيانات تلقائياً' : language === 'hi' ? 'रसीद की तस्वीर लें और डेटा स्वतः निकालें' : 'Scan a paper receipt to log expenses automatically'}
                   </Text>
                 </View>
                 <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />
@@ -229,17 +229,17 @@ export default function TabLayout() {
                   router.push('/add-wallet');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={language === 'ar' ? 'إنشاء محفظة جديدة' : 'Create New Wallet'}
+                accessibilityLabel={language === 'ar' ? 'إنشاء محفظة جديدة' : language === 'hi' ? 'नया वॉलेट बनाएं' : 'Create New Wallet'}
               >
                 <View style={[styles.actionIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                   <Ionicons name="wallet-outline" size={24} color="#3B82F6" />
                 </View>
                 <View style={styles.actionOptionInfo}>
                   <Text style={styles.actionOptionName}>
-                    {language === 'ar' ? 'إنشاء محفظة جديدة' : 'Create New Wallet'}
+                    {language === 'ar' ? 'إنشاء محفظة جديدة' : language === 'hi' ? 'नया वॉलेट बनाएं' : 'Create New Wallet'}
                   </Text>
                   <Text style={styles.actionOptionDesc}>
-                    {language === 'ar' ? 'أضف بطاقة أو محفظة كاش جديدة لتتبعها' : 'Add a new bank card or cash wallet'}
+                    {language === 'ar' ? 'أضف بطاقة أو محفظة كاش جديدة لتتبعها' : language === 'hi' ? 'ट्रैक करने के लिए नया बैंक कार्ड या नकद वॉलेट जोड़ें' : 'Add a new bank card or cash wallet'}
                   </Text>
                 </View>
                 <Ionicons name={language === 'ar' ? "chevron-back" : "chevron-forward"} size={18} color={colors.textTertiary} />

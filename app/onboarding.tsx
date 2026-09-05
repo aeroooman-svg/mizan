@@ -27,17 +27,19 @@ const { width } = Dimensions.get('window');
 
 type OnboardingStep = 'slides' | 'goal' | 'currency' | 'income';
 
-const CURRENCY_OPTIONS: { code: CurrencyCode; flag: string; nameAr: string; nameEn: string }[] = [
-  { code: 'EGP', flag: '🇪🇬', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound' },
-  { code: 'SAR', flag: '🇸🇦', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal' },
-  { code: 'AED', flag: '🇦🇪', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham' },
-  { code: 'KWD', flag: '🇰🇼', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar' },
-  { code: 'USD', flag: '🇺🇸', nameAr: 'دولار أمريكي', nameEn: 'US Dollar' },
-  { code: 'EUR', flag: '🇪🇺', nameAr: 'يورو', nameEn: 'Euro' },
-  { code: 'GBP', flag: '🇬🇧', nameAr: 'جنيه إسترليني', nameEn: 'British Pound' },
-  { code: 'QAR', flag: '🇶🇦', nameAr: 'ريال قطري', nameEn: 'Qatari Riyal' },
-  { code: 'BHD', flag: '🇧🇭', nameAr: 'دينار بحريني', nameEn: 'Bahraini Dinar' },
-  { code: 'OMR', flag: '🇴🇲', nameAr: 'ريال عماني', nameEn: 'Omani Rial' },
+// Currency options including INR
+const CURRENCY_OPTIONS: { code: CurrencyCode; flag: string; nameAr: string; nameEn: string; nameHi: string }[] = [
+  { code: 'EGP', flag: '🇪🇬', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound', nameHi: 'मिस्री पाउंड' },
+  { code: 'SAR', flag: '🇸🇦', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal', nameHi: 'सऊदी रियाल' },
+  { code: 'AED', flag: '🇦🇪', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham', nameHi: 'यूएई दिरहम' },
+  { code: 'KWD', flag: '🇰🇼', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar', nameHi: 'कुवैती दिनार' },
+  { code: 'INR', flag: '🇮🇳', nameAr: 'روبية هندية', nameEn: 'Indian Rupee', nameHi: 'भारतीय रुपया (₹)' },
+  { code: 'USD', flag: '🇺🇸', nameAr: 'دولار أمريكي', nameEn: 'US Dollar', nameHi: 'अमेरिकी डॉलर' },
+  { code: 'EUR', flag: '🇪🇺', nameAr: 'يورو', nameEn: 'Euro', nameHi: 'यूरो' },
+  { code: 'GBP', flag: '🇬🇧', nameAr: 'جنيه إسترليني', nameEn: 'British Pound', nameHi: 'ब्रिटिश पाउंड' },
+  { code: 'QAR', flag: '🇶🇦', nameAr: 'ريال قطري', nameEn: 'Qatari Riyal', nameHi: 'कतरी रियाल' },
+  { code: 'BHD', flag: '🇧🇭', nameAr: 'دينار بحريني', nameEn: 'Bahraini Dinar', nameHi: 'बहरीन दिनार' },
+  { code: 'OMR', flag: '🇴🇲', nameAr: 'ريال عماني', nameEn: 'Omani Rial', nameHi: 'ओमानी रियाल' },
 ];
 
 export default function OnboardingScreen() {
@@ -54,6 +56,12 @@ export default function OnboardingScreen() {
   const [monthlyIncomeInput, setMonthlyIncomeInput] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const getText = (ar: string, en: string, hi?: string) => {
+    if (language === 'hi' && hi) return hi;
+    if (language === 'ar') return ar;
+    return en;
+  };
+
   const slides = [
     {
       id: '1',
@@ -61,26 +69,35 @@ export default function OnboardingScreen() {
       iconColor: '#10B981',
       titleAr: 'تتبع ذكي ومحافظ متعددة العملات',
       titleEn: 'Smart Multi-Currency Tracking',
-      descAr: 'أدر إجمالي أموالك ومحافظك بسهولة بالعملات المختلفة (ج.م، د.ك، $) وتابع مصاريفك ونفقاتك اليومية بنقرة واحدة.',
-      descEn: 'Manage all your wallets across multiple currencies (EGP, KWD, USD) and log expenses effortlessly in real-time.',
+      titleHi: 'स्मार्ट मल्टी-करेंसी ट्रैकिंग',
+      descAr: 'أدر إجمالي أموالك ومحافظك بسهولة بمختلف العملات (ج.م، ₹، $) وسجّل مصاريفك ونفقاتك اليومية بنقرة واحدة.',
+      descEn: 'Manage all your wallets across multiple currencies (EGP, INR ₹, USD) and log expenses effortlessly in real-time.',
+      descHi: 'विभिन्न मुद्राओं (INR ₹, USD, आदि) में अपने सभी वॉलेट आसानी से प्रबंधित करें और अपने दैनिक खर्चों को तुरंत ट्रैक करें।',
+      previewType: 'wallet' as const,
     },
     {
       id: '2',
       icon: 'trending-up',
       iconColor: '#6366F1',
-      titleAr: 'تخطيط مالي وتوقعات مستقبلية',
+      titleAr: 'تخطيط مالي وتوقعات ذكية',
       titleEn: 'Financial Planning & Cashflow AI',
-      descAr: 'قم بضبط ميزانيتك بذكاء وفق قاعدة 50/30/20 وتوقع تدفقاتك النقدية ومعدل ادخارك لعدة سنوات قادمة.',
+      titleHi: 'वित्तीय योजना और स्मार्ट बजट',
+      descAr: 'اضبط ميزانيتك بذكاء وفق قاعدة 50/30/20 وتوقع تدفقاتك النقدية ومعدل ادخارك لعدة سنوات قادمة.',
       descEn: 'Structure your monthly budget using the 50/30/20 rule and forecast cashflows & savings goals for years ahead.',
+      descHi: '50/30/20 नियम के साथ अपने मासिक बजट को प्रबंधित करें और भविष्य के लिए नकदी प्रवाह का पूर्वानुमान लगाएं।',
+      previewType: 'budget' as const,
     },
     {
       id: '3',
       icon: 'calculator',
       iconColor: '#F59E0B',
-      titleAr: 'حاسبة الزكاة وإدارة الديون',
-      titleEn: 'Zakat Calculator & Debt Manager',
-      descAr: 'احسب زكاة مالك بدقة بشرعية ميسرة، وتابع ديونك والتزاماتك واقبل التحديات المالية اليومية للادخار.',
+      titleAr: 'أهداف التوفير وإدارة الديون والزكاة',
+      titleEn: 'Savings Goals, Debts & Zakat',
+      titleHi: 'बचत लक्ष्य, ऋण प्रबंधन और योजनाएं',
+      descAr: 'احسب زكاة مالك، وتابع ديونك والتزاماتك واقبل التحديات المالية اليومية لبناء ثروتك وأمانك المالي.',
       descEn: 'Calculate Zakat with ease, track personal debts and loans, and master daily financial savings challenges.',
+      descHi: 'अपने ऋणों और देनदारियों को ट्रैक करें, बचत लक्ष्यों को प्राप्त करें और वित्तीय स्थिरता हासिल करें।',
+      previewType: 'goals' as const,
     },
   ];
 
@@ -91,6 +108,7 @@ export default function OnboardingScreen() {
       color: '#10B981',
       titleAr: '🎯 توفير المال وبناء صندوق طوارئ',
       titleEn: '🎯 Build Savings & Emergency Fund',
+      titleHi: '🎯 बचत बनाएं और आपातकालीन फंड तैयार करें',
     },
     {
       id: 'debts',
@@ -98,6 +116,7 @@ export default function OnboardingScreen() {
       color: '#EF4444',
       titleAr: '💳 سداد الديون والالتزامات بذكاء',
       titleEn: '💳 Pay Off Debts & Obligations',
+      titleHi: '💳 ऋण और देनदारियों का स्मार्ट भुगतान करें',
     },
     {
       id: 'tracking',
@@ -105,6 +124,7 @@ export default function OnboardingScreen() {
       color: '#6366F1',
       titleAr: '📊 تنظيم المصاريف ومعرفة أين تذهب الأموال',
       titleEn: '📊 Organize Expenses & Daily Cashflow',
+      titleHi: '📊 दैनिक खर्चों को व्यवस्थित और ट्रैक करें',
     },
   ];
 
@@ -139,12 +159,6 @@ export default function OnboardingScreen() {
     setCurrentStep('income');
   };
 
-  const handleToggleLanguage = async () => {
-    Haptics.selectionAsync().catch(() => {});
-    const newLang = language === 'ar' ? 'en' : 'ar';
-    await setLanguage(newLang);
-  };
-
   const handleCompleteOnboarding = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     try {
@@ -170,7 +184,7 @@ export default function OnboardingScreen() {
             await saveGoal({
               id: String(Date.now()),
               walletId: targetWalletId,
-              name: isAr ? '🎯 صندوق الطوارئ والادخار' : '🎯 Emergency Savings Fund',
+              name: getText('🎯 صندوق الطوارئ والادخار', '🎯 Emergency Savings Fund', '🎯 आपातकालीन बचत फंड'),
               targetAmount: incomeValue > 0 ? Math.round(incomeValue * 3) : 1000,
               savedAmount: 0,
               deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
@@ -186,13 +200,17 @@ export default function OnboardingScreen() {
             await saveDebt({
               id: String(Date.now()),
               walletId: targetWalletId,
-              personName: isAr ? 'خطة سداد الديون والالتزامات' : 'Debt Payoff Target Plan',
+              personName: getText('خطة سداد الديون والالتزامات', 'Debt Payoff Target Plan', 'ऋण भुगतान योजना'),
               type: 'debt_to_others',
               amount: 500,
               paidAmount: 0,
               status: 'pending',
               dueDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-              description: isAr ? 'تم إنشاؤها تلقائياً بناءً على هدفك المالي المقترح' : 'Auto-created based on your selected financial goal',
+              description: getText(
+                'تم إنشاؤها تلقائياً بناءً على هدفك المالي المقترح',
+                'Auto-created based on your selected financial goal',
+                'आपके चुने गए वित्तीय लक्ष्य के आधार पर स्वतः निर्मित'
+              ),
               createdAt: nowStr,
             });
           }
@@ -209,14 +227,14 @@ export default function OnboardingScreen() {
             await saveFinancialPlan({
               id: String(Date.now()),
               walletId: targetWalletId,
-              goalName: isAr ? '📊 تنظيم وتتبع المصاريف (Kakeibo)' : '📊 Kakeibo Budget Organizer Plan',
+              goalName: getText('📊 تنظيم وتتبع المصاريف (Kakeibo)', '📊 Kakeibo Budget Organizer Plan', '📊 काकीबो बजट योजना'),
               durationMonths: 12,
               monthlyIncome: mi,
               monthlyExpense: me,
               monthlySaving: ms,
               savingsGoal: ms * 12,
               currency: selectedCurrency,
-              currencySymbol: currInfo?.symbol || 'ج.م',
+              currencySymbol: currInfo?.symbol || '₹',
               createdAt: nowStr,
               isKakeiboEnabled: true,
               kakeiboBudgets: {
@@ -249,31 +267,53 @@ export default function OnboardingScreen() {
   // Get currency symbol for display
   const selectedCurrencyInfo = CURRENCY_OPTIONS.find(c => c.code === selectedCurrency);
 
+  // Quick amount suggestions based on currency
+  const getQuickAmounts = () => {
+    if (selectedCurrency === 'INR') return [15000, 30000, 50000, 100000];
+    if (['USD', 'EUR', 'GBP'].includes(selectedCurrency)) return [1500, 3000, 5000, 8000];
+    if (['KWD', 'BHD', 'OMR'].includes(selectedCurrency)) return [300, 600, 1000, 2000];
+    return [3000, 5000, 10000, 20000];
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header with Language Switcher & Skip */}
+      {/* Header with 3-Way Language Selector & Skip */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.brandRow}>
           <Text style={[styles.brandTitle, { color: colors.primary }]}>ميزان MIZAN</Text>
         </View>
 
         <View style={styles.headerRightActions}>
-          {/* Language Switcher Button */}
-          <Pressable
-            onPress={handleToggleLanguage}
-            style={({ pressed }) => [
-              styles.langBtn,
-              { backgroundColor: colors.card, borderColor: colors.border },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <Ionicons name="globe-outline" size={16} color={colors.primary} />
-            <Text style={[styles.langBtnText, { color: colors.text }]}>
-              {language === 'ar' ? 'English' : 'العربية'}
-            </Text>
-          </Pressable>
+          {/* 3-Way Language Switcher */}
+          <View style={[styles.langSwitcherContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {(['ar', 'en', 'hi'] as const).map(lang => {
+              const isSelected = language === lang;
+              return (
+                <Pressable
+                  key={lang}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => {});
+                    setLanguage(lang);
+                  }}
+                  style={[
+                    styles.langPill,
+                    isSelected && { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.langPillText,
+                      { color: isSelected ? '#FFF' : colors.textSecondary },
+                    ]}
+                  >
+                    {lang === 'ar' ? 'عربي' : lang === 'en' ? 'EN' : 'हिंदी'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {/* Skip Button */}
           {currentStep === 'slides' && (
@@ -282,7 +322,7 @@ export default function OnboardingScreen() {
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
             >
               <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-                {isAr ? 'تخطي' : 'Skip'}
+                {getText('تخطي', 'Skip', 'छोड़ें')}
               </Text>
             </Pressable>
           )}
@@ -306,7 +346,7 @@ export default function OnboardingScreen() {
         </View>
       )}
 
-      {/* STEP 1: Feature Slides */}
+      {/* STEP 1: Feature Slides with Modern Visual Mockups */}
       {currentStep === 'slides' && (
         <>
           <ScrollView
@@ -326,14 +366,192 @@ export default function OnboardingScreen() {
           >
             {slides.map((item) => (
               <View key={item.id} style={styles.slide}>
-                <View style={[styles.iconCircle, { backgroundColor: item.iconColor + '18', borderColor: item.iconColor + '40' }]}>
-                  <Ionicons name={item.icon as any} size={64} color={item.iconColor} />
+                {/* Visual Mockup Card depending on previewType */}
+                <View style={[styles.mockupContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  {item.previewType === 'wallet' && (
+                    <View style={styles.mockupInner}>
+                      {/* Top Wallet Balance */}
+                      <View style={styles.mockupBalanceRow}>
+                        <View>
+                          <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
+                            {getText('إجمالي الرصيد', 'Total Balance', 'कुल शेष')}
+                          </Text>
+                          <Text style={[styles.mockupAmount, { color: colors.text }]}>
+                            {language === 'hi' ? '₹ 45,280' : isAr ? '45,280 ج.م' : '$4,280.00'}
+                          </Text>
+                        </View>
+                        <View style={[styles.mockupBadge, { backgroundColor: '#10B98120' }]}>
+                          <Ionicons name="trending-up" size={14} color="#10B981" />
+                          <Text style={[styles.mockupBadgeText, { color: '#10B981' }]}>+12.4%</Text>
+                        </View>
+                      </View>
+
+                      {/* Mockup Mini Transactions */}
+                      <View style={styles.mockupTxList}>
+                        <View style={[styles.mockupTxItem, { backgroundColor: colors.surfaceAlt }]}>
+                          <View style={[styles.mockupTxIcon, { backgroundColor: '#EF444420' }]}>
+                            <Ionicons name="cart" size={15} color="#EF4444" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
+                              {getText('سوبرماركت ومؤن', 'Groceries & Mart', 'किराना और राशन')}
+                            </Text>
+                            <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
+                              {getText('اليوم • نقداً', 'Today • Cash', 'आज • नकद')}
+                            </Text>
+                          </View>
+                          <Text style={[styles.mockupTxAmount, { color: '#EF4444' }]}>
+                            {language === 'hi' ? '-₹ 1,420' : isAr ? '-1,420 ج.م' : '-$45.00'}
+                          </Text>
+                        </View>
+
+                        <View style={[styles.mockupTxItem, { backgroundColor: colors.surfaceAlt }]}>
+                          <View style={[styles.mockupTxIcon, { backgroundColor: '#10B98120' }]}>
+                            <Ionicons name="briefcase" size={15} color="#10B981" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
+                              {getText('الراتب الشهري', 'Monthly Salary', 'मासिक वेतन')}
+                            </Text>
+                            <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
+                              {getText('أمس • بنك', 'Yesterday • Bank', 'कल • बैंक')}
+                            </Text>
+                          </View>
+                          <Text style={[styles.mockupTxAmount, { color: '#10B981' }]}>
+                            {language === 'hi' ? '+₹ 35,000' : isAr ? '+35,000 ج.م' : '+$2,500'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Multi-currency tags */}
+                      <View style={styles.mockupTagsRow}>
+                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.primary + '18' }]}>
+                          <Text style={[styles.mockupCurrencyTagText, { color: colors.primary }]}>🇮🇳 INR (₹)</Text>
+                        </View>
+                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.surfaceAlt }]}>
+                          <Text style={[styles.mockupCurrencyTagText, { color: colors.textSecondary }]}>🇪🇬 EGP</Text>
+                        </View>
+                        <View style={[styles.mockupCurrencyTag, { backgroundColor: colors.surfaceAlt }]}>
+                          <Text style={[styles.mockupCurrencyTagText, { color: colors.textSecondary }]}>🇺🇸 USD ($)</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {item.previewType === 'budget' && (
+                    <View style={styles.mockupInner}>
+                      <View style={styles.mockupBalanceRow}>
+                        <View>
+                          <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
+                            {getText('ميزانية الشهر (50/30/20)', 'Monthly 50/30/20 Plan', 'मासिक बजट योजना')}
+                          </Text>
+                          <Text style={[styles.mockupAmount, { color: colors.text }]}>
+                            {getText('65% متبقي', '65% Remaining', '65% शेष')}
+                          </Text>
+                        </View>
+                        <View style={[styles.mockupBadge, { backgroundColor: '#6366F120' }]}>
+                          <Ionicons name="sparkles" size={14} color="#6366F1" />
+                          <Text style={[styles.mockupBadgeText, { color: '#6366F1' }]}>AI Advisor</Text>
+                        </View>
+                      </View>
+
+                      {/* Progress bar */}
+                      <View style={[styles.mockupProgressBarTrack, { backgroundColor: colors.surfaceAlt }]}>
+                        <View style={[styles.mockupProgressBarFill, { width: '35%', backgroundColor: '#6366F1' }]} />
+                      </View>
+
+                      {/* Budget Categories */}
+                      <View style={styles.mockupBudgetGrid}>
+                        <View style={[styles.mockupBudgetItem, { backgroundColor: colors.surfaceAlt }]}>
+                          <Text style={[styles.mockupBudgetCatName, { color: colors.text }]}>
+                            {getText('احتياجات أساسية', 'Needs (50%)', 'आवश्यकताएं')}
+                          </Text>
+                          <Text style={[styles.mockupBudgetCatVal, { color: '#10B981' }]}>
+                            {language === 'hi' ? '₹ 15,000' : isAr ? '15,000 ج.م' : '$1,500'}
+                          </Text>
+                        </View>
+                        <View style={[styles.mockupBudgetItem, { backgroundColor: colors.surfaceAlt }]}>
+                          <Text style={[styles.mockupBudgetCatName, { color: colors.text }]}>
+                            {getText('رغبات وترفيه', 'Wants (30%)', 'इच्छाएं')}
+                          </Text>
+                          <Text style={[styles.mockupBudgetCatVal, { color: '#F59E0B' }]}>
+                            {language === 'hi' ? '₹ 9,000' : isAr ? '9,000 ج.م' : '$900'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Insight Pill */}
+                      <View style={[styles.mockupInsightPill, { backgroundColor: '#6366F115', borderColor: '#6366F130' }]}>
+                        <Ionicons name="bulb-outline" size={16} color="#6366F1" />
+                        <Text style={[styles.mockupInsightText, { color: colors.text }]}>
+                          {getText(
+                            'أنت في المسار الصحيح لتوفير 20% هذا الشهر!',
+                            'You are on track to save 20% this month!',
+                            'आप इस महीने 20% बचाने के सही रास्ते पर हैं!'
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {item.previewType === 'goals' && (
+                    <View style={styles.mockupInner}>
+                      <View style={styles.mockupBalanceRow}>
+                        <View>
+                          <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
+                            {getText('صندوق الطوارئ والادخار', 'Emergency Savings Fund', 'आपातकालीन बचत फंड')}
+                          </Text>
+                          <Text style={[styles.mockupAmount, { color: '#10B981' }]}>
+                            {language === 'hi' ? '₹ 75,000 / 100,000' : isAr ? '75,000 / 100,000 ج.م' : '$7,500 / 10,000'}
+                          </Text>
+                        </View>
+                        <View style={[styles.mockupBadge, { backgroundColor: '#F59E0B20' }]}>
+                          <Ionicons name="flame" size={14} color="#F59E0B" />
+                          <Text style={[styles.mockupBadgeText, { color: '#F59E0B' }]}>75%</Text>
+                        </View>
+                      </View>
+
+                      {/* Target Progress Bar */}
+                      <View style={[styles.mockupProgressBarTrack, { backgroundColor: colors.surfaceAlt }]}>
+                        <View style={[styles.mockupProgressBarFill, { width: '75%', backgroundColor: '#10B981' }]} />
+                      </View>
+
+                      {/* Debt & Feature Row */}
+                      <View style={[styles.mockupTxItem, { backgroundColor: colors.surfaceAlt }]}>
+                        <View style={[styles.mockupTxIcon, { backgroundColor: '#10B98120' }]}>
+                          <Ionicons name="checkmark-done" size={16} color="#10B981" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
+                            {getText('حاسبة الزكاة الذكية', 'Smart Zakat & Loans', 'स्मार्ट ऋण और लक्ष्य')}
+                          </Text>
+                          <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
+                            {getText('حساب دقيق وجدول سداد منتظم', 'Accurate & structured payoff', 'सटीक गणना और समय पर भुगतान')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Daily Streak Pill */}
+                      <View style={[styles.mockupInsightPill, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B30' }]}>
+                        <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
+                        <Text style={[styles.mockupInsightText, { color: colors.text }]}>
+                          {getText(
+                            'تحدي 30 يوم لبناء عادات مالية مستدامة',
+                            '30-Day Financial Habit Challenge',
+                            '30-दिवसीय वित्तीय आदत चुनौती'
+                          )}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
+
+                {/* Slide Text Content */}
                 <Text style={[styles.slideTitle, { color: colors.text }]}>
-                  {isAr ? item.titleAr : item.titleEn}
+                  {getText(item.titleAr, item.titleEn, item.titleHi)}
                 </Text>
                 <Text style={[styles.slideDesc, { color: colors.textSecondary }]}>
-                  {isAr ? item.descAr : item.descEn}
+                  {getText(item.descAr, item.descEn, item.descHi)}
                 </Text>
               </View>
             ))}
@@ -369,8 +587,8 @@ export default function OnboardingScreen() {
             >
               <Text style={styles.primaryBtnText}>
                 {activeIndex === slides.length - 1
-                  ? (isAr ? 'متابعة' : 'Continue')
-                  : (isAr ? 'التالي' : 'Next')}
+                  ? getText('متابعة', 'Continue', 'जारी रखें')
+                  : getText('التالي', 'Next', 'आगे बढ़ें')}
               </Text>
               <Ionicons
                 name={isAr ? 'arrow-back' : 'arrow-forward'}
@@ -392,12 +610,14 @@ export default function OnboardingScreen() {
         >
           <View style={styles.goalTopSection}>
             <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-              {isAr ? 'ما هو هدفك المالي الأساسي؟' : 'What is your primary financial goal?'}
+              {getText('ما هو هدفك المالي الأساسي؟', 'What is your primary financial goal?', 'आपका मुख्य वित्तीय लक्ष्य क्या है?')}
             </Text>
             <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
-              {isAr
-                ? 'ساعدنا على إعداد المحافظ والمستشار المالي بما يناسب تطلعاتك:'
-                : 'Help us personalize your experience and AI advisor recommendations:'}
+              {getText(
+                'ساعدنا على إعداد المحافظ والمستشار المالي بما يناسب تطلعاتك:',
+                'Help us personalize your experience and AI advisor recommendations:',
+                'अपने अनुभव और एआई वित्तीय सलाहकार को निजीकृत करने में हमारी सहायता करें:'
+              )}
             </Text>
 
             <View style={styles.goalsList}>
@@ -417,7 +637,7 @@ export default function OnboardingScreen() {
                     ]}
                   >
                     <Text style={[styles.goalCardText, { color: colors.text }]}>
-                      {isAr ? g.titleAr : g.titleEn}
+                      {getText(g.titleAr, g.titleEn, g.titleHi)}
                     </Text>
                     <Ionicons
                       name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -439,7 +659,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.primaryBtnText}>
-              {isAr ? 'التالي' : 'Next'}
+              {getText('التالي', 'Next', 'आगे बढ़ें')}
             </Text>
             <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
           </Pressable>
@@ -456,12 +676,14 @@ export default function OnboardingScreen() {
         >
           <View style={styles.goalTopSection}>
             <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-              {isAr ? '💰 اختر عملتك الأساسية' : '💰 Choose Your Main Currency'}
+              {getText('💰 اختر عملتك الأساسية', '💰 Choose Your Main Currency', '💰 अपनी मुख्य मुद्रा चुनें')}
             </Text>
             <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
-              {isAr
-                ? 'سيتم إنشاء محفظتك الأولى بهذه العملة. يمكنك إضافة محافظ بعملات أخرى لاحقاً.'
-                : 'Your first wallet will use this currency. You can add more wallets with different currencies later.'}
+              {getText(
+                'سيتم إنشاء محفظتك الأولى بهذه العملة. يمكنك إضافة محافظ بعملات أخرى لاحقاً.',
+                'Your first wallet will use this currency. You can add more wallets with different currencies later.',
+                'आपका पहला वॉलेट इस मुद्रा का उपयोग करेगा। आप बाद में अन्य मुद्राओं में और वॉलेट जोड़ सकते हैं।'
+              )}
             </Text>
 
             <View style={styles.currencyGrid}>
@@ -484,7 +706,7 @@ export default function OnboardingScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.currencyCode, { color: colors.text }]}>{curr.code}</Text>
                       <Text style={[styles.currencyName, { color: colors.textSecondary }]}>
-                        {isAr ? curr.nameAr : curr.nameEn}
+                        {getText(curr.nameAr, curr.nameEn, curr.nameHi)}
                       </Text>
                     </View>
                     {isSelected && (
@@ -505,7 +727,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.primaryBtnText}>
-              {isAr ? 'التالي' : 'Next'}
+              {getText('التالي', 'Next', 'आगे बढ़ें')}
             </Text>
             <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
           </Pressable>
@@ -527,23 +749,25 @@ export default function OnboardingScreen() {
           >
             <View style={styles.goalTopSection}>
               <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-                {isAr ? '📊 كم دخلك الشهري تقريباً؟' : '📊 What\'s your approximate monthly income?'}
+                {getText('📊 كم دخلك الشهري تقريباً؟', '📊 What\'s your approximate monthly income?', '📊 आपकी अनुमानित मासिक आय क्या है?')}
               </Text>
               <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
-                {isAr
-                  ? 'هذا يساعدنا في إعداد ميزانية مخصصة ونصائح مالية ذكية. (اختياري — يمكنك تخطي هذه الخطوة)'
-                  : 'This helps us set up personalized budgets and smart financial advice. (Optional — you can skip this step)'}
+                {getText(
+                  'هذا يساعدنا في إعداد ميزانية مخصصة ونصائح مالية ذكية. (اختياري — يمكنك تخطي هذه الخطوة)',
+                  'This helps us set up personalized budgets and smart financial advice. (Optional — you can skip this step)',
+                  'यह हमें व्यक्तिगत बजट और स्मार्ट वित्तीय सलाह तैयार करने में मदद करता है। (वैकल्पिक — आप छोड़ सकते हैं)'
+                )}
               </Text>
 
               <View style={styles.incomeInputContainer}>
                 <View style={[styles.incomeInputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <Text style={[styles.incomeSymbol, { color: colors.primary }]}>
-                    {selectedCurrencyInfo?.flag} {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '$'}
+                    {selectedCurrencyInfo?.flag} {CURRENCIES.find(c => c.code === selectedCurrency)?.symbol || '₹'}
                   </Text>
                   <TextInput
                     value={monthlyIncomeInput}
                     onChangeText={(text) => setMonthlyIncomeInput(normalizeAmountInput(text))}
-                    placeholder={isAr ? 'مثلاً: 5000' : 'e.g. 5000'}
+                    placeholder={selectedCurrency === 'INR' ? 'उदा. 35000' : isAr ? 'مثلاً: 5000' : 'e.g. 5000'}
                     placeholderTextColor={colors.textSecondary + '80'}
                     keyboardType="numeric"
                     style={[styles.incomeInput, { color: colors.text }]}
@@ -553,7 +777,7 @@ export default function OnboardingScreen() {
 
                 {/* Quick amount suggestions */}
                 <View style={styles.quickAmounts}>
-                  {[3000, 5000, 10000, 20000].map(amount => (
+                  {getQuickAmounts().map(amount => (
                     <Pressable
                       key={amount}
                       onPress={() => {
@@ -575,7 +799,7 @@ export default function OnboardingScreen() {
               </View>
             </View>
 
-            <View style={{ gap: 12, width: '100%' }}>
+            <View style={{ gap: 12, width: '100%', marginTop: 24 }}>
               <Pressable
                 onPress={handleCompleteOnboarding}
                 style={({ pressed }) => [
@@ -585,7 +809,7 @@ export default function OnboardingScreen() {
                 ]}
               >
                 <Text style={styles.primaryBtnText}>
-                  {isAr ? 'ابدأ استخدام ميزان الآن 🚀' : 'Get Started with Mizan 🚀'}
+                  {getText('ابدأ استخدام ميزان الآن 🚀', 'Get Started with Mizan 🚀', 'मिज़ान का उपयोग शुरू करें 🚀')}
                 </Text>
               </Pressable>
 
@@ -601,7 +825,7 @@ export default function OnboardingScreen() {
                 ]}
               >
                 <Text style={[styles.skipText, { color: colors.textSecondary, fontSize: 14 }]}>
-                  {isAr ? 'تخطي هذه الخطوة' : 'Skip this step'}
+                  {getText('تخطي هذه الخطوة', 'Skip this step', 'यह चरण छोड़ें')}
                 </Text>
               </Pressable>
             </View>
@@ -635,20 +859,24 @@ const styles = StyleSheet.create({
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  langBtn: {
+  langSwitcherContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
+    padding: 2,
+    gap: 2,
   },
-  langBtnText: {
+  langPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  langPillText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
+    fontSize: 12,
   },
   skipBtn: {
     paddingVertical: 6,
@@ -675,16 +903,136 @@ const styles = StyleSheet.create({
     width,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
-  iconCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 2,
+  // Rich Visual Mockups
+  mockupContainer: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    padding: 18,
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  mockupInner: {
+    width: '100%',
+    gap: 14,
+  },
+  mockupBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mockupLabel: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  mockupAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 24,
+  },
+  mockupBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  mockupBadgeText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  mockupTxList: {
+    gap: 8,
+  },
+  mockupTxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 14,
+    gap: 10,
+  },
+  mockupTxIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+  },
+  mockupTxTitle: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+  },
+  mockupTxSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+  },
+  mockupTxAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
+  mockupTagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  mockupCurrencyTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  mockupCurrencyTagText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 11,
+  },
+  mockupProgressBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  mockupProgressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  mockupBudgetGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  mockupBudgetItem: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 12,
+  },
+  mockupBudgetCatName: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  mockupBudgetCatVal: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+  },
+  mockupInsightPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  mockupInsightText: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+    flex: 1,
   },
   slideTitle: {
     fontFamily: 'Cairo_700Bold',
