@@ -20,6 +20,7 @@ import { scheduleDailyReminder } from "@/lib/NotificationService";
 import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initCrashReporter } from "@/lib/crashReporter";
+import WebUpdateBanner from "@/components/WebUpdateBanner";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -201,6 +202,7 @@ function ThemeContainer() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <RootLayoutNav />
+          <WebUpdateBanner />
         </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
