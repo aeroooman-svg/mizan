@@ -268,7 +268,8 @@ export default function WalletCardRender({
                 </Text>
               </View>
               <Text style={[styles.safeSpendBadgeAmount, { color: textColor }]} numberOfLines={1}>
-                {dailySafeSpendFormatted ?? `${dailySafeSpend} ${currencySymbol}`}
+                {dailySafeSpendFormatted ?? `${dailySafeSpend}`}{' '}
+                <Text style={styles.safeSpendBadgeCurrency}>{currencySymbol}</Text>
               </Text>
               <Text style={[styles.safeSpendBadgeDays, { color: subTextColor }]}>
                 {language === 'ar'
@@ -486,5 +487,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 7.5,
     opacity: 0.8,
+  },
+  safeSpendBadgeCurrency: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 8.5,
+    opacity: 0.85,
   },
 });

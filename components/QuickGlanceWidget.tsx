@@ -113,7 +113,7 @@ export default function QuickGlanceWidget({
       {/* Main Content */}
       <View style={styles.widgetContent}>
         
-        {/* Row 1: Wallet Name Badge & Safe Daily Limit Badge */}
+        {/* Row 1: Wallet Name Badge */}
         <View style={styles.headerRow}>
           {/* Wallet Name Badge - Soft, Elegant & Modern */}
           <View style={[styles.walletBadge, { backgroundColor: colors.surfaceAlt }]}>
@@ -122,18 +122,6 @@ export default function QuickGlanceWidget({
               {data.walletName || loc('المحفظة الرئيسية', 'Main Wallet', 'मुख्य वॉलेट')}
             </Text>
           </View>
-
-          {data.dailySafeSpend !== undefined && (
-            <View style={[styles.safeDailyBadge, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="shield-checkmark" size={14} color={data.dailySafeSpend > 0 ? '#10B981' : '#EF4444'} />
-              <Text style={[styles.safeDailyText, { color: colors.textSecondary }]}>
-                {loc('حد اليوم:', 'Daily Safe:', 'दैनिक सीमा:')}{' '}
-                <Text style={{ color: data.dailySafeSpend > 0 ? '#10B981' : '#EF4444', fontFamily: 'Cairo_700Bold' }}>
-                  {formatCurrency(data.dailySafeSpend, language, data.currencySymbol)}
-                </Text>
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* Row 2: Custom Capsule Shape (Expense Wing | Center Mic Circle | Income Wing) */}
@@ -323,20 +311,6 @@ const getStyles = (colors: any, theme: string) => StyleSheet.create({
   walletBadgeText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 14,
-  },
-  safeDailyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.22)',
-  },
-  safeDailyText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
   },
   balanceContainer: {
     alignItems: 'flex-end',
