@@ -29,6 +29,8 @@ export interface WidgetData {
 
   // Budget remaining
   dailyBudgetRemaining: number | null; // null if no budget set
+  dailySafeSpend: number; // safe spending limit per day based on days remaining
+  daysRemaining: number;
 
   // Last transaction
   lastTransaction: {
@@ -138,6 +140,18 @@ export function getWidgetData(
   // Savings rate
   const savingsRate = monthlyIncome > 0 ? Math.round(((monthlyIncome - monthlyExpense) / monthlyIncome) * 100) : 0;
 
+  // Safe daily spending limit
+  const currentDay = now.getDate();
+  const daysInMonthCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
+
+  const fullWalletBalance = wallet ? ((wallet.initialBalance || 0) +
+    walletTxns.filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === wallet.id)).reduce((s, t) => s + t.amount, 0) -
+    walletTxns.filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === wallet.id)).reduce((s, t) => s + t.amount, 0)
+  ) : balance;
+
+  const dailySafeSpend = fullWalletBalance > 0 ? Math.floor(fullWalletBalance / daysRemaining) : 0;
+
   return {
     balance,
     currencySymbol,
@@ -154,6 +168,8 @@ export function getWidgetData(
     healthLabel: health.label,
 
     dailyBudgetRemaining,
+    dailySafeSpend,
+    daysRemaining,
 
     lastTransaction,
 

@@ -272,6 +272,10 @@ export default function AddWalletScreen() {
               color={selectedColor}
               icon={selectedIcon}
               height={180}
+              dailySafeSpend={Math.floor((parseFloat(normalizeAmountInput(initialBalance)) || 0) / 30)}
+              dailySafeSpendFormatted={formatCurrency(Math.floor((parseFloat(normalizeAmountInput(initialBalance)) || 0) / 30), language, currency)}
+              daysRemaining={30}
+              language={language}
             />
           </View>
 

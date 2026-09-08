@@ -161,6 +161,12 @@ export default function WalletCarousel({
             .reduce((sum, t) => sum + t.amount, 0);
           const walletBalance = (wallet.initialBalance || 0) + income + transferIn - expense - transferOut;
 
+          const now = new Date();
+          const daysInMonthCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          const currentDay = now.getDate();
+          const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
+          const dailySafeLimit = walletBalance > 0 ? Math.floor(walletBalance / daysRemaining) : 0;
+
           const cardStyle = wallet.cardStyle || 'classic';
 
           const cardDesignStyle = [
@@ -256,6 +262,10 @@ export default function WalletCarousel({
                 isShared={Boolean(sharedText)}
                 sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `साझा: ${sharedText}`) : undefined}
                 height={190}
+                dailySafeSpend={dailySafeLimit}
+                dailySafeSpendFormatted={formatCurrency(dailySafeLimit, language, wallet.currency)}
+                daysRemaining={daysRemaining}
+                language={language}
               />
             </Pressable>
           );

@@ -18,6 +18,10 @@ interface WalletCardRenderProps {
   isShared?: boolean;
   sharedLabel?: string;
   height?: number;
+  dailySafeSpend?: number;
+  dailySafeSpendFormatted?: string;
+  daysRemaining?: number;
+  language?: 'ar' | 'en' | 'hi';
 }
 
 export default function WalletCardRender({
@@ -32,6 +36,10 @@ export default function WalletCardRender({
   isShared,
   sharedLabel,
   height = 180,
+  dailySafeSpend,
+  dailySafeSpendFormatted,
+  daysRemaining,
+  language = 'ar',
 }: WalletCardRenderProps) {
   const isMinimal = cardStyle === 'minimal';
   const textColor = isMinimal ? color : '#FFFFFF';
@@ -236,7 +244,7 @@ export default function WalletCardRender({
             </View>
           )}
 
-          <View style={{ flex: 1, alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, alignItems: 'flex-start', justifyContent: 'center' }}>
             <Text style={[styles.balanceLabelText, { color: subTextColor }]}>
               {currencySymbol ? 'AVAILABLE BALANCE' : 'BALANCE'}
             </Text>
@@ -244,6 +252,33 @@ export default function WalletCardRender({
               {balanceFormatted} <Text style={styles.currencySubText}>{currencySymbol}</Text>
             </Text>
           </View>
+
+          {dailySafeSpend !== undefined && (
+            <View style={[
+              styles.safeSpendBadge,
+              cardStyle === 'minimal' && { borderColor: color, backgroundColor: 'transparent' }
+            ]}>
+              <View style={styles.safeSpendBadgeHeader}>
+                <View style={[
+                  styles.safeSpendDot,
+                  { backgroundColor: dailySafeSpend > 0 ? '#10B981' : '#EF4444' }
+                ]} />
+                <Text style={[styles.safeSpendBadgeLabel, { color: subTextColor }]}>
+                  {language === 'ar' ? 'حد اليوم الآمن' : language === 'hi' ? 'दैनिक सीमा' : 'DAILY SAFE'}
+                </Text>
+              </View>
+              <Text style={[styles.safeSpendBadgeAmount, { color: textColor }]} numberOfLines={1}>
+                {dailySafeSpendFormatted ?? `${dailySafeSpend} ${currencySymbol}`}
+              </Text>
+              <Text style={[styles.safeSpendBadgeDays, { color: subTextColor }]}>
+                {language === 'ar'
+                  ? `باقي ${daysRemaining ?? 1} يوم`
+                  : language === 'hi'
+                  ? `${daysRemaining ?? 1} दिन शेष`
+                  : `${daysRemaining ?? 1}d left`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* BOTTOM ROW: Embossed Engraved Card Number & Expiry */}
@@ -411,5 +446,45 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 10,
     letterSpacing: 1,
+  },
+
+  /* Safe Daily Limit Pill */
+  safeSpendBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 80,
+  },
+  safeSpendBadgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 1,
+  },
+  safeSpendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  safeSpendBadgeLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 7.5,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  safeSpendBadgeAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12.5,
+    lineHeight: 16,
+  },
+  safeSpendBadgeDays: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 7.5,
+    opacity: 0.8,
   },
 });

@@ -15,6 +15,8 @@ import {
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/lib/ThemeContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTransactions } from '@/lib/TransactionContext';
@@ -40,8 +42,9 @@ interface InstallmentsScreenProps {
 }
 
 export default function InstallmentsScreen({ initialTab }: InstallmentsScreenProps) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { colors, theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const { language } = useLanguage();
   const isAr = language === 'ar';
   const { selectedWallet, wallets, addTransaction, totalIncome, refresh } = useTransactions();
@@ -561,20 +564,174 @@ export default function InstallmentsScreen({ initialTab }: InstallmentsScreenPro
 
   return (
     <View style={styles.container}>
-      {/* Top Header Bar */}
-      <View style={styles.headerBar}>
+      {/* Sleek App Header */}
+      <View style={[styles.headerBar, { paddingTop: Math.max(insets.top + 8, 20) }]}>
         <Pressable onPress={handleBack} style={styles.backBtn} hitSlop={15}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name={isAr ? "chevron-forward" : "chevron-back"} size={22} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>
-          {isAr ? '💳 أقساط وجمعيات' : '💳 Installments & Associations'}
-        </Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {isAr ? '💳 أقساط وجمعيات' : '💳 Installments & Associations'}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            {isAr ? 'جدولة الالتزامات الشهرية والتحرر المالي' : 'Manage credit cards, BNPL & savings circles'}
+          </Text>
+        </View>
         <Pressable onPress={handleOpenAdd} style={styles.addBtn} hitSlop={8}>
           <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) + 90 }]}>
+        {/* Executive Summary Hero Banner */}
+        <LinearGradient
+          colors={
+            theme === 'dark'
+              ? (activeTab === 'installments' ? ['#1E1B4B', '#111827', '#0A1128'] : ['#064E3B', '#042F2E', '#0A1128'])
+              : (activeTab === 'installments' ? ['#EEF2FF', '#E0E7FF', '#EFF6FF'] : ['#ECFDF5', '#D1FAE5', '#EFF6FF'])
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroBanner}
+        >
+          <View style={styles.heroTopRow}>
+            <View style={{ flex: 1 }}>
+              <View style={styles.heroPositionBadge}>
+                {activeTab === 'installments' ? (
+                  <>
+                    <Ionicons name="shield-checkmark" size={14} color={safetyLevel.color} />
+                    <Text style={[styles.heroPositionText, { color: safetyLevel.color }]}>
+                      {safetyLevel.label} ({obligationRatio}% {isAr ? 'من الدخل' : 'of income'})
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="handshake" size={14} color="#10B981" />
+                    <Text style={[styles.heroPositionText, { color: '#10B981' }]}>
+                      {isAr ? 'ادخار تعاوني منظم' : 'Zero-interest Savings'}
+                    </Text>
+                  </>
+                )}
+              </View>
+
+              <Text style={[styles.heroMainAmount, { color: theme === 'dark' ? '#FFF' : '#1E293B' }]}>
+                {formatCurrency(activeTab === 'installments' ? totalRemainingDebt : totalJameyaExpectedPayout)}{' '}
+                <Text style={styles.heroCurrencySymbol}>{currency}</Text>
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {activeTab === 'installments'
+                  ? (isAr ? 'إجمالي المتبقي من الديون والأقساط' : 'Total Remaining Debt')
+                  : (isAr ? 'إجمالي مبالغ في انتظار القبض' : 'Total Expected ROSCA Pot')}
+              </Text>
+            </View>
+
+            <View style={[styles.heroIconBadge, { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)' }]}>
+              <MaterialCommunityIcons
+                name={activeTab === 'installments' ? "credit-card-chip-outline" : "handshake"}
+                size={30}
+                color={activeTab === 'installments' ? '#6366F1' : '#10B981'}
+              />
+            </View>
+          </View>
+
+          {/* Sub Metrics Grid */}
+          <View style={styles.heroSubGrid}>
+            <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+              <View style={styles.heroSubCardHeader}>
+                <Ionicons name="calendar-outline" size={13} color={colors.primary} />
+                <Text style={styles.heroSubLabel}>{isAr ? 'الالتزام الشهري' : 'Monthly Due'}</Text>
+              </View>
+              <Text style={[styles.heroSubVal, { color: colors.primary }]}>
+                {formatCurrency(activeTab === 'installments' ? totalMonthlyCommitment : totalJameyaMonthlyCommitment)} <Text style={{ fontSize: 9 }}>{currency}</Text>
+              </Text>
+              <Text style={styles.heroSubCount}>
+                {activeTab === 'installments' ? `${activePlans.length} ${isAr ? 'أقساط' : 'plans'}` : `${activeJameyas.length} ${isAr ? 'جمعيات' : 'circles'}`}
+              </Text>
+            </View>
+
+            <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+              <View style={styles.heroSubCardHeader}>
+                <Ionicons name="pie-chart-outline" size={13} color="#F59E0B" />
+                <Text style={styles.heroSubLabel}>{isAr ? 'نسبة الاستقطاع' : 'Income Ratio'}</Text>
+              </View>
+              <Text style={[styles.heroSubVal, { color: '#F59E0B' }]}>
+                {obligationRatio}%
+              </Text>
+              <Text style={styles.heroSubCount}>
+                {isAr ? 'من الدخل الشهري' : 'of income'}
+              </Text>
+            </View>
+
+            <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+              <View style={styles.heroSubCardHeader}>
+                <Ionicons name="sparkles-outline" size={13} color="#10B981" />
+                <Text style={styles.heroSubLabel}>{isAr ? 'التحرر التام' : 'Freedom Date'}</Text>
+              </View>
+              <Text style={[styles.heroSubVal, { color: '#10B981', fontSize: 11 }]} numberOfLines={1}>
+                {freedomDateFormatted || (isAr ? 'محرر ماليّاً' : 'Debt-Free')}
+              </Text>
+              <Text style={styles.heroSubCount}>
+                {isAr ? 'خطة تصفية الديون' : 'target date'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Alert Notice Tag inside Hero */}
+          {urgentStats.overdueCount > 0 ? (
+            <View style={[styles.heroNoticeTag, { backgroundColor: '#EF444425' }]}>
+              <Ionicons name="alert-circle" size={15} color="#EF4444" />
+              <Text style={[styles.heroNoticeText, { color: '#EF4444' }]} numberOfLines={1}>
+                {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط متأخر يستوجب السداد فوراً!` : `Alert: ${urgentStats.overdueCount} overdue installment(s)!`}
+              </Text>
+            </View>
+          ) : urgentStats.dueSoonCount > 0 ? (
+            <View style={styles.heroNoticeTag}>
+              <Ionicons name="time-outline" size={15} color="#F59E0B" />
+              <Text style={styles.heroNoticeText} numberOfLines={1}>
+                {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
+              </Text>
+            </View>
+          ) : activePlans.length > 0 ? (
+            <View style={[styles.heroNoticeTag, { backgroundColor: '#10B98120' }]}>
+              <Ionicons name="checkmark-done-circle" size={15} color="#10B981" />
+              <Text style={[styles.heroNoticeText, { color: '#10B981' }]} numberOfLines={1}>
+                {isAr ? 'وضعك ممتاز! جميع أقساط هذا الشهر مسددة بالكامل 🎉' : 'All clear! All installments for this month paid 🎉'}
+              </Text>
+            </View>
+          ) : null}
+        </LinearGradient>
+
+        {/* Action Shortcut Banner */}
+        <Pressable
+          onPress={handleOpenAdd}
+          style={({ pressed }) => [
+            styles.createActionBanner,
+            { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+            pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
+          ]}
+        >
+          <View style={styles.createActionLeft}>
+            <View style={[styles.createActionIcon, { backgroundColor: activeTab === 'installments' ? '#6366F118' : '#10B98118' }]}>
+              <Ionicons
+                name="add-circle"
+                size={26}
+                color={activeTab === 'installments' ? '#6366F1' : '#10B981'}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.createActionTitle, { color: colors.text }]}>
+                {isAr
+                  ? (activeTab === 'installments' ? 'إضافة قسط جديد أو بطاقة تقسيط' : 'إضافة جمعية شهرية جديدة')
+                  : (activeTab === 'installments' ? 'Add Installment or Credit Plan' : 'Join / Create Monthly Circle')}
+              </Text>
+              <Text style={[styles.createActionSubtitle, { color: colors.textSecondary }]}>
+                {isAr ? 'حدد القيمة، المدة، والجهة (Valu، تابي، بطاقة بنكية)' : 'Set total amount, months & provider'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textTertiary} />
+        </Pressable>
+
         {/* Unified Segment Switcher Tab Bar */}
         <View style={styles.segmentContainer}>
           <Pressable
@@ -629,99 +786,6 @@ export default function InstallmentsScreen({ initialTab }: InstallmentsScreenPro
         {/* --- TAB 1: INSTALLMENTS CONTENT --- */}
         {activeTab === 'installments' ? (
           <>
-            {/* Urgent Alert Banner */}
-            {urgentStats.overdueCount > 0 ? (
-              <View style={[styles.urgentBanner, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
-                <Ionicons name="alert-circle" size={22} color="#EF4444" />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.urgentBannerTitle, { color: '#EF4444' }]}>
-                    {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط مستحق السداد فوراً!` : `Alert: You have ${urgentStats.overdueCount} overdue installment(s)!`}
-                  </Text>
-                  <Text style={styles.urgentBannerSub}>
-                    {isAr ? 'سارع بالسداد لتجنب غرامات التأخير وحماية رصيدك الائتماني' : 'Pay now to avoid late fees'}
-                  </Text>
-                </View>
-              </View>
-            ) : urgentStats.dueSoonCount > 0 ? (
-              <View style={[styles.urgentBanner, { backgroundColor: '#F59E0B15', borderColor: '#F59E0B40' }]}>
-                <Ionicons name="time-outline" size={22} color="#F59E0B" />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.urgentBannerTitle, { color: '#F59E0B' }]}>
-                    {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
-                  </Text>
-                  <Text style={styles.urgentBannerSub}>
-                    {isAr ? 'راجع موعد الاستحقاق لتوفير السيولة المناسبة بالسيارة أو المحفظة' : 'Check due dates to prepare cashflow'}
-                  </Text>
-                </View>
-              </View>
-            ) : activePlans.length > 0 ? (
-              <View style={[styles.urgentBanner, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
-                <Ionicons name="checkmark-circle-outline" size={22} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.urgentBannerTitle, { color: colors.primary }]}>
-                    {isAr ? 'وضعك ممتاز! تم سداد جميع أقساط هذا الشهر بنجاح 🎉' : 'All clear! Paid for this month 🎉'}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Summary Grid (2 Metric Cards Side-by-Side) */}
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
-                <Ionicons name="trending-down" size={22} color={colors.expense} />
-                <Text style={styles.summaryLabel}>
-                  {isAr ? 'إجمالي المتبقي عليك' : 'Total Debt Remaining'}
-                </Text>
-                <Text style={[styles.summaryValue, { color: colors.expense }]}>
-                  {formatCurrency(totalRemainingDebt)} {currency}
-                </Text>
-              </View>
-
-              <View style={[styles.summaryCard, { borderColor: colors.primary + '40' }]}>
-                <Ionicons name="calendar" size={22} color={colors.primary} />
-                <Text style={styles.summaryLabel}>
-                  {isAr ? 'الالتزام الشهري' : 'Monthly Obligation'}
-                </Text>
-                <Text style={[styles.summaryValue, { color: colors.primary }]}>
-                  {formatCurrency(totalMonthlyCommitment)} {currency}
-                </Text>
-              </View>
-            </View>
-
-            {/* Portfolio Impact Card */}
-            {totalMonthlyCommitment > 0 && (
-              <View style={styles.savingsImpactCard}>
-                <View style={styles.savingsImpactHeader}>
-                  <Ionicons name="sparkles" size={20} color={colors.primary} />
-                  <Text style={styles.savingsImpactTitle}>
-                    {isAr ? 'التحليل الذكي لأثر الأقساط على المحفظة والادخار' : 'Smart Portfolio & Savings Impact'}
-                  </Text>
-                  <View style={[styles.safetyBadge, { backgroundColor: safetyLevel.bg }]}>
-                    <Text style={[styles.safetyBadgeText, { color: safetyLevel.color }]}>
-                      {safetyLevel.label}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.impactMetricsGrid}>
-                  <View style={styles.impactMetricBox}>
-                    <Text style={styles.impactMetricLabel}>{isAr ? 'نسبة الاستقطاع من الدخل:' : 'Income Obligation Ratio:'}</Text>
-                    <Text style={[styles.impactMetricValue, { color: safetyLevel.color }]}>
-                      {obligationRatio}% {isAr ? 'من دخلك الشهري' : 'of monthly income'}
-                    </Text>
-                  </View>
-
-                  {freedomDateFormatted && (
-                    <View style={styles.impactMetricBox}>
-                      <Text style={styles.impactMetricLabel}>{isAr ? 'تاريخ التحرر المالي التام:' : 'Full Freedom Date:'}</Text>
-                      <Text style={[styles.impactMetricValue, { color: colors.primary }]}>
-                        {freedomDateFormatted}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
 
             {/* Active Plans List */}
             <Text style={styles.sectionTitle}>
@@ -848,29 +912,6 @@ export default function InstallmentsScreen({ initialTab }: InstallmentsScreenPro
         ) : (
           /* --- TAB 2: JAMEYA (ASSOCIATIONS) CONTENT --- */
           <>
-            {/* Summary Grid (2 Metric Cards Side-by-Side - Matching Installments!) */}
-            <View style={styles.summaryRow}>
-              <View style={[styles.summaryCard, { borderColor: colors.expense + '40' }]}>
-                <MaterialCommunityIcons name="piggy-bank-outline" size={22} color={colors.expense} />
-                <Text style={styles.summaryLabel}>
-                  {isAr ? 'التزام الجمعيات الشهري' : 'Monthly Jameya Commitment'}
-                </Text>
-                <Text style={[styles.summaryValue, { color: colors.expense }]}>
-                  {formatCurrency(totalJameyaMonthlyCommitment)} {currency}
-                </Text>
-              </View>
-
-              <View style={[styles.summaryCard, { borderColor: colors.income + '40' }]}>
-                <Ionicons name="cash-outline" size={22} color={colors.income} />
-                <Text style={styles.summaryLabel}>
-                  {isAr ? 'مبالغ متوقع قبضها' : 'Pending Payouts'}
-                </Text>
-                <Text style={[styles.summaryValue, { color: colors.income }]}>
-                  {formatCurrency(totalJameyaExpectedPayout)} {currency}
-                </Text>
-              </View>
-            </View>
-
             {/* Active Associations Section Title */}
             <Text style={styles.sectionTitle}>
               {isAr ? `الجمعيات الجارية (${activeJameyas.length})` : `Active Associations (${activeJameyas.length})`}
@@ -1579,7 +1620,7 @@ export default function InstallmentsScreen({ initialTab }: InstallmentsScreenPro
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1588,24 +1629,33 @@ const getStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 52 : 16,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitleContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
   headerTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 17,
+    fontSize: 18,
     color: colors.text,
+    textAlign: 'left',
+  },
+  headerSubtitle: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    marginTop: -2,
   },
   addBtn: {
     width: 40,
@@ -1614,11 +1664,140 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  heroBanner: {
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  heroPositionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  heroPositionText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  heroMainAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 28,
+    letterSpacing: 0.5,
+  },
+  heroCurrencySymbol: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 16,
+  },
+  heroIconBadge: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroSubGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  heroSubCard: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  heroSubCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 3,
+  },
+  heroSubLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  heroSubVal: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
+  heroSubCount: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 9,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  heroNoticeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.75)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  heroNoticeText: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.text,
+    textAlign: 'left',
+  },
+  createActionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  createActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  createActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createActionTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    textAlign: 'left',
+  },
+  createActionSubtitle: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    textAlign: 'left',
+    marginTop: 1,
   },
 
   /* Segment Switcher Tab Bar */

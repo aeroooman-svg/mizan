@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -36,8 +36,8 @@ import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import { saveGoal, SavingsGoal } from '@/lib/goalStorage';
 
 export default function RecurringListScreen() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { colors, theme } = useTheme();
+  const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { t, language } = useLanguage();
@@ -234,49 +234,87 @@ export default function RecurringListScreen() {
     }
   };
 
+  const surplus = totalRecurringIncome - totalRecurringExpenses;
+
   const renderHeader = () => (
     <View style={styles.summaryContainer}>
-      {/* Overview Card */}
-      <View style={styles.summaryCard}>
-        <LinearGradient
-          colors={[colors.primary + '18', 'transparent']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-        <View style={styles.summaryHeaderRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="repeat-outline" size={20} color={colors.primary} />
-            <Text style={styles.summaryTitle}>
-              {isAr ? 'الملخص الشهري للمعاملات المتكررة' : 'Monthly Recurring Summary'}
+      {/* Executive Summary Hero Banner */}
+      <LinearGradient
+        colors={
+          theme === 'dark'
+            ? (surplus >= 0 ? ['#064E3B', '#0F2922', '#0A1128'] : ['#1E1B4B', '#111827', '#0A1128'])
+            : (surplus >= 0 ? ['#ECFDF5', '#D1FAE5', '#EFF6FF'] : ['#EEF2FF', '#E0E7FF', '#EFF6FF'])
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroBanner}
+      >
+        <View style={styles.heroTopRow}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.heroPositionBadge}>
+              <Ionicons
+                name={surplus >= 0 ? "trending-up" : "trending-down"}
+                size={14}
+                color={surplus >= 0 ? '#10B981' : '#EF4444'}
+              />
+              <Text
+                style={[
+                  styles.heroPositionText,
+                  { color: surplus >= 0 ? (theme === 'dark' ? '#34D399' : '#059669') : '#EF4444' },
+                ]}
+              >
+                {surplus >= 0
+                  ? (isAr ? 'صافي فائض شهري مستقر' : 'Monthly Recurring Surplus')
+                  : (isAr ? 'عجز في الالتزامات الدورية' : 'Recurring Deficit')}
+              </Text>
+            </View>
+
+            <Text style={[styles.heroMainAmount, { color: theme === 'dark' ? '#FFF' : '#1E293B' }]}>
+              {formatCurrency(Math.abs(surplus))} <Text style={styles.heroCurrencySymbol}>{currencySymbol}</Text>
+            </Text>
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+              {isAr ? 'الفائض المتبقي بعد سداد الفواتير الدورية' : 'Net cashflow after recurring commitments'}
             </Text>
           </View>
-          {selectedWallet?.name && (
-            <View style={{ backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-              <Text style={[styles.walletBadgeText, { color: colors.primary }]}>{selectedWallet.name}</Text>
-            </View>
-          )}
+
+          <View style={[styles.heroIconBadge, { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)' }]}>
+            <MaterialCommunityIcons
+              name="repeat"
+              size={30}
+              color={surplus >= 0 ? '#10B981' : '#6366F1'}
+            />
+          </View>
         </View>
 
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{isAr ? 'دخل متكرر' : 'Recurring Income'}</Text>
-            <Text style={[styles.summaryVal, { color: colors.income }]}>
-              +{formatCurrency(totalRecurringIncome)} {currencySymbol}
+        {/* Sub Metrics Grid */}
+        <View style={styles.heroSubGrid}>
+          <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+            <View style={styles.heroSubCardHeader}>
+              <Ionicons name="arrow-down-circle" size={13} color="#10B981" />
+              <Text style={styles.heroSubLabel}>{isAr ? 'دخل متكرر' : 'Income'}</Text>
+            </View>
+            <Text style={[styles.heroSubVal, { color: '#10B981' }]}>
+              +{formatCurrency(totalRecurringIncome)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
             </Text>
           </View>
 
-          <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{isAr ? 'فواتير واشتراكات' : 'Recurring Bills'}</Text>
-            <Text style={[styles.summaryVal, { color: colors.expense }]}>
-              -{formatCurrency(totalRecurringExpenses)} {currencySymbol}
+          <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+            <View style={styles.heroSubCardHeader}>
+              <Ionicons name="arrow-up-circle" size={13} color="#EF4444" />
+              <Text style={styles.heroSubLabel}>{isAr ? 'فواتير واشتراكات' : 'Bills'}</Text>
+            </View>
+            <Text style={[styles.heroSubVal, { color: '#EF4444' }]}>
+              -{formatCurrency(totalRecurringExpenses)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
             </Text>
           </View>
 
-          <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>{isAr ? 'فائض المعاملات المتكررة' : 'Recurring Surplus'}</Text>
-            <Text style={[styles.summaryVal, { color: (totalRecurringIncome - totalRecurringExpenses) >= 0 ? '#3B82F6' : colors.expense }]}>
-              {formatCurrency(totalRecurringIncome - totalRecurringExpenses)} {currencySymbol}
+          <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+            <View style={styles.heroSubCardHeader}>
+              <Ionicons name="checkmark-done-circle" size={13} color="#6366F1" />
+              <Text style={styles.heroSubLabel}>{isAr ? 'معاملات مفعلة' : 'Active'}</Text>
+            </View>
+            <Text style={[styles.heroSubVal, { color: '#6366F1' }]}>
+              {items.filter(i => i.isActive !== false).length}
             </Text>
           </View>
         </View>
@@ -287,42 +325,66 @@ export default function RecurringListScreen() {
             Haptics.selectionAsync();
             router.push('/installments' as any);
           }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: colors.primary + '12',
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: colors.primary + '30',
-          }}
+          style={styles.heroNoticeTag}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-            <Ionicons name="card-outline" size={16} color={colors.primary} />
-            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.text }}>
-              {isAr
-                ? 'ملاحظة: لإدارة الأقساط والجمعيات والالتزامات، انتقل لقسم "أقساط وجمعيات"'
-                : 'Note: For Installments & ROSCA management, go to "Installments & ROSCA"'}
-            </Text>
-          </View>
-          <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={16} color={colors.primary} />
+          <Ionicons name="card-outline" size={16} color={colors.primary} />
+          <Text style={styles.heroNoticeText} numberOfLines={1}>
+            {isAr
+              ? '💡 لإدارة أقساط الكروت والجمعيات، انتقل لقسم "أقساط وجمعيات"'
+              : '💡 Manage credit cards & ROSCA in "Installments & Associations"'}
+          </Text>
+          <Ionicons name={isAr ? "chevron-back" : "chevron-forward"} size={14} color={colors.primary} />
         </Pressable>
 
         {/* Auto Savings Goal Button */}
-        <Pressable
-          onPress={handleOpenAutoSavingsModal}
-          style={({ pressed }) => [
-            styles.autoSavingsBtn,
-            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
-          ]}
-        >
-          <Ionicons name="trophy-outline" size={18} color="#FFF" />
-          <Text style={styles.autoSavingsBtnText}>
-            {isAr ? '🎯 تحويل الفائض إلى هدف ادخار آلي' : '🎯 Create Auto Savings Goal'}
-          </Text>
-        </Pressable>
+        {surplus > 0 && (
+          <Pressable
+            onPress={handleOpenAutoSavingsModal}
+            style={({ pressed }) => [
+              styles.autoSavingsBtn,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+            ]}
+          >
+            <Ionicons name="trophy-outline" size={18} color="#FFF" />
+            <Text style={styles.autoSavingsBtnText}>
+              {isAr ? '🎯 تحويل الفائض الشهري إلى هدف ادخار آلي' : '🎯 Convert Surplus to Auto Savings Goal'}
+            </Text>
+          </Pressable>
+        )}
+      </LinearGradient>
+
+      {/* Action Shortcut Banner */}
+      <Pressable
+        onPress={() => {
+          Haptics.selectionAsync();
+          router.push('/add-recurring');
+        }}
+        style={({ pressed }) => [
+          styles.createActionBanner,
+          { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+          pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
+        ]}
+      >
+        <View style={styles.createActionLeft}>
+          <View style={[styles.createActionIcon, { backgroundColor: colors.primary + '18' }]}>
+            <Ionicons name="add-circle" size={26} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.createActionTitle, { color: colors.text }]}>
+              {isAr ? 'إضافة معاملة متكررة جديدة' : 'Add Recurring Transaction'}
+            </Text>
+            <Text style={[styles.createActionSubtitle, { color: colors.textSecondary }]}>
+              {isAr ? 'جدولة راتب، إيجار، فاتورة نت، أو اشتراك دوري' : 'Schedule salary, rent, internet or bill'}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={18} color={colors.textTertiary} />
+      </Pressable>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 }}>
+        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: colors.text }}>
+          {isAr ? `قائمة المعاملات المجدولة (${items.length})` : `Scheduled Transactions (${items.length})`}
+        </Text>
       </View>
     </View>
   );
@@ -341,19 +403,19 @@ export default function RecurringListScreen() {
       : getCategoryName(item.category, language);
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <View style={[styles.catIcon, { backgroundColor: itemColor + '18' }]}>
             <MaterialIcons name={itemIcon as any} size={22} color={itemColor} />
           </View>
           <View style={styles.info}>
-            <Text style={styles.catName}>{displayName}</Text>
-            {item.description ? <Text style={styles.desc} numberOfLines={1}>{item.description}</Text> : null}
+            <Text style={[styles.catName, { color: colors.text }]}>{displayName}</Text>
+            {item.description ? <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={1}>{item.description}</Text> : null}
             <View style={styles.badgeRow}>
               <View style={[styles.frequencyBadge, { backgroundColor: itemColor + '15' }]}>
                 <Text style={[styles.frequencyText, { color: itemColor }]}>{getFrequencyLabel(item.frequency)}</Text>
               </View>
-              <Text style={styles.nextDue}>
+              <Text style={[styles.nextDue, { color: colors.textTertiary }]}>
                 {t.nextDueDate}: {formatDateLocalized(item.nextDueDate, language)}
               </Text>
             </View>
@@ -404,44 +466,60 @@ export default function RecurringListScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Header Bar */}
-      <View style={[styles.headerRow, { paddingTop: (insets.top || webTopInset) + 16 }]}>
-        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      {/* Sleek App Header */}
+      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top + 8, 20) }]}>
+        <Pressable onPress={handleBack} hitSlop={15} style={styles.backBtn}>
+          <Ionicons name={isAr ? "chevron-forward" : "chevron-back"} size={22} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>{t.recurringTransactions}</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {isAr ? '🔄 المعاملات المتكررة' : 'Recurring Transactions'}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            {isAr ? 'أتمتة الفواتير الدورية والاشتراكات الشهرية' : 'Automate your regular bills & income'}
+          </Text>
+        </View>
         <Pressable
           onPress={() => {
             Haptics.selectionAsync();
             router.push('/add-recurring');
           }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]}
+          style={styles.addBtn}
+          hitSlop={10}
         >
-          <Ionicons name="add" size={24} color="#fff" />
+          <Ionicons name="add" size={24} color="#FFF" />
         </Pressable>
       </View>
 
       {items.length === 0 ? (
-        <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 20 }} showsVerticalScrollIndicator={false}>
           {renderHeader()}
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={54} color={colors.textTertiary} />
-            <Text style={styles.emptyTitle}>{t.noRecurring}</Text>
+          <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '18' }]}>
+              <MaterialCommunityIcons name="calendar-sync-outline" size={48} color={colors.primary} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noRecurring}</Text>
+            <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
+              {isAr
+                ? 'سجل التزاماتك المتكررة مثل الراتب أو الفواتير الشهرية أو اشتراك النت ليتم تسجيلها تلقائياً وتنبيهك بمواعيدها.'
+                : 'Schedule recurring income or bills to automate your budget and get reminders.'}
+            </Text>
             <Pressable
               onPress={() => router.push('/add-recurring')}
-              style={styles.emptyButton}
+              style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.emptyButtonText}>{t.addRecurring}</Text>
+              <Ionicons name="add" size={18} color="#FFF" />
+              <Text style={styles.emptyBtnText}>{t.addRecurring}</Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={items}
           ListHeaderComponent={renderHeader}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -572,7 +650,7 @@ export default function RecurringListScreen() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -580,24 +658,34 @@ const getStyles = (colors: any) => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     justifyContent: 'space-between',
-    zIndex: 10,
-    elevation: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   backBtn: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
+  headerTitleContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  headerTitle: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 18,
     color: colors.text,
+    textAlign: 'left',
+  },
+  headerSubtitle: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    marginTop: -2,
   },
   addBtn: {
     width: 40,
@@ -606,54 +694,102 @@ const getStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   summaryContainer: {
-    padding: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
-  summaryCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 12,
-    overflow: 'hidden',
+  heroBanner: {
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  summaryHeaderRow: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  summaryTitle: {
+  heroPositionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  heroPositionText: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-    color: colors.text,
-  },
-  walletBadgeText: {
-    fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
-    color: colors.textSecondary,
   },
-  summaryGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceAlt,
-    padding: 12,
-    borderRadius: 14,
+  heroMainAmount: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 28,
+    letterSpacing: 0.5,
   },
-  summaryCol: {
+  heroCurrencySymbol: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 16,
+  },
+  heroIconBadge: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
   },
-  summaryLabel: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
+  heroSubGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  heroSubCard: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  heroSubCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 3,
+  },
+  heroSubLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 10,
     color: colors.textSecondary,
   },
-  summaryVal: {
+  heroSubVal: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
+  },
+  heroNoticeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+    backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.75)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  heroNoticeText: {
+    flex: 1,
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: colors.text,
+    textAlign: 'left',
   },
   autoSavingsBtn: {
     backgroundColor: colors.primary,
@@ -661,25 +797,105 @@ const getStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: 12,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   autoSavingsBtnText: {
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
     color: '#FFFFFF',
   },
+  createActionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  createActionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  createActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createActionTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    textAlign: 'left',
+  },
+  createActionSubtitle: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    textAlign: 'left',
+    marginTop: 1,
+  },
   listContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 20,
     gap: 12,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  emptyContainer: {
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginHorizontal: 18,
+    marginVertical: 10,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyDesc: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  emptyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  emptyBtnText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+    color: '#FFF',
   },
   cardHeader: {
     flexDirection: 'row',
