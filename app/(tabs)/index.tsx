@@ -52,6 +52,7 @@ import UndoSnackbar from '@/components/UndoSnackbar';
 import SkeletonPlaceholder, { SkeletonCard } from '@/components/SkeletonPlaceholder';
 import { checkAndPromptReview, recordFirstOpen } from '@/lib/reviewService';
 import VoiceTransactionModal from '@/components/VoiceTransactionModal';
+import { getUnreadNotificationsCount } from '@/lib/smartNotifications';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -100,28 +101,25 @@ export default function HomeScreen() {
     return () => unsub();
   }, []);
 
-  // Calculate unread notification count
+  // Calculate unread notification count directly synchronized with Notifications screen
   const computeUnreadCount = useCallback(async () => {
     try {
-      const readIdsStr = await AsyncStorage.getItem('@mizan_notifications_read');
-      const readIds = readIdsStr ? new Set(JSON.parse(readIdsStr)) : new Set();
-      // Generate notification IDs to check against read
-      const now = new Date();
-      const notifIds: string[] = ['welcome'];
-      if (totalIncome > 0 && totalExpense / totalIncome > 0.8) notifIds.push('budget_warning_' + now.getMonth());
-      if (totalIncome > 0 && (totalIncome - totalExpense) / totalIncome > 0.3) notifIds.push('savings_achievement_' + now.getMonth());
-      if (pendingRecurring.length > 0) notifIds.push('recurring_due_' + now.toISOString().slice(0, 10));
-      if (wallets.length > 1) notifIds.push('multi_wallet_tip');
-      const todayStr = now.toISOString().slice(0, 10);
-      const todayTxns = transactions.filter(t => t.date.slice(0, 10) === todayStr);
-      if (todayTxns.length === 0 && transactions.length > 0) notifIds.push('no_txn_today_' + todayStr);
-      if (balance < 0) notifIds.push('negative_balance_' + now.getMonth());
-      const unread = notifIds.filter(id => !readIds.has(id)).length;
+      const unread = await getUnreadNotificationsCount({
+        transactions,
+        wallets,
+        selectedWallet,
+        totalIncome,
+        totalExpense,
+        balance,
+        pendingRecurring,
+        currencySymbol,
+        language,
+      });
       setUnreadNotifCount(unread);
     } catch (e) {
       setUnreadNotifCount(0);
     }
-  }, [totalIncome, totalExpense, pendingRecurring, wallets, transactions, balance]);
+  }, [transactions, wallets, selectedWallet, totalIncome, totalExpense, balance, pendingRecurring, currencySymbol, language]);
 
   const [widgetConfig, setWidgetConfig] = useState({
     showQuickGlance: true,
