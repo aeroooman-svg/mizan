@@ -1249,6 +1249,26 @@ export default function WalletCarousel({
                             {formatCurrency(safeDetailModal.monthExpenses, language, safeDetailModal.currency)}
                           </Text>
                         </View>
+                        {Boolean(safeDetailModal.monthTransfers && safeDetailModal.monthTransfers > 0) && (
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: '#6366F1' }}>
+                              {loc('تحويلات صادرة هذا الشهر', 'Transfers Out This Month', 'ഈ മാസത്തെ കൈമാറ്റങ്ങൾ')}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: '#6366F1' }}>
+                              {formatCurrency(safeDetailModal.monthTransfers, language, safeDetailModal.currency)}
+                            </Text>
+                          </View>
+                        )}
+                        {Boolean(safeDetailModal.monthTransfers && safeDetailModal.monthTransfers > 0) && (
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 4 }}>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.text }}>
+                              {loc('إجمالي الصادر من الميزانية', 'Total Deducted From Budget', 'ആകെ കുറച്ച തുക')}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#EF4444' }}>
+                              {formatCurrency((safeDetailModal.monthExpenses || 0) + (safeDetailModal.monthTransfers || 0), language, safeDetailModal.currency)}
+                            </Text>
+                          </View>
+                        )}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                           <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
                             {loc('المتبقي من ميزانية الخطة', 'Remaining in Plan Budget', 'പ്ലാനിലെ ബാക്കി തുക')}

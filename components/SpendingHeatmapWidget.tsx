@@ -42,11 +42,16 @@ export default function SpendingHeatmapWidget({
 
   const today = useMemo(() => new Date(), []);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [viewType, setViewType] = useState<'expense' | 'savings' | 'income'>('expense');
+  const [viewType, setViewType] = useState<'expense' | 'savings' | 'transfer' | 'income'>('expense');
 
-  // Helper to identify savings/loans/investments
+  // Helper to identify savings/loans/investments/goals/ROSCA
   const isSavingsTx = (tx: Transaction) => {
-    if (tx.category === 'jameya_savings' || tx.category === 'investment') return true;
+    if (
+      tx.category === 'jameya_savings' ||
+      tx.category === 'investment' ||
+      tx.category === 'savings_goal' ||
+      tx.category === 'goal_deposit'
+    ) return true;
     if (tx.category === 'debt_loan' && tx.type === 'expense') return true; // lending to someone
     return false;
   };
@@ -110,6 +115,9 @@ export default function SpendingHeatmapWidget({
       } else if (viewType === 'savings') {
         // Savings, ROSCA (jameya), goals/piggy bank, and loans given out
         matches = isSavingsTx(tx);
+      } else if (viewType === 'transfer') {
+        // Direct transfers between accounts/wallets
+        matches = tx.type === 'transfer';
       } else if (viewType === 'income') {
         // Pure income (excluding debt loans)
         matches = tx.type === 'income' && tx.category !== 'debt_loan';
@@ -189,6 +197,11 @@ export default function SpendingHeatmapWidget({
       if (ratio < 0.55) return 'rgba(139, 92, 246, 0.50)'; // Purple med
       if (ratio < 0.85) return 'rgba(139, 92, 246, 0.80)'; // Purple high
       return '#8B5CF6'; // Peak savings
+    } else if (viewType === 'transfer') {
+      if (ratio < 0.25) return 'rgba(99, 102, 241, 0.25)'; // Indigo low
+      if (ratio < 0.55) return 'rgba(99, 102, 241, 0.50)'; // Indigo med
+      if (ratio < 0.85) return 'rgba(99, 102, 241, 0.80)'; // Indigo high
+      return '#6366F1'; // Peak transfer
     } else {
       // Income mode
       if (ratio < 0.25) return 'rgba(6, 182, 212, 0.25)'; // Cyan low
@@ -216,20 +229,44 @@ export default function SpendingHeatmapWidget({
 
   const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
 
-  const viewThemeColor = viewType === 'expense' ? '#EF4444' : viewType === 'savings' ? '#8B5CF6' : '#10B981';
-  const viewThemeBg = viewType === 'expense' ? 'rgba(239, 68, 68, 0.12)' : viewType === 'savings' ? 'rgba(139, 92, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)';
-  const viewIconName = viewType === 'expense' ? 'flame' : viewType === 'savings' ? 'shield-checkmark' : 'wallet';
+  const viewThemeColor = viewType === 'expense'
+    ? '#EF4444'
+    : viewType === 'savings'
+    ? '#8B5CF6'
+    : viewType === 'transfer'
+    ? '#6366F1'
+    : '#10B981';
+
+  const viewThemeBg = viewType === 'expense'
+    ? 'rgba(239, 68, 68, 0.12)'
+    : viewType === 'savings'
+    ? 'rgba(139, 92, 246, 0.12)'
+    : viewType === 'transfer'
+    ? 'rgba(99, 102, 241, 0.12)'
+    : 'rgba(16, 185, 129, 0.12)';
+
+  const viewIconName = viewType === 'expense'
+    ? 'flame'
+    : viewType === 'savings'
+    ? 'shield-checkmark'
+    : viewType === 'transfer'
+    ? 'swap-horizontal'
+    : 'wallet';
 
   const viewTitle = isAr
     ? viewType === 'expense'
       ? 'الخريطة الحرارية للإنفاق'
       : viewType === 'savings'
-      ? 'الخريطة الحرارية للادخار والسلف'
+      ? 'الخريطة الحرارية للادخار والجمعيات'
+      : viewType === 'transfer'
+      ? 'الخريطة الحرارية للتحويلات'
       : 'الخريطة الحرارية للإيرادات'
     : viewType === 'expense'
     ? 'Spending Heatmap'
     : viewType === 'savings'
-    ? 'Savings & Loans Heatmap'
+    ? 'Savings & ROSCAs Heatmap'
+    : viewType === 'transfer'
+    ? 'Transfers Heatmap'
     : 'Income Heatmap';
 
   return (
@@ -320,6 +357,27 @@ export default function SpendingHeatmapWidget({
                 ]}
               >
                 {isAr ? 'الادخار' : 'Savings'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.typeTabBtn,
+                viewType === 'transfer' && { backgroundColor: '#6366F1' },
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('transfer');
+              }}
+            >
+              <Ionicons name="swap-horizontal" size={13} color={viewType === 'transfer' ? '#FFF' : colors.textSecondary} />
+              <Text
+                style={[
+                  styles.typeTabText,
+                  viewType === 'transfer' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
+                ]}
+              >
+                {isAr ? 'التحويلات' : 'Transfers'}
               </Text>
             </Pressable>
 
@@ -557,6 +615,21 @@ export default function SpendingHeatmapWidget({
                   <Text style={styles.legendLabel}>{isAr ? 'قمة' : 'Peak'}</Text>
                 </View>
               </>
+            ) : viewType === 'transfer' ? (
+              <>
+                <View style={styles.legendZeroGroup}>
+                  <View style={[styles.legendBox, { backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)' }]} />
+                  <Text style={styles.legendLabel}>{isAr ? 'لا تحويلات' : 'No Transfers'}</Text>
+                </View>
+
+                <View style={styles.legendScaleGroup}>
+                  <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+                  <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.25)' }]} />
+                  <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.50)' }]} />
+                  <View style={[styles.legendBox, { backgroundColor: '#6366F1' }]} />
+                  <Text style={styles.legendLabel}>{isAr ? 'ذروة' : 'Peak'}</Text>
+                </View>
+              </>
             ) : (
               <>
                 <View style={styles.legendZeroGroup}>
@@ -589,7 +662,9 @@ export default function SpendingHeatmapWidget({
                     {viewType === 'expense'
                       ? (isAr ? 'إجمالي الصرف:' : 'Total Spent:')
                       : viewType === 'savings'
-                      ? (isAr ? 'إجمالي الادخار والسلف:' : 'Total Savings:')
+                      ? (isAr ? 'إجمالي الادخار والجمعيات:' : 'Total Savings:')
+                      : viewType === 'transfer'
+                      ? (isAr ? 'إجمالي التحويلات:' : 'Total Transfers:')
                       : (isAr ? 'إجمالي الدخل:' : 'Total Income:')}{' '}
                     <Text style={{ color: viewThemeColor, fontFamily: 'Cairo_700Bold' }}>
                       {formatCurrency(selectedDayInfo.totalAmount, language)} {currencySymbol}
@@ -609,7 +684,7 @@ export default function SpendingHeatmapWidget({
                 {selectedDayInfo.txList.length === 0 ? (
                   <View style={styles.noTxBox}>
                     <Ionicons
-                      name={viewType === 'expense' ? 'shield-checkmark' : viewType === 'savings' ? 'wallet-outline' : 'cash-outline'}
+                      name={viewType === 'expense' ? 'shield-checkmark' : viewType === 'savings' ? 'wallet-outline' : viewType === 'transfer' ? 'swap-horizontal' : 'cash-outline'}
                       size={36}
                       color={viewThemeColor}
                     />
@@ -618,6 +693,8 @@ export default function SpendingHeatmapWidget({
                         ? (isAr ? 'يوم ادخار وبدون مصاريف! 🎉' : 'Zero-Spend Day! 🎉')
                         : viewType === 'savings'
                         ? (isAr ? 'لا توجد مدخرات مسجلة اليوم' : 'No Savings Recorded Today')
+                        : viewType === 'transfer'
+                        ? (isAr ? 'لا توجد تحويلات مسجلة اليوم' : 'No Transfers Recorded Today')
                         : (isAr ? 'لا توجد إيرادات مسجلة اليوم' : 'No Income Recorded Today')}
                     </Text>
                     <Text style={styles.noTxSub}>
@@ -627,8 +704,12 @@ export default function SpendingHeatmapWidget({
                             : 'No consumption expenses recorded on this day. Great job!')
                         : viewType === 'savings'
                         ? (isAr
-                            ? 'لم تقم بأي عمليات ادخار، أقساط جمعية أو إقراض في هذا اليوم.'
-                            : 'No savings, ROSCA, or loans recorded on this day.')
+                            ? 'لم تقم بأي عمليات ادخار، أقساط جمعية أو إيداع أهداف في هذا اليوم.'
+                            : 'No savings, ROSCA, or goal deposits on this day.')
+                        : viewType === 'transfer'
+                        ? (isAr
+                            ? 'لم تسجل أي تحويلات مالية بين المحافظ في هذا اليوم.'
+                            : 'No wallet transfers recorded on this day.')
                         : (isAr
                             ? 'لم تسجل أي تدفقات دخل في هذا اليوم.'
                             : 'No income flows recorded on this day.')}
@@ -638,14 +719,23 @@ export default function SpendingHeatmapWidget({
                   selectedDayInfo.txList.map(tx => {
                     const cat = getCategoryById(tx.category);
                     const isSavings = isSavingsTx(tx);
-                    const itemColor = isSavings ? '#8B5CF6' : tx.type === 'expense' ? colors.expense : colors.income;
+                    const isTransfer = tx.type === 'transfer';
+                    const itemColor = isSavings ? '#8B5CF6' : isTransfer ? '#6366F1' : tx.type === 'expense' ? colors.expense : colors.income;
                     return (
                       <View key={tx.id} style={styles.txRow}>
-                        <View style={[styles.txIcon, { backgroundColor: (cat?.color || viewThemeColor) + '20' }]}>
-                          <MaterialIcons name={(cat?.icon || 'account-balance-wallet') as any} size={18} color={cat?.color || viewThemeColor} />
+                        <View style={[styles.txIcon, { backgroundColor: (isTransfer ? '#6366F1' : (cat?.color || viewThemeColor)) + '20' }]}>
+                          <MaterialIcons
+                            name={isTransfer ? 'swap-horiz' : ((cat?.icon || 'account-balance-wallet') as any)}
+                            size={18}
+                            color={isTransfer ? '#6366F1' : (cat?.color || viewThemeColor)}
+                          />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.txCatName}>{getCategoryName(tx.category, language)}</Text>
+                          <Text style={styles.txCatName}>
+                            {isTransfer
+                              ? (isAr ? 'تحويل مالي' : 'Transfer')
+                              : getCategoryName(tx.category, language)}
+                          </Text>
                           {tx.description ? <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text> : null}
                         </View>
                         <Text
@@ -654,7 +744,7 @@ export default function SpendingHeatmapWidget({
                             { color: itemColor },
                           ]}
                         >
-                          {isSavings ? '💎 ' : tx.type === 'expense' ? '-' : '+'}{formatCurrency(tx.amount, language)} {currencySymbol}
+                          {isSavings ? '💎 ' : isTransfer ? '🔄 ' : tx.type === 'expense' ? '-' : '+'}{formatCurrency(tx.amount, language)} {currencySymbol}
                         </Text>
                       </View>
                     );
