@@ -187,20 +187,34 @@ export default function WalletCarousel({
           const walletBalance = (wallet.initialBalance || 0) + income + transferIn - expense - transferOut;
 
           const now = new Date();
-          const currentMonthPrefix = now.toISOString().slice(0, 7);
-          const todayPrefix = now.toISOString().slice(0, 10);
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+          const todayDate = now.getDate();
 
           const monthExpenses = transactions
-            .filter((t) => t.type === 'expense' && t.walletId === wallet.id && typeof t.date === 'string' && t.date.slice(0, 7) === currentMonthPrefix)
+            .filter((t) => {
+              if (t.type !== 'expense' || t.walletId !== wallet.id) return false;
+              if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+              const d = new Date(t.date);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
             .reduce((sum, t) => sum + t.amount, 0);
 
           const todayExpenses = transactions
-            .filter((t) => t.type === 'expense' && t.walletId === wallet.id && typeof t.date === 'string' && t.date.slice(0, 10) === todayPrefix)
+            .filter((t) => {
+              if (t.type !== 'expense' || t.walletId !== wallet.id) return false;
+              if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+              const d = new Date(t.date);
+              return d.getDate() === todayDate && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
             .reduce((sum, t) => sum + t.amount, 0);
 
           const daysInMonthCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
           const currentDay = now.getDate();
           const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
+
+          const isThreeDecimals = ['KWD', 'BHD', 'OMR'].includes(wallet.currency);
+          const precision = isThreeDecimals ? 3 : 2;
 
           const walletPlan = plans[wallet.id];
           let dailySafeLimit = 0;
@@ -211,12 +225,16 @@ export default function WalletCarousel({
             isPlanLinked = true;
             remainingPlanBudget = Math.max(0, Number(walletPlan.monthlyExpense) - monthExpenses);
             const effectiveAvailable = Math.min(walletBalance, remainingPlanBudget);
-            dailySafeLimit = effectiveAvailable > 0 ? Math.floor(effectiveAvailable / daysRemaining) : 0;
+            dailySafeLimit = effectiveAvailable > 0
+              ? Number((effectiveAvailable / daysRemaining).toFixed(precision))
+              : 0;
           } else {
-            dailySafeLimit = walletBalance > 0 ? Math.floor(walletBalance / daysRemaining) : 0;
+            dailySafeLimit = walletBalance > 0
+              ? Number((walletBalance / daysRemaining).toFixed(precision))
+              : 0;
           }
 
-          const remainingToday = Math.max(0, dailySafeLimit - todayExpenses);
+          const remainingToday = Math.max(0, Number((dailySafeLimit - todayExpenses).toFixed(precision)));
 
           const cardStyle = wallet.cardStyle || 'classic';
 
@@ -1273,7 +1291,7 @@ export default function WalletCarousel({
                 <Pressable
                   onPress={() => {
                     setSafeDetailModal(null);
-                    router.push('/(tabs)/plan' as any);
+                    router.push('/(tabs)/financial-plan' as any);
                   }}
                   style={{
                     backgroundColor: colors.primary,

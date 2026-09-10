@@ -87,9 +87,9 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                     fill="none"
                     stroke={stat.displayColor}
                     strokeWidth={STROKE_WIDTH}
-                    strokeDasharray={`${Math.max(1, segmentLength - 2)} ${CIRCUMFERENCE - Math.max(1, segmentLength - 2)}`}
+                    strokeDasharray={`${Math.max(0.5, segmentLength - (categoryStatsWithColors.length > 1 ? 2 : 0))} ${CIRCUMFERENCE}`}
                     strokeDashoffset={-offset}
-                    strokeLinecap="round"
+                    strokeLinecap={categoryStatsWithColors.length > 1 ? 'butt' : 'round'}
                     transform={`rotate(-90 ${CHART_SIZE / 2} ${CHART_SIZE / 2})`}
                   />
                 );

@@ -222,11 +222,11 @@ export default function StatsScreen() {
       });
 
       const income = txns
-        .filter(t => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+        .filter(t => t.type === 'income' && t.category !== 'debt_loan')
         .reduce((s, t) => s + t.amount, 0);
 
       const expense = txns
-        .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
         .reduce((s, t) => s + t.amount, 0);
 
       const savings = income - expense;
@@ -263,9 +263,9 @@ export default function StatsScreen() {
     const isExpense = viewType === 'expense';
     const filtered = monthlyTransactions.filter(t => {
       if (isExpense) {
-        return (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id);
+        return t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan';
       } else {
-        return (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id);
+        return t.type === 'income' && t.category !== 'debt_loan';
       }
     });
 
@@ -273,50 +273,23 @@ export default function StatsScreen() {
     const catMap = new Map<string, number>();
 
     filtered.forEach(t => {
-      const catKey = t.type === 'transfer' ? (isExpense ? 'transfer_out' : 'transfer_in') : t.category;
-      catMap.set(catKey, (catMap.get(catKey) || 0) + t.amount);
+      catMap.set(t.category, (catMap.get(t.category) || 0) + t.amount);
     });
 
     const staticCategories = isExpense ? expenseCategories : incomeCategories;
     const userCategories = customCategories.filter(c => c.type === viewType);
     const allCategories = [...staticCategories, ...userCategories];
 
-    const transferCategory: Category = isExpense
-      ? {
-          id: 'transfer_out',
-          name: 'Transfer to Wallet',
-          nameAr: 'تحويل لمحفظة أخرى',
-          icon: 'swap-horiz',
-          iconFamily: 'MaterialIcons',
-          color: '#8B5CF6',
-        }
-      : {
-          id: 'transfer_in',
-          name: 'Transfer from Wallet',
-          nameAr: 'تحويل وارد من محفظة أخرى',
-          icon: 'swap-horiz',
-          iconFamily: 'MaterialIcons',
-          color: '#10B981',
-        };
-
     const stats: CategoryStat[] = [];
 
     catMap.forEach((catTotal, catId) => {
-      if (catId === 'transfer_out' || catId === 'transfer_in') {
+      const category = allCategories.find(c => c.id === catId);
+      if (category) {
         stats.push({
-          category: transferCategory,
+          category,
           total: catTotal,
           percentage: total > 0 ? (catTotal / total) * 100 : 0,
         });
-      } else {
-        const category = allCategories.find(c => c.id === catId);
-        if (category) {
-          stats.push({
-            category,
-            total: catTotal,
-            percentage: total > 0 ? (catTotal / total) * 100 : 0,
-          });
-        }
       }
     });
 
@@ -672,12 +645,12 @@ export default function StatsScreen() {
 
   // Recalculate income/expense totals for selected month
   const monthlyIncome = useMemo(() => {
-    return monthlyTransactions.filter(t => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id)).reduce((s, t) => s + t.amount, 0);
-  }, [monthlyTransactions, selectedWallet]);
+    return monthlyTransactions.filter(t => t.type === 'income' && t.category !== 'debt_loan').reduce((s, t) => s + t.amount, 0);
+  }, [monthlyTransactions]);
 
   const monthlyExpense = useMemo(() => {
-    return monthlyTransactions.filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)).reduce((s, t) => s + t.amount, 0);
-  }, [monthlyTransactions, selectedWallet]);
+    return monthlyTransactions.filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan').reduce((s, t) => s + t.amount, 0);
+  }, [monthlyTransactions]);
 
   const monthlyJameyaSavings = useMemo(() => {
     return monthlyTransactions.filter(t => t.category === 'jameya_savings').reduce((s, t) => s + t.amount, 0);
