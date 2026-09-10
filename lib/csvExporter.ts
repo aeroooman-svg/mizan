@@ -10,23 +10,23 @@ export async function exportTransactionsToCSV(
   language: Language
 ): Promise<void> {
   const isAr = language === 'ar';
-  const isHi = language === 'hi';
+  const isMl = language === 'ml' || language === 'hi';
   
   // CSV Headers
   const headers = isAr
     ? ['المعرف', 'التاريخ', 'النوع', 'الفئة', 'المبلغ', 'العملة', 'الوصف', 'ملاحظات']
-    : isHi
-    ? ['आईडी', 'तारीख', 'प्रकार', 'श्रेणी', 'राशि', 'मुद्रा', 'विवरण', 'नोट्स']
+    : isMl
+    ? ['ഐഡി', 'തീയതി', 'തരം', 'വിഭാഗം', 'തുക', 'കറൻസി', 'വിവരണം', 'കുറിപ്പുകൾ']
     : ['ID', 'Date', 'Type', 'Category', 'Amount', 'Currency', 'Description', 'Notes'];
 
   // CSV Rows
   const rows = transactions.map((t) => {
     const formattedDate = new Date(t.date).toISOString().split('T')[0];
     const typeStr = t.type === 'income' 
-      ? (isAr ? 'دخل' : isHi ? 'आय' : 'Income') 
+      ? (isAr ? 'دخل' : isMl ? 'വരുമാനം' : 'Income') 
       : t.type === 'expense' 
-      ? (isAr ? 'مصروف' : isHi ? 'व्यय' : 'Expense') 
-      : (isAr ? 'تحويل' : isHi ? 'स्थानांतरण' : 'Transfer');
+      ? (isAr ? 'مصروف' : isMl ? 'ചെലവ്' : 'Expense') 
+      : (isAr ? 'تحويل' : isMl ? 'കൈമാറ്റം' : 'Transfer');
     const categoryName = getCategoryName(t.category, language);
     const desc = (t.description || '').replace(/"/g, '""');
     const note = (t.note || '').replace(/"/g, '""');

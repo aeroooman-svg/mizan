@@ -14,7 +14,7 @@ interface HealthForecastRowProps {
   currencySymbol: string;
   balance: number;
   forecast: CashflowForecast | null;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
 }
 
@@ -36,10 +36,10 @@ export default function HealthForecastRow({
   };
 
   const forecastMessage = forecast
-    ? (language === 'hi' ? (forecast.messageHi || forecast.messageEn) : language === 'ar' ? forecast.messageAr : forecast.messageEn)
+    ? (language === 'ml' || language === 'hi' ? (forecast.messageHi || forecast.messageEn) : language === 'ar' ? forecast.messageAr : forecast.messageEn)
     : '';
 
-  const forecastDetailTitle = language === 'hi' ? 'विस्तृत नकदी प्रवाह पूर्वानुमान' : language === 'ar' ? 'توقعات السيولة والمصاريف' : 'Detailed Cashflow Forecast';
+  const forecastDetailTitle = (language === 'ml' || language === 'hi') ? 'ക്യാഷ്‌ഫ്ലോ പ്രവചനം' : language === 'ar' ? 'توقعات السيولة والمصاريف' : 'Detailed Cashflow Forecast';
 
   return (
     <>

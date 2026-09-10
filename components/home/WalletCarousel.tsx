@@ -22,6 +22,7 @@ import Colors from '@/constants/colors';
 import { Wallet, Transaction } from '@/lib/storage';
 import { formatCurrency } from '@/lib/categories';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
+import { getAllPlans, FinancialPlan } from '@/lib/planStorage';
 import WalletCardRender from './WalletCardRender';
 
 interface WalletCarouselProps {
@@ -29,7 +30,7 @@ interface WalletCarouselProps {
   selectedWallet: Wallet | null;
   transactions: Transaction[];
   currentUser: { id: string; username: string } | null;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
   healthScore?: number;
   onSelectWallet: (id: string) => void;
@@ -51,8 +52,8 @@ export default function WalletCarousel({
   onAddWallet,
   onEditWallet,
 }: WalletCarouselProps) {
-  const loc = (ar: string, en: string, hi: string) => {
-    if (language === 'hi') return hi;
+  const loc = (ar: string, en: string, hi?: string) => {
+    if (language === 'ml' || language === 'hi') return hi || en;
     if (language === 'ar') return ar;
     return en;
   };
@@ -69,6 +70,30 @@ export default function WalletCarousel({
   const scrollRef = useRef<ScrollView>(null);
 
   const [rates, setRates] = useState<Record<string, number>>({});
+  const [plans, setPlans] = useState<Record<string, FinancialPlan>>({});
+  const [safeDetailModal, setSafeDetailModal] = useState<{
+    walletName: string;
+    currency: string;
+    walletBalance: number;
+    daysRemaining: number;
+    dailySafeLimit: number;
+    todayExpenses: number;
+    remainingToday: number;
+    isPlanLinked: boolean;
+    planGoalName?: string;
+    monthlyPlanExpense?: number;
+    monthlyPlanSaving?: number;
+    monthExpenses?: number;
+    remainingPlanBudget?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getAllPlans().then(all => {
+      if (isMounted) setPlans(all || {});
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [transactions.length]);
 
   useEffect(() => {
     async function loadRates() {
@@ -162,10 +187,36 @@ export default function WalletCarousel({
           const walletBalance = (wallet.initialBalance || 0) + income + transferIn - expense - transferOut;
 
           const now = new Date();
+          const currentMonthPrefix = now.toISOString().slice(0, 7);
+          const todayPrefix = now.toISOString().slice(0, 10);
+
+          const monthExpenses = transactions
+            .filter((t) => t.type === 'expense' && t.walletId === wallet.id && typeof t.date === 'string' && t.date.slice(0, 7) === currentMonthPrefix)
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          const todayExpenses = transactions
+            .filter((t) => t.type === 'expense' && t.walletId === wallet.id && typeof t.date === 'string' && t.date.slice(0, 10) === todayPrefix)
+            .reduce((sum, t) => sum + t.amount, 0);
+
           const daysInMonthCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
           const currentDay = now.getDate();
           const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
-          const dailySafeLimit = walletBalance > 0 ? Math.floor(walletBalance / daysRemaining) : 0;
+
+          const walletPlan = plans[wallet.id];
+          let dailySafeLimit = 0;
+          let isPlanLinked = false;
+          let remainingPlanBudget = 0;
+
+          if (walletPlan && Number(walletPlan.monthlyExpense) > 0) {
+            isPlanLinked = true;
+            remainingPlanBudget = Math.max(0, Number(walletPlan.monthlyExpense) - monthExpenses);
+            const effectiveAvailable = Math.min(walletBalance, remainingPlanBudget);
+            dailySafeLimit = effectiveAvailable > 0 ? Math.floor(effectiveAvailable / daysRemaining) : 0;
+          } else {
+            dailySafeLimit = walletBalance > 0 ? Math.floor(walletBalance / daysRemaining) : 0;
+          }
+
+          const remainingToday = Math.max(0, dailySafeLimit - todayExpenses);
 
           const cardStyle = wallet.cardStyle || 'classic';
 
@@ -223,7 +274,7 @@ export default function WalletCarousel({
                 if (otherMembers.length === 2) {
                   return otherMembers.join('، ');
                 }
-                return loc(`${otherMembers.length} أعضاء`, `${otherMembers.length} members`, `${otherMembers.length} सदस्य`);
+                return loc(`${otherMembers.length} أعضاء`, `${otherMembers.length} members`, `${otherMembers.length} അംഗങ്ങൾ`);
               }
             } catch (e) {}
             return undefined;
@@ -260,12 +311,33 @@ export default function WalletCarousel({
                 color={wallet.color}
                 icon={wallet.icon || 'account-balance-wallet'}
                 isShared={Boolean(sharedText)}
-                sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `साझा: ${sharedText}`) : undefined}
+                sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `പങ്കുവെച്ചത്: ${sharedText}`) : undefined}
                 height={190}
                 dailySafeSpend={dailySafeLimit}
                 dailySafeSpendFormatted={formatCurrency(dailySafeLimit, language, wallet.currency)}
+                remainingToday={remainingToday}
+                remainingTodayFormatted={formatCurrency(remainingToday, language, wallet.currency)}
+                todayExpenses={todayExpenses}
+                isPlanLinked={isPlanLinked}
                 daysRemaining={daysRemaining}
                 language={language}
+                onPressDailySafe={() => {
+                  setSafeDetailModal({
+                    walletName: wallet.name,
+                    currency: wallet.currency,
+                    walletBalance,
+                    daysRemaining,
+                    dailySafeLimit,
+                    todayExpenses,
+                    remainingToday,
+                    isPlanLinked,
+                    planGoalName: walletPlan?.goalName,
+                    monthlyPlanExpense: walletPlan?.monthlyExpense,
+                    monthlyPlanSaving: walletPlan?.monthlySaving,
+                    monthExpenses,
+                    remainingPlanBudget,
+                  });
+                }}
               />
             </Pressable>
           );
@@ -893,6 +965,341 @@ export default function WalletCarousel({
                 </Text>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      {/* Safe Daily Spend Details Modal */}
+      <Modal
+        visible={!!safeDetailModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSafeDetailModal(null)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'flex-end',
+          }}
+          onPress={() => setSafeDetailModal(null)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              padding: 22,
+              paddingBottom: Platform.OS === 'ios' ? 42 : 24,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              maxHeight: '90%',
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {safeDetailModal && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
+                {/* Header */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingBottom: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 14,
+                        backgroundColor: colors.primary + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_700Bold',
+                          fontSize: 16,
+                          color: colors.text,
+                        }}
+                      >
+                        {loc('الإنفاق اليومي الآمن', 'Daily Safe Spend', 'പ്രതിദിന സുരക്ഷിത ചെലവ്')}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_400Regular',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {safeDetailModal.walletName} ({safeDetailModal.currency})
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setSafeDetailModal(null)} hitSlop={12}>
+                    <Ionicons name="close" size={22} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+
+                {/* Primary Metric: Remaining allowance today */}
+                <LinearGradient
+                  colors={
+                    safeDetailModal.remainingToday > 0
+                      ? ['rgba(16, 185, 129, 0.15)', 'rgba(5, 150, 105, 0.05)']
+                      : ['rgba(239, 68, 68, 0.15)', 'rgba(185, 28, 28, 0.05)']
+                  }
+                  style={{
+                    borderRadius: 20,
+                    padding: 18,
+                    borderWidth: 1,
+                    borderColor:
+                      safeDetailModal.remainingToday > 0
+                        ? 'rgba(16, 185, 129, 0.3)'
+                        : 'rgba(239, 68, 68, 0.3)',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_600SemiBold',
+                      fontSize: 13,
+                      color: safeDetailModal.remainingToday > 0 ? '#10B981' : '#EF4444',
+                    }}
+                  >
+                    {loc('المتبقي المسموح به لليوم', 'Remaining Allowance Today', 'ഇന്നത്തെ ബാക്കി പരിധി')}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 32,
+                      color: safeDetailModal.remainingToday > 0 ? colors.text : '#EF4444',
+                    }}
+                  >
+                    {formatCurrency(safeDetailModal.remainingToday, language, safeDetailModal.currency)}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-around',
+                      width: '100%',
+                      marginTop: 10,
+                      paddingTop: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border + '50',
+                    }}
+                  >
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                        {loc('الحد اليومي الكامل', 'Full Daily Allowance', 'പൂർണ്ണ പ്രതിദിന പരിധി')}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                        {formatCurrency(safeDetailModal.dailySafeLimit, language, safeDetailModal.currency)}
+                      </Text>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: colors.border }} />
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                        {loc('تم صرفه اليوم', 'Spent Today', 'ഇന്ന് ചെലവാക്കിയത്')}
+                      </Text>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_700Bold',
+                          fontSize: 14,
+                          color: safeDetailModal.todayExpenses > 0 ? '#F59E0B' : colors.textSecondary,
+                        }}
+                      >
+                        {formatCurrency(safeDetailModal.todayExpenses, language, safeDetailModal.currency)}
+                      </Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+
+                {/* Calculation breakdown */}
+                <View
+                  style={{
+                    backgroundColor: colors.surfaceAlt,
+                    borderRadius: 18,
+                    padding: 16,
+                    gap: 12,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons
+                      name={safeDetailModal.isPlanLinked ? 'golf-outline' : 'calculator-outline'}
+                      size={18}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={{
+                        fontFamily: 'Cairo_700Bold',
+                        fontSize: 14,
+                        color: colors.text,
+                      }}
+                    >
+                      {safeDetailModal.isPlanLinked
+                        ? loc(
+                            `مربوط بخطة: ${safeDetailModal.planGoalName || 'الخطة المالية'}`,
+                            `Linked to: ${safeDetailModal.planGoalName || 'Financial Plan'}`,
+                            `പ്ലാൻ: ${safeDetailModal.planGoalName || 'സാമ്പത്തിക പ്ലാൻ'}`
+                          )
+                        : loc('طريقة الحساب الذكية', 'Calculation Formula', 'കണക്കുകൂട്ടൽ രീതി')}
+                    </Text>
+                  </View>
+
+                  {safeDetailModal.isPlanLinked ? (
+                    <>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_400Regular',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                          lineHeight: 18,
+                        }}
+                      >
+                        {loc(
+                          'يتم ضبط هذا الحد اليومي تلقائياً لحماية هدفك الادخاري المخطط له وضمان عدم تجاوز ميزانيتك الشهرية.',
+                          'This daily limit is automatically aligned with your monthly budget to protect your savings goal.',
+                          'നിങ്ങളുടെ സമ്പാദ്യ ലക്ഷ്യം സംരക്ഷിക്കാൻ ഈ പ്രതിദിന പരിധി ബജറ്റുമായി സ്വയമേവ ക്രമീകരിച്ചിരിക്കുന്നു.'
+                        )}
+                      </Text>
+
+                      <View style={{ gap: 8, marginTop: 4 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('ميزانية المصروفات الشهرية', 'Monthly Expense Budget', 'പ്രതിമാസ ചെലവ് ബജറ്റ്')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.text }}>
+                            {formatCurrency(safeDetailModal.monthlyPlanExpense || 0, language, safeDetailModal.currency)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('مصروفات الشهر حتى الآن', 'Expenses So Far This Month', 'ഈ മാസം ഇതുവരെയുള്ള ചെലവ്')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: '#EF4444' }}>
+                            {formatCurrency(safeDetailModal.monthExpenses, language, safeDetailModal.currency)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('المتبقي من ميزانية الخطة', 'Remaining in Plan Budget', 'പ്ലാനിലെ ബാക്കി തുക')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#10B981' }}>
+                            {formatCurrency(safeDetailModal.remainingPlanBudget || 0, language, safeDetailModal.currency)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('الأيام المتبقية في الشهر', 'Days Remaining in Month', 'മാസത്തിലെ ബാക്കി ദിവസങ്ങൾ')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                            {loc(`${safeDetailModal.daysRemaining} يوم`, `${safeDetailModal.daysRemaining} days`, `${safeDetailModal.daysRemaining} ദിവസങ്ങൾ`)}
+                          </Text>
+                        </View>
+                        {safeDetailModal.monthlyPlanSaving ? (
+                          <View
+                            style={{
+                              marginTop: 4,
+                              padding: 8,
+                              borderRadius: 10,
+                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontFamily: 'Cairo_600SemiBold',
+                                fontSize: 11,
+                                color: '#10B981',
+                                textAlign: 'center',
+                              }}
+                            >
+                              {loc(
+                                `🛡️ هدف التوفير الشهري (${formatCurrency(safeDetailModal.monthlyPlanSaving, language, safeDetailModal.currency)}) محمي ومستثنى من حد الصرف`,
+                                `🛡️ Monthly savings goal (${formatCurrency(safeDetailModal.monthlyPlanSaving, language, safeDetailModal.currency)}) is protected`,
+                                `🛡️ സമ്പാദ്യ ലക്ഷ്യം (${formatCurrency(safeDetailModal.monthlyPlanSaving, language, safeDetailModal.currency)}) സംരക്ഷിക്കപ്പെട്ടിരിക്കുന്നു`
+                              )}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text
+                        style={{
+                          fontFamily: 'Cairo_400Regular',
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                          lineHeight: 18,
+                        }}
+                      >
+                        {loc(
+                          'يتم تقسيم رصيدك المتاح حالياً بالتساوي على الأيام المتبقية من هذا الشهر، لتوزيع أموالك بحكمة وتجنب نفاد الرصيد مبكراً.',
+                          'Your current available balance is divided evenly across remaining days of this month to prevent running out of money.',
+                          'മാസം തീരും മുൻപ് പണം തീരാതിരിക്കാൻ ബാക്കി തുകയെ ബാക്കി ദിവസങ്ങൾ കൊണ്ട് തുല്യമായി ഭാഗിക്കുന്നു.'
+                        )}
+                      </Text>
+                      <View style={{ gap: 8, marginTop: 4 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('رصيد المحفظة الحالي', 'Current Wallet Balance', 'നിലവിലെ വാലറ്റ് ബാലൻസ്')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.text }}>
+                            {formatCurrency(safeDetailModal.walletBalance, language, safeDetailModal.currency)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
+                            {loc('الأيام المتبقية في الشهر', 'Days Remaining in Month', 'മാസത്തിലെ ബാക്കി ദിവസങ്ങൾ')}
+                          </Text>
+                          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                            {loc(`${safeDetailModal.daysRemaining} يوم`, `${safeDetailModal.daysRemaining} days`, `${safeDetailModal.daysRemaining} ദിവസങ്ങൾ`)}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                {/* Call to action */}
+                <Pressable
+                  onPress={() => {
+                    setSafeDetailModal(null);
+                    router.push('/(tabs)/plan' as any);
+                  }}
+                  style={{
+                    backgroundColor: colors.primary,
+                    paddingVertical: 14,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                  }}
+                >
+                  <Ionicons name="sparkles" size={18} color="#FFF" />
+                  <Text
+                    style={{
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 14,
+                      color: '#FFF',
+                    }}
+                  >
+                    {safeDetailModal.isPlanLinked
+                      ? loc('عرض الخطة المالية 🎯', 'View Financial Plan 🎯', 'പ്ലാൻ കാണുക 🎯')
+                      : loc('إنشاء خطة مالية ذكية 🚀', 'Create Financial Plan 🚀', 'പ്ലാൻ നിർമ്മിക്കുക 🚀')}
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            )}
           </Pressable>
         </Pressable>
       </Modal>

@@ -20,7 +20,7 @@ import { getCategoryName } from '@/lib/i18n';
 interface PendingRecurringSectionProps {
   walletPending: RecurringTransaction[];
   currencySymbol: string;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
   wallets?: Wallet[];
   onApproveConfirm: (item: RecurringTransaction) => void;

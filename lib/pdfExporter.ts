@@ -25,17 +25,18 @@ export async function exportTransactionsToPDF(
   const balance = totalIncome - totalExpense;
   const currencySymbol = wallet.currency;
 
-  const titleText = language === 'ar' ? `كشف حساب - ${wallet.name}` : language === 'hi' ? `खाता विवरण - ${wallet.name}` : `Statement - ${wallet.name}`;
-  const totalIncomeLabel = language === 'ar' ? 'إجمالي الدخل' : language === 'hi' ? 'कुल आय' : 'Total Income';
-  const totalExpenseLabel = language === 'ar' ? 'إجمالي المصاريف' : language === 'hi' ? 'कुल व्यय' : 'Total Expenses';
-  const balanceLabel = language === 'ar' ? 'صافي الرصيد' : language === 'hi' ? 'शुद्ध शेष' : 'Net Balance';
-  const dateLabel = language === 'ar' ? 'التاريخ' : language === 'hi' ? 'तारीख' : 'Date';
-  const descriptionLabel = language === 'ar' ? 'الوصف' : language === 'hi' ? 'विवरण' : 'Description';
-  const categoryLabel = language === 'ar' ? 'الفئة' : language === 'hi' ? 'श्रेणी' : 'Category';
-  const amountLabel = language === 'ar' ? 'المبلغ' : language === 'hi' ? 'राशि' : 'Amount';
-  const typeLabel = language === 'ar' ? 'النوع' : language === 'hi' ? 'प्रकार' : 'Type';
-  const incomeText = language === 'ar' ? 'دخل' : language === 'hi' ? 'आय' : 'Income';
-  const expenseText = language === 'ar' ? 'مصروف' : language === 'hi' ? 'व्यय' : 'Expense';
+  const isMl = language === 'ml' || language === 'hi';
+  const titleText = language === 'ar' ? `كشف حساب - ${wallet.name}` : isMl ? `സ്റ്റേറ്റ്മെന്റ് - ${wallet.name}` : `Statement - ${wallet.name}`;
+  const totalIncomeLabel = language === 'ar' ? 'إجمالي الدخل' : isMl ? 'ആകെ വരുമാനം' : 'Total Income';
+  const totalExpenseLabel = language === 'ar' ? 'إجمالي المصاريف' : isMl ? 'ആകെ ചെലവുകൾ' : 'Total Expenses';
+  const balanceLabel = language === 'ar' ? 'صافي الرصيد' : isMl ? 'ബാക്കി തുക' : 'Net Balance';
+  const dateLabel = language === 'ar' ? 'التاريخ' : isMl ? 'തീയതി' : 'Date';
+  const descriptionLabel = language === 'ar' ? 'الوصف' : isMl ? 'വിവരണം' : 'Description';
+  const categoryLabel = language === 'ar' ? 'الفئة' : isMl ? 'വിഭാഗം' : 'Category';
+  const amountLabel = language === 'ar' ? 'المبلغ' : isMl ? 'തുക' : 'Amount';
+  const typeLabel = language === 'ar' ? 'النوع' : isMl ? 'തരം' : 'Type';
+  const incomeText = language === 'ar' ? 'دخل' : isMl ? 'വരുമാനം' : 'Income';
+  const expenseText = language === 'ar' ? 'مصروف' : isMl ? 'ചെലവ്' : 'Expense';
   
   // Format transactions rows
   const rowsHtml = transactions

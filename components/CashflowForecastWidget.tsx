@@ -18,7 +18,7 @@ interface CashflowForecastWidgetProps {
   currencySymbol: string;
   balance: number;
   forecast: CashflowForecast | null;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   onPress?: () => void;
 }
 
@@ -35,19 +35,20 @@ export default function CashflowForecastWidget({
   
   const isSafe = forecast?.status === 'safe';
   const isRisk = forecast?.status === 'risk';
+  const isMl = language === 'ml' || language === 'hi';
   
   const statusColor = isSafe ? '#10B981' : isRisk ? '#FF9800' : '#EF4444';
   const statusBg = isSafe ? '#10B98115' : isRisk ? '#FF980015' : '#EF444415';
   
   const statusText = isSafe
-    ? (language === 'hi' ? '✅ स्थिति सुरक्षित' : language === 'ar' ? '✅ الوضع المالي آمن' : '✅ STATUS SAFE')
+    ? (isMl ? '✅ സുരക്ഷിത നില' : language === 'ar' ? '✅ الوضع المالي آمن' : '✅ STATUS SAFE')
     : isRisk
-      ? (language === 'hi' ? `⚠️ ${forecast.daysRemaining} दिनों में समाप्त` : language === 'ar' ? `⚠️ نفاد خلال ${forecast.daysRemaining} يوم` : `⚠️ Runout in ${forecast.daysRemaining}d`)
-      : (language === 'hi' ? '🚨 शेष राशि समाप्त!' : language === 'ar' ? '🚨 الرصيد منتهٍ!' : '🚨 BALANCE DEPLETED');
+      ? (isMl ? `⚠️ ${forecast.daysRemaining} ദിവസത്തിൽ തീരും` : language === 'ar' ? `⚠️ نفاد خلال ${forecast.daysRemaining} يوم` : `⚠️ Runout in ${forecast.daysRemaining}d`)
+      : (isMl ? '🚨 ബാലൻസ് തീർന്നു!' : language === 'ar' ? '🚨 الرصيد منتهٍ!' : '🚨 BALANCE DEPLETED');
 
-  const headerTitle = language === 'hi' ? 'नकदी प्रवाह का पूर्वानुमान' : language === 'ar' ? 'توقعات السيولة' : 'CASHFLOW FORECAST';
-  const totalBalanceLabel = language === 'hi' ? 'कुल शेष' : language === 'ar' ? 'إجمالي الرصيد' : 'TOTAL BALANCE';
-  const netFlowLabel = language === 'hi' ? 'शुद्ध प्रवाह' : language === 'ar' ? 'التدفق الصافي' : 'NET FLOW';
+  const headerTitle = isMl ? 'ക്യാഷ്‌ഫ്ലോ പ്രവചനം' : language === 'ar' ? 'توقعات السيولة' : 'CASHFLOW FORECAST';
+  const totalBalanceLabel = isMl ? 'ആകെ ബാക്കി' : language === 'ar' ? 'إجمالي الرصيد' : 'TOTAL BALANCE';
+  const netFlowLabel = isMl ? 'നെറ്റ് ഫ്ലോ' : language === 'ar' ? 'التدفق الصافي' : 'NET FLOW';
 
   return (
     <Pressable 

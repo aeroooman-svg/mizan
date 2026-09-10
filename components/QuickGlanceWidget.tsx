@@ -28,7 +28,7 @@ import { Debt } from '@/lib/debtStorage';
 
 interface QuickGlanceWidgetProps {
   data: WidgetData;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   goals?: SavingsGoal[];
   debts?: Debt[];
   totalConsolidatedBalance?: number;
@@ -44,8 +44,8 @@ export default function QuickGlanceWidget({
   totalConsolidatedBalance,
   onVoicePress,
 }: QuickGlanceWidgetProps) {
-  const loc = (ar: string, en: string, hi: string) => {
-    if (language === 'hi') return hi;
+  const loc = (ar: string, en: string, hi?: string) => {
+    if (language === 'ml' || language === 'hi') return hi || en;
     if (language === 'ar') return ar;
     return en;
   };

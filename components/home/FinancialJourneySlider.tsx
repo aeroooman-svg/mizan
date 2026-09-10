@@ -35,7 +35,7 @@ interface FinancialJourneySliderProps {
   totalExpenseVal?: number;
   healthScore?: number;
   currencySymbol: string;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
   onOpenConverterModal: () => void;
   onOpenMonthlyReport?: () => void;
@@ -58,8 +58,8 @@ export default function FinancialJourneySlider({
   onOpenConverterModal,
   onOpenMonthlyReport,
 }: FinancialJourneySliderProps) {
-  const loc = (ar: string, en: string, hi: string) => {
-    if (language === 'hi') return hi;
+  const loc = (ar: string, en: string, hi?: string) => {
+    if (language === 'ml' || language === 'hi') return hi || en;
     if (language === 'ar') return ar;
     return en;
   };

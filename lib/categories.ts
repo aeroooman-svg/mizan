@@ -57,13 +57,13 @@ export function getCurrencyDecimals(currencyCode?: string | null): number {
 
 export function formatCurrency(
   amount: number | null | undefined,
-  lang?: 'ar' | 'en' | 'hi',
+  lang?: 'ar' | 'en' | 'ml' | 'hi',
   maxDecimalsOrCurrency?: number | string
 ): string {
   try {
     const val = Number(amount);
     const activeLang = lang || globalAppLanguage;
-    const isEn = activeLang === 'en' || activeLang === 'hi';
+    const isEn = activeLang === 'en' || activeLang === 'ml' || activeLang === 'hi';
     if (isNaN(val) || val === null || val === undefined) {
       return isEn ? '0.00' : '٠٫٠٠';
     }

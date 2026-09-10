@@ -37,9 +37,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         if (!saved) {
           saved = await AsyncStorage.getItem(LEGACY_LANGUAGE_KEY);
         }
-        if (saved === 'ar' || saved === 'en' || saved === 'hi') {
-          setLanguageState(saved);
-          globalAppLanguage = saved;
+        if (saved === 'ar' || saved === 'en' || saved === 'ml' || saved === 'hi') {
+          const activeLang: Language = saved === 'hi' ? 'ml' : (saved as Language);
+          setLanguageState(activeLang);
+          globalAppLanguage = activeLang;
           const isArabic = saved === 'ar';
           if (I18nManager.isRTL !== isArabic) {
             I18nManager.allowRTL(true);

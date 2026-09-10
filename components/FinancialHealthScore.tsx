@@ -7,7 +7,7 @@ import Colors from '@/constants/colors';
 
 interface FinancialHealthScoreProps {
   healthScore: number;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   onPress?: () => void;
 }
 
@@ -16,18 +16,19 @@ export default function FinancialHealthScore({ healthScore, language, onPress }:
   const styles = useMemo(() => getStyles(colors), [colors]);
   const isExcellent = healthScore >= 85;
   const isGood = healthScore >= 60;
+  const isMl = language === 'ml' || language === 'hi';
   
   const statusColor = isExcellent ? '#10B981' : isGood ? '#F59E0B' : '#EF4444';
   const statusColorDark = isExcellent ? '#059669' : isGood ? '#D97706' : '#DC2626';
   const statusBg = isExcellent ? '#10B98115' : isGood ? '#F59E0B15' : '#EF444415';
   
   const statusLabel = isExcellent 
-    ? (language === 'hi' ? 'उत्कृष्ट' : language === 'ar' ? 'ممتاز' : 'EXCELLENT') 
+    ? (isMl ? 'മികച്ചത്' : language === 'ar' ? 'ممتاز' : 'EXCELLENT') 
     : isGood 
-      ? (language === 'hi' ? 'अच्छा' : language === 'ar' ? 'مستقر' : 'GOOD') 
-      : (language === 'hi' ? 'चेतावनी' : language === 'ar' ? 'خطر' : 'WARNING');
+      ? (isMl ? 'സുരക്ഷിതം' : language === 'ar' ? 'مستقر' : 'GOOD') 
+      : (isMl ? 'മുന്നറിയിപ്പ്' : language === 'ar' ? 'خطر' : 'WARNING');
 
-  const titleLabel = language === 'hi' ? 'वित्तीय स्वास्थ्य' : language === 'ar' ? 'الصحة المالية' : 'FINANCIAL HEALTH';
+  const titleLabel = isMl ? 'സാമ്പത്തിക ആരോഗ്യം' : language === 'ar' ? 'الصحة المالية' : 'FINANCIAL HEALTH';
 
   return (
     <Pressable 

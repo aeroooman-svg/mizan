@@ -16,7 +16,7 @@ interface GoalsDebtsSectionsProps {
   walletTransactions: Transaction[];
   selectedWalletId: string | undefined;
   currencySymbol: string;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
 }
 
@@ -30,8 +30,8 @@ export default function GoalsDebtsSections({
   language,
   colors,
 }: GoalsDebtsSectionsProps) {
-  const loc = (ar: string, en: string, hi: string) => {
-    if (language === 'hi') return hi;
+  const loc = (ar: string, en: string, hi?: string) => {
+    if (language === 'ml' || language === 'hi') return hi || en;
     if (language === 'ar') return ar;
     return en;
   };

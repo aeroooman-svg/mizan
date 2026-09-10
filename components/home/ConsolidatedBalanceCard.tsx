@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/categories';
 interface ConsolidatedBalanceCardProps {
   totalConsolidatedBalance: number;
   currencySymbol: string;
-  language: 'ar' | 'en' | 'hi';
+  language: 'ar' | 'en' | 'ml' | 'hi';
   colors: any;
 }
 
@@ -19,7 +19,7 @@ export default function ConsolidatedBalanceCard({
 }: ConsolidatedBalanceCardProps) {
   const styles = getStyles(colors);
 
-  const label = language === 'hi' ? 'समेकित कुल संपत्ति' : language === 'ar' ? 'إجمالي الثروة الموحدة' : 'Consolidated Net Worth';
+  const label = (language === 'ml' || language === 'hi') ? 'ആകെ ഏകീകൃത ആസ്തി' : language === 'ar' ? 'إجمالي الثروة الموحدة' : 'Consolidated Net Worth';
 
   return (
     <View style={styles.consolidatedCard}>

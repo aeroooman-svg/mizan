@@ -60,8 +60,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { language, setLanguage, t } = useLanguage();
   const isAr = language === 'ar';
-  const loc = (ar: string, en: string, hi: string) => {
-    if (language === 'hi') return hi;
+  const loc = (ar: string, en: string, hi?: string) => {
+    if (language === 'ml' || language === 'hi') return hi || en;
     if (language === 'ar') return ar;
     return en;
   };
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleToggleLanguage = async (lang: 'ar' | 'en' | 'hi') => {
+  const handleToggleLanguage = async (lang: any) => {
     safeHaptic.selection();
     await setLanguage(lang);
   };
@@ -538,11 +538,11 @@ export default function SettingsScreen() {
                   </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => handleToggleLanguage('hi')}
-                  style={[styles.langOption, language === 'hi' && styles.langOptionActive]}
+                  onPress={() => handleToggleLanguage('ml')}
+                  style={[styles.langOption, (language === 'ml' || language === 'hi') && styles.langOptionActive]}
                 >
-                  <Text style={[styles.langText, language === 'hi' && styles.langTextActive]}>
-                    हिन्दी 🇮🇳
+                  <Text style={[styles.langText, (language === 'ml' || language === 'hi') && styles.langTextActive]}>
+                    മലയാളം 🇮🇳
                   </Text>
                 </Pressable>
               </View>

@@ -45,7 +45,7 @@ export interface FinancialPlan {
 const PLANS_KEY = '@masarif_financial_plans';
 const LEGACY_KEY = '@masarif_financial_plan';
 
-async function getAllPlans(): Promise<Record<string, FinancialPlan>> {
+export async function getAllPlans(): Promise<Record<string, FinancialPlan>> {
   const data = await AsyncStorage.getItem(PLANS_KEY);
   if (data) return JSON.parse(data);
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Text, Platform } from 'react-native';
+import { StyleSheet, View, Text, Platform, Pressable } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Path, Rect, Circle, G, Defs, Pattern, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
@@ -20,8 +21,13 @@ interface WalletCardRenderProps {
   height?: number;
   dailySafeSpend?: number;
   dailySafeSpendFormatted?: string;
+  remainingToday?: number;
+  remainingTodayFormatted?: string;
+  todayExpenses?: number;
+  isPlanLinked?: boolean;
   daysRemaining?: number;
-  language?: 'ar' | 'en' | 'hi';
+  language?: 'ar' | 'en' | 'ml' | 'hi';
+  onPressDailySafe?: () => void;
 }
 
 export default function WalletCardRender({
@@ -38,8 +44,13 @@ export default function WalletCardRender({
   height = 180,
   dailySafeSpend,
   dailySafeSpendFormatted,
+  remainingToday,
+  remainingTodayFormatted,
+  todayExpenses,
+  isPlanLinked,
   daysRemaining,
   language = 'ar',
+  onPressDailySafe,
 }: WalletCardRenderProps) {
   const isMinimal = cardStyle === 'minimal';
   const textColor = isMinimal ? color : '#FFFFFF';
@@ -254,31 +265,60 @@ export default function WalletCardRender({
           </View>
 
           {dailySafeSpend !== undefined && (
-            <View style={[
-              styles.safeSpendBadge,
-              cardStyle === 'minimal' && { borderColor: color, backgroundColor: 'transparent' }
-            ]}>
+            <Pressable
+              onPress={(e: any) => {
+                e?.stopPropagation?.();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onPressDailySafe?.();
+              }}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.safeSpendBadge,
+                cardStyle === 'minimal' && { borderColor: color, backgroundColor: 'transparent' },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              ]}
+              hitSlop={8}
+            >
               <View style={styles.safeSpendBadgeHeader}>
                 <View style={[
                   styles.safeSpendDot,
-                  { backgroundColor: dailySafeSpend > 0 ? '#10B981' : '#EF4444' }
+                  {
+                    backgroundColor:
+                      remainingToday !== undefined && remainingToday > 0
+                        ? '#10B981'
+                        : dailySafeSpend > 0
+                        ? '#F59E0B'
+                        : '#EF4444',
+                  }
                 ]} />
-                <Text style={[styles.safeSpendBadgeLabel, { color: subTextColor }]}>
-                  {language === 'ar' ? 'حد اليوم الآمن' : language === 'hi' ? 'दैनिक सीमा' : 'DAILY SAFE'}
+                <Text style={[styles.safeSpendBadgeLabel, { color: subTextColor }]} numberOfLines={1}>
+                  {language === 'ar'
+                    ? (isPlanLinked ? 'حد الخطة 🎯' : 'حد اليوم الآمن')
+                    : (language === 'ml' || language === 'hi')
+                    ? (isPlanLinked ? 'പ്ലാൻ പരിധി 🎯' : 'ഇന്നത്തെ പരിധി')
+                    : (isPlanLinked ? 'PLAN LIMIT 🎯' : 'DAILY SAFE')}
                 </Text>
+                <Ionicons name="information-circle-outline" size={11} color={subTextColor} style={{ opacity: 0.8, marginStart: 2 }} />
               </View>
-              <Text style={[styles.safeSpendBadgeAmount, { color: textColor }]} numberOfLines={1}>
-                {dailySafeSpendFormatted ?? `${dailySafeSpend}`}{' '}
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                <Text style={[styles.safeSpendBadgeAmount, { color: textColor }]} numberOfLines={1}>
+                  {remainingTodayFormatted ?? dailySafeSpendFormatted ?? `${dailySafeSpend}`}
+                </Text>
                 <Text style={styles.safeSpendBadgeCurrency}>{currencySymbol}</Text>
+              </View>
+              <Text style={[styles.safeSpendBadgeDays, { color: subTextColor }]} numberOfLines={1}>
+                {todayExpenses !== undefined && todayExpenses > 0
+                  ? (language === 'ar'
+                      ? `متبقي اليوم • ${daysRemaining ?? 1} يوم`
+                      : (language === 'ml' || language === 'hi')
+                      ? `ഇന്ന് ബാക്കി • ${daysRemaining ?? 1}d`
+                      : `Left today • ${daysRemaining ?? 1}d`)
+                  : (language === 'ar'
+                      ? `متاح اليوم • ${daysRemaining ?? 1} يوم`
+                      : (language === 'ml' || language === 'hi')
+                      ? `ഇന്ന് മിച്ചം • ${daysRemaining ?? 1}d`
+                      : `Safe today • ${daysRemaining ?? 1}d`)}
               </Text>
-              <Text style={[styles.safeSpendBadgeDays, { color: subTextColor }]}>
-                {language === 'ar'
-                  ? `باقي ${daysRemaining ?? 1} يوم`
-                  : language === 'hi'
-                  ? `${daysRemaining ?? 1} दिन शेष`
-                  : `${daysRemaining ?? 1}d left`}
-              </Text>
-            </View>
+            </Pressable>
           )}
         </View>
 
