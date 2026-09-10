@@ -23,6 +23,7 @@ import { Wallet, Transaction } from '@/lib/storage';
 import { formatCurrency } from '@/lib/categories';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { getAllPlans, FinancialPlan } from '@/lib/planStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import WalletCardRender from './WalletCardRender';
 
 interface WalletCarouselProps {
@@ -59,8 +60,10 @@ export default function WalletCarousel({
   };
 
   const { width: windowWidth } = useWindowDimensions();
-  const cardWidth = Math.min(440, Math.max(280, windowWidth - 32));
-  const cardGap = 24;
+  const isTablet = windowWidth >= 768;
+  const isDesktop = windowWidth >= 1024;
+  const cardWidth = isDesktop ? 380 : isTablet ? 340 : windowWidth - 48;
+  const cardGap = 16;
   const styles = getStyles(colors, cardWidth, cardGap);
   const [actionWallet, setActionWallet] = useState<Wallet | null>(null);
   const [adjustWallet, setAdjustWallet] = useState<Wallet | null>(null);
@@ -71,19 +74,25 @@ export default function WalletCarousel({
 
   const [rates, setRates] = useState<Record<string, number>>({});
   const [plans, setPlans] = useState<Record<string, FinancialPlan>>({});
+  const [jameyas, setJameyas] = useState<Jameya[]>([]);
   const [safeDetailModal, setSafeDetailModal] = useState<{
     walletName: string;
     currency: string;
     walletBalance: number;
+    spendableBalance?: number;
+    pendingJameyaInstallments?: number;
     daysRemaining: number;
     dailySafeLimit: number;
     todayExpenses: number;
+    todayTransfers?: number;
+    todayTotalOut?: number;
     remainingToday: number;
     isPlanLinked: boolean;
     planGoalName?: string;
     monthlyPlanExpense?: number;
     monthlyPlanSaving?: number;
     monthExpenses?: number;
+    monthTransfers?: number;
     remainingPlanBudget?: number;
   } | null>(null);
 
@@ -91,6 +100,9 @@ export default function WalletCarousel({
     let isMounted = true;
     getAllPlans().then(all => {
       if (isMounted) setPlans(all || {});
+    }).catch(() => {});
+    getJameyas().then(list => {
+      if (isMounted) setJameyas(list || []);
     }).catch(() => {});
     return () => { isMounted = false; };
   }, [transactions.length]);
@@ -200,6 +212,14 @@ export default function WalletCarousel({
             })
             .reduce((sum, t) => sum + t.amount, 0);
 
+          const monthTransfers = transactions
+            .filter((t) => {
+              if (t.type !== 'transfer' || t.walletId !== wallet.id) return false;
+              const d = new Date(t.date);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+
           const todayExpenses = transactions
             .filter((t) => {
               if (t.type !== 'expense' || t.walletId !== wallet.id) return false;
@@ -209,12 +229,30 @@ export default function WalletCarousel({
             })
             .reduce((sum, t) => sum + t.amount, 0);
 
+          const todayTransfers = transactions
+            .filter((t) => {
+              if (t.type !== 'transfer' || t.walletId !== wallet.id) return false;
+              const d = new Date(t.date);
+              return d.getDate() === todayDate && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          const todayTotalOut = todayExpenses + todayTransfers;
+
           const daysInMonthCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
           const currentDay = now.getDate();
           const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
 
           const isThreeDecimals = ['KWD', 'BHD', 'OMR'].includes(wallet.currency);
           const precision = isThreeDecimals ? 3 : 2;
+
+          const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+          const walletJameyas = jameyas.filter(j => j.walletId === wallet.id && (j.paidMonthsCount || 0) < (j.totalMonths || 0));
+          const pendingJameyaInstallments = walletJameyas
+            .filter(j => j.lastPaidMonth !== currentMonthKey)
+            .reduce((sum, j) => sum + (j.monthlyAmount || 0), 0);
+
+          const spendableBalance = Math.max(0, walletBalance - pendingJameyaInstallments);
 
           const walletPlan = plans[wallet.id];
           let dailySafeLimit = 0;
@@ -223,18 +261,18 @@ export default function WalletCarousel({
 
           if (walletPlan && Number(walletPlan.monthlyExpense) > 0) {
             isPlanLinked = true;
-            remainingPlanBudget = Math.max(0, Number(walletPlan.monthlyExpense) - monthExpenses);
-            const effectiveAvailable = Math.min(walletBalance, remainingPlanBudget);
+            remainingPlanBudget = Math.max(0, Number(walletPlan.monthlyExpense) - (monthExpenses + monthTransfers));
+            const effectiveAvailable = Math.min(spendableBalance, remainingPlanBudget);
             dailySafeLimit = effectiveAvailable > 0
               ? Number((effectiveAvailable / daysRemaining).toFixed(precision))
               : 0;
           } else {
-            dailySafeLimit = walletBalance > 0
-              ? Number((walletBalance / daysRemaining).toFixed(precision))
+            dailySafeLimit = spendableBalance > 0
+              ? Number((spendableBalance / daysRemaining).toFixed(precision))
               : 0;
           }
 
-          const remainingToday = Math.max(0, Number((dailySafeLimit - todayExpenses).toFixed(precision)));
+          const remainingToday = Math.max(0, Number((dailySafeLimit - todayTotalOut).toFixed(precision)));
 
           const cardStyle = wallet.cardStyle || 'classic';
 
@@ -344,15 +382,20 @@ export default function WalletCarousel({
                     walletName: wallet.name,
                     currency: wallet.currency,
                     walletBalance,
+                    spendableBalance,
+                    pendingJameyaInstallments,
                     daysRemaining,
                     dailySafeLimit,
                     todayExpenses,
+                    todayTransfers,
+                    todayTotalOut,
                     remainingToday,
                     isPlanLinked,
                     planGoalName: walletPlan?.goalName,
                     monthlyPlanExpense: walletPlan?.monthlyExpense,
                     monthlyPlanSaving: walletPlan?.monthlySaving,
                     monthExpenses,
+                    monthTransfers,
                     remainingPlanBudget,
                   });
                 }}
@@ -1131,10 +1174,10 @@ export default function WalletCarousel({
                         style={{
                           fontFamily: 'Cairo_700Bold',
                           fontSize: 14,
-                          color: safeDetailModal.todayExpenses > 0 ? '#F59E0B' : colors.textSecondary,
+                          color: (safeDetailModal.todayTotalOut ?? safeDetailModal.todayExpenses) > 0 ? '#F59E0B' : colors.textSecondary,
                         }}
                       >
-                        {formatCurrency(safeDetailModal.todayExpenses, language, safeDetailModal.currency)}
+                        {formatCurrency(safeDetailModal.todayTotalOut ?? safeDetailModal.todayExpenses, language, safeDetailModal.currency)}
                       </Text>
                     </View>
                   </View>
@@ -1274,6 +1317,29 @@ export default function WalletCarousel({
                             {formatCurrency(safeDetailModal.walletBalance, language, safeDetailModal.currency)}
                           </Text>
                         </View>
+
+                        {Boolean(safeDetailModal.pendingJameyaInstallments && safeDetailModal.pendingJameyaInstallments > 0) && (
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: '#0D7C66' }}>
+                              {loc('🛡️ أقساط جمعيات محمية للشهر', '🛡️ Protected ROSCA Installments', '🛡️ സംരക്ഷിത ചിട്ടി')}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#0D7C66' }}>
+                              -{formatCurrency(safeDetailModal.pendingJameyaInstallments, language, safeDetailModal.currency)}
+                            </Text>
+                          </View>
+                        )}
+
+                        {Boolean(safeDetailModal.pendingJameyaInstallments && safeDetailModal.pendingJameyaInstallments > 0) && (
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                              {loc('الصافي المتاح للإنفاق', 'Net Spendable Balance', 'ചെലവഴിക്കാവുന്ന തുക')}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
+                              {formatCurrency(safeDetailModal.spendableBalance ?? safeDetailModal.walletBalance, language, safeDetailModal.currency)}
+                            </Text>
+                          </View>
+                        )}
+
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                           <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
                             {loc('الأيام المتبقية في الشهر', 'Days Remaining in Month', 'മാസത്തിലെ ബാക്കി ദിവസങ്ങൾ')}
@@ -1282,6 +1348,17 @@ export default function WalletCarousel({
                             {loc(`${safeDetailModal.daysRemaining} يوم`, `${safeDetailModal.daysRemaining} days`, `${safeDetailModal.daysRemaining} ദിവസങ്ങൾ`)}
                           </Text>
                         </View>
+
+                        {Boolean(safeDetailModal.todayTransfers && safeDetailModal.todayTransfers > 0) && (
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: colors.border + '40' }}>
+                            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: '#6366F1' }}>
+                              {loc('تحويلات صادرة اليوم', 'Transfers Out Today', 'ഇന്നത്തെ കൈമാറ്റങ്ങൾ')}
+                            </Text>
+                            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#6366F1' }}>
+                              {formatCurrency(safeDetailModal.todayTransfers, language, safeDetailModal.currency)}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </>
                   )}

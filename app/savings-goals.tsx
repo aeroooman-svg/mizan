@@ -34,6 +34,7 @@ import {
   SavingsGoal,
   SavingsRule,
 } from '@/lib/goalStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -47,7 +48,8 @@ export default function SavingsGoalsScreen() {
 
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [rules, setRules] = useState<SavingsRule[]>([]);
-  const [activeTab, setActiveTab] = useState<'goals' | 'rules'>('goals');
+  const [jameyas, setJameyas] = useState<Jameya[]>([]);
+  const [activeTab, setActiveTab] = useState<'goals' | 'rules' | 'jameya'>('goals');
 
   // Add/Edit Goal Modal states
   const [addGoalVisible, setAddGoalVisible] = useState(false);
@@ -72,9 +74,10 @@ export default function SavingsGoalsScreen() {
   const [manualWalletId, setManualWalletId] = useState(selectedWallet?.id || '');
 
   const loadAllData = async () => {
-    const [gList, rList] = await Promise.all([getGoals(), getRules()]);
+    const [gList, rList, jList] = await Promise.all([getGoals(), getRules(), getJameyas()]);
     setGoals(gList);
     setRules(rList);
+    setJameyas(jList || []);
     if (gList.length > 0 && !ruleGoalId) {
       setRuleGoalId(gList[0].id);
     }
@@ -86,6 +89,12 @@ export default function SavingsGoalsScreen() {
 
   // Executive Totals Computation
   const totalSavedAll = useMemo(() => goals.reduce((s, g) => s + (g.savedAmount || 0), 0), [goals]);
+  const totalJameyaSaved = useMemo(() => {
+    return jameyas.reduce((sum, j) => {
+      const paid = Math.min(j.paidMonthsCount || 0, j.totalMonths || 0);
+      return sum + (paid * (j.monthlyAmount || 0));
+    }, 0);
+  }, [jameyas]);
   const totalTargetAll = useMemo(() => goals.reduce((s, g) => s + (g.targetAmount || 0), 0), [goals]);
   const remainingAll = Math.max(0, totalTargetAll - totalSavedAll);
   const overallProgressPct = totalTargetAll > 0 ? Math.min(100, Math.round((totalSavedAll / totalTargetAll) * 100)) : 0;
@@ -409,6 +418,21 @@ export default function SavingsGoalsScreen() {
                 {rules.length} {isAr ? 'إجمالي' : 'total'}
               </Text>
             </View>
+
+            {totalJameyaSaved > 0 && (
+              <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+                <View style={styles.heroSubCardHeader}>
+                  <Ionicons name="gift-outline" size={13} color="#0D7C66" />
+                  <Text style={styles.heroSubLabel}>{isAr ? 'مدخر الجمعيات' : 'ROSCA Saved'}</Text>
+                </View>
+                <Text style={[styles.heroSubVal, { color: '#0D7C66' }]}>
+                  {formatCurrency(totalJameyaSaved)} <Text style={{ fontSize: 9 }}>{currencySymbol}</Text>
+                </Text>
+                <Text style={styles.heroSubCount}>
+                  {jameyas.length} {isAr ? 'جمعيات' : 'circles'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Progress Bar inside Hero Banner */}
@@ -471,11 +495,33 @@ export default function SavingsGoalsScreen() {
               color={activeTab === 'goals' ? '#F59E0B' : colors.textSecondary}
             />
             <Text style={[styles.tabText, activeTab === 'goals' && { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
-              {isAr ? 'أهداف الادخار والحصالات' : 'Savings Goals'}
+              {isAr ? 'أهداف الادخار' : 'Goals'}
             </Text>
             <View style={[styles.tabBadge, { backgroundColor: activeTab === 'goals' ? '#F59E0B20' : colors.surfaceAlt }]}>
               <Text style={[styles.tabBadgeText, { color: activeTab === 'goals' ? '#F59E0B' : colors.textTertiary }]}>
                 {goals.length}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setActiveTab('jameya');
+            }}
+            style={[styles.tabBtn, activeTab === 'jameya' && styles.tabBtnActive]}
+          >
+            <Ionicons
+              name="gift-outline"
+              size={16}
+              color={activeTab === 'jameya' ? '#0D7C66' : colors.textSecondary}
+            />
+            <Text style={[styles.tabText, activeTab === 'jameya' && { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
+              {isAr ? 'الجمعيات' : 'ROSCAs'}
+            </Text>
+            <View style={[styles.tabBadge, { backgroundColor: activeTab === 'jameya' ? '#0D7C6620' : colors.surfaceAlt }]}>
+              <Text style={[styles.tabBadgeText, { color: activeTab === 'jameya' ? '#0D7C66' : colors.textTertiary }]}>
+                {jameyas.length}
               </Text>
             </View>
           </Pressable>
@@ -493,7 +539,7 @@ export default function SavingsGoalsScreen() {
               color={activeTab === 'rules' ? '#10B981' : colors.textSecondary}
             />
             <Text style={[styles.tabText, activeTab === 'rules' && { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
-              {isAr ? 'القواعد الذكية' : 'Smart Rules'}
+              {isAr ? 'القواعد' : 'Rules'}
             </Text>
             <View style={[styles.tabBadge, { backgroundColor: activeTab === 'rules' ? '#10B98120' : colors.surfaceAlt }]}>
               <Text style={[styles.tabBadgeText, { color: activeTab === 'rules' ? '#10B981' : colors.textTertiary }]}>
@@ -809,22 +855,174 @@ export default function SavingsGoalsScreen() {
             )}
           </View>
         )}
+
+        {/* SECTION 3: JAMEYAS (ROSCAs) LIST */}
+        {activeTab === 'jameya' && (
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionHeading, { color: colors.text }]}>
+                {isAr ? 'الجمعيات المالية النشطة' : 'Active ROSCA Money Circles'}
+              </Text>
+              <Text style={[styles.sectionCount, { color: colors.textSecondary }]}>
+                ({jameyas.length})
+              </Text>
+            </View>
+
+            {jameyas.length === 0 ? (
+              <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.emptyIconCircle, { backgroundColor: '#0D7C6618' }]}>
+                  <Ionicons name="gift-outline" size={32} color="#0D7C66" />
+                </View>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  {isAr ? 'لا توجد جمعيات نشطة حالياً' : 'No Active Circles'}
+                </Text>
+                <Text style={[styles.emptyDesc, { color: colors.textSecondary }]}>
+                  {isAr
+                    ? 'الجمعيات وسيلة تعاونية ممتازة للادخار واستلام مبالغ كبيرة بدون فوائد. أضف جمعيتك الآن لتتبعها بسهولة!'
+                    : 'ROSCAs are great for cooperative savings. Add your first money circle now to track it!'}
+                </Text>
+                <Pressable
+                  onPress={() => router.push('/jameya' as any)}
+                  style={[styles.emptyBtn, { backgroundColor: '#0D7C66' }]}
+                >
+                  <Ionicons name="add" size={18} color="#FFF" />
+                  <Text style={styles.emptyBtnText}>
+                    {isAr ? 'إضافة جمعية جديدة' : 'Add New Circle'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              jameyas.map((j) => {
+                const paidCount = Math.min(j.paidMonthsCount || 0, j.totalMonths || 0);
+                const circleSaved = paidCount * (j.monthlyAmount || 0);
+                const totalPot = (j.totalMonths || 0) * (j.monthlyAmount || 0);
+                const pct = totalPot > 0 ? Math.min(100, Math.round((circleSaved / totalPot) * 100)) : 0;
+                const isComplete = paidCount >= j.totalMonths;
+                const wallet = wallets.find(w => w.id === j.walletId);
+
+                return (
+                  <View
+                    key={j.id}
+                    style={[styles.cardContainer, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardHeaderLeft}>
+                        <View style={[styles.avatarCircle, { backgroundColor: '#0D7C6618' }]}>
+                          <Ionicons name="gift-outline" size={20} color="#0D7C66" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.cardTitle, { color: colors.text }]}>
+                            {j.name}
+                          </Text>
+                          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                            {isAr
+                              ? `قسط شهري: ${formatCurrency(j.monthlyAmount)} ${currencySymbol}`
+                              : `Monthly: ${formatCurrency(j.monthlyAmount)} ${currencySymbol}`}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={[styles.statusBadge, { backgroundColor: isComplete ? '#10B98120' : '#0D7C6620' }]}>
+                        <Text style={[styles.statusBadgeText, { color: isComplete ? '#10B981' : '#0D7C66' }]}>
+                          {isComplete
+                            ? (isAr ? 'مكتملة 🎉' : 'Completed')
+                            : (isAr ? `${paidCount}/${j.totalMonths} أشهر` : `${paidCount}/${j.totalMonths} mo`)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Track */}
+                    <View style={styles.progressSection}>
+                      <View style={styles.progressHeader}>
+                        <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
+                          {isAr ? 'المدخر حتى الآن:' : 'Saved so far:'} {formatCurrency(circleSaved)} {currencySymbol}
+                        </Text>
+                        <Text style={[styles.progressDetail, { color: colors.textTertiary }]}>
+                          {pct}%
+                        </Text>
+                      </View>
+                      <View style={[styles.progressTrack, { backgroundColor: colors.borderLight || colors.surfaceAlt }]}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${pct}%`,
+                              backgroundColor: isComplete ? '#10B981' : '#0D7C66',
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Footer Tags */}
+                    <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
+                      {j.payoutMonth ? (
+                        <View style={[styles.footerPill, { backgroundColor: colors.surfaceAlt }]}>
+                          <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                          <Text style={[styles.footerPillText, { color: colors.textSecondary }]}>
+                            {isAr ? `شهر القبض: الـ ${j.payoutMonth}` : `Payout: Mo ${j.payoutMonth}`}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {wallet && (
+                        <View style={[styles.footerPill, { backgroundColor: colors.surfaceAlt }]}>
+                          <MaterialIcons name={wallet.icon as any} size={13} color={wallet.color} />
+                          <Text style={[styles.footerPillText, { color: colors.textSecondary }]}>
+                            {wallet.name}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Action button to manage circle */}
+                    <Pressable
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        router.push('/jameya' as any);
+                      }}
+                      style={({ pressed }) => [
+                        styles.mainActionBtn,
+                        {
+                          backgroundColor: '#0D7C66',
+                          opacity: pressed ? 0.85 : 1,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="settings-outline" size={16} color="#FFF" />
+                      <Text style={styles.mainActionBtnText}>
+                        {isAr ? 'إدارة الجمعية وتسديد الأقساط' : 'Manage Circle & Payments'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Floating Add Button */}
       <Pressable
-        onPress={activeTab === 'goals' ? handleOpenAddGoal : () => {
-          if (goals.length === 0) {
-            Alert.alert(isAr ? 'تنبيه' : 'Notice', isAr ? 'يرجى إضافة هدف ادخار أولاً' : 'Please create a goal first');
-            return;
-          }
-          setRuleGoalId(goals[0].id);
-          setRuleWalletId(selectedWallet?.id || wallets[0].id);
-          setAddRuleVisible(true);
-        }}
+        onPress={
+          activeTab === 'goals'
+            ? handleOpenAddGoal
+            : activeTab === 'jameya'
+            ? () => router.push('/jameya' as any)
+            : () => {
+                if (goals.length === 0) {
+                  Alert.alert(isAr ? 'تنبيه' : 'Notice', isAr ? 'يرجى إضافة هدف ادخار أولاً' : 'Please create a goal first');
+                  return;
+                }
+                setRuleGoalId(goals[0].id);
+                setRuleWalletId(selectedWallet?.id || wallets[0]?.id || '');
+                setRuleAmount('');
+                setAddRuleVisible(true);
+              }
+        }
         style={[
           styles.floatingAddBtn,
-          { backgroundColor: activeTab === 'goals' ? '#F59E0B' : '#10B981', bottom: Math.max(insets.bottom + 20, 30) },
+          { backgroundColor: activeTab === 'goals' ? '#F59E0B' : activeTab === 'jameya' ? '#0D7C66' : '#10B981', bottom: Math.max(insets.bottom + 20, 30) },
         ]}
       >
         <Ionicons name="add" size={28} color="#FFF" />

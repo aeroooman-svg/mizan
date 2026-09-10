@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
   },
   donutSection: {
     marginHorizontal: 20,
+    marginTop: 8,
     gap: 16,
   },
   donutCard: {
