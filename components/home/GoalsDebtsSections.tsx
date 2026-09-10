@@ -51,10 +51,10 @@ export default function GoalsDebtsSections({
       <View>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {loc('🎯 حصالات وأهداف الادخار', 'SAVINGS GOALS', '🎯 बचत लक्ष्य और गुल्लक')}
+            {loc('🎯 حصالات وأهداف الادخار', 'SAVINGS GOALS', '🎯 സമ്പാദ്യ ലക്ഷ്യങ്ങൾ')}
           </Text>
           <Pressable onPress={() => router.push('/savings-goals')}>
-            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'प्रबंधन')}</Text>
+            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'മാനേജ് ചെയ്യുക')}</Text>
           </Pressable>
         </View>
 
@@ -67,10 +67,10 @@ export default function GoalsDebtsSections({
               style={{ marginBottom: 4 }}
             />
             <Text style={styles.emptyTitle}>
-              {loc('لا توجد أهداف ادخار نشطة', 'No active savings goals', 'कोई सक्रिय बचत लक्ष्य नहीं')}
+              {loc('لا توجد أهداف ادخار نشطة', 'No active savings goals', 'സമ്പാദ്യ ലക്ഷ്യങ്ങളൊന്നുമില്ല')}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {loc('ابدأ بإنشاء حصالتك الأولى الآن!', 'Start your first savings goal now!', 'अपना पहला बचत लक्ष्य अभी शुरू करें!')}
+              {loc('ابدأ بإنشاء حصالتك الأولى الآن!', 'Start your first savings goal now!', 'ആദ്യത്തെ ലക്ഷ്യം ഇപ്പോൾ തന്നെ തുടങ്ങൂ!')}
             </Text>
           </View>
         ) : (
@@ -139,7 +139,7 @@ export default function GoalsDebtsSections({
                   <View
                     style={{
                       height: 6,
-                      backgroundColor: Colors.surfaceAlt,
+                      backgroundColor: colors.surfaceAlt || Colors.surfaceAlt,
                       borderRadius: 3,
                       overflow: 'hidden',
                     }}
@@ -148,8 +148,7 @@ export default function GoalsDebtsSections({
                       style={{
                         height: 6,
                         width: `${progress}%`,
-                        backgroundColor:
-                          progress >= 100 ? Colors.accent : Colors.primary,
+                        backgroundColor: progress >= 100 ? Colors.accent : Colors.primary,
                         borderRadius: 3,
                       }}
                     />
@@ -165,10 +164,10 @@ export default function GoalsDebtsSections({
       <View style={{ marginTop: 20 }}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {loc('🤝 سجل الديون والالتزامات', 'DEBTS & LOANS', '🤝 ऋण और देनदारियां')}
+            {loc('🤝 سجل الديون والالتزامات', 'DEBTS & LOANS', '🤝 കടങ്ങളും വായ്പകളും')}
           </Text>
           <Pressable onPress={() => router.push('/debts')}>
-            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'प्रबंधन')}</Text>
+            <Text style={styles.seeAll}>{loc('إدارة', 'Manage', 'മാനേജ് ചെയ്യുക')}</Text>
           </Pressable>
         </View>
 
@@ -192,7 +191,7 @@ export default function GoalsDebtsSections({
                 textAlign: 'left',
               }}
             >
-              {loc('ديون مستحقة عليّ', 'I OWE (DEBTS)', 'मुझे चुकाना है (ऋण)')}
+              {loc('ديون مستحقة عليّ', 'I OWE (DEBTS)', 'ഞാൻ കൊടുക്കാനുള്ളത്')}
             </Text>
             <Text
               style={{
@@ -224,7 +223,7 @@ export default function GoalsDebtsSections({
                 textAlign: 'left',
               }}
             >
-              {loc('أموال لي بالخارج', 'OWED TO ME (LOANS)', 'मुझे मिलना है (उधार)')}
+              {loc('أموال لي بالخارج', 'OWED TO ME (LOANS)', 'എനിക്ക് കിട്ടാനുള്ളത്')}
             </Text>
             <Text
               style={{

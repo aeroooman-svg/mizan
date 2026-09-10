@@ -28,6 +28,9 @@ interface WalletCardRenderProps {
   daysRemaining?: number;
   language?: 'ar' | 'en' | 'ml' | 'hi';
   onPressDailySafe?: () => void;
+  isOverspentToday?: boolean;
+  overspentTodayFormatted?: string;
+  adjustedTomorrowLimitFormatted?: string;
 }
 
 export default function WalletCardRender({
@@ -51,6 +54,9 @@ export default function WalletCardRender({
   daysRemaining,
   language = 'ar',
   onPressDailySafe,
+  isOverspentToday,
+  overspentTodayFormatted,
+  adjustedTomorrowLimitFormatted,
 }: WalletCardRenderProps) {
   const isMinimal = cardStyle === 'minimal';
   const textColor = isMinimal ? color : '#FFFFFF';
@@ -283,15 +289,19 @@ export default function WalletCardRender({
                   styles.safeSpendDot,
                   {
                     backgroundColor:
-                      remainingToday !== undefined && remainingToday > 0
+                      isOverspentToday
+                        ? '#EF4444'
+                        : remainingToday !== undefined && remainingToday > 0
                         ? '#10B981'
                         : dailySafeSpend > 0
                         ? '#F59E0B'
                         : '#EF4444',
                   }
                 ]} />
-                <Text style={[styles.safeSpendBadgeLabel, { color: subTextColor }]} numberOfLines={1}>
-                  {language === 'ar'
+                <Text style={[styles.safeSpendBadgeLabel, { color: isOverspentToday ? '#EF4444' : subTextColor }]} numberOfLines={1}>
+                  {isOverspentToday
+                    ? (language === 'ar' ? 'تجاوز اليوم ⚠️' : (language === 'ml' || language === 'hi') ? 'പരിധി കവിഞ്ഞു ⚠️' : 'OVERSPENT ⚠️')
+                    : language === 'ar'
                     ? (isPlanLinked ? 'حد الخطة 🎯' : 'حد اليوم الآمن')
                     : (language === 'ml' || language === 'hi')
                     ? (isPlanLinked ? 'പ്ലാൻ പരിധി 🎯' : 'ഇന്നത്തെ പരിധി')
@@ -300,13 +310,21 @@ export default function WalletCardRender({
                 <Ionicons name="information-circle-outline" size={11} color={subTextColor} style={{ opacity: 0.8, marginStart: 2 }} />
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                <Text style={[styles.safeSpendBadgeAmount, { color: textColor }]} numberOfLines={1}>
-                  {remainingTodayFormatted ?? dailySafeSpendFormatted ?? `${dailySafeSpend}`}
+                <Text style={[styles.safeSpendBadgeAmount, { color: isOverspentToday ? '#EF4444' : textColor }]} numberOfLines={1}>
+                  {isOverspentToday && overspentTodayFormatted
+                    ? `-${overspentTodayFormatted}`
+                    : (remainingTodayFormatted ?? dailySafeSpendFormatted ?? `${dailySafeSpend}`)}
                 </Text>
                 <Text style={styles.safeSpendBadgeCurrency}>{currencySymbol}</Text>
               </View>
               <Text style={[styles.safeSpendBadgeDays, { color: subTextColor }]} numberOfLines={1}>
-                {todayExpenses !== undefined && todayExpenses > 0
+                {isOverspentToday
+                  ? (language === 'ar'
+                      ? `حد الغد: ${adjustedTomorrowLimitFormatted ?? '0'} • تفاصيل`
+                      : (language === 'ml' || language === 'hi')
+                      ? `നാളെ: ${adjustedTomorrowLimitFormatted ?? '0'} • കാണുക`
+                      : `Tmrw: ${adjustedTomorrowLimitFormatted ?? '0'} • Details`)
+                  : todayExpenses !== undefined && todayExpenses > 0
                   ? (language === 'ar'
                       ? `متبقي اليوم • ${daysRemaining ?? 1} يوم`
                       : (language === 'ml' || language === 'hi')

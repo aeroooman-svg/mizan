@@ -598,7 +598,7 @@ export default function WalletCarousel({
                       color: colors.text,
                     }}
                   >
-                    {loc('تعديل المحفظة', 'Edit Wallet', 'वॉलेट संपादित करें')}
+                    {loc('تعديل المحفظة', 'Edit Wallet', 'വാലറ്റ് തിരുത്തുക')}
                   </Text>
                 </Pressable>
 
@@ -628,7 +628,7 @@ export default function WalletCarousel({
                         color: colors.text,
                       }}
                     >
-                      {loc('تعيين كمحفظة نشطة', 'Set as Active Wallet', 'सक्रिय वॉलेट के रूप में सेट करें')}
+                      {loc('تعيين كمحفظة نشطة', 'Set as Active Wallet', 'സജീവ വാലറ്റാക്കുക')}
                     </Text>
                   </Pressable>
                 )}
@@ -660,10 +660,10 @@ export default function WalletCarousel({
                     }}
                   >
                     {actionWallet.isJoined
-                      ? loc('عرض تفاصيل وأعضاء المحفظة', 'View Shared Wallet Members', 'साझा वॉलेट सदस्य देखें')
+                      ? loc('عرض تفاصيل وأعضاء المحفظة', 'View Shared Wallet Members', 'അംഗങ്ങളെ കാണുക')
                       : (actionWallet.shareCode || actionWallet.sharedWith)
-                      ? loc('إدارة المشاركة والأعضاء', 'Manage Sharing & Members', 'साझाकरण और सदस्य प्रबंधित करें')
-                      : loc('مشاركة المحفظة', 'Share Wallet', 'वॉलेट साझा करें')}
+                      ? loc('إدارة المشاركة والأعضاء', 'Manage Sharing & Members', 'പങ്കിടലും അംഗങ്ങളും കൈകാര്യം ചെയ്യുക')
+                      : loc('مشاركة المحفظة', 'Share Wallet', 'വാലറ്റ് പങ്കിടുക')}
                   </Text>
                 </Pressable>
 
@@ -696,8 +696,8 @@ export default function WalletCarousel({
                       }}
                     >
                       {actionWallet.isJoined
-                        ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'साझा वॉलेट छोड़ें')
-                        : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'वॉलेट साझा करना बंद करें')}
+                        ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'പങ്കിട്ട വാലറ്റ് വിടുക')
+                        : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'പങ്കിടൽ നിർത്തുക')}
                     </Text>
                   </Pressable>
                 )}
@@ -737,8 +737,8 @@ export default function WalletCarousel({
                     }}
                   >
                     {actionWallet.excludeFromTotal
-                      ? loc('تضمين في الإجمالي الشامل', 'Include in Consolidated Total', 'समेकित कुल में शामिल करें')
-                      : loc('استبعاد من الإجمالي الشامل', 'Exclude from Consolidated Total', 'समेकित कुल से बाहर रखें')}
+                      ? loc('تضمين في الإجمالي الشامل', 'Include in Consolidated Total', 'മൊത്തം തുകയിൽ ഉൾപ്പെടുത്തുക')
+                      : loc('استبعاد من الإجمالي الشامل', 'Exclude from Consolidated Total', 'മൊത്തം തുകയിൽ നിന്ന് ഒഴിവാക്കുക')}
                   </Text>
                 </Pressable>
 

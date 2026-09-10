@@ -119,7 +119,7 @@ export default function QuickGlanceWidget({
           <View style={[styles.walletBadge, { backgroundColor: colors.surfaceAlt }]}>
             <Ionicons name="wallet-outline" size={16} color={colors.primary} />
             <Text style={[styles.walletBadgeText, { color: colors.text }]} numberOfLines={1}>
-              {data.walletName || loc('المحفظة الرئيسية', 'Main Wallet', 'मुख्य वॉलेट')}
+              {data.walletName || loc('المحفظة الرئيسية', 'Main Wallet', 'പ്രധാന വാലറ്റ്')}
             </Text>
           </View>
         </View>
@@ -145,7 +145,7 @@ export default function QuickGlanceWidget({
               style={styles.wingBtnGradient}
             >
               <Ionicons name="remove-circle" size={20} color="#FFF" />
-              <Text style={styles.wingBtnText}>{loc('مصروف', 'Expense', 'खर्च')}</Text>
+              <Text style={styles.wingBtnText}>{loc('مصروف', 'Expense', 'ചെലവ്')}</Text>
             </LinearGradient>
           </Pressable>
 
@@ -193,7 +193,7 @@ export default function QuickGlanceWidget({
               style={styles.wingBtnGradient}
             >
               <Ionicons name="add-circle" size={20} color="#FFF" />
-              <Text style={styles.wingBtnText}>{loc('دخل', 'Income', 'आय')}</Text>
+              <Text style={styles.wingBtnText}>{loc('دخل', 'Income', 'വരുമാനം')}</Text>
             </LinearGradient>
           </Pressable>
         </View>
@@ -234,7 +234,7 @@ export default function QuickGlanceWidget({
               style={styles.quickActionCardText}
               numberOfLines={1}
             >
-              {loc('مصاريف متكررة', 'Recurring', 'आवर्ती खर्च')}
+              {loc('مصاريف متكررة', 'Recurring', 'ആവർത്തന ചെലവുകൾ')}
             </Text>
           </Pressable>
 
@@ -269,7 +269,7 @@ export default function QuickGlanceWidget({
               style={styles.quickActionCardText}
               numberOfLines={1}
             >
-              {loc('أقساط وجمعيات', 'Installments & Savings', 'किस्तें और समितियां')}
+              {loc('أقساط وجمعيات', 'Installments & Savings', 'തവണകളും ചിട്ടികളും')}
             </Text>
           </Pressable>
         </View>
