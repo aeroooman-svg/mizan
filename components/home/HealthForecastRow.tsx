@@ -36,7 +36,11 @@ export default function HealthForecastRow({
   };
 
   const forecastMessage = forecast
-    ? (language === 'ml' || language === 'hi' ? (forecast.messageHi || forecast.messageEn) : language === 'ar' ? forecast.messageAr : forecast.messageEn)
+    ? ((language === 'ml' || language === 'hi')
+        ? (forecast.messageMl || forecast.messageHi || forecast.messageEn)
+        : language === 'ar'
+        ? forecast.messageAr
+        : forecast.messageEn)
     : '';
 
   const forecastDetailTitle = (language === 'ml' || language === 'hi') ? 'ക്യാഷ്‌ഫ്ലോ പ്രവചനം' : language === 'ar' ? 'توقعات السيولة والمصاريف' : 'Detailed Cashflow Forecast';
@@ -86,8 +90,8 @@ export default function HealthForecastRow({
             <View style={styles.reductionCard}>
               <Ionicons name="trending-down" size={18} color="#FF9800" />
               <Text style={styles.reductionText}>
-                {language === 'hi'
-                  ? `दैनिक खर्च में ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} की बचत करने से आपका वॉलेट सुरक्षित रहेगा।`
+                {(language === 'ml' || language === 'hi')
+                  ? `പ്രതിദിനം ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} ലാഭിക്കുന്നത് നിങ്ങളുടെ വാലറ്റിനെ സുരക്ഷിതമാക്കും.`
                   : language === 'ar'
                   ? `تقليل إنفاقك اليومي بـ ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} سيحميك من نفاد المحفظة.`
                   : `Saving ${formatCurrency(forecast.recommendedDailyReduction, language)} ${currencySymbol} daily will keep your wallet funded.`}

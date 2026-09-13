@@ -55,6 +55,13 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
   onApplyKakeiboRebalance,
 }) => {
   const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
 
   const kbSurvival = plan.kakeiboBudgets?.survival || 0;
   const kbWants = plan.kakeiboBudgets?.wants || 0;
@@ -66,6 +73,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
       id: 'survival',
       nameAr: 'الاحتياجات الأساسية (Survival)',
       nameEn: 'Survival / Needs',
+      nameMl: 'അടിസ്ഥാന ആവശ്യങ്ങൾ (Survival)',
       icon: 'restaurant',
       color: '#10B981',
       spent: spentByPillar.survival,
@@ -75,6 +83,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
       id: 'wants',
       nameAr: 'الرغبات الترفيهية (Wants)',
       nameEn: 'Wants / Optional',
+      nameMl: 'വിനോദവും ആഗ്രഹങ്ങളും (Wants)',
       icon: 'shopping-bag',
       color: '#F59E0B',
       spent: spentByPillar.wants,
@@ -84,6 +93,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
       id: 'culture',
       nameAr: 'الثقافة والتعليم (Culture)',
       nameEn: 'Culture & Mind',
+      nameMl: 'സംസ്കാരവും വിദ്യാഭ്യാസവും (Culture)',
       icon: 'book',
       color: '#6366F1',
       spent: spentByPillar.culture,
@@ -93,6 +103,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
       id: 'extra',
       nameAr: 'مصاريف طارئة/أخرى (Extra)',
       nameEn: 'Extra / Unplanned',
+      nameMl: 'അപ്രതീക്ഷിത ചെലവുകൾ (Extra)',
       icon: 'more-horiz',
       color: '#EF4444',
       spent: spentByPillar.extra,
@@ -107,18 +118,18 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
   const isMindfulBalanced = wantsRatio <= 25 && needsRatio <= 65;
 
   const moods = [
-    { emoji: '🤩', labelAr: 'ممتاز جداً', labelEn: 'Superb' },
-    { emoji: '😊', labelAr: 'مستقر وراضٍ', labelEn: 'Satisfied' },
-    { emoji: '😐', labelAr: 'متوسط', labelEn: 'Neutral' },
-    { emoji: '😓', labelAr: 'يحتاج تحسين', labelEn: 'Needs Improvement' },
+    { emoji: '🤩', labelAr: 'ممتاز جداً', labelEn: 'Superb', labelMl: 'വളരെ മികച്ചത്' },
+    { emoji: '😊', labelAr: 'مستقر وراضٍ', labelEn: 'Satisfied', labelMl: 'തൃപ്തികരം' },
+    { emoji: '😐', labelAr: 'متوسط', labelEn: 'Neutral', labelMl: 'ശരാശരി' },
+    { emoji: '😓', labelAr: 'يحتاج تحسين', labelEn: 'Needs Improvement', labelMl: 'മെച്ചപ്പെടുത്തേണ്ടതുണ്ട്' },
   ];
 
   const quickActionOptions = [
-    { id: 'cut_subs', labelAr: '✂️ إلغاء اشتراكات غير مستغلة', labelEn: '✂️ Cancel unused subs' },
-    { id: 'reduce_delivery', labelAr: '🍳 تقليل طلبات المطاعم', labelEn: '🍳 Cut dining out' },
-    { id: 'save_gas', labelAr: '⛽ ترشيد البنزين والمواصلات', labelEn: '⛽ Save on fuel/rides' },
-    { id: 'boost_saving', labelAr: '💰 زيادة الادخار الشهري 5%', labelEn: '💰 Boost savings 5%' },
-    { id: 'delay_wants', labelAr: '🎁 تأجيل الشراء العاطفي', labelEn: '🎁 Pause impulse buys' },
+    { id: 'cut_subs', labelAr: '✂️ إلغاء اشتراكات غير مستغلة', labelEn: '✂️ Cancel unused subs', labelMl: '✂️ വരിസംഖ്യകൾ റദ്ദാക്കുക' },
+    { id: 'reduce_delivery', labelAr: '🍳 تقليل طلبات المطاعم', labelEn: '🍳 Cut dining out', labelMl: '🍳 പുറത്തുനിന്നുള്ള ഭക്ഷണം കുറയ്ക്കുക' },
+    { id: 'save_gas', labelAr: '⛽ ترشيد البنزين والمواصلات', labelEn: '⛽ Save on fuel/rides', labelMl: '⛽ ഇന്ധനച്ചെലവ് ലാഭിക്കുക' },
+    { id: 'boost_saving', labelAr: '💰 زيادة الادخار الشهري 5%', labelEn: '💰 Boost savings 5%', labelMl: '💰 സമ്പാദ്യം 5% കൂട്ടുക' },
+    { id: 'delay_wants', labelAr: '🎁 تأجيل الشراء العاطفي', labelEn: '🎁 Pause impulse buys', labelMl: '🎁 അനാവശ്യ വാങ്ങലുകൾ മാറ്റിവെക്കുക' },
   ];
 
   const toggleAction = (actId: string) => {
@@ -141,7 +152,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           <View style={styles.iconTextRow}>
             <Ionicons name="wallet-outline" size={16} color={colors.income} />
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              {isAr ? 'الدخل الفعلي للشهر الحالي:' : 'Actual Monthly Income:'}
+              {loc('الدخل الفعلي للشهر الحالي:', 'Actual Monthly Income:', 'ഈ മാസത്തെ യഥാർത്ഥ വരുമാനം:')}
             </Text>
           </View>
           <Text style={[styles.summaryAmount, { color: colors.income }]}>
@@ -153,7 +164,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           <View style={styles.iconTextRow}>
             <Ionicons name="pie-chart-outline" size={16} color={colors.primary} />
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              {isAr ? 'إجمالي ميزانية الأعمدة الأربعة:' : 'Total 4 Pillars Budget:'}
+              {loc('إجمالي ميزانية الأعمدة الأربعة:', 'Total 4 Pillars Budget:', '4 സ്തംഭങ്ങളുടെ ആകെ ബജറ്റ്:')}
             </Text>
           </View>
           <Text style={[styles.summaryAmount, { color: colors.text }]}>
@@ -165,7 +176,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
 
         <View style={styles.summaryRow}>
           <Text style={[styles.boldLabel, { color: colors.text }]}>
-            {isAr ? 'الادخار المتوقع (الدخل - الميزانية):' : 'Projected Net Savings:'}
+            {loc('الادخار المتوقع (الدخل - الميزانية):', 'Projected Net Savings:', 'പ്രതീക്ഷിത അറ്റ സമ്പാദ്യം:')}
           </Text>
           <Text
             style={[
@@ -189,7 +200,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           <View style={styles.donutHeaderTitle}>
             <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
             <Text style={[styles.donutHeading, { color: colors.text }]} numberOfLines={1}>
-              {isAr ? 'دائرة الوعي المالي' : 'Mindfulness Ring'}
+              {loc('دائرة الوعي المالي', 'Mindfulness Ring', 'സാമ്പത്തിക അവബോധ ചക്രം')}
             </Text>
           </View>
           <View
@@ -209,8 +220,8 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
               ]}
             >
               {isMindfulBalanced
-                ? (isAr ? '🟢 متزن' : '🟢 Balanced')
-                : (isAr ? '🟡 تنبيه' : '🟡 Review')}
+                ? loc('🟢 متزن', '🟢 Balanced', '🟢 സമതുലിതം')
+                : loc('🟡 تنبيه', '🟡 Review', '🟡 പരിശോധിക്കുക')}
             </Text>
           </View>
         </View>
@@ -237,7 +248,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                 {formatCurrency(totalKakeiboSpent)}
               </Text>
               <Text style={[styles.donutSpentSub, { color: colors.textSecondary }]}>
-                {sym} {isAr ? 'منصرف' : 'spent'}
+                {sym} {loc('منصرف', 'spent', 'ചെലവഴിച്ചത്')}
               </Text>
             </View>
           </View>
@@ -249,7 +260,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                 <View style={styles.legendLeft}>
                   <View style={[styles.legendDot, { backgroundColor: p.color }]} />
                   <Text style={[styles.legendName, { color: colors.text }]}>
-                    {isAr ? p.nameAr.split(' ')[0] : p.nameEn.split(' ')[0]}
+                    {isMl ? p.nameMl.split(' ')[0] : isAr ? p.nameAr.split(' ')[0] : p.nameEn.split(' ')[0]}
                   </Text>
                 </View>
                 <Text style={[styles.legendSpent, { color: colors.textSecondary }]}>
@@ -264,12 +275,16 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
         <View style={[styles.feedbackNote, { backgroundColor: colors.surfaceAlt }]}>
           <Text style={[styles.feedbackNoteText, { color: colors.textSecondary }]}>
             {wantsRatio > 25
-              ? (isAr
-                  ? `⚠️ تشكل رغباتك الترفيهية ${Math.round(wantsRatio)}% من مصاريفك (أعلى من الحد الموصى به 25%). ينصح بتأجيل مشتريات الترفيه غير الحاكمة.`
-                  : `⚠️ Wants represent ${Math.round(wantsRatio)}% of spending (higher than recommended 25%). Try pausing impulse buys.`)
-              : (isAr
-                  ? `🟢 رائع! ميزانيتك متزنة تماماً. رغباتك الترفيهية تشكل ${Math.round(wantsRatio)}% فقط من منصرفك.`
-                  : `🟢 Great! Your wants represent only ${Math.round(wantsRatio)}% of total spending.`)}
+              ? loc(
+                  `⚠️ تشكل رغباتك الترفيهية ${Math.round(wantsRatio)}% من مصاريفك (أعلى من الحد الموصى به 25%). ينصح بتأجيل مشتريات الترفيه غير الحاكمة.`,
+                  `⚠️ Wants represent ${Math.round(wantsRatio)}% of spending (higher than recommended 25%). Try pausing impulse buys.`,
+                  `⚠️ ആഗ്രഹങ്ങൾ ചെലവിന്റെ ${Math.round(wantsRatio)}% ആണ് (ശുപാർശ ചെയ്യുന്ന 25% പരിധിക്ക് മുകളിൽ). അനാവശ്യ വാങ്ങലുകൾ മാറ്റിവെക്കുന്നത് നല്ലതാണ്.`
+                )
+              : loc(
+                  `🟢 رائع! ميزانيتك متزنة تماماً. رغباتك الترفيهية تشكل ${Math.round(wantsRatio)}% فقط من منصرفك.`,
+                  `🟢 Great! Your wants represent only ${Math.round(wantsRatio)}% of total spending.`,
+                  `🟢 മികച്ചത്! നിങ്ങളുടെ ബജറ്റ് സമതുലിതമാണ്. ആഗ്രഹങ്ങൾ ആകെ ചെലവിന്റെ ${Math.round(wantsRatio)}% മാത്രമാണ്.`
+                )}
           </Text>
         </View>
       </View>
@@ -294,12 +309,10 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                   </View>
                   <View>
                     <Text style={[styles.pillarName, { color: colors.text }]}>
-                      {isAr ? p.nameAr : p.nameEn}
+                      {isMl ? p.nameMl : isAr ? p.nameAr : p.nameEn}
                     </Text>
                     <Text style={[styles.pillarBudgetSubtitle, { color: colors.textSecondary }]}>
-                      {isAr
-                        ? `الميزانية: ${formatCurrency(p.budget)} ${sym}`
-                        : `Budget: ${formatCurrency(p.budget)} ${sym}`}
+                      {loc(`الميزانية: ${formatCurrency(p.budget)} ${sym}`, `Budget: ${formatCurrency(p.budget)} ${sym}`, `ബജറ്റ്: ${formatCurrency(p.budget)} ${sym}`)}
                     </Text>
                   </View>
                 </View>
@@ -326,16 +339,20 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                   ]}
                 >
                   {isOver
-                    ? (isAr
-                        ? `⚠️ تجاوزت الميزانية بـ ${formatCurrency(p.spent - p.budget)} ${sym}!`
-                        : `⚠️ Over budget by ${formatCurrency(p.spent - p.budget)} ${sym}!`)
-                    : (isAr ? `${pct}% من الميزانية` : `${pct}% of budget`)}
+                    ? loc(
+                        `⚠️ تجاوزت الميزانية بـ ${formatCurrency(p.spent - p.budget)} ${sym}!`,
+                        `⚠️ Over budget by ${formatCurrency(p.spent - p.budget)} ${sym}!`,
+                        `⚠️ ബജറ്റിനേക്കാൾ ${formatCurrency(p.spent - p.budget)} ${sym} കവിഞ്ഞു!`
+                      )
+                    : loc(`${pct}% من الميزانية`, `${pct}% of budget`, `ബജറ്റിന്റെ ${pct}%`)}
                 </Text>
                 {p.budget > p.spent && (
                   <Text style={[styles.progressNoteText, { color: colors.textSecondary }]}>
-                    {isAr
-                      ? `المتبقي: ${formatCurrency(p.budget - p.spent)} ${sym}`
-                      : `Remaining: ${formatCurrency(p.budget - p.spent)} ${sym}`}
+                    {loc(
+                      `المتبقي: ${formatCurrency(p.budget - p.spent)} ${sym}`,
+                      `Remaining: ${formatCurrency(p.budget - p.spent)} ${sym}`,
+                      `ബാക്കി: ${formatCurrency(p.budget - p.spent)} ${sym}`
+                    )}
                   </Text>
                 )}
               </View>
@@ -352,9 +369,11 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                   ]}
                 >
                   <Text style={[styles.rebalanceText, { color: colors.expense }]}>
-                    {isAr
-                      ? `💡 خطة التوازن التلقائية: تم رصد تجاوز بـ ${formatCurrency(p.spent - p.budget)} ${sym}. خصم المبلغ من ركيزة (الطوارئ/الرغبات) يحمي ادخارك النهائي.`
-                      : `💡 Rebalance Plan: Overrun of ${formatCurrency(p.spent - p.budget)} ${sym} detected. Offsetting protects your savings.`}
+                    {loc(
+                      `💡 خطة التوازن التلقائية: تم رصد تجاوز بـ ${formatCurrency(p.spent - p.budget)} ${sym}. خصم المبلغ من ركيزة (الطوارئ/الرغبات) يحمي ادخارك النهائي.`,
+                      `💡 Rebalance Plan: Overrun of ${formatCurrency(p.spent - p.budget)} ${sym} detected. Offsetting protects your savings.`,
+                      `💡 ഓട്ടോ-റീബാലൻസ് പ്ലാൻ: അധികം വന്ന ${formatCurrency(p.spent - p.budget)} ${sym} ക്രമീകരിക്കുന്നത് നിങ്ങളുടെ സമ്പാദ്യത്തെ സംരക്ഷിക്കും.`
+                    )}
                   </Text>
                   <Pressable
                     onPress={() => onApplyKakeiboRebalance(p.spent - p.budget, p.id)}
@@ -365,7 +384,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                     ]}
                   >
                     <Text style={styles.rebalanceBtnText}>
-                      {isAr ? 'تطبيق إعادة التوازن المالي ⚖️' : 'Apply Auto-Rebalance ⚖️'}
+                      {loc('تطبيق إعادة التوازن المالي ⚖️', 'Apply Auto-Rebalance ⚖️', 'റീബാലൻസ് നടപ്പിലാക്കുക ⚖️')}
                     </Text>
                   </Pressable>
                 </View>
@@ -389,7 +408,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
       >
         <MaterialIcons name="edit" size={16} color="#FFF" />
         <Text style={styles.adjustBtnText}>
-          {isAr ? 'تعديل ميزانية الأعمدة الأربعة' : 'Edit Kakeibo Pillar Budgets'}
+          {loc('تعديل ميزانية الأعمدة الأربعة', 'Edit Kakeibo Pillar Budgets', '4 സ്തംഭ ബജറ്റ് മാറ്റുക')}
         </Text>
       </Pressable>
 
@@ -398,7 +417,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
         <View style={styles.reflectionHeader}>
           <MaterialIcons name="border-color" size={20} color={colors.accent} />
           <Text style={[styles.reflectionTitle, { color: colors.text }]}>
-            {isAr ? 'التأمل والتخطيط المالي السريع' : 'Interactive Mindful Journaling'}
+            {loc('التأمل والتخطيط المالي السريع', 'Interactive Mindful Journaling', 'ദ്രുത സാമ്പത്തിക ചിന്തകളും പ്ലാനിംഗും')}
           </Text>
         </View>
 
@@ -406,9 +425,11 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           {/* 1. Emoji Mood Selector */}
           <View style={{ gap: 8 }}>
             <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {isAr
-                ? 'كيف تقيّم شعورك المالي وانظباطك هذا الشهر؟'
-                : 'How do you feel about your finances this month?'}
+              {loc(
+                'كيف تقيّم شعورك المالي وانظباطك هذا الشهر؟',
+                'How do you feel about your finances this month?',
+                'ഈ മാസം നിങ്ങളുടെ സാമ്പത്തിക അച്ചടക്കത്തെ എങ്ങനെ വിലയിരുത്തുന്നു?'
+              )}
             </Text>
             <View style={styles.moodsRow}>
               {moods.map((m) => (
@@ -437,7 +458,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                       },
                     ]}
                   >
-                    {isAr ? m.labelAr : m.labelEn}
+                    {isMl ? m.labelMl : isAr ? m.labelAr : m.labelEn}
                   </Text>
                 </Pressable>
               ))}
@@ -447,9 +468,11 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           {/* 2. Quick Action Chips for Next Month */}
           <View style={{ gap: 8 }}>
             <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {isAr
-                ? 'اختر قرار التغيير للشهر القادم بنقرة واحدة:'
-                : 'Pick 1-tap improvements for next month:'}
+              {loc(
+                'اختر قرار التغيير للشهر القادم بنقرة واحدة:',
+                'Pick 1-tap improvements for next month:',
+                'അടുത്ത മാസത്തേക്കുള്ള മാറ്റങ്ങൾ തിരഞ്ഞെടുക്കുക:'
+              )}
             </Text>
             <View style={styles.actionsGrid}>
               {quickActionOptions.map((opt) => {
@@ -472,7 +495,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                         { color: isSelected ? colors.accent : colors.text },
                       ]}
                     >
-                      {isAr ? opt.labelAr : opt.labelEn}
+                      {isMl ? opt.labelMl : isAr ? opt.labelAr : opt.labelEn}
                     </Text>
                   </Pressable>
                 );
@@ -491,16 +514,18 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
             ]}
           >
             <Text style={[styles.impactNoteText, { color: colors.primary }]}>
-              {isAr
-                ? '💡 تأثير التأمل الياباني: يحدد هذا الجزء مدى انضباطك المالي، وتُستخدم قراراتك لتعديل الميزانية تلقائياً بالشهر القادم وتحديث مؤشر دائرة الوعي المالي.'
-                : '💡 Kakeibo Impact: Your monthly reflection adjusts next month’s budget allocation automatically and updates your Mindfulness Ring.'}
+              {loc(
+                '💡 تأثير التأمل الياباني: يحدد هذا الجزء مدى انضباطك المالي، وتُستخدم قراراتك لتعديل الميزانية تلقائياً بالشهر القادم وتحديث مؤشر دائرة الوعي المالي.',
+                '💡 Kakeibo Impact: Your monthly reflection adjusts next month’s budget allocation automatically and updates your Mindfulness Ring.',
+                '💡 കാകെയ്ബോ സ്വാധീനം: നിങ്ങളുടെ പ്രതിമാസ ചിന്തകൾ അടുത്ത മാസത്തെ ബജറ്റ് ക്രമീകരിക്കാൻ സഹായിക്കുന്നു.'
+              )}
             </Text>
           </View>
 
           {/* Text Notes input */}
           <View style={{ gap: 6 }}>
             <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {isAr ? 'ملاحظات إضافية وقراراتك الذاتية (اختياري):' : 'Additional Reflection Notes (Optional):'}
+              {loc('ملاحظات إضافية وقراراتك الذاتية (اختياري):', 'Additional Reflection Notes (Optional):', 'കൂടുതൽ കുറിപ്പുകൾ (ഓപ്ഷണൽ):')}
             </Text>
             <TextInput
               style={[
@@ -512,7 +537,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                 },
               ]}
               multiline
-              placeholder={isAr ? 'اكتب طموحاتك وملاحظاتك المالية...' : 'Write your notes or goals...'}
+              placeholder={loc('اكتب طموحاتك وملاحظاتك المالية...', 'Write your notes or goals...', 'നിങ്ങളുടെ സാമ്പത്തിക കുറിപ്പുകൾ ഇവിടെ എഴുതുക...')}
               placeholderTextColor={colors.textSecondary}
               value={refQ4}
               onChangeText={setRefQ4}
@@ -529,7 +554,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           >
             <Ionicons name="save-outline" size={16} color="#FFF" />
             <Text style={styles.saveReflectionBtnText}>
-              {isAr ? 'حفظ التأمل المالي بنقرة واحدة' : 'Save Reflection Journal'}
+              {loc('حفظ التأمل المالي بنقرة واحدة', 'Save Reflection Journal', 'സാമ്പത്തിക ചിന്തകൾ സേവ് ചെയ്യുക')}
             </Text>
           </Pressable>
         </View>
@@ -541,7 +566,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
           <View style={styles.historyHeader}>
             <Ionicons name="journal-outline" size={18} color={colors.primary} />
             <Text style={[styles.historyTitle, { color: colors.text }]}>
-              {isAr ? '📖 سجل التأملات والقرارات المحفوظة' : '📖 Saved Reflections History Log'}
+              {loc('📖 سجل التأملات والقرارات المحفوظة', '📖 Saved Reflections History Log', '📖 സേവ് ചെയ്ത ചിന്തകളുടെ ചരിത്രം')}
             </Text>
           </View>
 
@@ -558,12 +583,12 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                   <View style={styles.historyItemTopLeft}>
                     <Text style={{ fontSize: 18 }}>{ref.emojiMood || '😊'}</Text>
                     <Text style={[styles.historyMonthName, { color: colors.text }]}>
-                      {isAr ? `تأمل شهر ${ref.monthKey}` : `Reflection ${ref.monthKey}`}
+                      {loc(`تأمل شهر ${ref.monthKey}`, `Reflection ${ref.monthKey}`, `പ്രതിമാസ ചിന്ത ${ref.monthKey}`)}
                     </Text>
                   </View>
                   <View style={[styles.savedTag, { backgroundColor: colors.primary + '18' }]}>
                     <Text style={[styles.savedTagText, { color: colors.primary }]}>
-                      {isAr ? 'تم حفظ القرار 🟢' : 'Decision Saved 🟢'}
+                      {loc('تم حفظ القرار 🟢', 'Decision Saved 🟢', 'തീരുമാനം സേവ് ചെയ്തു 🟢')}
                     </Text>
                   </View>
                 </View>
@@ -578,7 +603,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                           style={[styles.historyChip, { backgroundColor: colors.accent + '15' }]}
                         >
                           <Text style={[styles.historyChipText, { color: colors.accent }]}>
-                            {actObj ? (isAr ? actObj.labelAr : actObj.labelEn) : actId}
+                            {actObj ? (isMl ? actObj.labelMl : isAr ? actObj.labelAr : actObj.labelEn) : actId}
                           </Text>
                         </View>
                       );

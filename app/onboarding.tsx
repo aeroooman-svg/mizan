@@ -30,17 +30,17 @@ type OnboardingStep = 'slides' | 'goal' | 'currency' | 'income';
 
 // Currency options including INR
 const CURRENCY_OPTIONS: { code: CurrencyCode; flag: string; nameAr: string; nameEn: string; nameHi: string }[] = [
-  { code: 'EGP', flag: '🇪🇬', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound', nameHi: 'मिस्री पाउंड' },
-  { code: 'SAR', flag: '🇸🇦', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal', nameHi: 'सऊदी रियाल' },
-  { code: 'AED', flag: '🇦🇪', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham', nameHi: 'यूएई दिरहम' },
-  { code: 'KWD', flag: '🇰🇼', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar', nameHi: 'कुवैती दिनार' },
-  { code: 'INR', flag: '🇮🇳', nameAr: 'روبية هندية', nameEn: 'Indian Rupee', nameHi: 'भारतीय रुपया (₹)' },
-  { code: 'USD', flag: '🇺🇸', nameAr: 'دولار أمريكي', nameEn: 'US Dollar', nameHi: 'अमेरिकी डॉलर' },
-  { code: 'EUR', flag: '🇪🇺', nameAr: 'يورو', nameEn: 'Euro', nameHi: 'यूरो' },
-  { code: 'GBP', flag: '🇬🇧', nameAr: 'جنيه إسترليني', nameEn: 'British Pound', nameHi: 'ब्रिटिश पाउंड' },
-  { code: 'QAR', flag: '🇶🇦', nameAr: 'ريال قطري', nameEn: 'Qatari Riyal', nameHi: 'कतरी रियाल' },
-  { code: 'BHD', flag: '🇧🇭', nameAr: 'دينار بحريني', nameEn: 'Bahraini Dinar', nameHi: 'बहरीन दिनार' },
-  { code: 'OMR', flag: '🇴🇲', nameAr: 'ريال عماني', nameEn: 'Omani Rial', nameHi: 'ओमानी रियाल' },
+  { code: 'EGP', flag: '🇪🇬', nameAr: 'جنيه مصري', nameEn: 'Egyptian Pound', nameHi: 'ഈജിപ്ഷ്യൻ പൗണ്ട്' },
+  { code: 'SAR', flag: '🇸🇦', nameAr: 'ريال سعودي', nameEn: 'Saudi Riyal', nameHi: 'സൗദി റിയാൽ' },
+  { code: 'AED', flag: '🇦🇪', nameAr: 'درهم إماراتي', nameEn: 'UAE Dirham', nameHi: 'യു.എ.ഇ ദിർഹം' },
+  { code: 'KWD', flag: '🇰🇼', nameAr: 'دينار كويتي', nameEn: 'Kuwaiti Dinar', nameHi: 'കുവൈറ്റ് ദിനാർ' },
+  { code: 'INR', flag: '🇮🇳', nameAr: 'روبية هندية', nameEn: 'Indian Rupee', nameHi: 'ഇന്ത്യൻ രൂപ (₹)' },
+  { code: 'USD', flag: '🇺🇸', nameAr: 'دولار أمريكي', nameEn: 'US Dollar', nameHi: 'യു.എസ് ഡോളർ' },
+  { code: 'EUR', flag: '🇪🇺', nameAr: 'يورو', nameEn: 'Euro', nameHi: 'യൂറോ' },
+  { code: 'GBP', flag: '🇬🇧', nameAr: 'جنيه إسترليني', nameEn: 'British Pound', nameHi: 'ബ്രിട്ടീഷ് പൗണ്ട്' },
+  { code: 'QAR', flag: '🇶🇦', nameAr: 'ريال قطري', nameEn: 'Qatari Riyal', nameHi: 'ഖത്തർ റിയാൽ' },
+  { code: 'BHD', flag: '🇧🇭', nameAr: 'دينار بحريني', nameEn: 'Bahraini Dinar', nameHi: 'ബഹ്റൈൻ ദിനാർ' },
+  { code: 'OMR', flag: '🇴🇲', nameAr: 'ريال عماني', nameEn: 'Omani Rial', nameHi: 'ഒമാനി റിയാൽ' },
 ];
 
 export default function OnboardingScreen() {
@@ -49,6 +49,7 @@ export default function OnboardingScreen() {
   const { language, setLanguage } = useLanguage();
   const { wallets, addWallet } = useTransactions();
   const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -57,8 +58,8 @@ export default function OnboardingScreen() {
   const [monthlyIncomeInput, setMonthlyIncomeInput] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const getText = (ar: string, en: string, hi?: string) => {
-    if (language === 'hi' && hi) return hi;
+  const getText = (ar: string, en: string, ml?: string) => {
+    if (isMl && ml) return ml;
     if (language === 'ar') return ar;
     return en;
   };
@@ -72,10 +73,10 @@ export default function OnboardingScreen() {
       iconColor: '#10B981',
       titleAr: 'تتبع ذكي ومحافظ متعددة العملات',
       titleEn: 'Smart Multi-Currency Tracking',
-      titleHi: 'स्मार्ट मल्टी-करेंसी ट्रैकिंग',
+      titleHi: 'സ്മാർട്ട് മൾട്ടി-കറൻസി ട്രാക്കിംഗ്',
       descAr: 'أدر إجمالي أموالك ومحافظك بسهولة بمختلف العملات (ج.م، ₹، $، ر.س) وسجّل مصاريفك ونفقاتك اليومية بنقرة واحدة.',
       descEn: 'Manage all your wallets across multiple currencies (EGP, INR ₹, USD, SAR) and log expenses effortlessly in real-time.',
-      descHi: 'विभिन्न मुद्राओं (INR ₹, USD, आदि) में अपने सभी वॉलेट आसानी से प्रबंधित करें और अपने दैनिक खर्चों को तुरंत ट्रैक करें।',
+      descHi: 'വിവിധ കറൻസികളിൽ (INR ₹, USD മുതലായവ) നിങ്ങളുടെ വാലറ്റുകൾ എളുപ്പത്തിൽ കൈകാര്യം ചെയ്യുകയും പ്രതിദിന ചെലവുകൾ തത്സമയം രേഖപ്പെടുത്തുകയും ചെയ്യുക.',
       previewType: 'wallet' as const,
     },
     {
@@ -84,10 +85,10 @@ export default function OnboardingScreen() {
       iconColor: '#6366F1',
       titleAr: 'مستشار مالي ذكي بروبوت AI 🤖',
       titleEn: 'AI Smart Financial Robot 🤖',
-      titleHi: 'एआई स्मार्ट रोबोट वित्तीय सहायक 🤖',
+      titleHi: 'AI സ്മാർട്ട് റോബോട്ട് സാമ്പത്തിക സഹായി 🤖',
       descAr: 'روبوت ذكي يحلل عاداتك المالية لحظياً، يقرأ إشعارات البنك وفواتيرك تلقائياً، ويمنحك توصيات توفير فورية.',
       descEn: 'An intelligent AI robot that analyzes your spending habits in real-time, scans receipts, and provides personalized savings tips.',
-      descHi: 'स्मार्ट एआई रोबोट आपके दैनिक खर्चों का वास्तविक समय में विश्लेषण करता है और स्वचालित रसीद स्कैनिंग के साथ बचत के सुझाव देता है।',
+      descHi: 'നിങ്ങളുടെ ദൈനംദിന ചെലവുകൾ തത്സമയം വിശകലനം ചെയ്യുകയും ബില്ലുകൾ സ്വയമേവ സ്കാൻ ചെയ്ത് സമ്പാദ്യ ടിപ്പുകൾ നൽകുകയും ചെയ്യുന്ന സ്മാർട്ട് AI റോബോട്ട്.',
       previewType: 'ai_robot' as const,
     },
     {
@@ -96,10 +97,10 @@ export default function OnboardingScreen() {
       iconColor: '#F59E0B',
       titleAr: 'خريطة الإنفاق الحرارية (Heatmap) 🔥',
       titleEn: 'Visual Spending Heatmap 🔥',
-      titleHi: 'दैनिक व्यय हीटमैप (Heatmap) 🔥',
+      titleHi: 'പ്രതിദിന ചെലവ് ഹീറ്റ്‌മാപ്പ് (Heatmap) 🔥',
       descAr: 'اكتشف أيام ذروة الصرف وأيام الادخار الهادئة عبر خريطة تقويم حرارية تفاعلية تكشف سلوكك المالي بدقة.',
       descEn: 'Identify peak spending days and quiet saving days at a glance with an interactive visual calendar heatmap matrix.',
-      descHi: 'कैलेंडर हीटमैप मैट्रिक्स के साथ अपने उच्चतम खर्च वाले दिनों और बचत के शांत दिनों को आसानी से ट्रैक करें।',
+      descHi: 'കൂടുതൽ ചെലവഴിച്ച ദിവസങ്ങളും ശാന്തമായ സമ്പാദ്യ ദിനങ്ങളും കൃത്യമായി അറിയാൻ ഇന്ററാക്ടീവ് കലണ്ടർ ഹീറ്റ്‌മാപ്പ് മാട്രിക്സ്.',
       previewType: 'heatmap' as const,
     },
     {
@@ -108,10 +109,10 @@ export default function OnboardingScreen() {
       iconColor: '#06B6D4',
       titleAr: 'المنحنى البياني والتنبؤ المالي 📈',
       titleEn: 'Smooth Curve Chart & Forecast 📈',
-      titleHi: 'कर्व चार्ट और नकदी प्रवाह पूर्वानुमान 📈',
+      titleHi: 'ക്യാഷ്ഫ്ലോ പ്രവചന കർവ് ചാർട്ട് 📈',
       descAr: 'راقب كيرف ثروتك وتدفقاتك النقدية القادمة بمنحنيات بيانية ديناميكية تتنبأ بمسار رصيدك ومدخراتك القادمة.',
       descEn: 'Watch your wealth trajectory and upcoming cashflows with dynamic spline curves forecasting your financial growth.',
-      descHi: 'सुंदर कर्व चार्ट और वित्तीय विकास के पूर्वानुमान के साथ अपने नकदी प्रवाह और बचत की प्रवृत्ति को देखें।',
+      descHi: 'നിങ്ങളുടെ ഭാവി സാമ്പത്തിക വളർച്ചയും പണലഭ്യതയും കൃത്യമായി കണക്കുകൂട്ടുന്ന ഡൈനാമിക് സ്പ്ലൈൻ കർവുകൾ.',
       previewType: 'curve_chart' as const,
     },
     {
@@ -120,10 +121,10 @@ export default function OnboardingScreen() {
       iconColor: '#10B981',
       titleAr: 'تخطيط 50/30/20 وأهداف التوفير والزكاة 🎯',
       titleEn: '50/30/20 Budget, Goals & Zakat 🎯',
-      titleHi: '50/30/20 बजट, बचत लक्ष्य और ऋण 🎯',
+      titleHi: '50/30/20 ബജറ്റ്, സമ്പാദ്യ ലക്ഷ്യങ്ങൾ & സക്കാത്ത് 🎯',
       descAr: 'قسّم دخلك بقاعدة 50/30/20 الذهبية، ابنِ صندوق الطوارئ، واحسب زكاة مالك بدقة وتحدَّ نفسك يومياً.',
       descEn: 'Structure your budget using the 50/30/20 rule, build your emergency fund, and calculate Zakat effortlessly.',
-      descHi: '50/30/20 नियम के साथ बजट बनाएं, अपने लक्ष्यों को प्राप्त करें और देनदारियों को प्रबंधित करें।',
+      descHi: '50/30/20 നിയമം ഉപയോഗിച്ച് ബജറ്റ് തയ്യാറാക്കൂ, അത്യാഹിത ഫണ്ട് നിർമ്മിച്ച് ബാധ്യതകൾ ഒഴിവാക്കൂ.',
       previewType: 'budget_goals' as const,
     },
   ];
@@ -135,7 +136,7 @@ export default function OnboardingScreen() {
       color: '#10B981',
       titleAr: '🎯 توفير المال وبناء صندوق طوارئ',
       titleEn: '🎯 Build Savings & Emergency Fund',
-      titleHi: '🎯 बचत बनाएं और आपातकालीन फंड तैयार करें',
+      titleHi: '🎯 സമ്പാദ്യം കൂട്ടുകയും അത്യാഹിത ഫണ്ട് നിർമ്മിക്കുകയും ചെയ്യുക',
     },
     {
       id: 'debts',
@@ -143,7 +144,7 @@ export default function OnboardingScreen() {
       color: '#EF4444',
       titleAr: '💳 سداد الديون والالتزامات بذكاء',
       titleEn: '💳 Pay Off Debts & Obligations',
-      titleHi: '💳 ऋण और देनदारियों का स्मार्ट भुगतान करें',
+      titleHi: '💳 ബാധ്യതകളും വ്യക്തിഗത കടങ്ങളും വേഗത്തിൽ അടച്ചുതീർക്കുക',
     },
     {
       id: 'tracking',
@@ -151,7 +152,7 @@ export default function OnboardingScreen() {
       color: '#6366F1',
       titleAr: '📊 تنظيم المصاريف ومعرفة أين تذهب الأموال',
       titleEn: '📊 Organize Expenses & Daily Cashflow',
-      titleHi: '📊 दैनिक खर्चों को व्यवस्थित और ट्रैक करें',
+      titleHi: '📊 പ്രതിദിന ചെലവുകൾ ചിട്ടപ്പെടുത്തുകയും തത്സമയം ട്രാക്ക് ചെയ്യുകയും ചെയ്യുക',
     },
   ];
 
@@ -211,7 +212,7 @@ export default function OnboardingScreen() {
             await saveGoal({
               id: String(Date.now()),
               walletId: targetWalletId,
-              name: getText('🎯 صندوق الطوارئ والادخار', '🎯 Emergency Savings Fund', '🎯 आपातकालीन बचत फंड'),
+              name: getText('🎯 صندوق الطوارئ والادخار', '🎯 Emergency Savings Fund', '🎯 അത്യാഹിത സമ്പാദ്യ ഫണ്ട്'),
               targetAmount: incomeValue > 0 ? Math.round(incomeValue * 3) : 1000,
               savedAmount: 0,
               deadline: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
@@ -227,7 +228,7 @@ export default function OnboardingScreen() {
             await saveDebt({
               id: String(Date.now()),
               walletId: targetWalletId,
-              personName: getText('خطة سداد الديون والالتزامات', 'Debt Payoff Target Plan', 'ऋण भुगतान योजना'),
+              personName: getText('خطة سداد الديون والالتزامات', 'Debt Payoff Target Plan', 'കടങ്ങൾ അടച്ചുതീർക്കാനുള്ള പ്ലാൻ'),
               type: 'debt_to_others',
               amount: 500,
               paidAmount: 0,
@@ -236,7 +237,7 @@ export default function OnboardingScreen() {
               description: getText(
                 'تم إنشاؤها تلقائياً بناءً على هدفك المالي المقترح',
                 'Auto-created based on your selected financial goal',
-                'आपके चुने गए वित्तीय लक्ष्य के आधार पर स्वतः निर्मित'
+                'നിങ്ങൾ തിരഞ്ഞെടുത്ത സാമ്പത്തിക ലക്ഷ്യത്തിന്റെ അടിസ്ഥാനത്തിൽ സ്വയമേവ തയ്യാറാക്കിയത്'
               ),
               createdAt: nowStr,
             });
@@ -254,7 +255,7 @@ export default function OnboardingScreen() {
             await saveFinancialPlan({
               id: String(Date.now()),
               walletId: targetWalletId,
-              goalName: getText('📊 تنظيم وتتبع المصاريف (Kakeibo)', '📊 Kakeibo Budget Organizer Plan', '📊 काकीबो बजट योजना'),
+              goalName: getText('📊 تنظيم وتتبع المصاريف (Kakeibo)', '📊 Kakeibo Budget Organizer Plan', '📊 കാകെയ്ബോ ബജറ്റ് പ്ലാൻ'),
               durationMonths: 12,
               monthlyIncome: mi,
               monthlyExpense: me,
@@ -315,8 +316,8 @@ export default function OnboardingScreen() {
         <View style={styles.headerRightActions}>
           {/* 3-Way Language Switcher */}
           <View style={[styles.langSwitcherContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {(['ar', 'en', 'hi'] as const).map(lang => {
-              const isSelected = language === lang;
+            {(['ar', 'en', 'ml'] as const).map(lang => {
+              const isSelected = language === lang || (lang === 'ml' && language === 'hi');
               return (
                 <Pressable
                   key={lang}
@@ -335,7 +336,7 @@ export default function OnboardingScreen() {
                       { color: isSelected ? '#FFF' : colors.textSecondary },
                     ]}
                   >
-                    {lang === 'ar' ? 'عربي' : lang === 'en' ? 'EN' : 'हिंदी'}
+                    {lang === 'ar' ? 'عربي' : lang === 'en' ? 'EN' : 'മലയാളം'}
                   </Text>
                 </Pressable>
               );
@@ -349,7 +350,7 @@ export default function OnboardingScreen() {
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
             >
               <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-                {getText('تخطي', 'Skip', 'छोड़ें')}
+                {getText('تخطي', 'Skip', 'ഒഴിവാക്കുക')}
               </Text>
             </Pressable>
           )}
@@ -401,7 +402,7 @@ export default function OnboardingScreen() {
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('إجمالي الرصيد', 'Total Balance', 'कुल शेष')}
+                            {getText('إجمالي الرصيد', 'Total Balance', 'ആകെ ബാലൻസ്')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: colors.text }]}>
                             {demoCurrency === 'INR'
@@ -427,10 +428,10 @@ export default function OnboardingScreen() {
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
-                              {getText('سوبرماركت ومؤن', 'Groceries & Mart', 'किराना और राशन')}
+                              {getText('سوبرماركت ومؤن', 'Groceries & Mart', 'പലചരക്ക് & സാധനങ്ങൾ')}
                             </Text>
                             <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
-                              {getText('اليوم • نقداً', 'Today • Cash', 'आज • नकद')}
+                              {getText('اليوم • نقداً', 'Today • Cash', 'ഇന്ന് • പണമായി')}
                             </Text>
                           </View>
                           <Text style={[styles.mockupTxAmount, { color: '#EF4444' }]}>
@@ -450,10 +451,10 @@ export default function OnboardingScreen() {
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
-                              {getText('الراتب الشهري', 'Monthly Salary', 'मासिक वेतन')}
+                              {getText('الراتب الشهري', 'Monthly Salary', 'പ്രതിമാസ ശമ്പളം')}
                             </Text>
                             <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
-                              {getText('أمس • بنك', 'Yesterday • Bank', 'कल • बैंक')}
+                              {getText('أمس • بنك', 'Yesterday • Bank', 'ഇന്നലെ • ബാങ്ക്')}
                             </Text>
                           </View>
                           <Text style={[styles.mockupTxAmount, { color: '#10B981' }]}>
@@ -529,12 +530,12 @@ export default function OnboardingScreen() {
                           </View>
                           <View style={{ gap: 2 }}>
                             <Text style={[styles.robotTitle, { color: colors.text }]}>
-                              {getText('مساعد ميزان AI 🤖', 'Mizan AI Robot 🤖', 'मिज़ान एआई बॉट 🤖')}
+                              {getText('مساعد ميزان AI 🤖', 'Mizan AI Robot 🤖', 'മീസാൻ AI റോബോട്ട് 🤖')}
                             </Text>
                             <View style={styles.robotStatusRow}>
                               <View style={styles.robotStatusPulse} />
                               <Text style={[styles.robotStatusText, { color: '#10B981' }]}>
-                                {getText('نشط لحظياً • تحليل ذكي', 'Online • Smart Analysis', 'ऑनलाइन • रीयल-टाइम')}
+                                {getText('نشط لحظياً • تحليل ذكي', 'Online • Smart Analysis', 'തത്സമയം ആക്ടീവ് • സ്മാർട്ട് വിശകലനം')}
                               </Text>
                             </View>
                           </View>
@@ -551,7 +552,7 @@ export default function OnboardingScreen() {
                           {getText(
                             '💡 مرحباً! قمت بفحص نمط مصاريفك: وفرت 18% هذا الأسبوع بتجنب النفقات العشوائية، وأقترح تحويل 500 ج.م لصندوق الطوارئ! 🚀',
                             '💡 Spending Analyzed: You saved 18% this week by cutting impulse purchases. Ready to auto-allocate $50 into emergency savings? 🚀',
-                            '💡 खर्च विश्लेषण: आपने इस सप्ताह 18% बचाया! क्या आप आपातकालीन फंड में बचत जमा करना चाहते हैं? 🚀'
+                            '💡 ചെലവ് വിശകലനം: ഈ ആഴ്ച നിങ്ങൾ 18% ലാഭിച്ചു! മിച്ചം വന്ന തുക സമ്പാദ്യത്തിലേക്ക് മാറ്റണോ? 🚀'
                           )}
                         </Text>
                       </View>
@@ -561,13 +562,13 @@ export default function OnboardingScreen() {
                         <View style={[styles.robotActionChip, { backgroundColor: '#6366F115', borderColor: '#6366F135' }]}>
                           <Ionicons name="flash-outline" size={14} color="#6366F1" />
                           <Text style={[styles.robotActionChipText, { color: colors.text }]}>
-                            {getText('قراءة رسائل البنك (SMS)', 'Auto Bank SMS', 'बैंक एसएमएस पढ़ना')}
+                            {getText('قراءة رسائل البنك (SMS)', 'Auto Bank SMS', 'ബാങ്ക് SMS റീഡിംഗ്')}
                           </Text>
                         </View>
                         <View style={[styles.robotActionChip, { backgroundColor: '#10B98115', borderColor: '#10B98135' }]}>
                           <Ionicons name="scan-outline" size={14} color="#10B981" />
                           <Text style={[styles.robotActionChipText, { color: colors.text }]}>
-                            {getText('مسح الفواتير بالذكاء (OCR)', 'OCR Smart Scan', 'स्मार्ट रसीद स्कैन')}
+                            {getText('مسح الفواتير بالذكاء (OCR)', 'OCR Smart Scan', 'സ്മാർട്ട് ബിൽ സ്കാനിംഗ്')}
                           </Text>
                         </View>
                       </View>
@@ -581,16 +582,16 @@ export default function OnboardingScreen() {
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('خريطة الإنفاق والنشاط (Heatmap)', 'Daily Spending Heatmap', 'दैनिक व्यय हीटमैप')}
+                            {getText('خريطة الإنفاق والنشاط (Heatmap)', 'Daily Spending Heatmap', 'പ്രതിദിന ചെലവ് ഹീറ്റ്‌മാപ്പ്')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: colors.text }]}>
-                            {getText('28 يوماً مرصودة', '28 Tracked Days', '28 ट्रैक किए गए दिन')}
+                            {getText('28 يوماً مرصودة', '28 Tracked Days', '28 ദിവസങ്ങൾ ട്രാക്ക് ചെയ്തു')}
                           </Text>
                         </View>
                         <View style={[styles.mockupBadge, { backgroundColor: '#EF444420' }]}>
                           <Ionicons name="flame" size={14} color="#EF4444" />
                           <Text style={[styles.mockupBadgeText, { color: '#EF4444' }]}>
-                            {getText('4 ذروة إنفاق', '4 Peak Days', '4 पीक दिन')}
+                            {getText('4 ذروة إنفاق', '4 Peak Days', '4 പീക്ക് ദിവസങ്ങൾ')}
                           </Text>
                         </View>
                       </View>
@@ -601,8 +602,8 @@ export default function OnboardingScreen() {
                         <View style={styles.heatmapDaysRow}>
                           {(isAr
                             ? ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج']
-                            : language === 'hi'
-                            ? ['र', 'सो', 'मं', 'बु', 'गु', 'शु', 'श']
+                            : isMl
+                            ? ['ഞാ', 'തി', 'ചൊ', 'ബു', 'വ്യാ', 'വെ', 'ശ']
                             : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
                           ).map((d, i) => (
                             <Text key={i} style={[styles.heatmapDayHeader, { color: colors.textSecondary }]}>
@@ -651,7 +652,7 @@ export default function OnboardingScreen() {
                         {/* Heatmap Legend */}
                         <View style={styles.heatmapLegendRow}>
                           <Text style={[styles.heatmapLegendText, { color: colors.textSecondary }]}>
-                            {getText('أقل صرف', 'Low Spend', 'कम खर्च')}
+                            {getText('أقل صرف', 'Low Spend', 'കുറഞ്ഞ ചെലവ്')}
                           </Text>
                           <View style={styles.heatmapLegendDots}>
                             {[colors.card, '#10B98140', '#10B981', '#F59E0B', '#EF4444'].map((col, idx) => (
@@ -659,7 +660,7 @@ export default function OnboardingScreen() {
                             ))}
                           </View>
                           <Text style={[styles.heatmapLegendText, { color: colors.textSecondary }]}>
-                            {getText('أعلى صرف', 'Peak Spend', 'उच्च खर्च')}
+                            {getText('أعلى صرف', 'Peak Spend', 'കൂടിയ ചെലവ്')}
                           </Text>
                         </View>
                       </View>
@@ -671,7 +672,7 @@ export default function OnboardingScreen() {
                           {getText(
                             '🔥 ذروة الإنفاق تتكرر في عطلة نهاية الأسبوع • 18 يوماً كان إنفاقك منخفضاً ممتازاً!',
                             '🔥 Weekend spending peaks detected • 18 low-spend days kept your budget safe!',
-                            '🔥 सप्ताहांत में खर्च बढ़ता है • 18 शांत बचत दिनों ने आपके बजट को सुरक्षित रखा!'
+                            '🔥 വാരാന്ത്യങ്ങളിൽ ചെലവ് കൂടുന്നു • 18 ശാന്തമായ ദിവസങ്ങൾ നിങ്ങളുടെ ബജറ്റിനെ സംരക്ഷിച്ചു!'
                           )}
                         </Text>
                       </View>
@@ -685,10 +686,10 @@ export default function OnboardingScreen() {
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('منحنى نمو الثروة والتدفق المالي', 'Cashflow & Net Worth Spline', 'नकदी प्रवाह और बचत कर्व')}
+                            {getText('منحنى نمو الثروة والتدفق المالي', 'Cashflow & Net Worth Spline', 'ക്യാഷ്ഫ്ലോ & സമ്പാദ്യ വളർച്ച')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: '#10B981' }]}>
-                            +34.8% {getText('تراكمي', 'Growth', 'वृद्धि')}
+                            +34.8% {getText('تراكمي', 'Growth', 'വളർച്ച')}
                           </Text>
                         </View>
                         <View style={[styles.mockupBadge, { backgroundColor: '#10B98120' }]}>
@@ -750,8 +751,8 @@ export default function OnboardingScreen() {
                         <View style={styles.curveXAxis}>
                           {(isAr
                             ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو']
-                            : language === 'hi'
-                            ? ['जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून']
+                            : isMl
+                            ? ['ജനു', 'ഫെബ്രു', 'മാർച്ച്', 'ഏപ്രി', 'മേയ്', 'ജൂൺ']
                             : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
                           ).map((m, i) => (
                             <Text key={i} style={[styles.curveXAxisLabel, { color: colors.textSecondary }]}>
@@ -768,7 +769,7 @@ export default function OnboardingScreen() {
                           {getText(
                             'توقع ذكي: استمرارك على هذه الوتيرة يرفع فائضك لـ 3,200 ج.م نهاية الشهر!',
                             'Smart Trajectory: Keeping this pace projects $3,200 in surplus by month-end!',
-                            'स्मार्ट पूर्वानुमान: इसी गति से चलने पर महीने के अंत तक अधिशेष बचत बढ़ेगी!'
+                            'സ്മാർട്ട് പ്രവചനം: ഈ രീതിയിൽ തുടർന്നാൽ മാസാവസാനം ₹ 3,200 മിച്ചം ലഭിക്കും!'
                           )}
                         </Text>
                       </View>
@@ -781,10 +782,10 @@ export default function OnboardingScreen() {
                       <View style={styles.mockupBalanceRow}>
                         <View>
                           <Text style={[styles.mockupLabel, { color: colors.textSecondary }]}>
-                            {getText('توزيع 50/30/20 وأهداف التوفير', '50/30/20 Plan & Targets', '50/30/20 योजना और लक्ष्य')}
+                            {getText('توزيع 50/30/20 وأهداف التوفير', '50/30/20 Plan & Targets', '50/30/20 പ്ലാനും ലക്ഷ്യങ്ങളും')}
                           </Text>
                           <Text style={[styles.mockupAmount, { color: '#10B981' }]}>
-                            {language === 'hi' ? '₹ 75,000 / 100,000' : isAr ? '75,000 / 100,000 ج.م' : '$7,500 / 10,000'}
+                            {isMl ? '₹ 75,000 / 100,000' : isAr ? '75,000 / 100,000 ج.م' : '$7,500 / 10,000'}
                           </Text>
                         </View>
                         <View style={[styles.mockupBadge, { backgroundColor: '#F59E0B20' }]}>
@@ -803,13 +804,13 @@ export default function OnboardingScreen() {
                       {/* 50/30/20 Labels */}
                       <View style={styles.segmentedLabelsRow}>
                         <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#10B981' }}>
-                          50% {getText('ضروريات', 'Needs', 'आवश्यकता')}
+                          50% {getText('ضروريات', 'Needs', 'അവശ്യങ്ങൾ')}
                         </Text>
                         <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#F59E0B' }}>
-                          30% {getText('رغبات', 'Wants', 'इच्छा')}
+                          30% {getText('رغبات', 'Wants', 'ആഗ്രഹങ്ങൾ')}
                         </Text>
                         <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#6366F1' }}>
-                          20% {getText('ادخار', 'Savings', 'बचत')}
+                          20% {getText('ادخار', 'Savings', 'സമ്പാദ്യം')}
                         </Text>
                       </View>
 
@@ -820,10 +821,10 @@ export default function OnboardingScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.mockupTxTitle, { color: colors.text }]}>
-                            {getText('تحدي 30 يوم لبناء عادات مالية مستدامة', '30-Day Financial Habit Challenge', '30-दिवसीय वित्तीय आदत चुनौती')}
+                            {getText('تحدي 30 يوم لبناء عادات مالية مستدامة', '30-Day Financial Habit Challenge', 'സാമ്പത്തിക ശീലങ്ങൾ വളർത്താൻ 30 ദിവസത്തെ ചലഞ്ച്')}
                           </Text>
                           <Text style={[styles.mockupTxSub, { color: colors.textSecondary }]}>
-                            {getText('حاسبة الزكاة وجداول سداد الديون', 'Smart Zakat & debt repayment tables', 'स्मार्ट ज़कात और ऋण भुगतान')}
+                            {getText('حاسبة الزكاة وجداول سداد الديون', 'Smart Zakat & debt repayment tables', 'സ്മാർട്ട് സക്കാത്ത് & കടങ്ങൾ അടയ്ക്കാനുള്ള ടേബിളുകൾ')}
                           </Text>
                         </View>
                       </View>
@@ -872,8 +873,8 @@ export default function OnboardingScreen() {
             >
               <Text style={styles.primaryBtnText}>
                 {activeIndex === slides.length - 1
-                  ? getText('متابعة', 'Continue', 'जारी रखें')
-                  : getText('التالي', 'Next', 'आगे बढ़ें')}
+                  ? getText('متابعة', 'Continue', 'തുടരുക')
+                  : getText('التالي', 'Next', 'അടുത്തത്')}
               </Text>
               <Ionicons
                 name={isAr ? 'arrow-back' : 'arrow-forward'}
@@ -895,13 +896,13 @@ export default function OnboardingScreen() {
         >
           <View style={styles.goalTopSection}>
             <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-              {getText('ما هو هدفك المالي الأساسي؟', 'What is your primary financial goal?', 'आपका मुख्य वित्तीय लक्ष्य क्या है?')}
+              {getText('ما هو هدفك المالي الأساسي؟', 'What is your primary financial goal?', 'നിങ്ങളുടെ പ്രധാന സാമ്പത്തിക ലക്ഷ്യം എന്താണ്?')}
             </Text>
             <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
               {getText(
                 'ساعدنا على إعداد المحافظ والمستشار المالي بما يناسب تطلعاتك:',
                 'Help us personalize your experience and AI advisor recommendations:',
-                'अपने अनुभव और एआई वित्तीय सलाहकार को निजीकृत करने में हमारी सहायता करें:'
+                'നിങ്ങളുടെ ആവശ്യങ്ങൾക്ക് അനുയോജ്യമായ വാലറ്റുകളും AI ഉപദേശങ്ങളും ക്രമീകരിക്കാൻ സഹായിക്കൂ:'
               )}
             </Text>
 
@@ -944,7 +945,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.primaryBtnText}>
-              {getText('التالي', 'Next', 'आगे बढ़ें')}
+              {getText('التالي', 'Next', 'അടുത്തത്')}
             </Text>
             <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
           </Pressable>
@@ -961,13 +962,13 @@ export default function OnboardingScreen() {
         >
           <View style={styles.goalTopSection}>
             <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-              {getText('💰 اختر عملتك الأساسية', '💰 Choose Your Main Currency', '💰 अपनी मुख्य मुद्रा चुनें')}
+              {getText('💰 اختر عملتك الأساسية', '💰 Choose Your Main Currency', '💰 പ്രധാന കറൻസി തിരഞ്ഞെടുക്കുക')}
             </Text>
             <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
               {getText(
                 'سيتم إنشاء محفظتك الأولى بهذه العملة. يمكنك إضافة محافظ بعملات أخرى لاحقاً.',
                 'Your first wallet will use this currency. You can add more wallets with different currencies later.',
-                'आपका पहला वॉलेट इस मुद्रा का उपयोग करेगा। आप बाद में अन्य मुद्राओं में और वॉलेट जोड़ सकते हैं।'
+                'നിങ്ങളുടെ ആദ്യത്തെ വാലറ്റ് ഈ കറൻസിയിൽ നിർമ്മിക്കപ്പെടും. പിന്നീട് കൂടുതൽ കറൻസികൾ ചേർക്കാവുന്നതാണ്.'
               )}
             </Text>
 
@@ -1012,7 +1013,7 @@ export default function OnboardingScreen() {
             ]}
           >
             <Text style={styles.primaryBtnText}>
-              {getText('التالي', 'Next', 'आगे बढ़ें')}
+              {getText('التالي', 'Next', 'അടുത്തത്')}
             </Text>
             <Ionicons name={isAr ? 'arrow-back' : 'arrow-forward'} size={20} color="#FFF" />
           </Pressable>
@@ -1034,13 +1035,13 @@ export default function OnboardingScreen() {
           >
             <View style={styles.goalTopSection}>
               <Text style={[styles.goalHeaderTitle, { color: colors.text }]}>
-                {getText('📊 كم دخلك الشهري تقريباً؟', '📊 What\'s your approximate monthly income?', '📊 आपकी अनुमानित मासिक आय क्या है?')}
+                {getText('📊 كم دخلك الشهري تقريباً؟', '📊 What\'s your approximate monthly income?', '📊 ഏകദേശ പ്രതിമാസ വരുമാനം എത്രയാണ്?')}
               </Text>
               <Text style={[styles.goalHeaderDesc, { color: colors.textSecondary }]}>
                 {getText(
                   'هذا يساعدنا في إعداد ميزانية مخصصة ونصائح مالية ذكية. (اختياري — يمكنك تخطي هذه الخطوة)',
                   'This helps us set up personalized budgets and smart financial advice. (Optional — you can skip this step)',
-                  'यह हमें व्यक्तिगत बजट और स्मार्ट वित्तीय सलाह तैयार करने में मदद करता है। (वैकल्पिक — आप छोड़ सकते हैं)'
+                  'ഇത് നിങ്ങൾക്കായി കൃത്യമായ ബജറ്റും സ്മാർട്ട് സാമ്പത്തിക ഉപദേശങ്ങളും തയ്യാറാക്കാൻ സഹായിക്കും. (ഓപ്ഷണൽ — ഒഴിവാക്കാവുന്നതാണ്)'
                 )}
               </Text>
 
@@ -1052,7 +1053,7 @@ export default function OnboardingScreen() {
                   <TextInput
                     value={monthlyIncomeInput}
                     onChangeText={(text) => setMonthlyIncomeInput(normalizeAmountInput(text))}
-                    placeholder={selectedCurrency === 'INR' ? 'उदा. 35000' : isAr ? 'مثلاً: 5000' : 'e.g. 5000'}
+                    placeholder={selectedCurrency === 'INR' ? (isMl ? 'ഉദാ. 35000' : 'e.g. 35000') : isAr ? 'مثلاً: 5000' : 'e.g. 5000'}
                     placeholderTextColor={colors.textSecondary + '80'}
                     keyboardType="numeric"
                     style={[styles.incomeInput, { color: colors.text }]}
@@ -1094,7 +1095,7 @@ export default function OnboardingScreen() {
                 ]}
               >
                 <Text style={styles.primaryBtnText}>
-                  {getText('ابدأ استخدام ميزان الآن 🚀', 'Get Started with Mizan 🚀', 'मिज़ान का उपयोग शुरू करें 🚀')}
+                  {getText('ابدأ استخدام ميزان الآن 🚀', 'Get Started with Mizan 🚀', 'മീസാൻ ഉപയോഗിച്ച് തുടങ്ങാം 🚀')}
                 </Text>
               </Pressable>
 
@@ -1110,7 +1111,7 @@ export default function OnboardingScreen() {
                 ]}
               >
                 <Text style={[styles.skipText, { color: colors.textSecondary, fontSize: 14 }]}>
-                  {getText('تخطي هذه الخطوة', 'Skip this step', 'यह चरण छोड़ें')}
+                  {getText('تخطي هذه الخطوة', 'Skip this step', 'ഈ ഘട്ടം ഒഴിവാക്കുക')}
                 </Text>
               </Pressable>
             </View>

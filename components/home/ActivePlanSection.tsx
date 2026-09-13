@@ -30,8 +30,8 @@ export default function ActivePlanSection({
   language,
   colors,
 }: ActivePlanSectionProps) {
-  const loc = (ar: string, en: string, hi?: string) => {
-    if (language === 'ml' || language === 'hi') return hi || en;
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (language === 'ml' || language === 'hi') return ml || en;
     if (language === 'ar') return ar;
     return en;
   };
@@ -106,10 +106,10 @@ export default function ActivePlanSection({
     <View>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>
-          {loc('📊 خطتك المالية النشطة', 'ACTIVE FINANCIAL PLAN', '📊 सक्रिय वित्तीय योजना')}
+          {loc('📊 خطتك المالية النشطة', 'ACTIVE FINANCIAL PLAN', '📊 സജീവ സാമ്പത്തിക പ്ലാൻ')}
         </Text>
         <Pressable onPress={() => router.push('/(tabs)/financial-plan')}>
-          <Text style={styles.seeAll}>{loc('عرض التفاصيل', 'View Plan', 'योजना देखें')}</Text>
+          <Text style={styles.seeAll}>{loc('عرض التفاصيل', 'View Plan', 'പ്ലാൻ കാണുക')}</Text>
         </Pressable>
       </View>
 
@@ -135,7 +135,7 @@ export default function ActivePlanSection({
                   textAlign: 'left',
                 }}
               >
-                {loc('الصافي الادخاري: ', 'Net Saved: ', 'शुद्ध बचत: ')}
+                {loc('الصافي الادخاري: ', 'Net Saved: ', 'സമ്പാദ്യ തുക: ')}
                 <Text style={{ color: Colors.primary }}>
                   {formatCurrency(actualSavings, language)} {currencySymbol}
                 </Text>
@@ -158,10 +158,10 @@ export default function ActivePlanSection({
                   }}
                 >
                   {isCompleted
-                    ? loc('🏆 مكتملة', '🏆 COMPLETED', '🏆 पूर्ण')
+                    ? loc('🏆 مكتملة', '🏆 COMPLETED', '🏆 പൂർത്തിയായി')
                     : isRealistic
-                    ? loc('✅ خطة منطقية', '✅ REALISTIC PLAN', '✅ यथार्थवादी योजना')
-                    : loc('⚠️ غير منطقية ومتاخرة', '⚠️ UNREALISTIC / BEHIND', '⚠️ अवास्तविक / पीछे')}
+                    ? loc('✅ خطة منطقية', '✅ REALISTIC PLAN', '✅ ലക്ഷ്യത്തിലെത്തുന്നത്')
+                    : loc('⚠️ غير منطقية ومتاخرة', '⚠️ UNREALISTIC / BEHIND', '⚠️ ലക്ഷ്യത്തിൽ നിന്ന് പിന്നിൽ')}
                 </Text>
               </View>
             </View>
@@ -221,7 +221,7 @@ export default function ActivePlanSection({
           const completionDate = new Date();
           completionDate.setMonth(completionDate.getMonth() + monthsToGoal);
           const completionStr = completionDate.toLocaleDateString(
-            language === 'ar' ? 'ar-EG' : language === 'hi' ? 'hi-IN' : 'en-US',
+            language === 'ar' ? 'ar-EG' : (language === 'ml' || language === 'hi') ? 'ml-IN' : 'en-US',
             { month: 'long', year: 'numeric' }
           );
           const isOnSchedule = isRealistic;
@@ -244,7 +244,7 @@ export default function ActivePlanSection({
                 }}
               >
                 {isOnSchedule ? '✅ ' : '⚠️ '}
-                {loc(`متوقع التحقيق: ${completionStr}`, `Est. completion: ${completionStr}`, `अनुमानित पूर्णता: ${completionStr}`)}
+                {loc(`متوقع التحقيق: ${completionStr}`, `Est. completion: ${completionStr}`, `പ്രതീക്ഷിക്കുന്ന പൂർത്തീകരണം: ${completionStr}`)}
               </Text>
             </View>
           );

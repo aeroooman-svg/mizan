@@ -39,6 +39,13 @@ export default function SpendingHeatmapWidget({
   const { colors } = useTheme();
   const { language } = useLanguage();
   const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
 
   const today = useMemo(() => new Date(), []);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -213,7 +220,8 @@ export default function SpendingHeatmapWidget({
 
   const dayHeadersAr = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
   const dayHeadersEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dayHeaders = isAr ? dayHeadersAr : dayHeadersEn;
+  const dayHeadersMl = ['ഞായർ', 'തിങ്കൾ', 'ചൊവ്വ', 'ബുധൻ', 'വ്യാഴം', 'വെള്ളി', 'ശനി'];
+  const dayHeaders = isAr ? dayHeadersAr : isMl ? dayHeadersMl : dayHeadersEn;
 
   const monthNamesAr = [
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -223,8 +231,14 @@ export default function SpendingHeatmapWidget({
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+  const monthNamesMl = [
+    'ജനുവരി', 'ഫെബ്രുവരി', 'മാർച്ച്', 'ഏപ്രിൽ', 'മേയ്', 'ജൂൺ',
+    'ജൂലൈ', 'ആഗസ്റ്റ്', 'സെപ്റ്റംബർ', 'ഒക്ടോബർ', 'നവംബർ', 'ഡിസംബർ'
+  ];
   const formattedMonthName = isAr
     ? `${monthNamesAr[activeMonth]} ${activeYear}`
+    : isMl
+    ? `${monthNamesMl[activeMonth]} ${activeYear}`
     : `${monthNamesEn[activeMonth]} ${activeYear}`;
 
   const styles = useMemo(() => getStyles(colors, isAr), [colors, isAr]);
@@ -253,21 +267,13 @@ export default function SpendingHeatmapWidget({
     ? 'swap-horizontal'
     : 'wallet';
 
-  const viewTitle = isAr
-    ? viewType === 'expense'
-      ? 'الخريطة الحرارية للإنفاق'
-      : viewType === 'savings'
-      ? 'الخريطة الحرارية للادخار والجمعيات'
-      : viewType === 'transfer'
-      ? 'الخريطة الحرارية للتحويلات'
-      : 'الخريطة الحرارية للإيرادات'
-    : viewType === 'expense'
-    ? 'Spending Heatmap'
+  const viewTitle = viewType === 'expense'
+    ? loc('الخريطة الحرارية للإنفاق', 'Spending Heatmap', 'ചെലവ് ഹീറ്റ്മാപ്പ്')
     : viewType === 'savings'
-    ? 'Savings & ROSCAs Heatmap'
+    ? loc('الخريطة الحرارية للادخار والجمعيات', 'Savings & ROSCAs Heatmap', 'സമ്പാദ്യ & ചിട്ടി ഹീറ്റ്മാപ്പ്')
     : viewType === 'transfer'
-    ? 'Transfers Heatmap'
-    : 'Income Heatmap';
+    ? loc('الخريطة الحرارية للتحويلات', 'Transfers Heatmap', 'കൈമാറ്റ ഹീറ്റ്മാപ്പ്')
+    : loc('الخريطة الحرارية للإيرادات', 'Income Heatmap', 'വരുമാന ഹീറ്റ്മാപ്പ്');
 
   return (
     <View style={styles.card}>
@@ -292,10 +298,10 @@ export default function SpendingHeatmapWidget({
               <Text style={styles.collapsedSubtitle}>
                 {formattedMonthName} • {
                   viewType === 'expense'
-                    ? (isAr ? `${stats.zeroDaysCount} يوم توفير 🛡️` : `${stats.zeroDaysCount} No-Spend Days`)
+                    ? loc(`${stats.zeroDaysCount} يوم توفير 🛡️`, `${stats.zeroDaysCount} No-Spend Days`, `${stats.zeroDaysCount} ചെലവില്ലാത്ത ദിനങ്ങൾ 🛡️`)
                     : viewType === 'savings'
-                    ? (isAr ? `${stats.activeDaysCount} يوم ادخار 💎` : `${stats.activeDaysCount} Savings Days`)
-                    : (isAr ? `${stats.activeDaysCount} يوم دخل 💵` : `${stats.activeDaysCount} Income Days`)
+                    ? loc(`${stats.activeDaysCount} يوم ادخار 💎`, `${stats.activeDaysCount} Savings Days`, `${stats.activeDaysCount} സമ്പാദ്യ ദിനങ്ങൾ 💎`)
+                    : loc(`${stats.activeDaysCount} يوم دخل 💵`, `${stats.activeDaysCount} Income Days`, `${stats.activeDaysCount} വരുമാന ദിനങ്ങൾ 💵`)
                 }
               </Text>
             )}
@@ -335,7 +341,7 @@ export default function SpendingHeatmapWidget({
                   viewType === 'expense' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
               >
-                {isAr ? 'المصروفات' : 'Expenses'}
+                {loc('المصروفات', 'Expenses', 'ചെലവുകൾ')}
               </Text>
             </Pressable>
 
@@ -356,7 +362,7 @@ export default function SpendingHeatmapWidget({
                   viewType === 'savings' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
               >
-                {isAr ? 'الادخار' : 'Savings'}
+                {loc('الادخار', 'Savings', 'സമ്പാദ്യം')}
               </Text>
             </Pressable>
 
@@ -377,7 +383,7 @@ export default function SpendingHeatmapWidget({
                   viewType === 'transfer' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
               >
-                {isAr ? 'التحويلات' : 'Transfers'}
+                {loc('التحويلات', 'Transfers', 'കൈമാറ്റങ്ങൾ')}
               </Text>
             </Pressable>
 
@@ -398,7 +404,7 @@ export default function SpendingHeatmapWidget({
                   viewType === 'income' ? { color: '#FFF', fontFamily: 'Cairo_700Bold' } : { color: colors.textSecondary },
                 ]}
               >
-                {isAr ? 'الإيرادات' : 'Income'}
+                {loc('الإيرادات', 'Income', 'വരുമാനം')}
               </Text>
             </Pressable>
           </View>
@@ -425,10 +431,10 @@ export default function SpendingHeatmapWidget({
               <>
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '🟢 أيام التوفير' : '🟢 No-Spend'}
+                    {loc('🟢 أيام التوفير', '🟢 No-Spend', '🟢 ചെലവില്ലാത്ത ദിനങ്ങൾ')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#10B981' }]}>
-                    {stats.zeroDaysCount} {isAr ? 'يوم' : 'days'}
+                    {stats.zeroDaysCount} {loc('يوم', 'days', 'ദിവസങ്ങൾ')}
                   </Text>
                 </View>
 
@@ -436,10 +442,10 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '🔴 يوم الذروة' : '🔴 Peak Day'}
+                    {loc('🔴 يوم الذروة', '🔴 Peak Day', '🔴 ഉയർന്ന ദിനം')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#EF4444' }]}>
-                    {stats.peakDay > 0 ? (isAr ? `يوم ${stats.peakDay}` : `Day ${stats.peakDay}`) : '-'}
+                    {stats.peakDay > 0 ? loc(`يوم ${stats.peakDay}`, `Day ${stats.peakDay}`, `${stats.peakDay}-ാം തീയതി`) : '-'}
                   </Text>
                 </View>
 
@@ -447,7 +453,7 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '⚡ المتوسط اليومي' : '⚡ Daily Avg'}
+                    {loc('⚡ المتوسط اليومي', '⚡ Daily Avg', '⚡ പ്രതിദിന ശരാശരി')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: colors.text }]}>
                     {formatCurrency(stats.dailyAverage, language)} {currencySymbol}
@@ -458,10 +464,10 @@ export default function SpendingHeatmapWidget({
               <>
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '💎 أيام الادخار' : '💎 Savings Days'}
+                    {loc('💎 أيام الادخار', '💎 Savings Days', '💎 സമ്പാദ്യ ദിനങ്ങൾ')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#8B5CF6' }]}>
-                    {stats.activeDaysCount} {isAr ? 'يوم' : 'days'}
+                    {stats.activeDaysCount} {loc('يوم', 'days', 'ദിവസങ്ങൾ')}
                   </Text>
                 </View>
 
@@ -469,10 +475,10 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '🏆 أعلى ادخار' : '🏆 Peak Saved'}
+                    {loc('🏆 أعلى ادخار', '🏆 Peak Saved', '🏆 ഉയർന്ന സമ്പാദ്യം')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#8B5CF6' }]}>
-                    {stats.peakDay > 0 ? (isAr ? `يوم ${stats.peakDay}` : `Day ${stats.peakDay}`) : '-'}
+                    {stats.peakDay > 0 ? loc(`يوم ${stats.peakDay}`, `Day ${stats.peakDay}`, `${stats.peakDay}-ാം തീയതി`) : '-'}
                   </Text>
                 </View>
 
@@ -480,7 +486,7 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '💰 إجمالي المدخرات' : '💰 Total Saved'}
+                    {loc('💰 إجمالي المدخرات', '💰 Total Saved', '💰 ആകെ സമ്പാദ്യം')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: colors.text }]}>
                     {formatCurrency(stats.grandTotal, language)} {currencySymbol}
@@ -491,10 +497,10 @@ export default function SpendingHeatmapWidget({
               <>
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '💵 أيام الدخل' : '💵 Income Days'}
+                    {loc('💵 أيام الدخل', '💵 Income Days', '💵 വരുമാന ദിനങ്ങൾ')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#10B981' }]}>
-                    {stats.activeDaysCount} {isAr ? 'يوم' : 'days'}
+                    {stats.activeDaysCount} {loc('يوم', 'days', 'ദിവസങ്ങൾ')}
                   </Text>
                 </View>
 
@@ -502,10 +508,10 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '⭐ أعلى دخل' : '⭐ Peak Income'}
+                    {loc('⭐ أعلى دخل', '⭐ Peak Income', '⭐ ഉയർന്ന വരുമാനം')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: '#10B981' }]}>
-                    {stats.peakDay > 0 ? (isAr ? `يوم ${stats.peakDay}` : `Day ${stats.peakDay}`) : '-'}
+                    {stats.peakDay > 0 ? loc(`يوم ${stats.peakDay}`, `Day ${stats.peakDay}`, `${stats.peakDay}-ാം തീയതി`) : '-'}
                   </Text>
                 </View>
 
@@ -513,7 +519,7 @@ export default function SpendingHeatmapWidget({
 
                 <View style={styles.insightStatItem}>
                   <Text style={styles.insightStatLabel}>
-                    {isAr ? '📈 إجمالي الإيراد' : '📈 Total Income'}
+                    {loc('📈 إجمالي الإيراد', '📈 Total Income', '📈 ആകെ വരുമാനം')}
                   </Text>
                   <Text style={[styles.insightStatValue, { color: colors.text }]}>
                     {formatCurrency(stats.grandTotal, language)} {currencySymbol}
@@ -589,60 +595,60 @@ export default function SpendingHeatmapWidget({
               <>
                 <View style={styles.legendZeroGroup}>
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10B981', borderWidth: 0.5 }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'يوم توفير 🛡️' : 'Zero-Spend 🛡️'}</Text>
+                  <Text style={styles.legendLabel}>{loc('يوم توفير 🛡️', 'Zero-Spend 🛡️', 'ചെലവില്ലാത്തത് 🛡️')}</Text>
                 </View>
 
                 <View style={styles.legendScaleGroup}>
-                  <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+                  <Text style={styles.legendLabel}>{loc('أقل', 'Low', 'കുറവ്')}</Text>
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(245, 158, 11, 0.25)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(249, 115, 22, 0.50)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: '#EF4444' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'ذروة' : 'High'}</Text>
+                  <Text style={styles.legendLabel}>{loc('ذروة', 'High', 'കൂടുതൽ')}</Text>
                 </View>
               </>
             ) : viewType === 'savings' ? (
               <>
                 <View style={styles.legendZeroGroup}>
                   <View style={[styles.legendBox, { backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'لا مدخرات' : 'No Savings'}</Text>
+                  <Text style={styles.legendLabel}>{loc('لا مدخرات', 'No Savings', 'സമ്പാദ്യമില്ല')}</Text>
                 </View>
 
                 <View style={styles.legendScaleGroup}>
-                  <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+                  <Text style={styles.legendLabel}>{loc('أقل', 'Low', 'കുറവ്')}</Text>
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(139, 92, 246, 0.25)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(139, 92, 246, 0.50)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: '#8B5CF6' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'قمة' : 'Peak'}</Text>
+                  <Text style={styles.legendLabel}>{loc('قمة', 'Peak', 'കൂടുതൽ')}</Text>
                 </View>
               </>
             ) : viewType === 'transfer' ? (
               <>
                 <View style={styles.legendZeroGroup}>
                   <View style={[styles.legendBox, { backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'لا تحويلات' : 'No Transfers'}</Text>
+                  <Text style={styles.legendLabel}>{loc('لا تحويلات', 'No Transfers', 'കൈമാറ്റമില്ല')}</Text>
                 </View>
 
                 <View style={styles.legendScaleGroup}>
-                  <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+                  <Text style={styles.legendLabel}>{loc('أقل', 'Low', 'കുറവ്')}</Text>
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.25)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.50)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: '#6366F1' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'ذروة' : 'Peak'}</Text>
+                  <Text style={styles.legendLabel}>{loc('ذروة', 'Peak', 'കൂടുതൽ')}</Text>
                 </View>
               </>
             ) : (
               <>
                 <View style={styles.legendZeroGroup}>
                   <View style={[styles.legendBox, { backgroundColor: colors.surfaceAlt || 'rgba(255,255,255,0.05)' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'بدون دخل' : 'No Income'}</Text>
+                  <Text style={styles.legendLabel}>{loc('بدون دخل', 'No Income', 'വരുമാനമില്ല')}</Text>
                 </View>
 
                 <View style={styles.legendScaleGroup}>
-                  <Text style={styles.legendLabel}>{isAr ? 'أقل' : 'Low'}</Text>
+                  <Text style={styles.legendLabel}>{loc('أقل', 'Low', 'കുറവ്')}</Text>
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(6, 182, 212, 0.25)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.50)' }]} />
                   <View style={[styles.legendBox, { backgroundColor: '#10B981' }]} />
-                  <Text style={styles.legendLabel}>{isAr ? 'ذروة' : 'High'}</Text>
+                  <Text style={styles.legendLabel}>{loc('ذروة', 'High', 'കൂടുതൽ')}</Text>
                 </View>
               </>
             )}
@@ -660,12 +666,12 @@ export default function SpendingHeatmapWidget({
                   <Text style={styles.modalDateTitle}>{selectedDayInfo.dateStr}</Text>
                   <Text style={styles.modalExpenseTotal}>
                     {viewType === 'expense'
-                      ? (isAr ? 'إجمالي الصرف:' : 'Total Spent:')
+                      ? loc('إجمالي الصرف:', 'Total Spent:', 'ആകെ ചെലവ്:')
                       : viewType === 'savings'
-                      ? (isAr ? 'إجمالي الادخار والجمعيات:' : 'Total Savings:')
+                      ? loc('إجمالي الادخار والجمعيات:', 'Total Savings:', 'ആകെ സമ്പാദ്യം:')
                       : viewType === 'transfer'
-                      ? (isAr ? 'إجمالي التحويلات:' : 'Total Transfers:')
-                      : (isAr ? 'إجمالي الدخل:' : 'Total Income:')}{' '}
+                      ? loc('إجمالي التحويلات:', 'Total Transfers:', 'ആകെ കൈമാറ്റങ്ങൾ:')
+                      : loc('إجمالي الدخل:', 'Total Income:', 'ആകെ വരുമാനം:')}{' '}
                     <Text style={{ color: viewThemeColor, fontFamily: 'Cairo_700Bold' }}>
                       {formatCurrency(selectedDayInfo.totalAmount, language)} {currencySymbol}
                     </Text>
@@ -690,29 +696,37 @@ export default function SpendingHeatmapWidget({
                     />
                     <Text style={[styles.noTxTitle, { color: viewThemeColor }]}>
                       {viewType === 'expense'
-                        ? (isAr ? 'يوم ادخار وبدون مصاريف! 🎉' : 'Zero-Spend Day! 🎉')
+                        ? loc('يوم ادخار وبدون مصاريف! 🎉', 'Zero-Spend Day! 🎉', 'ചെലവില്ലാത്ത ദിവസം! 🎉')
                         : viewType === 'savings'
-                        ? (isAr ? 'لا توجد مدخرات مسجلة اليوم' : 'No Savings Recorded Today')
+                        ? loc('لا توجد مدخرات مسجلة اليوم', 'No Savings Recorded Today', 'ഇന്ന് സമ്പാദ്യങ്ങളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല')
                         : viewType === 'transfer'
-                        ? (isAr ? 'لا توجد تحويلات مسجلة اليوم' : 'No Transfers Recorded Today')
-                        : (isAr ? 'لا توجد إيرادات مسجلة اليوم' : 'No Income Recorded Today')}
+                        ? loc('لا توجد تحويلات مسجلة اليوم', 'No Transfers Recorded Today', 'ഇന്ന് കൈമാറ്റങ്ങളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല')
+                        : loc('لا توجد إيرادات مسجلة اليوم', 'No Income Recorded Today', 'ഇന്ന് വരുമാനമൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല')}
                     </Text>
                     <Text style={styles.noTxSub}>
                       {viewType === 'expense'
-                        ? (isAr
-                            ? 'لم تسجل أي مصاريف استهلاكية في هذا اليوم، ممتاز في تعزيز أهدافك المالية.'
-                            : 'No consumption expenses recorded on this day. Great job!')
+                        ? loc(
+                            'لم تسجل أي مصاريف استهلاكية في هذا اليوم، ممتاز في تعزيز أهدافك المالية.',
+                            'No consumption expenses recorded on this day. Great job!',
+                            'ഈ ദിവസം ഉപഭോഗ ചെലവുകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല. നിങ്ങളുടെ സാമ്പത്തിക ലക്ഷ്യങ്ങൾക്ക് ഇത് മികച്ചതാണ്.'
+                          )
                         : viewType === 'savings'
-                        ? (isAr
-                            ? 'لم تقم بأي عمليات ادخار، أقساط جمعية أو إيداع أهداف في هذا اليوم.'
-                            : 'No savings, ROSCA, or goal deposits on this day.')
+                        ? loc(
+                            'لم تقم بأي عمليات ادخار، أقساط جمعية أو إيداع أهداف في هذا اليوم.',
+                            'No savings, ROSCA, or goal deposits on this day.',
+                            'ഈ ദിവസം സമ്പാദ്യമോ ചിട്ടി നിക്ഷേപങ്ങളോ രേഖപ്പെടുത്തിയിട്ടില്ല.'
+                          )
                         : viewType === 'transfer'
-                        ? (isAr
-                            ? 'لم تسجل أي تحويلات مالية بين المحافظ في هذا اليوم.'
-                            : 'No wallet transfers recorded on this day.')
-                        : (isAr
-                            ? 'لم تسجل أي تدفقات دخل في هذا اليوم.'
-                            : 'No income flows recorded on this day.')}
+                        ? loc(
+                            'لم تسجل أي تحويلات مالية بين المحافظ في هذا اليوم.',
+                            'No wallet transfers recorded on this day.',
+                            'ഈ ദിവസം വാലറ്റുകൾ തമ്മിലുള്ള കൈമാറ്റങ്ങളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.'
+                          )
+                        : loc(
+                            'لم تسجل أي تدفقات دخل في هذا اليوم.',
+                            'No income flows recorded on this day.',
+                            'ഈ ദിവസം വരുമാന വരവുകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.'
+                          )}
                     </Text>
                   </View>
                 ) : (
@@ -733,7 +747,7 @@ export default function SpendingHeatmapWidget({
                         <View style={{ flex: 1 }}>
                           <Text style={styles.txCatName}>
                             {isTransfer
-                              ? (isAr ? 'تحويل مالي' : 'Transfer')
+                              ? loc('تحويل مالي', 'Transfer', 'പണം കൈമാറ്റം')
                               : getCategoryName(tx.category, language)}
                           </Text>
                           {tx.description ? <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text> : null}
@@ -774,7 +788,11 @@ export default function SpendingHeatmapWidget({
               >
                 <Ionicons name="add-circle" size={18} color="#FFF" />
                 <Text style={styles.addTxBtnText}>
-                  {isAr ? `إضافة عملية ليوم ${selectedDayInfo.dayNumber}` : `Add Transaction for Day ${selectedDayInfo.dayNumber}`}
+                  {loc(
+                    `إضافة عملية ليوم ${selectedDayInfo.dayNumber}`,
+                    `Add Transaction for Day ${selectedDayInfo.dayNumber}`,
+                    `${selectedDayInfo.dayNumber}-ാം തീയതിയിലേക്ക് ഇടപാട് ചേർക്കുക`
+                  )}
                 </Text>
               </Pressable>
             </View>

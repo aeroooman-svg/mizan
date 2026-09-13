@@ -53,8 +53,8 @@ export default function WalletCarousel({
   onAddWallet,
   onEditWallet,
 }: WalletCarouselProps) {
-  const loc = (ar: string, en: string, hi?: string) => {
-    if (language === 'ml' || language === 'hi') return hi || en;
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (language === 'ml' || language === 'hi') return ml || en;
     if (language === 'ar') return ar;
     return en;
   };
@@ -408,7 +408,7 @@ export default function WalletCarousel({
             <Ionicons name="add" size={32} color={Colors.primary} />
           </View>
           <Text style={styles.addWallet3DText}>
-            {loc('محفظة جديدة', 'New Wallet', 'नया वॉलेट')}
+            {loc('محفظة جديدة', 'New Wallet', 'പുതിയ വാലറ്റ്')}
           </Text>
         </Pressable>
       </ScrollView>
@@ -561,7 +561,7 @@ export default function WalletCarousel({
                       color: colors.primary,
                     }}
                   >
-                    {loc('تعديل الرصيد المتاح يدوياً ✏️', 'Quick Adjust Balance ✏️', 'शेष राशि त्वरित समायोजित करें ✏️')}
+                    {loc('تعديل الرصيد المتاح يدوياً ✏️', 'Quick Adjust Balance ✏️', 'ബാലൻസ് തിരുത്തുക ✏️')}
                   </Text>
                 </Pressable>
 
@@ -768,7 +768,7 @@ export default function WalletCarousel({
                       color: '#EF4444',
                     }}
                   >
-                    {loc('حذف المحفظة وكافة بياناتها', 'Delete Wallet & All Data', 'वॉलेट और सारा डेटा हटाएं')}
+                    {loc('حذف المحفظة وكافة بياناتها', 'Delete Wallet & All Data', 'വാലറ്റും എല്ലാ വിവരങ്ങളും നീക്കം ചെയ്യുക')}
                   </Text>
                 </Pressable>
               </>
@@ -801,7 +801,7 @@ export default function WalletCarousel({
                     </View>
                     <View>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
-                        {loc('تعديل الرصيد المتاح يدوياً', 'Edit Available Balance', 'उपलब्ध शेष राशि संपादित करें')}
+                        {loc('تعديل الرصيد المتاح يدوياً', 'Edit Available Balance', 'ലഭ്യമായ ബാലൻസ് മാറ്റുക')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary }}>
                         {adjustWallet.name} ({adjustWallet.currency})
@@ -817,13 +817,13 @@ export default function WalletCarousel({
                   {loc(
                     `أدخل المبلغ الإجمالي الفعلي الموجود بحوزتك الآن في محفظة "${adjustWallet.name}". سيتم تعديل رصيد المحفظة المتاح فوراً دون المساس بمعاملاتك التاريخية.`,
                     `Enter the actual total balance you currently hold in "${adjustWallet.name}".`,
-                    `"${adjustWallet.name}" में आपके पास वर्तमान में मौजूद वास्तविक कुल शेष राशि दर्ज करें।`
+                    `"${adjustWallet.name}" വാലറ്റിൽ ഇപ്പോൾ നിങ്ങളുടെ കൈവശമുള്ള യഥാർത്ഥ ബാലൻസ് നൽകുക.`
                   )}
                 </Text>
 
                 <View style={{ gap: 6 }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.text }}>
-                    {loc(`الرصيد الفعلي الآن (${adjustWallet.currency}):`, `Actual Balance Now (${adjustWallet.currency}):`, `वर्तमान वास्तविक शेष (${adjustWallet.currency}):`)}
+                    {loc(`الرصيد الفعلي الآن (${adjustWallet.currency}):`, `Actual Balance Now (${adjustWallet.currency}):`, `യഥാർത്ഥ ബാലൻസ് (${adjustWallet.currency}):`)}
                   </Text>
                   <TextInput
                     style={{
@@ -852,7 +852,7 @@ export default function WalletCarousel({
                     style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
                   >
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', color: colors.textSecondary }}>
-                      {loc('إلغاء', 'Cancel', 'रद्द करें')}
+                      {loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -860,7 +860,7 @@ export default function WalletCarousel({
                     style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}
                   >
                     <Text style={{ fontFamily: 'Cairo_700Bold', color: '#FFF' }}>
-                      {loc('حفظ الرصيد الجديد 💾', 'Save New Balance 💾', 'नया शेष सहेजें 💾')}
+                      {loc('حفظ الرصيد الجديد 💾', 'Save New Balance 💾', 'പുതിയ ബാലൻസ് സൂക്ഷിക്കുക 💾')}
                     </Text>
                   </Pressable>
                 </View>
@@ -922,8 +922,8 @@ export default function WalletCarousel({
                 }}
               >
                 {confirmStopShareWallet?.isJoined
-                  ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'साझा वॉलेट छोड़ें')
-                  : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'वॉलेट साझा करना बंद करें')}
+                  ? loc('مغادرة المحفظة المشتركة', 'Leave Shared Wallet', 'പങ്കിട്ട വാലറ്റ് വിടുക')
+                  : loc('إلغاء مشاركة المحفظة', 'Stop Sharing Wallet', 'വാലറ്റ് പങ്കിടൽ നിർത്തുക')}
               </Text>
               <Text
                 style={{
@@ -938,12 +938,12 @@ export default function WalletCarousel({
                   ? loc(
                       `هل أنت متأكد من مغادرة محفظة "${confirmStopShareWallet?.name}"؟ سيتم حذف المحفظة ومعاملاتها من جهازك.`,
                       `Are you sure you want to leave "${confirmStopShareWallet?.name}"? The wallet and its transactions will be removed from your device.`,
-                      `क्या आप "${confirmStopShareWallet?.name}" छोड़ने के लिए सुनिश्चित हैं? वॉलेट और उसके लेन-देन आपके डिवाइस से हटा दिए जाएंगे।`
+                      `"${confirmStopShareWallet?.name}" പങ്കിട്ട വാലറ്റിൽ നിന്ന് പുറത്തുകടക്കണമെന്ന് ഉറപ്പാണോ?`
                     )
                   : loc(
                       `هل أنت متأكد من إيقاف مشاركة محفظة "${confirmStopShareWallet?.name}"؟ سيتم تعطيل كود المشاركة وإزالة كافة الأعضاء وتصبح المحفظة خاصة بك فقط.`,
                       `Are you sure you want to stop sharing "${confirmStopShareWallet?.name}"? The share code will be revoked and members removed.`,
-                      `क्या आप "${confirmStopShareWallet?.name}" को साझा करना बंद करने के लिए सुनिश्चित हैं? साझाकरण कोड अमान्य कर दिया जाएगा और सदस्य हटा दिए जाएंगे।`
+                      `"${confirmStopShareWallet?.name}" പങ്കിടുന്നത് നിർത്തണമെന്ന് ഉറപ്പാണോ?`
                     )}
               </Text>
             </View>
@@ -967,7 +967,7 @@ export default function WalletCarousel({
                     color: colors.textSecondary,
                   }}
                 >
-                  {loc('إلغاء', 'Cancel', 'रद्द करें')}
+                  {loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}
                 </Text>
               </Pressable>
 
@@ -983,8 +983,8 @@ export default function WalletCarousel({
                       await refresh();
                       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
                       Alert.alert(
-                        loc('تم بنجاح', 'Success', 'सफल'),
-                        loc('تمت مغادرة المحفظة بنجاح', 'You have left the wallet', 'आप सफलतापूर्वक वॉलेट से बाहर हो गए हैं')
+                        loc('تم بنجاح', 'Success', 'വിജയകരം'),
+                        loc('تمت مغادرة المحفظة بنجاح', 'You have left the wallet', 'നിങ്ങൾ വാലറ്റിൽ നിന്ന് വിജയകരമായി പുറത്തുകടന്നു')
                       );
                     } else {
                       const { stopSharingWallet } = await import('@/lib/sharingService');
@@ -996,8 +996,8 @@ export default function WalletCarousel({
                       await refresh();
                       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
                       Alert.alert(
-                        loc('تم بنجاح', 'Success', 'सफल'),
-                        loc('تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط', 'Wallet sharing has been stopped', 'वॉलेट साझाकरण रोक दिया गया है और अब यह केवल आपका है')
+                        loc('تم بنجاح', 'Success', 'വിജയകരം'),
+                        loc('تم إيقاف مشاركة المحفظة وأصبحت خاصة بك فقط', 'Wallet sharing has been stopped', 'വാലറ്റ് പങ്കിടൽ വിജയകരമായി നിർത്തി')
                       );
                     }
                   } catch (e) {
@@ -1021,8 +1021,8 @@ export default function WalletCarousel({
                   }}
                 >
                   {confirmStopShareWallet?.isJoined
-                    ? loc('مغادرة', 'Leave', 'छोड़ें')
-                    : loc('إيقاف المشاركة', 'Stop Sharing', 'साझाकरण रोकें')}
+                    ? loc('مغادرة', 'Leave', 'വിടുക')
+                    : loc('إيقاف المشاركة', 'Stop Sharing', 'പങ്കിടൽ നിർത്തുക')}
                 </Text>
               </Pressable>
             </View>

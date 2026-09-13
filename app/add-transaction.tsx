@@ -935,7 +935,7 @@ export default function AddTransactionScreen() {
               >
                 <Ionicons name="swap-horizontal" size={18} color={type === 'transfer' ? '#fff' : Colors.textSecondary} />
                 <Text style={[styles.typeText, type === 'transfer' && styles.typeTextActive]}>
-                  {language === 'ar' ? 'تحويل' : language === 'hi' ? 'स्थानांतरण' : 'Transfer'}
+                  {language === 'ar' ? 'تحويل' : (language === 'ml' || language === 'hi') ? 'ട്രാൻസ്ഫർ' : 'Transfer'}
                 </Text>
               </Pressable>
             </View>
@@ -1031,8 +1031,8 @@ export default function AddTransactionScreen() {
                   >
                     <Text style={[styles.showAllCatsText, { color: colors.primary }]}>
                       {showAllCategories 
-                        ? (language === 'ar' ? 'عرض أقل ▴' : language === 'hi' ? 'कम दिखाएं ▴' : 'Show Less ▴') 
-                        : (language === 'ar' ? `المزيد (${displayedCategories.length - 5}) ▾` : language === 'hi' ? `और अधिक (${displayedCategories.length - 5}) ▾` : `More (${displayedCategories.length - 5}) ▾`)}
+                        ? (language === 'ar' ? 'عرض أقل ▴' : (language === 'ml' || language === 'hi') ? 'കുറച്ച് കാണിക്കുക ▴' : 'Show Less ▴') 
+                        : (language === 'ar' ? `المزيد (${displayedCategories.length - 5}) ▾` : (language === 'ml' || language === 'hi') ? `കൂടുതൽ (${displayedCategories.length - 5}) ▾` : `More (${displayedCategories.length - 5}) ▾`)}
                     </Text>
                   </Pressable>
                 )}
@@ -1197,7 +1197,7 @@ export default function AddTransactionScreen() {
                 <Ionicons name="calendar" size={16} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
-                    {language === 'ar' ? 'التاريخ' : language === 'hi' ? 'दिनांक' : 'Date'}
+                    {language === 'ar' ? 'التاريخ' : (language === 'ml' || language === 'hi') ? 'തീയതി' : 'Date'}
                   </Text>
                   <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
                     {selectedDateLabel}
@@ -1221,7 +1221,7 @@ export default function AddTransactionScreen() {
                 <Ionicons name="time" size={16} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.dateTimePillSub, { color: colors.textTertiary }]}>
-                    {language === 'ar' ? 'الوقت' : language === 'hi' ? 'समय' : 'Time'}
+                    {language === 'ar' ? 'الوقت' : (language === 'ml' || language === 'hi') ? 'സമയം' : 'Time'}
                   </Text>
                   <Text style={[styles.dateTimePillMain, { color: colors.text }]} numberOfLines={1}>
                     {selectedHour}:{selectedMinute.toString().padStart(2, '0')} {language === 'ar' ? (selectedPeriod === 'AM' ? 'ص' : 'م') : selectedPeriod}
@@ -1244,12 +1244,12 @@ export default function AddTransactionScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 <Ionicons name="document-text-outline" size={16} color={colors.primary} />
                 <Text style={[styles.collapsibleHeaderTitle, { color: colors.text }]}>
-                  {language === 'ar' ? 'إضافة ملاحظة أو وسوم (اختياري)' : language === 'hi' ? 'नोट या टैग जोड़ें (वैकल्पिक)' : 'Add Note or Tags (Optional)'}
+                  {language === 'ar' ? 'إضافة ملاحظة أو وسوم (اختياري)' : (language === 'ml' || language === 'hi') ? 'കുറിപ്പ് അല്ലെങ്കിൽ ടാഗുകൾ ചേർക്കുക (ഓപ്ഷണൽ)' : 'Add Note or Tags (Optional)'}
                 </Text>
                 {(description || tags) ? (
                   <View style={[styles.detailsBadgeIndicator, { backgroundColor: colors.primary + '20' }]}>
                     <Text style={[styles.detailsBadgeText, { color: colors.primary }]}>
-                      {language === 'ar' ? 'مضاف' : language === 'hi' ? 'जोड़ा गया' : 'Added'}
+                      {language === 'ar' ? 'مضاف' : (language === 'ml' || language === 'hi') ? 'ചേർത്തു' : 'Added'}
                     </Text>
                   </View>
                 ) : null}
@@ -1282,7 +1282,7 @@ export default function AddTransactionScreen() {
                 <View style={[styles.descSection, { marginBottom: 4 }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <Text style={[styles.label, { marginBottom: 0, fontSize: 12 }]}>
-                      {language === 'ar' ? 'الوسوم الذكية (Tags)' : language === 'hi' ? 'स्मार्ट टैग (Tags)' : 'Smart Tags'}
+                      {language === 'ar' ? 'الوسوم الذكية (Tags)' : (language === 'ml' || language === 'hi') ? 'സ്മാർട്ട് ടാഗുകൾ' : 'Smart Tags'}
                     </Text>
                     <Pressable
                       onPress={() => {
@@ -1297,7 +1297,7 @@ export default function AddTransactionScreen() {
                     >
                       <Ionicons name="add-circle" size={15} color={colors.primary} />
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.primary }}>
-                        {language === 'ar' ? 'وسم مخصص' : language === 'hi' ? 'नया टैग' : 'New Tag'}
+                        {language === 'ar' ? 'وسم مخصص' : (language === 'ml' || language === 'hi') ? 'പുതിയ ടാഗ്' : 'New Tag'}
                       </Text>
                     </Pressable>
                   </View>
@@ -1305,7 +1305,7 @@ export default function AddTransactionScreen() {
                   {/* Selected / custom tags input */}
                   <TextInput
                     style={[styles.descInput, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, height: 38, paddingVertical: 6 }]}
-                    placeholder={language === 'ar' ? 'اختر من الأسفل أو اكتب وسوماً مفصولة بفاصلة...' : language === 'hi' ? 'नीचे से चुनें या अल्पविराम से अलग करके लिखें...' : 'Pick below or type tags comma-separated...'}
+                    placeholder={language === 'ar' ? 'اختر من الأسفل أو اكتب وسوماً مفصولة بفاصلة...' : (language === 'ml' || language === 'hi') ? 'താഴെ നിന്ന് തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ ടാഗുകൾ നൽകുക...' : 'Pick below or type tags comma-separated...'}
                     placeholderTextColor={Colors.textTertiary}
                     value={tags}
                     onChangeText={setTags}
@@ -1386,15 +1386,15 @@ export default function AddTransactionScreen() {
                 else if (type === 'income') buttonLabel = `حفظ الدخل${formattedAmt}`;
                 else buttonLabel = `حفظ التحويل${formattedAmt}`;
               }
-            } else if (language === 'hi') {
+            } else if (language === 'ml' || language === 'hi') {
               if (isEditMode) {
-                if (type === 'expense') buttonLabel = `व्यय अपडेट करें${formattedAmt}`;
-                else if (type === 'income') buttonLabel = `आय अपडेट करें${formattedAmt}`;
-                else buttonLabel = `स्थानांतरण अपडेट करें${formattedAmt}`;
+                if (type === 'expense') buttonLabel = `ചെലവ് പുതുക്കുക${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `വരുമാനം പുതുക്കുക${formattedAmt}`;
+                else buttonLabel = `ട്രാൻസ്ഫർ പുതുക്കുക${formattedAmt}`;
               } else {
-                if (type === 'expense') buttonLabel = `व्यय सहेजें${formattedAmt}`;
-                else if (type === 'income') buttonLabel = `आय सहेजें${formattedAmt}`;
-                else buttonLabel = `स्थानांतरण सहेजें${formattedAmt}`;
+                if (type === 'expense') buttonLabel = `ചെലവ് സേവ് ചെയ്യുക${formattedAmt}`;
+                else if (type === 'income') buttonLabel = `വരുമാനം സേവ് ചെയ്യുക${formattedAmt}`;
+                else buttonLabel = `ട്രാൻസ്ഫർ സേവ് ചെയ്യുക${formattedAmt}`;
               }
             } else {
               if (isEditMode) {

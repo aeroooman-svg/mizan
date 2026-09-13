@@ -123,6 +123,15 @@ export default function StatsScreen() {
   const webTopInset = Platform.OS === 'web' ? 10 : 0;
   const { walletTransactions, transactions, totalIncome, totalExpense, allTimeIncome, allTimeExpense, currencySymbol, selectedWallet, customCategories, wallets, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
+  const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
+
   const [viewType, setViewType] = useState<'expense' | 'income'>('expense');
   const [scope, setScope] = useState<'monthly' | 'yearly'>('monthly');
   const [netWorthScope, setNetWorthScope] = useState<'current' | 'all'>('current');
@@ -304,7 +313,8 @@ export default function StatsScreen() {
           id: 'transfers_out',
           name: 'Transfers',
           nameAr: 'تحويلات مالية',
-          nameHi: 'स्थानांतरण',
+          nameHi: 'ട്രാൻസ്ഫറുകൾ',
+          nameMl: 'ട്രാൻസ്ഫറുകൾ',
           icon: 'swap-horiz',
           iconFamily: 'MaterialIcons',
           color: '#6366F1',
@@ -773,7 +783,7 @@ export default function StatsScreen() {
             >
               <Ionicons name="sparkles" size={15} color={colors.primary} />
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
-                {language === 'ar' ? 'التقرير الشهري 📊' : 'Monthly Digest 📊'}
+                {loc('التقرير الشهري 📊', 'Monthly Digest 📊', 'പ്രതിമാസ റിപ്പോർട്ട് 📊')}
               </Text>
             </Pressable>
           </View>
@@ -832,10 +842,10 @@ export default function StatsScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? `أهلاً بك، ${selectedWallet?.name || 'في ميزان'}` : `Welcome, ${selectedWallet?.name || 'Mizan'}`}
+                  {loc(`أهلاً بك، ${selectedWallet?.name || 'في ميزان'}`, `Welcome, ${selectedWallet?.name || 'Mizan'}`, `സ്വാഗതം, ${selectedWallet?.name || 'Mizan'}`)}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'ملخص الملاءة والوضع المالي الشامل' : 'Your Financial Status & Wealth Overview'}
+                  {loc('ملخص الملاءة والوضع المالي الشامل', 'Your Financial Status & Wealth Overview', 'സാമ്പത്തിക സ്ഥിതിയും ആസ്തി വിവരങ്ങളും')}
                 </Text>
               </View>
               <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#10B98120', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#10B98140' }}>
@@ -858,11 +868,11 @@ export default function StatsScreen() {
               >
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
-                    {language === 'ar' ? 'صافي الملاءة' : 'Net Worth'}
+                    {loc('صافي الملاءة', 'Net Worth', 'ആകെ ആസ്തി')}
                   </Text>
                   <View style={{ backgroundColor: '#10B98115', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: '#10B981' }}>
-                      {language === 'ar' ? 'تفاصيل 🔍' : 'Details 🔍'}
+                      {loc('تفاصيل 🔍', 'Details 🔍', 'വിശദാംശങ്ങൾ 🔍')}
                     </Text>
                   </View>
                 </View>
@@ -893,7 +903,7 @@ export default function StatsScreen() {
 
                 <View style={{ alignItems: 'flex-start' }}>
                   <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'النمو الحقيقي الصافي' : 'Real Net Assets'}
+                    {loc('النمو الحقيقي الصافي', 'Real Net Assets', 'യഥാർത്ഥ അറ്റ ആസ്തി')}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }} numberOfLines={1} adjustsFontSizeToFit>
                     {netWorth >= 0 ? '+' : ''}{formatCurrency(netWorth)} <Text style={{ fontSize: 10, fontFamily: 'Cairo_600SemiBold' }}>{currencySymbol}</Text>
@@ -926,7 +936,7 @@ export default function StatsScreen() {
                   <View style={{ flex: 1, alignItems: 'flex-start' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
-                        {language === 'ar' ? 'مصاريف الشهر' : 'Monthly Spending'}
+                        {loc('مصاريف الشهر', 'Monthly Spending', 'പ്രതിമാസ ചെലവ്')}
                       </Text>
                       <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
                     </View>
@@ -940,7 +950,7 @@ export default function StatsScreen() {
                 <View style={{ backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#FFFFFF', borderRadius: 16, padding: 10, borderWidth: 1, borderColor: colors.border, gap: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'معدل الادخار' : 'Savings Goal'}
+                      {loc('معدل الادخار', 'Savings Goal', 'സമ്പാദ്യ നിരക്ക്')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
                       {savingsRate}%
@@ -982,7 +992,7 @@ export default function StatsScreen() {
             >
               <Ionicons name="calendar-outline" size={16} color={scope === 'monthly' ? '#FFF' : colors.textSecondary} />
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: scope === 'monthly' ? '#FFF' : colors.textSecondary }}>
-                {language === 'ar' ? 'شهري' : 'Monthly'}
+                {loc('شهري', 'Monthly', 'പ്രതിമാസം')}
               </Text>
             </Pressable>
 
@@ -998,7 +1008,7 @@ export default function StatsScreen() {
             >
               <Ionicons name="stats-chart-outline" size={16} color={scope === 'yearly' ? '#FFF' : colors.textSecondary} />
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: scope === 'yearly' ? '#FFF' : colors.textSecondary }}>
-                {language === 'ar' ? 'سنوي' : 'Yearly'}
+                {loc('سنوي', 'Yearly', 'വാർഷികം')}
               </Text>
             </Pressable>
           </View>
@@ -1023,7 +1033,7 @@ export default function StatsScreen() {
               <Pressable onPress={handlePrevYear} style={styles.monthNavBtn} hitSlop={8}>
                 <Ionicons name="chevron-back" size={20} color={colors.primary} />
               </Pressable>
-              <Text style={styles.monthNavLabel}>{language === 'ar' ? `عام ${currentYear}` : `Year ${currentYear}`}</Text>
+              <Text style={styles.monthNavLabel}>{loc(`عام ${currentYear}`, `Year ${currentYear}`, `${currentYear} വർഷം`)}</Text>
               <Pressable
                 onPress={handleNextYear}
                 style={[styles.monthNavBtn, currentYear >= now.getFullYear() && styles.monthNavBtnDisabled]}
@@ -1088,7 +1098,7 @@ export default function StatsScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="trending-up" size={18} color={colors.primary} />
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-                    {language === 'ar' ? 'مقارنة بالشهر السابق (MoM)' : 'Month-over-Month (MoM)'}
+                    {loc('مقارنة بالشهر السابق (MoM)', 'Month-over-Month (MoM)', 'കഴിഞ്ഞ മാസവുമായി താരതമ്യം (MoM)')}
                   </Text>
                 </View>
                 <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: momStats.expenseChangePercent <= 0 ? '#10B98118' : '#EF444418' }}>
@@ -1100,18 +1110,22 @@ export default function StatsScreen() {
 
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
                 {momStats.expenseChangePercent <= 0
-                  ? (language === 'ar'
-                      ? `ممتاز! مصاريفك هذا الشهر أقل بنسبة ${Math.abs(momStats.expenseChangePercent)}% مقارنة بشهر ${momStats.prevMonthName}.`
-                      : `Great! Your expenses this month are ${Math.abs(momStats.expenseChangePercent)}% lower than ${momStats.prevMonthName}.`)
-                  : (language === 'ar'
-                      ? `تنبيه: مصاريفك هذا الشهر ارتفعت بنسبة ${momStats.expenseChangePercent}% مقارنة بشهر ${momStats.prevMonthName}.`
-                      : `Notice: Your expenses increased by ${momStats.expenseChangePercent}% compared to ${momStats.prevMonthName}.`)}
+                  ? loc(
+                      `ممتاز! مصاريفك هذا الشهر أقل بنسبة ${Math.abs(momStats.expenseChangePercent)}% مقارنة بشهر ${momStats.prevMonthName}.`,
+                      `Great! Your expenses this month are ${Math.abs(momStats.expenseChangePercent)}% lower than ${momStats.prevMonthName}.`,
+                      `മികച്ചത്! നിങ്ങളുടെ ചെലവുകൾ ${momStats.prevMonthName}-നെ അപേക്ഷിച്ച് ${Math.abs(momStats.expenseChangePercent)}% കുറവാണ്.`
+                    )
+                  : loc(
+                      `تنبيه: مصاريفك هذا الشهر ارتفعت بنسبة ${momStats.expenseChangePercent}% مقارنة بشهر ${momStats.prevMonthName}.`,
+                      `Notice: Your expenses increased by ${momStats.expenseChangePercent}% compared to ${momStats.prevMonthName}.`,
+                      `ശ്രദ്ധിക്കുക: നിങ്ങളുടെ ചെലവുകൾ ${momStats.prevMonthName}-നെ അപേക്ഷിച്ച് ${momStats.expenseChangePercent}% വർദ്ധിച്ചു.`
+                    )}
               </Text>
 
               {momStats.lastYearExpense > 0 && (
                 <View style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar' ? `مقارنة بنتيجة العام الماضي (${currentYear - 1}):` : `YoY (vs ${currentYear - 1}):`}
+                    {loc(`مقارنة بنتيجة العام الماضي (${currentYear - 1}):`, `YoY (vs ${currentYear - 1}):`, `കഴിഞ്ഞ വർഷത്തെ താരതമ്യം (${currentYear - 1}):`)}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: momStats.yoyExpenseChangePercent <= 0 ? '#10B981' : '#EF4444' }}>
                     {momStats.yoyExpenseChangePercent <= 0 ? `${momStats.yoyExpenseChangePercent}%` : `+${momStats.yoyExpenseChangePercent}%`}
@@ -1223,7 +1237,7 @@ export default function StatsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flex: 1 }}>
                     <Text style={styles.overviewLabel} numberOfLines={1}>
-                      {language === 'ar' ? 'الادخار (سيفينج)' : 'Savings'}
+                      {loc('الادخار (سيفينج)', 'Savings', 'സമ്പാദ്യം')}
                     </Text>
                     <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
                   </View>
@@ -1261,7 +1275,7 @@ export default function StatsScreen() {
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, flex: 1 }}>
                     <Text style={styles.overviewLabel} numberOfLines={1}>
-                      {language === 'ar' ? 'التحويلات' : 'Transfers'}
+                      {loc('التحويلات', 'Transfers', 'കൈമാറ്റങ്ങൾ')}
                     </Text>
                     <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
                   </View>
@@ -1306,7 +1320,7 @@ export default function StatsScreen() {
         {/* Dedicated Premium Budgets Dashboard */}
         <View style={styles.budgetsSection}>
           <View style={styles.budgetsHeaderRow}>
-            <Text style={styles.sectionTitle}>{language === 'ar' ? 'الميزانيات والحدود الذكية' : 'Smart Budgets & Limits'}</Text>
+            <Text style={styles.sectionTitle}>{loc('الميزانيات والحدود الذكية', 'Smart Budgets & Limits', 'ബജറ്റുകളും പരിധികളും')}</Text>
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
@@ -1315,7 +1329,7 @@ export default function StatsScreen() {
               style={styles.manageBudgetsBtn}
             >
               <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-              <Text style={styles.manageBudgetsBtnText}>{language === 'ar' ? 'إدارة' : 'Manage'}</Text>
+              <Text style={styles.manageBudgetsBtnText}>{loc('إدارة', 'Manage', 'മാനേജ് ചെയ്യുക')}</Text>
             </Pressable>
           </View>
 
@@ -1329,10 +1343,10 @@ export default function StatsScreen() {
             >
               <Ionicons name="wallet-outline" size={32} color={colors.primary} />
               <Text style={styles.emptyBudgetTitle}>
-                {language === 'ar' ? 'لم تحدد أي ميزانية بعد' : 'No Budgets Configured Yet'}
+                {loc('لم تحدد أي ميزانية بعد', 'No Budgets Configured Yet', 'ബജറ്റുകളൊന്നും നിശ്ചയിച്ചിട്ടില്ല')}
               </Text>
               <Text style={styles.emptyBudgetSubtitle}>
-                {language === 'ar' ? 'اضغط هنا لتحديد حد إنفاق شهري للفئات وتجنب الإسراف' : 'Tap here to set monthly spending limits for categories and save money'}
+                {loc('اضغط هنا لتحديد حد إنفاق شهري للفئات وتجنب الإسراف', 'Tap here to set monthly spending limits for categories and save money', 'ചെലവ് പരിധികൾ നിശ്ചയിക്കാൻ ഇവിടെ ടാപ്പ് ചെയ്യുക')}
               </Text>
             </Pressable>
           ) : (
@@ -1385,8 +1399,8 @@ export default function StatsScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={[styles.budgetRemainingText, isOver && { color: colors.expense, fontFamily: 'Cairo_700Bold' }]}>
                           {isOver 
-                            ? (language === 'ar' ? `⚠️ تجاوزت بـ ${formatCurrency(Math.abs(remaining))}` : `⚠️ Over by ${formatCurrency(Math.abs(remaining))}`)
-                            : (language === 'ar' ? `متبقي ${formatCurrency(remaining)}` : `${formatCurrency(remaining)} left`)
+                            ? loc(`⚠️ تجاوزت بـ ${formatCurrency(Math.abs(remaining))}`, `⚠️ Over by ${formatCurrency(Math.abs(remaining))}`, `⚠️ ${formatCurrency(Math.abs(remaining))} അധികമായി`)
+                            : loc(`متبقي ${formatCurrency(remaining)}`, `${formatCurrency(remaining)} left`, `${formatCurrency(remaining)} ബാക്കി`)
                           }
                         </Text>
                       </View>
@@ -1430,7 +1444,7 @@ export default function StatsScreen() {
                 <Ionicons name="close" size={22} color={colors.text} />
               </Pressable>
               <Text style={styles.modalTitle}>
-                {language === 'ar' ? 'تحليل ومسار صافي الملاءة' : 'Net Worth & Solvency Breakdown'}
+                {loc('تحليل ومسار صافي الملاءة', 'Net Worth & Solvency Breakdown', 'ആസ്തി വിശകലനവും വളർച്ചയും')}
               </Text>
               <View style={{ width: 32 }} />
             </View>
@@ -1455,7 +1469,7 @@ export default function StatsScreen() {
                   }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: netWorthScope === 'current' ? colors.primary : colors.textSecondary }}>
-                    💳 {language === 'ar' ? (selectedWallet?.name || 'المحفظة الحالية') : (selectedWallet?.name || 'Active Wallet')}
+                    💳 {loc(selectedWallet?.name || 'المحفظة الحالية', selectedWallet?.name || 'Active Wallet', selectedWallet?.name || 'സജീവ വാലറ്റ്')}
                   </Text>
                 </Pressable>
 
@@ -1476,7 +1490,7 @@ export default function StatsScreen() {
                   }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: netWorthScope === 'all' ? '#10B981' : colors.textSecondary }}>
-                    🌐 {language === 'ar' ? 'الإجمالي الشامل (كل المحافظ)' : 'Consolidated Total'}
+                    🌐 {loc('الإجمالي الشامل (كل المحافظ)', 'Consolidated Total', 'എല്ലാ വാലറ്റുകളും ഉൾപ്പെടെ')}
                   </Text>
                 </Pressable>
               </View>
@@ -1486,13 +1500,13 @@ export default function StatsScreen() {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
                     {netWorthScope === 'all'
-                      ? (language === 'ar' ? 'صافي الملاءة الإجمالي الشامل' : 'Consolidated Total Net Solvency')
-                      : (language === 'ar' ? 'إجمالي الأصول والصافي الحالي' : 'Current Net Solvency Assets')}
+                      ? loc('صافي الملاءة الإجمالي الشامل', 'Consolidated Total Net Solvency', 'ആകെ അറ്റ ആസ്തി')
+                      : loc('إجمالي الأصول والصافي الحالي', 'Current Net Solvency Assets', 'നിലവിലെ അറ്റ ആസ്തി')}
                   </Text>
                   {netWorthScope === 'all' && (
                     <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
-                        {language === 'ar' ? `${includedWallets.length} محافظ مشمولة` : `${includedWallets.length} Wallets`}
+                        {loc(`${includedWallets.length} محافظ مشمولة`, `${includedWallets.length} Wallets`, `${includedWallets.length} വാലറ്റുകൾ ഉൾപ്പെടുത്തിയിട്ടുണ്ട്`)}
                       </Text>
                     </View>
                   )}
@@ -1504,12 +1518,16 @@ export default function StatsScreen() {
 
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
                   {netWorthScope === 'all'
-                    ? (language === 'ar'
-                        ? `مسار الثروة المالي الشامل المجمع لكافة محافظك المشمولة بعد تحويل العملات.${excludedWallets.length > 0 ? ` (تم استبعاد: ${excludedWallets.map(w => w.name).join('، ')})` : ''}`
-                        : `Consolidated financial trajectory across all included wallets with automatic currency conversions.${excludedWallets.length > 0 ? ` (Excluded: ${excludedWallets.map(w => w.name).join(', ')})` : ''}`)
-                    : (language === 'ar'
-                        ? `يعبر هذا الجراف عن التغيّر اليومي الفعلي لملاءتك المالية في محفظة "${selectedWallet?.name || 'الرئيسية'}" بناءً على مدفوعاتك ومقبوضاتك.`
-                        : `This graph calculates the real daily trajectory of your solvency in "${selectedWallet?.name || 'Main Wallet'}".`)}
+                    ? loc(
+                        `مسار الثروة المالي الشامل المجمع لكافة محافظك المشمولة بعد تحويل العملات.${excludedWallets.length > 0 ? ` (تم استبعاد: ${excludedWallets.map(w => w.name).join('، ')})` : ''}`,
+                        `Consolidated financial trajectory across all included wallets with automatic currency conversions.${excludedWallets.length > 0 ? ` (Excluded: ${excludedWallets.map(w => w.name).join(', ')})` : ''}`,
+                        `കറൻസി പരിവർത്തനങ്ങളോടെ ഉൾപ്പെടുത്തിയ എല്ലാ വാലറ്റുകളിലെയും സമ്പത്തിന്റെ സമഗ്രമായ വളർച്ചാ രേഖ.${excludedWallets.length > 0 ? ` (ഒഴിവാക്കിയവ: ${excludedWallets.map(w => w.name).join(', ')})` : ''}`
+                      )
+                    : loc(
+                        `يعبر هذا الجراف عن التغيّر اليومي الفعلي لملاءتك المالية في محفظة "${selectedWallet?.name || 'الرئيسية'}" بناءً على مدفوعاتك ومقبوضاتك.`,
+                        `This graph calculates the real daily trajectory of your solvency in "${selectedWallet?.name || 'Main Wallet'}".`,
+                        `നിങ്ങളുടെ വരുമാനവും ചെലവും അടിസ്ഥാനമാക്കി "${selectedWallet?.name || 'പ്രധാന വാലറ്റ്'}"-ലെ യഥാർത്ഥ പ്രതിദിന ആസ്തി മാറ്റങ്ങൾ ഈ ഗ്രാഫ് കാണിക്കുന്നു.`
+                      )}
                 </Text>
               </View>
 
@@ -1517,7 +1535,7 @@ export default function StatsScreen() {
               {netWorthScope === 'all' && includedWallets.length > 0 && (
                 <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: colors.border, gap: 8 }}>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
-                    {language === 'ar' ? '💳 المحافظ المشمولة في الإجمالي' : '💳 Included Wallets in Total'}
+                    {loc('💳 المحافظ المشمولة في الإجمالي', '💳 Included Wallets in Total', '💳 ഉൾപ്പെടുത്തിയ വാലറ്റുകൾ')}
                   </Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {includedWallets.map(w => {
@@ -1551,7 +1569,7 @@ export default function StatsScreen() {
                   </View>
                   {excludedWallets.length > 0 && (
                     <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: '#F59E0B', textAlign: 'left', marginTop: 4 }}>
-                      ⚠️ {language === 'ar' ? `محافظ مستبعدة حسب طلبك: ${excludedWallets.map(w => w.name).join('، ')}` : `Excluded wallets per your settings: ${excludedWallets.map(w => w.name).join(', ')}`}
+                      ⚠️ {loc(`محافظ مستبعدة حسب طلبك: ${excludedWallets.map(w => w.name).join('، ')}`, `Excluded wallets per your settings: ${excludedWallets.map(w => w.name).join(', ')}`, `ഒഴിവാക്കിയ വാലറ്റുകൾ: ${excludedWallets.map(w => w.name).join(', ')}`)}
                     </Text>
                   )}
                 </View>
@@ -1561,8 +1579,8 @@ export default function StatsScreen() {
               <View style={{ backgroundColor: theme === 'dark' ? '#0B132B' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
                   {netWorthScope === 'all'
-                    ? (language === 'ar' ? '📈 مسار صافي الملاءة الكلي لجميع المحافظ هذا الشهر' : '📈 Consolidated Solvency Trajectory')
-                    : (language === 'ar' ? '📈 منحنى المسار اليومي للملاءة هذا الشهر' : '📈 Daily Net Worth Trajectory')}
+                    ? loc('📈 مسار صافي الملاءة الكلي لجميع المحافظ هذا الشهر', '📈 Consolidated Solvency Trajectory', '📈 ഈ മാസത്തെ ആകെ ആസ്തി വളർച്ചാ നിരക്ക്')
+                    : loc('📈 منحنى المسار اليومي للملاءة هذا الشهر', '📈 Daily Net Worth Trajectory', '📈 ഈ മാസത്തെ പ്രതിദിന ആസ്തി രേഖ')}
                 </Text>
 
                 {(() => {
@@ -1612,7 +1630,7 @@ export default function StatsScreen() {
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Ionicons name="calendar-outline" size={16} color="#10B981" />
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
-                              {language === 'ar' ? `اليوم ${selectedPt.day}` : `Day ${selectedPt.day}`}
+                              {loc(`اليوم ${selectedPt.day}`, `Day ${selectedPt.day}`, `${selectedPt.day}-ാം തീയതി`)}
                             </Text>
                           </View>
                           <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#10B981' }}>
@@ -1621,7 +1639,7 @@ export default function StatsScreen() {
                         </View>
                       ) : (
                         <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textTertiary, textAlign: 'center' }}>
-                          {language === 'ar' ? '💡 اضغط على أي نقطة في الرسم البياني لعرض القيمة اليومية' : '💡 Tap anywhere on the graph to inspect daily value'}
+                          {loc('💡 اضغط على أي نقطة في الرسم البياني لعرض القيمة اليومية', '💡 Tap anywhere on the graph to inspect daily value', '💡 പ്രതിദിന മൂല്യം കാണാൻ ഗ്രാഫിൽ ടാപ്പ് ചെയ്യുക')}
                         </Text>
                       )}
 
@@ -1729,16 +1747,16 @@ export default function StatsScreen() {
               <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#FFFFFF', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 12 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text, textAlign: 'left' }}>
                   {netWorthScope === 'all'
-                    ? (language === 'ar' ? '📑 تفاصيل الملاءة المجمعة الشاملة' : '📑 Consolidated Components')
-                    : (language === 'ar' ? '📑 مكونات وتفاصيل الملاءة' : '📑 Solvency Components')}
+                    ? loc('📑 تفاصيل الملاءة المجمعة الشاملة', '📑 Consolidated Components', '📑 ആകെ ആസ്തി ഘടകങ്ങൾ')
+                    : loc('📑 مكونات وتفاصيل الملاءة', '📑 Solvency Components', '📑 ആസ്തി ഘടകങ്ങൾ')}
                 </Text>
 
                 <View style={{ gap: 10 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
                       {netWorthScope === 'all'
-                        ? (language === 'ar' ? 'إجمالي الأرصدة الافتتاحية للمحافظ' : 'Total Initial Balances')
-                        : (language === 'ar' ? 'رصيد المحفظة الافتتاحي' : 'Initial Wallet Balance')}
+                        ? loc('إجمالي الأرصدة الافتتاحية للمحافظ', 'Total Initial Balances', 'ആകെ പ്രാരംഭ ബാലൻസ്')
+                        : loc('رصيد المحفظة الافتتاحي', 'Initial Wallet Balance', 'പ്രാരംഭ വാലറ്റ് ബാലൻസ്')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
                       {formatCurrency(activeInitialBalance)} {currencySymbol}
@@ -1747,7 +1765,7 @@ export default function StatsScreen() {
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
-                      {language === 'ar' ? 'إجمالي المقبوضات والدخل' : 'Total All-Time Income'}
+                      {loc('إجمالي المقبوضات والدخل', 'Total All-Time Income', 'ആകെ വരുമാനം')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
                       +{formatCurrency(activeAllTimeIncome)} {currencySymbol}
@@ -1756,7 +1774,7 @@ export default function StatsScreen() {
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.expense }}>
-                      {language === 'ar' ? 'إجمالي المدفوعات والمصاريف' : 'Total All-Time Expense'}
+                      {loc('إجمالي المدفوعات والمصاريف', 'Total All-Time Expense', 'ആകെ ചെലവുകൾ')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
                       -{formatCurrency(activeAllTimeExpense)} {currencySymbol}
@@ -1767,8 +1785,8 @@ export default function StatsScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: theme === 'dark' ? '#1E293B50' : '#F1F5F9', paddingHorizontal: 8, borderRadius: 8 }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
                       {netWorthScope === 'all'
-                        ? (language === 'ar' ? '💳 الرصيد المتاح بالمحافظ المشمولة' : '💳 Available Wallets Cash Balance')
-                        : (language === 'ar' ? '💳 الرصيد المتاح بالمحفظة (البنك)' : '💳 Available Wallet Cash Balance')}
+                        ? loc('💳 الرصيد المتاح بالمحافظ المشمولة', '💳 Available Wallets Cash Balance', '💳 ലഭ്യമായ വാലറ്റ് ബാലൻസ്')
+                        : loc('💳 الرصيد المتاح بالمحفظة (البنك)', '💳 Available Wallet Cash Balance', '💳 ലഭ്യമായ വാലറ്റ് ബാലൻസ്')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (activeInitialBalance + activeAllTimeIncome - activeAllTimeExpense) >= 0 ? colors.income : colors.expense }}>
                       {formatCurrency(activeInitialBalance + activeAllTimeIncome - activeAllTimeExpense)} {currencySymbol}
@@ -1778,7 +1796,7 @@ export default function StatsScreen() {
                   {totalSavedInGoals > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
-                        {language === 'ar' ? 'الحصالات والأهداف الادخارية' : 'Saved in Goals & Jars'}
+                        {loc('الحصالات والأهداف الادخارية', 'Saved in Goals & Jars', 'സമ്പാദ്യ ലക്ഷ്യങ്ങളിലുള്ള തുക')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
                         +{formatCurrency(totalSavedInGoals)} {currencySymbol}
@@ -1789,7 +1807,7 @@ export default function StatsScreen() {
                   {totalJameyaSavings > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: '#10B981' }}>
-                        🤝 {language === 'ar' ? 'أصول ادخار الجمعيات' : 'Jameya Savings Asset'}
+                        🤝 {loc('أصول ادخار الجمعيات', 'Jameya Savings Asset', 'ചിട്ടി സമ്പാദ്യ ആസ്തി')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
                         +{formatCurrency(totalJameyaSavings)} {currencySymbol}
@@ -1800,7 +1818,7 @@ export default function StatsScreen() {
                   {totalLoansOwedToMe > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
-                        {language === 'ar' ? 'قروض مستردة (لي)' : 'Loans Owed to Me'}
+                        {loc('قروض مستردة (لي)', 'Loans Owed to Me', 'ലഭിക്കാനുള്ള കടങ്ങൾ')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }}>
                         +{formatCurrency(totalLoansOwedToMe)} {currencySymbol}
@@ -1811,7 +1829,7 @@ export default function StatsScreen() {
                   {totalDebtsOwedByMe > 0 && (
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.expense }}>
-                        {language === 'ar' ? 'ديون مستحقة (عليّ)' : 'Debts Owed by Me'}
+                        {loc('ديون مستحقة (عليّ)', 'Debts Owed by Me', 'നൽകാനുള്ള കടങ്ങൾ')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.expense }}>
                         -{formatCurrency(totalDebtsOwedByMe)} {currencySymbol}
@@ -1821,7 +1839,7 @@ export default function StatsScreen() {
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, backgroundColor: '#10B98115', paddingHorizontal: 12, borderRadius: 12 }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#10B981' }}>
-                      {language === 'ar' ? 'إجمالي صافي الملاءة الشاملة' : 'Total Net Solvency Assets'}
+                      {loc('إجمالي صافي الملاءة الشاملة', 'Total Net Solvency Assets', 'ആകെ അറ്റ ആസ്തി')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 15, color: '#10B981' }}>
                       {formatCurrency(activeNetWorth)} {currencySymbol}
@@ -1855,12 +1873,12 @@ export default function StatsScreen() {
               </Pressable>
               <Text style={styles.modalTitle}>
                 {breakdownType === 'income'
-                  ? (language === 'ar' ? `تفاصيل الدخل (${t.months[viewMonth]})` : `Income Breakdown (${t.months[viewMonth]})`)
+                  ? loc(`تفاصيل الدخل (${t.months[viewMonth]})`, `Income Breakdown (${t.months[viewMonth]})`, `വരുമാന വിവരണം (${t.months[viewMonth]})`)
                   : breakdownType === 'expense'
-                  ? (language === 'ar' ? `تفاصيل المصاريف (${t.months[viewMonth]})` : `Expenses Breakdown (${t.months[viewMonth]})`)
+                  ? loc(`تفاصيل المصاريف (${t.months[viewMonth]})`, `Expenses Breakdown (${t.months[viewMonth]})`, `ചെലവ് വിവരണം (${t.months[viewMonth]})`)
                   : breakdownType === 'transfer'
-                  ? (language === 'ar' ? `تفاصيل التحويلات (${t.months[viewMonth]})` : `Transfers Breakdown (${t.months[viewMonth]})`)
-                  : (language === 'ar' ? `تفاصيل الادخار والجمعيات (${t.months[viewMonth]})` : `Savings & ROSCA Breakdown (${t.months[viewMonth]})`)}
+                  ? loc(`تفاصيل التحويلات (${t.months[viewMonth]})`, `Transfers Breakdown (${t.months[viewMonth]})`, `കൈമാറ്റ വിവരണം (${t.months[viewMonth]})`)
+                  : loc(`تفاصيل الادخار والجمعيات (${t.months[viewMonth]})`, `Savings & ROSCA Breakdown (${t.months[viewMonth]})`, `സമ്പാദ്യ & ചിട്ടി വിവരണം (${t.months[viewMonth]})`)}
               </Text>
               <View style={{ width: 32 }} />
             </View>
@@ -1917,7 +1935,7 @@ export default function StatsScreen() {
                 }}
               >
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: breakdownType === 'rosca' ? '#0D7C66' : colors.textSecondary }}>
-                  🎁 {language === 'ar' ? 'الادخار' : 'Savings'}
+                  🎁 {loc('الادخار', 'Savings', 'സമ്പാദ്യം')}
                 </Text>
               </Pressable>
 
@@ -1935,7 +1953,7 @@ export default function StatsScreen() {
                 }}
               >
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: breakdownType === 'transfer' ? '#6366F1' : colors.textSecondary }}>
-                  🔄 {language === 'ar' ? 'التحويلات' : 'Transfers'}
+                  🔄 {loc('التحويلات', 'Transfers', 'കൈമാറ്റങ്ങൾ')}
                 </Text>
               </Pressable>
             </View>
@@ -1981,18 +1999,18 @@ export default function StatsScreen() {
                     <View style={{ backgroundColor: theme === 'dark' ? '#0F172A' : '#F8FAFC', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: colors.border, gap: 6, alignItems: 'center' }}>
                       <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
                         {isExp
-                          ? (language === 'ar' ? 'إجمالي المصاريف' : 'Total Monthly Expenses')
+                          ? loc('إجمالي المصاريف', 'Total Monthly Expenses', 'ആകെ പ്രതിമാസ ചെലവ്')
                           : isInc
-                          ? (language === 'ar' ? 'إجمالي المقبوضات والدخل' : 'Total Monthly Inflow')
+                          ? loc('إجمالي المقبوضات والدخل', 'Total Monthly Inflow', 'ആകെ പ്രതിമാസ വരുമാനം')
                           : isTrans
-                          ? (language === 'ar' ? 'إجمالي التحويلات الصادرة' : 'Total Outgoing Transfers')
-                          : (language === 'ar' ? 'إجمالي الادخار والجمعيات' : 'Total Savings & ROSCA')}
+                          ? loc('إجمالي التحويلات الصادرة', 'Total Outgoing Transfers', 'ആകെ കൈമാറ്റങ്ങൾ')
+                          : loc('إجمالي الادخار والجمعيات', 'Total Savings & ROSCA', 'ആകെ സമ്പാദ്യവും ചിട്ടിയും')}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 26, color: totalColor }}>
                         {isExp || isTrans ? '-' : '+'}{formatCurrency(totalVal)} {currencySymbol}
                       </Text>
                       <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
-                        {language === 'ar' ? `${currentFilteredTxns.length} معاملة مسجلة في محفظة "${selectedWallet?.name || ''}"` : `${currentFilteredTxns.length} transactions recorded`}
+                        {loc(`${currentFilteredTxns.length} معاملة مسجلة في محفظة "${selectedWallet?.name || ''}"`, `${currentFilteredTxns.length} transactions recorded`, `"${selectedWallet?.name || ''}" വാലറ്റിൽ ${currentFilteredTxns.length} ഇടപാടുകൾ രേഖപ്പെടുത്തിയിട്ടുണ്ട്`)}
                       </Text>
                     </View>
 
@@ -2003,7 +2021,7 @@ export default function StatsScreen() {
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Ionicons name="cart-outline" size={15} color={colors.expense} />
                             <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                              {language === 'ar' ? 'مصاريف استهلاكية' : 'Pure Spending'}
+                              {loc('مصاريف استهلاكية', 'Pure Spending', 'ഉപഭോഗ ചെലവുകൾ')}
                             </Text>
                           </View>
                           <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.expense }}>
@@ -2016,7 +2034,7 @@ export default function StatsScreen() {
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                               <Ionicons name="swap-horizontal" size={15} color="#8B5CF6" />
                               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                                {language === 'ar' ? 'تحويل لمحافظ أخرى' : 'Transfers Out'}
+                                {loc('تحويل لمحافظ أخرى', 'Transfers Out', 'മറ്റ് വാലറ്റുകളിലേക്ക് കൈമാറ്റം')}
                               </Text>
                             </View>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#8B5CF6' }}>
@@ -2033,7 +2051,7 @@ export default function StatsScreen() {
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Ionicons name="cash-outline" size={15} color={colors.income} />
                             <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                              {language === 'ar' ? 'دخل وإيرادات مباشرة' : 'Direct Income'}
+                              {loc('دخل وإيرادات مباشرة', 'Direct Income', 'നേരിട്ടുള്ള വരുമാനം')}
                             </Text>
                           </View>
                           <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.income }}>
@@ -2046,7 +2064,7 @@ export default function StatsScreen() {
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                               <Ionicons name="swap-horizontal" size={15} color="#10B981" />
                               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                                {language === 'ar' ? 'تحويلات واردة' : 'Transfers In'}
+                                {loc('تحويلات واردة', 'Transfers In', 'ലഭിച്ച കൈമാറ്റങ്ങൾ')}
                               </Text>
                             </View>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#10B981' }}>
@@ -2061,7 +2079,7 @@ export default function StatsScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 8, borderWidth: 1, borderColor: colors.border }}>
                       <Ionicons name="search" size={16} color={colors.textTertiary} />
                       <TextInput
-                        placeholder={language === 'ar' ? 'بحث في المعاملات...' : 'Search transactions...'}
+                        placeholder={loc('بحث في المعاملات...', 'Search transactions...', 'ഇടപാടുകളിൽ തിരയുക...')}
                         placeholderTextColor={colors.textTertiary}
                         value={breakdownSearchQuery}
                         onChangeText={setBreakdownSearchQuery}
@@ -2077,13 +2095,13 @@ export default function StatsScreen() {
                     {/* Transaction List */}
                     <View style={{ gap: 8 }}>
                       <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text, textAlign: 'left' }}>
-                        {language === 'ar' ? 'قائمة المعاملات بالتفصيل' : 'Transaction Details'}
+                        {loc('قائمة المعاملات بالتفصيل', 'Transaction Details', 'വിശദമായ ഇടപാട് വിവരങ്ങൾ')}
                       </Text>
 
                       {currentFilteredTxns.length === 0 ? (
                         <View style={{ padding: 24, alignItems: 'center' }}>
                           <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary }}>
-                            {language === 'ar' ? 'لا توجد معاملات مسجلة تطابق البحث' : 'No transactions found'}
+                            {loc('لا توجد معاملات مسجلة تطابق البحث', 'No transactions found', 'ഇടപാടുകളൊന്നും കണ്ടെത്തിയില്ല')}
                           </Text>
                         </View>
                       ) : (
@@ -2095,9 +2113,9 @@ export default function StatsScreen() {
                           let title = getCategoryName(tx.category, language);
                           if (isTransfer) {
                             if (tx.walletId === selectedWallet?.id) {
-                              title = language === 'ar' ? `تحويل إلى "${toW?.name || 'محفظة أخرى'}"` : `Transfer to "${toW?.name || 'Wallet'}"`;
+                              title = loc(`تحويل إلى "${toW?.name || 'محفظة أخرى'}"`, `Transfer to "${toW?.name || 'Wallet'}"`, `"${toW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ലേക്ക് കൈമാറ്റം`);
                             } else {
-                              title = language === 'ar' ? `تحويل من "${fromW?.name || 'محفظة أخرى'}"` : `Transfer from "${fromW?.name || 'Wallet'}"`;
+                              title = loc(`تحويل من "${fromW?.name || 'محفظة أخرى'}"`, `Transfer from "${fromW?.name || 'Wallet'}"`, `"${fromW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ൽ നിന്നുള്ള കൈമാറ്റം`);
                             }
                           }
 

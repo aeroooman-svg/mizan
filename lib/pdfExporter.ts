@@ -11,7 +11,7 @@ export async function exportTransactionsToPDF(
   language: Language
 ): Promise<void> {
   if (Platform.OS === 'web') {
-    alert(language === 'ar' ? 'تصدير PDF غير مدعوم على الويب' : language === 'hi' ? 'वेब पर पीडीएफ निर्यात समर्थित नहीं है' : 'PDF export is not supported on Web');
+    alert(language === 'ar' ? 'تصدير PDF غير مدعوم على الويب' : (language === 'ml' || language === 'hi') ? 'വെബിൽ PDF എക്സ്പോർട്ട് ലഭ്യമല്ല' : 'PDF export is not supported on Web');
     return;
   }
 

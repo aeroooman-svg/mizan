@@ -61,6 +61,14 @@ export default function FinancialPlanScreen() {
   const insets = useSafeAreaInsets();
   const { selectedWallet, wallets, currencySymbol, currencyCode, totalIncome, totalExpense, allTimeIncome, allTimeExpense, walletTransactions } = useTransactions();
   const { t, language } = useLanguage();
+  const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
 
   const [plan, setPlan] = useState<FinancialPlan | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -176,10 +184,12 @@ export default function FinancialPlanScreen() {
     setIsAdjustModalOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      language === 'ar' ? 'تم تحديث خطة المستقبل 🚀' : 'Future Plan Updated 🚀',
-      language === 'ar'
-        ? 'تم تحديث المستهدفات للأشهر القادمة بناءً على متوسطاتك، مع الحفاظ الكامل على البيانات التاريخية للأشهر السابقة كما حدثت بالفعل.'
-        : 'Updated future plan targets while keeping historical past months intact.'
+      loc('تم تحديث خطة المستقبل 🚀', 'Future Plan Updated 🚀', 'ഭാവി പ്ലാൻ അപ്ഡേറ്റ് ചെയ്തു 🚀'),
+      loc(
+        'تم تحديث المستهدفات للأشهر القادمة بناءً على متوسطاتك، مع الحفاظ الكامل على البيانات التاريخية للأشهر السابقة كما حدثت بالفعل.',
+        'Updated future plan targets while keeping historical past months intact.',
+        'കഴിഞ്ഞ മാസങ്ങളിലെ ചരിത്ര വിവരങ്ങൾ മാറ്റമില്ലാതെ നിലനിർത്തി ഭാവി പ്ലാൻ ലക്ഷ്യങ്ങൾ അപ്ഡേറ്റ് ചെയ്തു.'
+      )
     );
   };
 
@@ -207,8 +217,8 @@ export default function FinancialPlanScreen() {
     setIsKakeiboBudgetModalOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      language === 'ar' ? 'نجاح' : 'Success',
-      language === 'ar' ? 'تم تحديث ميزانية كاميهيبو بنجاح!' : 'Kakeibo budgets updated!'
+      loc('نجاح', 'Success', 'വിജയം'),
+      loc('تم تحديث ميزانية كاميهيبو بنجاح!', 'Kakeibo budgets updated!', 'കാകെയ്ബോ ബജറ്റ് അപ്ഡേറ്റ് ചെയ്തു!')
     );
   };
 
@@ -245,9 +255,11 @@ export default function FinancialPlanScreen() {
       const reduction = Math.round(currentWants * 0.05);
       if (reduction > 0) {
         updatedBudgets.wants = currentWants - reduction;
-        appliedNote = language === 'ar' 
-          ? `\n\n💡 تم تطبيق قرارك بتخفيض ${formatCurrency(reduction)} ${currencySymbol} من ركيزة الرغبات تلقائياً للشهر القادم!` 
-          : `\n\n💡 Reduced ${formatCurrency(reduction)} ${currencySymbol} from Wants pillar for next month!`;
+        appliedNote = loc(
+          `\n\n💡 تم تطبيق قرارك بتخفيض ${formatCurrency(reduction)} ${currencySymbol} من ركيزة الرغبات تلقائياً للشهر القادم!`,
+          `\n\n💡 Reduced ${formatCurrency(reduction)} ${currencySymbol} from Wants pillar for next month!`,
+          `\n\n💡 അടുത്ത മാസത്തെ ആഗ്രഹങ്ങളിൽ നിന്ന് ${formatCurrency(reduction)} ${currencySymbol} സ്വയമേവ കുറച്ചു!`
+        );
       }
     }
 
@@ -262,10 +274,12 @@ export default function FinancialPlanScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     Alert.alert(
-      language === 'ar' ? 'تم حفظ التأمل المالي 🟢' : 'Reflection Saved 🟢',
-      (language === 'ar'
-        ? 'تم تدوين وحفظ قراراتك وتأملك المالي بنجاح في السجل!'
-        : 'Your financial reflection and decisions have been logged successfully!') + appliedNote
+      loc('تم حفظ التأمل المالي 🟢', 'Reflection Saved 🟢', 'സാമ്പത്തിക ചിന്തകൾ സേവ് ചെയ്തു 🟢'),
+      loc(
+        'تم تدوين وحفظ قراراتك وتأملك المالي بنجاح في السجل!',
+        'Your financial reflection and decisions have been logged successfully!',
+        'നിങ്ങളുടെ സാമ്പത്തിക തീരുമാനങ്ങളും ചിന്തകളും വിജയകരമായി രേഖപ്പെടുത്തി!'
+      ) + appliedNote
     );
   };
 
@@ -321,14 +335,18 @@ export default function FinancialPlanScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      language === 'ar' ? 'تم إعادة التوازن بنجاح ⚖️' : 'Rebalance Applied ⚖️',
+      loc('تم إعادة التوازن بنجاح ⚖️', 'Rebalance Applied ⚖️', 'റീബാലൻസ് നടപ്പിലാക്കി ⚖️'),
       coveredFromSurplus > 0
-        ? (language === 'ar'
-            ? `تم رفع ميزانية الركيزة بـ ${formatCurrency(overrunAmount)} ${currencySymbol} وتغطية ${formatCurrency(coveredFromSurplus)} ${currencySymbol} من الفائض المتاح بالركائز الأخرى دون إحداث أي تجاوز جديد!`
-            : `Adjusted budget by ${formatCurrency(overrunAmount)} ${currencySymbol} and covered ${formatCurrency(coveredFromSurplus)} ${currencySymbol} from surplus in other pillars!`)
-        : (language === 'ar'
-            ? `تم رفع ميزانية الركيزة بـ ${formatCurrency(overrunAmount)} ${currencySymbol} لتغطية التجاوز وحماية باقي الركائز من أي عجز!`
-            : `Increased pillar budget by ${formatCurrency(overrunAmount)} ${currencySymbol} to cover overrun safely!`)
+        ? loc(
+            `تم رفع ميزانية الركيزة بـ ${formatCurrency(overrunAmount)} ${currencySymbol} وتغطية ${formatCurrency(coveredFromSurplus)} ${currencySymbol} من الفائض المتاح بالركائز الأخرى دون إحداث أي تجاوز جديد!`,
+            `Adjusted budget by ${formatCurrency(overrunAmount)} ${currencySymbol} and covered ${formatCurrency(coveredFromSurplus)} ${currencySymbol} from surplus in other pillars!`,
+            `ബജറ്റിൽ ${formatCurrency(overrunAmount)} ${currencySymbol} ക്രമീകരിക്കുകയും മിച്ചം വന്ന ${formatCurrency(coveredFromSurplus)} ${currencySymbol} ഉപയോഗിച്ച് കുറവ് നികത്തുകയും ചെയ്തു!`
+          )
+        : loc(
+            `تم رفع ميزانية الركيزة بـ ${formatCurrency(overrunAmount)} ${currencySymbol} لتغطية التجاوز وحماية باقي الركائز من أي عجز!`,
+            `Increased pillar budget by ${formatCurrency(overrunAmount)} ${currencySymbol} to cover overrun safely!`,
+            `അധികച്ചെലവ് സുരക്ഷിതമായി ഉൾക്കൊള്ളാൻ സ്തംഭത്തിന്റെ ബജറ്റ് ${formatCurrency(overrunAmount)} ${currencySymbol} വർദ്ധിപ്പിച്ചു!`
+          )
     );
   };
 
@@ -662,7 +680,7 @@ export default function FinancialPlanScreen() {
               <Ionicons name="flag" size={18} color={colors.primary} />
             </View>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-              {language === 'ar' ? '1. هدف الخطة ومدتها' : '1. Goal & Duration'}
+              {loc('1. هدف الخطة ومدتها', '1. Goal & Duration', '1. പ്ലാൻ ലക്ഷ്യവും കാലാവധിയും')}
             </Text>
           </View>
 
@@ -716,7 +734,7 @@ export default function FinancialPlanScreen() {
               <Ionicons name="wallet-outline" size={18} color="#10B981" />
             </View>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-              {language === 'ar' ? '2. الدخل والملاءة المالية' : '2. Income & Revenue'}
+              {loc('2. الدخل والملاءة المالية', '2. Income & Revenue', '2. വരുമാനവും സാമ്പത്തിക സ്ഥിതിയും')}
             </Text>
           </View>
 
@@ -743,7 +761,7 @@ export default function FinancialPlanScreen() {
             <View style={{ backgroundColor: colors.primary + '12', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.primary + '30', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, paddingRight: 8, gap: 2, alignItems: 'flex-start' }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
-                  {language === 'ar' ? '💳 أقساط والتزامات مكتشفة' : '💳 Detected Recurring Bills'}
+                  {loc('💳 أقساط والتزامات مكتشفة', '💳 Detected Recurring Bills', '💳 ആവർത്തിച്ചുള്ള ബാധ്യതകൾ')}
                 </Text>
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
                   {formatCurrency(totalFixedCommitments)} {currencySymbol}
@@ -767,7 +785,7 @@ export default function FinancialPlanScreen() {
               >
                 <Ionicons name="sync" size={14} color="#FFF" />
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#FFF' }}>
-                  {language === 'ar' ? 'مزامنة ⚡' : 'Sync ⚡'}
+                  {loc('مزامنة ⚡', 'Sync ⚡', 'സിങ്ക് ചെയ്യുക ⚡')}
                 </Text>
               </Pressable>
             </View>
@@ -790,7 +808,7 @@ export default function FinancialPlanScreen() {
                 <Ionicons name="pie-chart-outline" size={18} color="#8B5CF6" />
               </View>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                {language === 'ar' ? '3. منهجية تقسيم المصاريف' : '3. Expense Methodology'}
+                {loc('3. منهجية تقسيم المصاريف', '3. Expense Methodology', '3. ചെലവ് പ്ലാനിംഗ് രീതി')}
               </Text>
             </View>
           </View>
@@ -824,13 +842,13 @@ export default function FinancialPlanScreen() {
             /* Japanese Kakeibo 4 Pillars Form Breakdown */
             <View style={{ gap: 12, backgroundColor: colors.surfaceAlt + '60', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text, textAlign: 'left' }}>
-                🌸 {language === 'ar' ? 'الأركان اليابانية الأربعة (كاكيبو)' : '4 Japanese Kakeibo Pillars'}
+                🌸 {loc('الأركان اليابانية الأربعة (كاكيبو)', '4 Japanese Kakeibo Pillars', '4 ജാപ്പനീസ് കാകെയ്ബോ സ്തംഭങ്ങൾ')}
               </Text>
 
               {/* Pillar 1: Survival */}
               <View>
                 <Text style={[styles.label, { color: '#10B981', fontSize: 11, marginBottom: 4 }]}>
-                  {language === 'ar' ? '1. الضروريات الأساسية (طعام، إيجار، فواتير)' : '1. Survival (Food, Rent, Bills)'}
+                  {loc('1. الضروريات الأساسية (طعام، إيجار، فواتير)', '1. Survival (Food, Rent, Bills)', '1. അടിസ്ഥാന ആവശ്യങ്ങൾ (ഭക്ഷണം, വാടക, ബില്ലുകൾ)')}
                 </Text>
                 <View style={styles.inputWithCurrency}>
                   <View style={[styles.inputCurrencyTag, { backgroundColor: '#10B98115' }]}>
@@ -859,7 +877,7 @@ export default function FinancialPlanScreen() {
               {/* Pillar 2: Wants */}
               <View>
                 <Text style={[styles.label, { color: '#F59E0B', fontSize: 11, marginBottom: 4 }]}>
-                  {language === 'ar' ? '2. الرغبات والتسلية (مطاعم، تسوق)' : '2. Wants (Restaurants, Shopping)'}
+                  {loc('2. الرغبات والتسلية (مطاعم، تسوق)', '2. Wants (Restaurants, Shopping)', '2. ആഗ്രഹങ്ങൾ (ഷോപ്പിംഗ്, വിനോദം)')}
                 </Text>
                 <View style={styles.inputWithCurrency}>
                   <View style={[styles.inputCurrencyTag, { backgroundColor: '#F59E0B15' }]}>
@@ -888,7 +906,7 @@ export default function FinancialPlanScreen() {
               {/* Pillar 3: Culture */}
               <View>
                 <Text style={[styles.label, { color: '#3B82F6', fontSize: 11, marginBottom: 4 }]}>
-                  {language === 'ar' ? '3. الثقافة والتطوير (كتب، رياضة، دورات)' : '3. Culture & Growth (Books, Sports)'}
+                  {loc('3. الثقافة والتطوير (كتب، رياضة، دورات)', '3. Culture & Growth (Books, Sports)', '3. സംസ്കാരവും വളർച്ചയും (പുസ്തകങ്ങൾ, പഠനം)')}
                 </Text>
                 <View style={styles.inputWithCurrency}>
                   <View style={[styles.inputCurrencyTag, { backgroundColor: '#3B82F615' }]}>
@@ -917,7 +935,7 @@ export default function FinancialPlanScreen() {
               {/* Pillar 4: Extra */}
               <View>
                 <Text style={[styles.label, { color: '#EC4899', fontSize: 11, marginBottom: 4 }]}>
-                  {language === 'ar' ? '4. المفاجآت والطوارئ (علاج، صيانة)' : '4. Unexpected Extra (Repairs, Medical)'}
+                  {loc('4. المفاجآت والطوارئ (علاج، صيانة)', '4. Unexpected Extra (Repairs, Medical)', '4. അപ്രതീക്ഷിത ചെലവുകൾ (ചികിത്സ, അറ്റകുറ്റപ്പണി)')}
                 </Text>
                 <View style={styles.inputWithCurrency}>
                   <View style={[styles.inputCurrencyTag, { backgroundColor: '#EC489915' }]}>
@@ -1096,9 +1114,11 @@ export default function FinancialPlanScreen() {
         if (avgSaving <= 0) {
           insights.push({
             type: 'danger',
-            message: language === 'ar'
-              ? `⚠️ بمعدل ادخارك الفعلي الحالي (${formatCurrency(avgSaving)} ${sym})، لن تتمكن من تحقيق هدفك المالي. ننصح بمراجعة المصاريف.`
-              : `⚠️ At your current actual savings rate (${formatCurrency(avgSaving)} ${sym}), you will not reach your financial goal. We recommend reviewing your expenses.`,
+            message: loc(
+              `⚠️ بمعدل ادخارك الفعلي الحالي (${formatCurrency(avgSaving)} ${sym})، لن تتمكن من تحقيق هدفك المالي. ننصح بمراجعة المصاريف.`,
+              `⚠️ At your current actual savings rate (${formatCurrency(avgSaving)} ${sym}), you will not reach your financial goal. We recommend reviewing your expenses.`,
+              `⚠️ ഇപ്പോഴത്തെ യഥാർത്ഥ സമ്പാദ്യ നിരക്കിൽ (${formatCurrency(avgSaving)} ${sym}), നിങ്ങൾക്ക് സാമ്പത്തിക ലക്ഷ്യം നേടാനാകില്ല. ചെലവുകൾ കുറയ്ക്കാൻ ശുപാർശ ചെയ്യുന്നു.`
+            ),
           });
         } else if (avgSaving < plan.monthlySaving) {
           const remainingToTarget = target - actualSavings;
@@ -1183,7 +1203,7 @@ export default function FinancialPlanScreen() {
         {isCompleted && (
           <View style={styles.celebrationCard}>
             <Text style={styles.celebrationText}>
-              {language === 'ar' ? 'تهانينا! لقد حققت هدفك المالي بنجاح 🎉🏆' : 'Congratulations! You have successfully achieved your financial goal! 🎉🏆'}
+              {loc('تهانينا! لقد حققت هدفك المالي بنجاح 🎉🏆', 'Congratulations! You have successfully achieved your financial goal! 🎉🏆', 'അഭിനന്ദനങ്ങൾ! സാമ്പത്തിക ലക്ഷ്യം വിജയകരമായി നേടി 🎉🏆')}
             </Text>
           </View>
         )}
@@ -1198,13 +1218,15 @@ export default function FinancialPlanScreen() {
               <Text style={styles.goalTitleText} numberOfLines={1}>{plan.goalName}</Text>
             </View>
             <Text style={styles.goalDetailSub}>
-              {language === 'ar' 
-                ? `المدة: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'سنة' : 'سنوات'}` 
-                : `Duration: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'Year' : 'Years'}`}
+              {loc(
+                `المدة: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'سنة' : 'سنوات'}`,
+                `Duration: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'Year' : 'Years'}`,
+                `കാലാവധി: ${Math.round(plan.durationMonths / 12)} വർഷം`
+              )}
             </Text>
             {plan.savingsGoal > 0 && (
               <Text style={styles.goalTargetText}>
-                {language === 'ar' ? `المستهدف: ${formatCurrency(plan.savingsGoal)} ${sym}` : `Target: ${formatCurrency(plan.savingsGoal)} ${sym}`}
+                {loc(`المستهدف: ${formatCurrency(plan.savingsGoal)} ${sym}`, `Target: ${formatCurrency(plan.savingsGoal)} ${sym}`, `ലക്ഷ്യം: ${formatCurrency(plan.savingsGoal)} ${sym}`)}
               </Text>
             )}
           </View>
@@ -1238,13 +1260,13 @@ export default function FinancialPlanScreen() {
 
           if (isCompleted) {
             estimatedTag = {
-              label: language === 'ar' ? '🏆 الهدف محقق بالفعل!' : '🏆 Goal Already Achieved!',
+              label: loc('🏆 الهدف محقق بالفعل!', '🏆 Goal Already Achieved!', '🏆 ലക്ഷ്യം ഇതിനകം നേടി!'),
               color: Colors.accent,
               bg: Colors.accent + '15',
             };
           } else if (avgSaving <= 0) {
             estimatedTag = {
-              label: language === 'ar' ? '⚠️ معدل الادخار سلبي — راجع مصاريفك' : '⚠️ Negative savings rate — review your expenses',
+              label: loc('⚠️ معدل الادخار سلبي — راجع مصاريفك', '⚠️ Negative savings rate — review your expenses', '⚠️ സമ്പാദ്യ നിരക്ക് നെഗറ്റീവ് ആണ് — ചെലവുകൾ അവലോകനം ചെയ്യുക'),
               color: Colors.expense,
               bg: Colors.expense + '12',
             };
@@ -1253,14 +1275,16 @@ export default function FinancialPlanScreen() {
             const completionDate = new Date();
             completionDate.setMonth(completionDate.getMonth() + monthsToGoal);
             const completionStr = completionDate.toLocaleDateString(
-              language === 'ar' ? 'ar-EG' : 'en-US',
+              isMl ? 'ml-IN' : isAr ? 'ar-EG' : 'en-US',
               { month: 'long', year: 'numeric' }
             );
             const isOnSchedule = monthsToGoal <= monthsRemaining;
             estimatedTag = {
-              label: language === 'ar'
-                ? `${isOnSchedule ? '✅' : '⚠️'} متوقع التحقيق: ${completionStr} (${monthsToGoal} شهر)`
-                : `${isOnSchedule ? '✅' : '⚠️'} Est. completion: ${completionStr} (${monthsToGoal} mo)`,
+              label: loc(
+                `${isOnSchedule ? '✅' : '⚠️'} متوقع التحقيق: ${completionStr} (${monthsToGoal} شهر)`,
+                `${isOnSchedule ? '✅' : '⚠️'} Est. completion: ${completionStr} (${monthsToGoal} mo)`,
+                `${isOnSchedule ? '✅' : '⚠️'} ലക്ഷ്യത്തിലെത്തുന്നത്: ${completionStr} (${monthsToGoal} മാസം)`
+              ),
               color: isOnSchedule ? Colors.income : Colors.expense,
               bg: isOnSchedule ? Colors.income + '12' : Colors.expense + '12',
             };
@@ -1273,9 +1297,11 @@ export default function FinancialPlanScreen() {
               </Text>
               {!isCompleted && avgSaving > 0 && (
                 <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: Colors.textSecondary, marginTop: 2, textAlign: 'left' }}>
-                  {language === 'ar'
-                    ? `متوسط ادخارك الفعلي الشهري: ${formatCurrency(avgSaving)} ${sym}`
-                    : `Your avg. monthly savings: ${formatCurrency(avgSaving)} ${sym}`}
+                  {loc(
+                    `متوسط ادخارك الفعلي الشهري: ${formatCurrency(avgSaving)} ${sym}`,
+                    `Your avg. monthly savings: ${formatCurrency(avgSaving)} ${sym}`,
+                    `ശരാശരി പ്രതിമാസ സമ്പാദ്യം: ${formatCurrency(avgSaving)} ${sym}`
+                  )}
                 </Text>
               )}
             </View>
@@ -1290,7 +1316,7 @@ export default function FinancialPlanScreen() {
                 <Ionicons name="stats-chart" size={18} color={colors.primary} />
               </View>
               <Text style={styles.integrationTitle} numberOfLines={1}>
-                {language === 'ar' ? 'ملاءة الأصول والأداء الفعلي' : 'Financial Assets & Performance'}
+                {loc('ملاءة الأصول والأداء الفعلي', 'Financial Assets & Performance', 'സാമ്പത്തിക ആസ്തികളും പ്രകടനവും')}
               </Text>
             </View>
           </View>
@@ -1299,37 +1325,37 @@ export default function FinancialPlanScreen() {
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? 'الدخل' : 'Income'}
+                {loc('الدخل', 'Income', 'വരുമാനം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>
                 +{formatCurrency(totalIncome)} {sym}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyIncome)}` : `Plan: ${formatCurrency(plan.monthlyIncome)}`}
+                {loc(`المخطط: ${formatCurrency(plan.monthlyIncome)}`, `Plan: ${formatCurrency(plan.monthlyIncome)}`, `പ്ലാൻ: ${formatCurrency(plan.monthlyIncome)}`)}
               </Text>
             </View>
 
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? 'المصاريف' : 'Expenses'}
+                {loc('المصاريف', 'Expenses', 'ചെലവുകൾ')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > plan.monthlyExpense ? colors.expense : colors.text }} numberOfLines={1}>
                 -{formatCurrency(totalExpense)} {sym}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? `المخطط: ${formatCurrency(plan.monthlyExpense)}` : `Plan: ${formatCurrency(plan.monthlyExpense)}`}
+                {loc(`المخطط: ${formatCurrency(plan.monthlyExpense)}`, `Plan: ${formatCurrency(plan.monthlyExpense)}`, `പ്ലാൻ: ${formatCurrency(plan.monthlyExpense)}`)}
               </Text>
             </View>
 
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? 'الصافي' : 'Net'}
+                {loc('الصافي', 'Net', 'അറ്റ തുക')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
                 {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)} {sym}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {language === 'ar' ? `الهدف: ${formatCurrency(plan.monthlySaving)}` : `Target: ${formatCurrency(plan.monthlySaving)}`}
+                {loc(`الهدف: ${formatCurrency(plan.monthlySaving)}`, `Target: ${formatCurrency(plan.monthlySaving)}`, `ലക്ഷ്യം: ${formatCurrency(plan.monthlySaving)}`)}
               </Text>
             </View>
           </View>
@@ -1337,13 +1363,13 @@ export default function FinancialPlanScreen() {
           {/* Solvency & Net Integrated Assets Breakdown List */}
           <View style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
             <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{language === 'ar' ? 'رصيد المحفظة النقدي المتاح' : 'Available Wallet Balance'}</Text>
+              <Text style={styles.integrationLabel}>{loc('رصيد المحفظة النقدي المتاح', 'Available Wallet Balance', 'ലഭ്യമായ വാലറ്റ് ബാലൻസ്')}</Text>
               <Text style={styles.integrationValue}>{formatCurrency(walletNetBalance)} {sym}</Text>
             </View>
 
             {totalSavedInGoals > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المودع في حصالات الادخار والأهداف' : 'Saved in Savings Jars & Goals'}</Text>
+                <Text style={styles.integrationLabel}>{loc('المودع في حصالات الادخار والأهداف', 'Saved in Savings Jars & Goals', 'സമ്പാദ്യ ലക്ഷ്യങ്ങളിലുള്ള തുക')}</Text>
                 <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
               </View>
             )}
@@ -1351,7 +1377,7 @@ export default function FinancialPlanScreen() {
             {totalJameyaAccumulatedSavings > 0 && (
               <View style={styles.integrationRow}>
                 <Text style={[styles.integrationLabel, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
-                  🤝 {language === 'ar' ? 'مدفوعات ومدخرات الجمعيات' : 'Jameya Savings Asset'}
+                  🤝 {loc('مدفوعات ومدخرات الجمعيات', 'Jameya Savings Asset', 'ചിട്ടി സമ്പാദ്യം')}
                 </Text>
                 <Text style={[styles.integrationValue, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
                   +{formatCurrency(totalJameyaAccumulatedSavings)} {sym}
@@ -1361,21 +1387,21 @@ export default function FinancialPlanScreen() {
 
             {totalConsumerCommitments > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'المصاريف المتكررة والأقساط الاستهلاكية' : 'Monthly Bills & Card Installments'}</Text>
+                <Text style={styles.integrationLabel}>{loc('المصاريف المتكررة والأقساط الاستهلاكية', 'Monthly Bills & Card Installments', 'പ്രതിമാസ ബില്ലുകളും തവണകളും')}</Text>
                 <Text style={[styles.integrationValue, { color: colors.textSecondary }]}>{formatCurrency(totalConsumerCommitments)} {sym}</Text>
               </View>
             )}
 
             {unpaidDebts > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'ديون معلقة (عليّ)' : 'Outstanding Debts'}</Text>
+                <Text style={styles.integrationLabel}>{loc('ديون معلقة (عليّ)', 'Outstanding Debts', 'നൽകാനുള്ള കടങ്ങൾ')}</Text>
                 <Text style={[styles.integrationValue, { color: Colors.expense }]}>-{formatCurrency(unpaidDebts)} {sym}</Text>
               </View>
             )}
 
             {unpaidLoans > 0 && (
               <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{language === 'ar' ? 'قروض مستردة (لي)' : 'Loans Owed to Me'}</Text>
+                <Text style={styles.integrationLabel}>{loc('قروض مستردة (لي)', 'Loans Owed to Me', 'ലഭിക്കാനുള്ള കടങ്ങൾ')}</Text>
                 <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(unpaidLoans)} {sym}</Text>
               </View>
             )}
@@ -1384,7 +1410,7 @@ export default function FinancialPlanScreen() {
 
             <View style={styles.integrationRow}>
               <Text style={[styles.integrationLabel, { fontFamily: 'Cairo_700Bold', color: Colors.text, fontSize: 13 }]}>
-                {language === 'ar' ? 'إجمالي الصافي الادخاري الشامل (الأصول المتاحة)' : 'Total Net Savings Assets'}
+                {loc('إجمالي الصافي الادخاري الشامل (الأصول المتاحة)', 'Total Net Savings Assets', 'ആകെ അറ്റ സമ്പാദ്യ ആസ്തി')}
               </Text>
               <Text style={[styles.integrationValue, { fontFamily: 'Cairo_700Bold', color: Colors.primary, fontSize: 15 }]}>
                 {formatCurrency(actualSavings)} {sym}
@@ -1398,25 +1424,27 @@ export default function FinancialPlanScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Ionicons name="rocket-outline" size={20} color={Colors.primary} />
             <Text style={styles.projectionTitle}>
-              {language === 'ar' ? 'توقعات النمو والادخار بعيد المدى' : 'Long-term Savings Projection'}
+              {loc('توقعات النمو والادخار بعيد المدى', 'Long-term Savings Projection', 'ദീർഘകാല സമ്പാദ്യ പ്രവചനം')}
             </Text>
           </View>
           <Text style={styles.projectionDesc}>
-            {language === 'ar' 
-              ? 'إذا حافظت على معدل ادخارك المستهدف الحالي، فإليك كم ستملك في المستقبل:' 
-              : 'If you maintain your current target savings rate, here is what you will accumulate:'}
+            {loc(
+              'إذا حافظت على معدل ادخارك المستهدف الحالي، فإليك كم ستملك في المستقبل:',
+              'If you maintain your current target savings rate, here is what you will accumulate:',
+              'ഇപ്പോഴത്തെ സമ്പാദ്യ നിരക്ക് തുടർന്നാൽ ഭാവിയിൽ നിങ്ങൾക്ക് ലഭിക്കുന്നത്:'
+            )}
           </Text>
           <View style={styles.projectionGrid}>
             <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{language === 'ar' ? 'سنة واحدة' : '1 Year'}</Text>
+              <Text style={styles.projectionPeriod}>{loc('سنة واحدة', '1 Year', '1 വർഷം')}</Text>
               <Text style={styles.projectionValue}>{formatCurrency(plan.monthlySaving * 12)} {sym}</Text>
             </View>
             <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{language === 'ar' ? '3 سنوات' : '3 Years'}</Text>
+              <Text style={styles.projectionPeriod}>{loc('3 سنوات', '3 Years', '3 വർഷം')}</Text>
               <Text style={[styles.projectionValue, { color: Colors.primary }]}>{formatCurrency(plan.monthlySaving * 36)} {sym}</Text>
             </View>
             <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{language === 'ar' ? '5 سنوات' : '5 Years'}</Text>
+              <Text style={styles.projectionPeriod}>{loc('5 سنوات', '5 Years', '5 വർഷം')}</Text>
               <Text style={[styles.projectionValue, { color: Colors.accent }]}>{formatCurrency(plan.monthlySaving * 60)} {sym}</Text>
             </View>
           </View>
@@ -1444,13 +1472,13 @@ export default function FinancialPlanScreen() {
             </View>
             <View style={styles.challengesGoldInfo}>
               <Text style={styles.challengesGoldTitle}>
-                {language === 'ar' ? 'تحديات الادخار والأوسمة المالية' : 'Savings Challenges & Trophies'}
+                {loc('تحديات الادخار والأوسمة المالية', 'Savings Challenges & Trophies', 'സമ്പാദ്യ വെല്ലുവിളികളും ട്രോഫികളും')}
               </Text>
               <Text style={styles.challengesGoldSub}>
-                {language === 'ar' ? 'افتح أوسمة الإنجاز وتنافس في التحديات المالية!' : 'Unlock achievement badges and compete in savings challenges!'}
+                {loc('افتح أوسمة الإنجاز وتنافس في التحديات المالية!', 'Unlock achievement badges and compete in savings challenges!', 'നേട്ടങ്ങളുടെ ബാഡ്ജുകൾ നേടൂ, സമ്പാദ്യ വെല്ലുവിളികളിൽ പങ്കെടുക്കൂ!')}
               </Text>
             </View>
-            <Ionicons name={language === 'ar' ? 'chevron-back' : 'chevron-forward'} size={20} color="#fff" />
+            <Ionicons name={loc('chevron-back', 'chevron-forward', 'chevron-forward') as any} size={20} color="#fff" />
           </LinearGradient>
         </Pressable>
 
@@ -1461,9 +1489,11 @@ export default function FinancialPlanScreen() {
             <View style={styles.insightRowSuccess}>
               <MaterialIcons name="check-circle" size={20} color={Colors.income} />
               <Text style={styles.insightTextSuccess}>
-                {language === 'ar' 
-                  ? 'خطة الادخار الخاصة بك تسير بشكل ممتاز ومتوافقة تماماً مع ميزانيتك!' 
-                  : 'Your savings plan is on track and fully aligned with your budget!'}
+                {loc(
+                  'خطة الادخار الخاصة بك تسير بشكل ممتاز ومتوافقة تماماً مع ميزانيتك!',
+                  'Your savings plan is on track and fully aligned with your budget!',
+                  'നിങ്ങളുടെ സമ്പാദ്യ പ്ലാൻ ബജറ്റുമായി കൃത്യമായി പൊരുത്തപ്പെടുന്നു!'
+                )}
               </Text>
             </View>
           ) : (
@@ -1534,7 +1564,7 @@ export default function FinancialPlanScreen() {
                 </View>
                 <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#10B98140' }}>
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
-                    🔥 {planProgressPct}% {language === 'ar' ? 'مكتمل' : 'Completed'}
+                    🔥 {planProgressPct}% {loc('مكتمل', 'Completed', 'പൂർത്തിയായി')}
                   </Text>
                 </View>
               </View>
@@ -1551,12 +1581,14 @@ export default function FinancialPlanScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
-                    {language === 'ar'
-                      ? `الشهر ${currentMonthNumber} من أصل ${totalMonths} شهر 🎯`
-                      : `Month ${currentMonthNumber} of ${totalMonths} mos 🎯`}
+                    {loc(
+                      `الشهر ${currentMonthNumber} من أصل ${totalMonths} شهر 🎯`,
+                      `Month ${currentMonthNumber} of ${totalMonths} mos 🎯`,
+                      `${totalMonths} മാസങ്ങളിൽ മാസം ${currentMonthNumber} 🎯`
+                    )}
                   </Text>
                   <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'اسحب أفقياً لاستعراض الأشهر ➔' : 'Swipe horizontally ➔'}
+                    {loc('اسحب أفقياً لاستعراض الأشهر ➔', 'Swipe horizontally ➔', 'തിരശ്ചീനമായി സ്വൈപ്പ് ചെയ്യുക ➔')}
                   </Text>
                 </View>
               </View>
@@ -1684,26 +1716,26 @@ export default function FinancialPlanScreen() {
                         {isCurrent ? (
                           <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#FFF' }}>
-                              {language === 'ar' ? 'الشهر الحالي 🟢' : 'Current 🟢'}
+                              {loc('الشهر الحالي 🟢', 'Current 🟢', 'ഈ മാസം 🟢')}
                             </Text>
                           </View>
                         ) : isPast ? (
                           <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#10B981' }}>
-                              {language === 'ar' ? 'مكتمل ✅' : 'Completed ✅'}
+                              {loc('مكتمل ✅', 'Completed ✅', 'പൂർത്തിയായി ✅')}
                             </Text>
                           </View>
                         ) : (
                           <View style={{ backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
                             <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                              {language === 'ar' ? `شهر ${i + 1}` : `Month ${i + 1}`}
+                              {loc(`شهر ${i + 1}`, `Month ${i + 1}`, `മാസം ${i + 1}`)}
                             </Text>
                           </View>
                         )}
                         {customOverride && (
                           <View style={{ backgroundColor: colors.accent + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: colors.accent }}>
-                              {language === 'ar' ? 'تعديل مخصص ✏️' : 'Custom ✏️'}
+                              {loc('تعديل مخصص ✏️', 'Custom ✏️', 'മാറ്റം വരുത്തിയത് ✏️')}
                             </Text>
                           </View>
                         )}
@@ -1713,7 +1745,7 @@ export default function FinancialPlanScreen() {
                       <View style={{ gap: 4, backgroundColor: colors.surface, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.borderLight }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                            {language === 'ar' ? 'المخطط:' : 'Planned:'}
+                            {loc('المخطط:', 'Planned:', 'പ്ലാൻ:')}
                           </Text>
                           <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: plannedSaving >= 0 ? '#10B981' : '#EF4444' }}>
                             {plannedSaving >= 0 ? '+' : ''}{formatCurrency(plannedSaving)} {sym}
@@ -1722,7 +1754,7 @@ export default function FinancialPlanScreen() {
                         {(isPast || isCurrent) && hasActualData && (
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 3 }}>
                             <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
-                              {language === 'ar' ? 'الفعلي:' : 'Actual:'}
+                              {loc('الفعلي:', 'Actual:', 'യഥാർത്ഥം:')}
                             </Text>
                             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: actualMonthSaving >= 0 ? '#10B981' : '#EF4444' }}>
                               {actualMonthSaving >= 0 ? '+' : ''}{formatCurrency(actualMonthSaving)} {sym}
@@ -1734,7 +1766,7 @@ export default function FinancialPlanScreen() {
                       {/* Bottom Cumulative Total Box */}
                       <View style={{ backgroundColor: isCurrent ? colors.primary + '20' : colors.surfaceAlt, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: isCurrent ? colors.primary + '40' : colors.border }}>
                         <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
-                          {language === 'ar' ? 'الرصيد التراكمي' : 'Cumulative Total'}
+                          {loc('الرصيد التراكمي', 'Cumulative Total', 'ആകെ സഞ്ചിത തുക')}
                         </Text>
                         <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: isCurrent ? colors.primary : colors.text }}>
                           {formatCurrency(cumulativeSavings)} {sym}
@@ -1769,7 +1801,7 @@ export default function FinancialPlanScreen() {
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedWallet.color || colors.primary }} />
                 <Ionicons name="wallet-outline" size={13} color={selectedWallet.color || colors.primary} />
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
-                  {language === 'ar' ? `المحفظة المحددة: ${selectedWallet.name}` : `Wallet: ${selectedWallet.name}`}
+                  {loc(`المحفظة المحددة: ${selectedWallet.name}`, `Wallet: ${selectedWallet.name}`, `തിരഞ്ഞെടുത്ത വാലറ്റ്: ${selectedWallet.name}`)}
                 </Text>
               </View>
             )}
@@ -1794,23 +1826,25 @@ export default function FinancialPlanScreen() {
               onPress={(e) => e.stopPropagation()}
             >
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF', textAlign: 'center' }}>
-                {language === 'ar' ? 'تعديل الميزانية لتلائم الواقع' : 'Adjust Plan to Fit Reality'}
+                {loc('تعديل الميزانية لتلائم الواقع', 'Adjust Plan to Fit Reality', 'പ്ലാൻ യാഥാർത്ഥ്യവുമായി ക്രമീകരിക്കുക')}
               </Text>
               
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: Colors.textSecondary, textAlign: 'center', lineHeight: 16 }}>
-                {language === 'ar'
-                  ? 'تم حساب المتوسطات التاريخية لمصاريفك ودخلك. يمكنك تعديل القيم الآن لتشمل الرواتب الإضافية أو استبعاد المصاريف الاستثنائية.'
-                  : 'Historical averages calculated. You can modify the values below to include bonuses or exclude one-off expenses.'}
+                {loc(
+                  'تم حساب المتوسطات التاريخية لمصاريفك ودخلك. يمكنك تعديل القيم الآن لتشمل الرواتب الإضافية أو استبعاد المصاريف الاستثنائية.',
+                  'Historical averages calculated. You can modify the values below to include bonuses or exclude one-off expenses.',
+                  'ചരിത്രപരമായ ശരാശരികൾ കണക്കാക്കി. വരും മാസങ്ങളിലേക്കായി തുകകൾ മാറ്റാവുന്നതാണ്.'
+                )}
               </Text>
 
               {/* Monthly Income Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'الدخل الشهري المتوقع' : 'Expected Monthly Income'}
+                  {loc('الدخل الشهري المتوقع', 'Expected Monthly Income', 'പ്രതീക്ഷിത പ്രതിമാസ വരുമാനം')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={adjustIncome}
                     onChangeText={setAdjustIncome}
@@ -1822,11 +1856,11 @@ export default function FinancialPlanScreen() {
               {/* Monthly Expense Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'المصاريف الشهرية المتوقعة' : 'Expected Monthly Expenses'}
+                  {loc('المصاريف الشهرية المتوقعة', 'Expected Monthly Expenses', 'പ്രതീക്ഷിത പ്രതിമാസ ചെലവുകൾ')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={adjustExpense}
                     onChangeText={setAdjustExpense}
@@ -1843,7 +1877,7 @@ export default function FinancialPlanScreen() {
                 return (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.surfaceAlt, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.border }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: Colors.textSecondary }}>
-                      {language === 'ar' ? 'الصافي الادخاري الجديد' : 'New Projected Savings'}
+                      {loc('الصافي الادخاري الجديد', 'New Projected Savings', 'പുതിയ പ്രതീക്ഷിക്കുന്ന സമ്പാദ്യം')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: net >= 0 ? Colors.primary : Colors.expense }}>
                       {formatCurrency(net)} {selectedWallet?.currency || 'EGP'}
@@ -1859,7 +1893,7 @@ export default function FinancialPlanScreen() {
                   style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#FFF' }}>
-                    {language === 'ar' ? 'تحديث الخطة' : 'Update Plan'}
+                    {loc('تحديث الخطة', 'Update Plan', 'പ്ലാൻ അപ്ഡേറ്റ് ചെയ്യുക')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1867,7 +1901,7 @@ export default function FinancialPlanScreen() {
                   style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: Colors.textSecondary }}>
-                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    {loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}
                   </Text>
                 </Pressable>
               </View>
@@ -1892,7 +1926,7 @@ export default function FinancialPlanScreen() {
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: Colors.border, paddingBottom: 10 }}>
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF' }}>
-                  {language === 'ar' ? `تخصيص استهداف شهر (${selectedMonthName})` : `Custom Target for (${selectedMonthName})`}
+                  {loc(`تخصيص استهداف شهر (${selectedMonthName})`, `Custom Target for (${selectedMonthName})`, `${selectedMonthName} മാസത്തെ പ്രത്യേക ലക്ഷ്യം`)}
                 </Text>
                 <Pressable onPress={() => setSingleMonthModalOpen(false)} hitSlop={10}>
                   <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -1900,19 +1934,21 @@ export default function FinancialPlanScreen() {
               </View>
 
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: Colors.textSecondary, lineHeight: 18, textAlign: 'left' }}>
-                {language === 'ar'
-                  ? 'يمكنك تعديل الدخل والمصاريف المتوقعة لهذا الشهر المحدد فقط (مثل مصاريف المدارس أو المكافآت) دون تغيير باقي أشهر الخطة.'
-                  : 'Customize expected income and expenses for this specific month only.'}
+                {loc(
+                  'يمكنك تعديل الدخل والمصاريف المتوقعة لهذا الشهر المحدد فقط (مثل مصاريف المدارس أو المكافآت) دون تغيير باقي أشهر الخطة.',
+                  'Customize expected income and expenses for this specific month only.',
+                  'മറ്റ് മാസങ്ങളെ ബാധിക്കാതെ ഈ മാസത്തെ വരുമാനവും ചെലവും മാറ്റുക.'
+                )}
               </Text>
 
               {/* Monthly Income Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? `الدخل المستهدف لشهر (${selectedMonthName}):` : 'Target Income:'}
+                  {loc(`الدخل المستهدف لشهر (${selectedMonthName}):`, 'Target Income:', 'ലക്ഷ്യ വരുമാനം:')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={singleMonthIncomeInput}
                     onChangeText={setSingleMonthIncomeInput}
@@ -1924,11 +1960,11 @@ export default function FinancialPlanScreen() {
               {/* Monthly Expense Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? `المصاريف المستهدفة لشهر (${selectedMonthName}):` : 'Target Expenses:'}
+                  {loc(`المصاريف المستهدفة لشهر (${selectedMonthName}):`, 'Target Expenses:', 'ലക്ഷ്യ ചെലവ്:')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={singleMonthExpenseInput}
                     onChangeText={setSingleMonthExpenseInput}
@@ -1945,7 +1981,7 @@ export default function FinancialPlanScreen() {
                 return (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.surfaceAlt, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.border }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: Colors.textSecondary }}>
-                      {language === 'ar' ? 'الادخار الصافي المتوقع لهذا الشهر:' : 'Projected Savings:'}
+                      {loc('الادخار الصافي المتوقع لهذا الشهر:', 'Projected Savings:', 'പ്രതീക്ഷിക്കുന്ന അറ്റ സമ്പാദ്യം:')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: net >= 0 ? Colors.primary : Colors.expense }}>
                       {formatCurrency(net)} {currencySymbol}
@@ -1965,7 +2001,7 @@ export default function FinancialPlanScreen() {
                 >
                   <Ionicons name="checkmark-circle" size={18} color="#FFF" />
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
-                    {language === 'ar' ? `حفظ استهداف ${selectedMonthName} 🎯` : 'Save Month Target 🎯'}
+                    {loc(`حفظ استهداف ${selectedMonthName} 🎯`, 'Save Month Target 🎯', 'മാസ ലക്ഷ്യം സേവ് ചെയ്യുക 🎯')}
                   </Text>
                 </Pressable>
 
@@ -1978,7 +2014,7 @@ export default function FinancialPlanScreen() {
                     ]}
                   >
                     <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: Colors.expense }}>
-                      {language === 'ar' ? 'إعادة للاستهداف العام 🔄' : 'Reset to Global Target 🔄'}
+                      {loc('إعادة للاستهداف العام 🔄', 'Reset to Global Target 🔄', 'സാധാരണ ലക്ഷ്യത്തിലേക്ക് പുനഃക്രമീകരിക്കുക 🔄')}
                     </Text>
                   </Pressable>
                 )}
@@ -2003,13 +2039,15 @@ export default function FinancialPlanScreen() {
               onPress={(e) => e.stopPropagation()}
             >
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF', textAlign: 'center' }}>
-                {language === 'ar' ? 'ضبط ميزانية الأعمدة الأربعة (Kakeibo)' : 'Adjust Kakeibo Pillar Budgets'}
+                {loc('ضبط ميزانية الأعمدة الأربعة (Kakeibo)', 'Adjust Kakeibo Pillar Budgets', 'കാകെയ്ബോ സ്തംഭ ബജറ്റ് ക്രമീകരിക്കുക')}
               </Text>
               
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 }}>
-                {language === 'ar'
-                  ? 'قسّم مصروفك الشهري المستهدف على التصنيفات الأربعة لتتبع التزامك بكفاءة.'
-                  : 'Divide your total target expenses among the 4 pillars to track your mindfulness.'}
+                {loc(
+                  'قسّم مصروفك الشهري المستهدف على التصنيفات الأربعة لتتبع التزامك بكفاءة.',
+                  'Divide your total target expenses among the 4 pillars to track your mindfulness.',
+                  'നിങ്ങളുടെ പ്രതിമാസ ചെലവ് 4 സ്തംഭങ്ങളിലായി വിഭജിക്കുക.'
+                )}
               </Text>
 
               {/* Auto 50/25/15/10 Smart Allocation Button */}
@@ -2030,18 +2068,18 @@ export default function FinancialPlanScreen() {
               >
                 <Ionicons name="sparkles" size={16} color={colors.primary} />
                 <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
-                  {language === 'ar' ? 'توزيع ياباني تلقائي (50/25/15/10)' : 'Auto Japanese Allocation (50/25/15/10)'}
+                  {loc('توزيع ياباني تلقائي (50/25/15/10)', 'Auto Japanese Allocation (50/25/15/10)', 'ഓട്ടോ ജാപ്പനീസ് വിഭജനം (50/25/15/10)')}
                 </Text>
               </Pressable>
 
               {/* Survival Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'الاحتياجات الأساسية (Survival)' : 'Survival / Needs'}
+                  {loc('الاحتياجات الأساسية (Survival)', 'Survival / Needs', 'അടിസ്ഥാന ആവശ്യങ്ങൾ (Survival)')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={kakeiboSurvivalInput}
                     onChangeText={setKakeiboSurvivalInput}
@@ -2053,11 +2091,11 @@ export default function FinancialPlanScreen() {
               {/* Wants Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'الرغبات الترفيهية (Wants)' : 'Wants / Optional'}
+                  {loc('الرغبات الترفيهية (Wants)', 'Wants / Optional', 'വിനോദവും ആഗ്രഹങ്ങളും (Wants)')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={kakeiboWantsInput}
                     onChangeText={setKakeiboWantsInput}
@@ -2069,11 +2107,11 @@ export default function FinancialPlanScreen() {
               {/* Culture Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'الثقافة والتعليم (Culture)' : 'Culture & Self-dev'}
+                  {loc('الثقافة والتعليم (Culture)', 'Culture & Self-dev', 'സംസ്കാരവും വിദ്യാഭ്യാസവും (Culture)')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={kakeiboCultureInput}
                     onChangeText={setKakeiboCultureInput}
@@ -2085,11 +2123,11 @@ export default function FinancialPlanScreen() {
               {/* Extra Input */}
               <View style={{ gap: 6 }}>
                 <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-                  {language === 'ar' ? 'مصاريف إضافية وطارئة (Extra)' : 'Extra / Unplanned'}
+                  {loc('مصاريف إضافية وطارئة (Extra)', 'Extra / Unplanned', 'അപ്രതീക്ഷിത ചെലവുകൾ (Extra)')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: language === 'ar' ? 'right' : 'left' }}
+                    style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
                     keyboardType="decimal-pad"
                     value={kakeiboExtraInput}
                     onChangeText={setKakeiboExtraInput}
@@ -2107,7 +2145,7 @@ export default function FinancialPlanScreen() {
                 return (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surfaceAlt, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.textSecondary }}>
-                      {language === 'ar' ? 'إجمالي الميزانية الجديدة' : 'New Total Expenses'}
+                      {loc('إجمالي الميزانية الجديدة', 'New Total Expenses', 'ആകെ പുതിയ ചെലവ്')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.primary }}>
                       {formatCurrency(totalVal)} {selectedWallet?.currency || 'EGP'}
@@ -2123,7 +2161,7 @@ export default function FinancialPlanScreen() {
                   style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#FFF' }}>
-                    {language === 'ar' ? 'تحديث الميزانية' : 'Save Budgets'}
+                    {loc('تحديث الميزانية', 'Save Budgets', 'ബജറ്റ് സേവ് ചെയ്യുക')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -2131,7 +2169,7 @@ export default function FinancialPlanScreen() {
                   style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.textSecondary }}>
-                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    {loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}
                   </Text>
                 </Pressable>
               </View>

@@ -18,6 +18,13 @@ export default function Methodology3DSelector({
   const { colors, theme } = useTheme();
   const { language } = useLanguage();
   const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -28,7 +35,7 @@ export default function Methodology3DSelector({
         marginBottom: 8,
         textAlign: 'left',
       }}>
-        {isAr ? 'منهجية التخطيط والادخار' : 'Planning Methodology'}
+        {loc('منهجية التخطيط والادخار', 'Planning Methodology', 'പ്ലാനിംഗ് രീതി')}
       </Text>
 
       <View style={{
@@ -65,7 +72,7 @@ export default function Methodology3DSelector({
             fontSize: 12,
             color: !isKakeiboMode ? '#FFF' : colors.textSecondary,
           }}>
-            {isAr ? 'الخطة الرقمية 50/30/20' : 'Standard 50/30/20'}
+            {loc('الخطة الرقمية 50/30/20', 'Standard 50/30/20', '50/30/20 പ്ലാൻ')}
           </Text>
         </Pressable>
 
@@ -94,7 +101,7 @@ export default function Methodology3DSelector({
             fontSize: 12,
             color: isKakeiboMode ? '#FFF' : colors.textSecondary,
           }}>
-            {isAr ? 'المنهج الياباني Kakeibo' : 'Japanese Kakeibo'}
+            {loc('المنهج الياباني Kakeibo', 'Japanese Kakeibo', 'ജാപ്പനീസ് കാകെയ്ബോ')}
           </Text>
         </Pressable>
       </View>
@@ -108,8 +115,16 @@ export default function Methodology3DSelector({
         paddingHorizontal: 4,
       }}>
         {isKakeiboMode
-          ? (isAr ? '🧘‍♂️ تقسيم سلوكي للمصاريف إلى 4 أركان (احتياجات، رغبات، تعليم، طوارئ) لتنمية الوعي المالي.' : '🧘‍♂️ Mindful 4-pillars behavioral budgeting for higher financial discipline.')
-          : (isAr ? '📊 توزيع رقمي تلقائي: 50% للأساسيات، 30% للرغبات، و20% للادخار المباشر.' : '📊 Automated percentage allocation: 50% Needs, 30% Wants, 20% Savings.')}
+          ? loc(
+              '🧘‍♂️ تقسيم سلوكي للمصاريف إلى 4 أركان (احتياجات، رغبات، تعليم، طوارئ) لتنمية الوعي المالي.',
+              '🧘‍♂️ Mindful 4-pillars behavioral budgeting for higher financial discipline.',
+              '🧘‍♂️ സാമ്പത്തിക അച്ചടക്കത്തിനായി ചെലവുകളെ 4 സ്തംഭങ്ങളായി തിരിക്കുന്ന രീതി.'
+            )
+          : loc(
+              '📊 توزيع رقمي تلقائي: 50% للأساسيات، 30% للرغبات، و20% للادخار المباشر.',
+              '📊 Automated percentage allocation: 50% Needs, 30% Wants, 20% Savings.',
+              '📊 ഓട്ടോമേറ്റഡ് അനുപാതം: 50% ആവശ്യങ്ങൾ, 30% ആഗ്രഹങ്ങൾ, 20% സമ്പാദ്യം.'
+            )}
       </Text>
     </View>
   );

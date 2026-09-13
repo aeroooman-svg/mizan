@@ -8,6 +8,7 @@ export interface CashflowForecast {
   messageAr: string;
   messageEn: string;
   messageHi: string;
+  messageMl?: string;
   recommendedDailyReduction: number;
 }
 
@@ -39,6 +40,7 @@ export function predictCashflow(
       messageAr: 'لقد نفذت أموال المحفظة بالفعل! يرجى تجنب أي مصاريف إضافية.',
       messageEn: 'Wallet funds are already depleted! Please avoid any extra expenses.',
       messageHi: 'वॉलेट की धनराशि पहले ही समाप्त हो चुकी है! कृपया किसी भी अतिरिक्त खर्च से बचें।',
+      messageMl: 'വാലറ്റിലെ പണം തീർന്നുപോയി! അധികച്ചെലവുകൾ ഒഴിവാക്കുക.',
       recommendedDailyReduction: 0,
     };
   }
@@ -51,6 +53,7 @@ export function predictCashflow(
       messageAr: 'معدل الصرف اليومي آمن جداً. لم تسجل أي مصاريف كبيرة هذا الشهر حتى الآن.',
       messageEn: 'Your daily spending velocity is very safe. No major expenses logged this month yet.',
       messageHi: 'आपकी दैनिक खर्च दर बहुत सुरक्षित है। इस महीने अभी तक कोई बड़ा खर्च दर्ज नहीं हुआ है।',
+      messageMl: 'നിങ്ങളുടെ പ്രതിദിന ചെലവ് വളരെ സുരക്ഷിതമാണ്. ഈ മാസം ഇതുവരെ വലിയ ചെലവുകളൊന്നുമില്ല.',
       recommendedDailyReduction: 0,
     };
   }
@@ -66,6 +69,7 @@ export function predictCashflow(
     const formattedDate = depletionDate.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
     const formattedDateEn = depletionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const formattedDateHi = depletionDate.toLocaleDateString('hi-IN', { month: 'short', day: 'numeric' });
+    const formattedDateMl = depletionDate.toLocaleDateString('ml-IN', { month: 'short', day: 'numeric' });
 
     return {
       status: 'risk',
@@ -74,6 +78,7 @@ export function predictCashflow(
       messageAr: `⚠️ تنبيه: بناءً على معدل صرفك اليومي (${formatCurrency(averageDailySpend, 'ar')} ${currencySymbol})، ستنفد أموالك في تاريخ ${formattedDate}. ننصح بتقليل الإنفاق اليومي بمقدار ${formatCurrency(recommendedDailyReduction, 'ar')} ${currencySymbol} لتفادي ذلك.`,
       messageEn: `⚠️ Warning: Based on your daily spend (${formatCurrency(averageDailySpend, 'en')} ${currencySymbol}), you will run out on ${formattedDateEn}. We recommend reducing daily spend by ${formatCurrency(recommendedDailyReduction, 'en')} ${currencySymbol} to stay safe.`,
       messageHi: `⚠️ चेतावनी: आपके दैनिक खर्च (${formatCurrency(averageDailySpend, 'hi')} ${currencySymbol}) के आधार पर, आपका फंड ${formattedDateHi} को समाप्त हो जाएगा। सुरक्षित रहने के लिए दैनिक खर्च को ${formatCurrency(recommendedDailyReduction, 'hi')} ${currencySymbol} कम करने की सलाह दी जाती है।`,
+      messageMl: `⚠️ മുന്നറിയിപ്പ്: നിങ്ങളുടെ പ്രതിദിന ചെലവ് നിരക്കനുസരിച്ച് (${formatCurrency(averageDailySpend, 'ml')} ${currencySymbol}), പണം ${formattedDateMl}-ൽ തീരും. സുരക്ഷിതമായിരിക്കാൻ പ്രതിദിന ചെലവ് ${formatCurrency(recommendedDailyReduction, 'ml')} ${currencySymbol} കുറയ്ക്കാൻ നിർദ്ദേശിക്കുന്നു.`,
       recommendedDailyReduction,
     };
   }
@@ -85,6 +90,7 @@ export function predictCashflow(
     messageAr: 'أنت في أمان! معدل الصرف اليومي مناسب وميزانيتك الحالية تكفيك حتى نهاية الشهر.',
     messageEn: 'You are safe! Your daily spending is appropriate and your current balance will last until the end of the month.',
     messageHi: 'आप सुरक्षित स्थिति में हैं! आपका दैनिक खर्च संतुलित है और वर्तमान शेष महीने के अंत तक पर्याप्त रहेगा।',
+    messageMl: 'നിങ്ങൾ സുരക്ഷിതമായ നിലയിലാണ്! നിലവിലെ ബാലൻസ് ഈ മാസം അവസാനം വരെ മതിയാകും.',
     recommendedDailyReduction: 0,
   };
 }

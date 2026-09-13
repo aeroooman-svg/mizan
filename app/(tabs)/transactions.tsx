@@ -44,6 +44,13 @@ export default function TransactionsScreen() {
   const { walletTransactions, removeTransaction, currencySymbol, selectedWallet, wallets, customCategories, selectWallet } = useTransactions();
   const { t, language } = useLanguage();
   const isAr = language === 'ar';
+  const isMl = language === 'ml' || language === 'hi';
+
+  const loc = (ar: string, en: string, ml?: string) => {
+    if (isMl) return ml || en;
+    if (isAr) return ar;
+    return en;
+  };
 
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -160,9 +167,9 @@ export default function TransactionsScreen() {
 
       let title = '';
       if (dateKey === todayStr) {
-        title = language === 'ar' ? 'اليوم' : 'Today';
+        title = loc('اليوم', 'Today', 'ഇന്ന്');
       } else if (dateKey === yesterdayStr) {
-        title = language === 'ar' ? 'أمس' : 'Yesterday';
+        title = loc('أمس', 'Yesterday', 'ഇന്നലെ');
       } else {
         title = formatDateLocalized(dateKey, language);
       }
@@ -503,7 +510,7 @@ export default function TransactionsScreen() {
                   viewMode === 'list' && styles.viewModeBtnTextActive,
                 ]}
               >
-                {isAr ? 'قائمة' : 'List'}
+                {loc('قائمة', 'List', 'ലിസ്റ്റ്')}
               </Text>
             </Pressable>
 
@@ -528,7 +535,7 @@ export default function TransactionsScreen() {
                   viewMode === 'heatmap' && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
                 ]}
               >
-                {isAr ? 'خريطة' : 'Heatmap'}
+                {loc('خريطة', 'Heatmap', 'ഹീറ്റ്മാപ്പ്')}
               </Text>
             </Pressable>
           </View>
@@ -627,9 +634,9 @@ export default function TransactionsScreen() {
                   ]}
                 >
                   <Text style={styles.activeRemovableChipText}>
-                    {filter === 'expense' ? (isAr ? '🔥 المصروفات' : '🔥 Expenses') :
-                     filter === 'savings' ? (isAr ? '🛡️ الادخار والسلف' : '🛡️ Savings & Loans') :
-                     (isAr ? '📈 الإيرادات' : '📈 Income')}
+                    {filter === 'expense' ? loc('🔥 المصروفات', '🔥 Expenses', '🔥 ചെലവുകൾ') :
+                     filter === 'savings' ? loc('🛡️ الادخار والسلف', '🛡️ Savings & Loans', '🛡️ സമ്പാദ്യവും വായ്പകളും') :
+                     loc('📈 الإيرادات', '📈 Income', '📈 വരുമാനം')}
                   </Text>
                   <Ionicons name="close-circle" size={14} color="#FFF" />
                 </Pressable>
@@ -718,7 +725,7 @@ export default function TransactionsScreen() {
             <View style={styles.filterSheetHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="options" size={20} color={colors.primary} />
-                <Text style={styles.filterSheetTitle}>{isAr ? 'تصفية المعاملات' : 'Filter Transactions'}</Text>
+                <Text style={styles.filterSheetTitle}>{loc('تصفية المعاملات', 'Filter Transactions', 'ഇടപാടുകൾ ഫിൽട്ടർ ചെയ്യുക')}</Text>
               </View>
               <Pressable
                 onPress={() => {
@@ -728,21 +735,21 @@ export default function TransactionsScreen() {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }}
               >
-                <Text style={styles.filterResetBtnText}>{isAr ? 'إعادة ضبط' : 'Reset All'}</Text>
+                <Text style={styles.filterResetBtnText}>{loc('إعادة ضبط', 'Reset All', 'റീസെറ്റ്')}</Text>
               </Pressable>
             </View>
 
             <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
               {/* Transaction Type Filter Section */}
               <Text style={styles.filterSectionTitle}>
-                {isAr ? 'نوع المعاملة' : 'Transaction Type'}
+                {loc('نوع المعاملة', 'Transaction Type', 'ഇടപാട് തരം')}
               </Text>
               <View style={[styles.filterPillsGrid, { marginBottom: 16 }]}>
                 {([
                   { key: 'all' as FilterType, label: t.all, icon: 'apps-outline', color: colors.primary },
-                  { key: 'expense' as FilterType, label: isAr ? 'المصروفات' : 'Expenses', icon: 'flame', color: '#EF4444' },
-                  { key: 'savings' as FilterType, label: isAr ? 'الادخار والسلف' : 'Savings & Loans', icon: 'shield-checkmark', color: '#8B5CF6' },
-                  { key: 'income' as FilterType, label: isAr ? 'الإيرادات' : 'Income', icon: 'trending-up', color: '#10B981' },
+                  { key: 'expense' as FilterType, label: loc('المصروفات', 'Expenses', 'ചെലവുകൾ'), icon: 'flame', color: '#EF4444' },
+                  { key: 'savings' as FilterType, label: loc('الادخار والسلف', 'Savings & Loans', 'സമ്പാദ്യവും വായ്പകളും'), icon: 'shield-checkmark', color: '#8B5CF6' },
+                  { key: 'income' as FilterType, label: loc('الإيرادات', 'Income', 'വരുമാനം'), icon: 'trending-up', color: '#10B981' },
                 ]).map(f => {
                   const isSelected = filter === f.key;
                   return (
@@ -777,7 +784,7 @@ export default function TransactionsScreen() {
 
               {/* Category Filter Section */}
               <Text style={styles.filterSectionTitle}>
-                {isAr ? 'الفئات' : 'Categories'}
+                {loc('الفئات', 'Categories', 'വിഭാഗങ്ങൾ')}
               </Text>
               <View style={styles.filterPillsGrid}>
                 {allCategoriesForFilter.map(cat => {
@@ -808,7 +815,7 @@ export default function TransactionsScreen() {
               {availableTags.length > 0 && (
                 <>
                   <Text style={[styles.filterSectionTitle, { marginTop: 16 }]}>
-                    {isAr ? 'الوسوم' : 'Tags'}
+                    {loc('الوسوم', 'Tags', 'ടാഗുകൾ')}
                   </Text>
                   <View style={styles.filterPillsGrid}>
                     {availableTags.map(tagObj => {
@@ -846,7 +853,7 @@ export default function TransactionsScreen() {
                 style={styles.exportInModalBtn}
               >
                 <Ionicons name="download-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.exportInModalBtnText}>{isAr ? 'تصدير' : 'Export'}</Text>
+                <Text style={styles.exportInModalBtnText}>{loc('تصدير', 'Export', 'എക്സ്പോർട്ട്')}</Text>
               </Pressable>
 
               <Pressable
@@ -856,7 +863,7 @@ export default function TransactionsScreen() {
                 }}
                 style={styles.applyFilterBtn}
               >
-                <Text style={styles.applyFilterBtnText}>{isAr ? 'تطبيق الفلاتر' : 'Apply Filters'}</Text>
+                <Text style={styles.applyFilterBtnText}>{loc('تطبيق الفلاتر', 'Apply Filters', 'ഫിൽട്ടർ ചെയ്യുക')}</Text>
               </Pressable>
             </View>
           </View>
@@ -918,7 +925,7 @@ export default function TransactionsScreen() {
                     onPress={() => setSelectedTxForOptions(null)}
                     style={styles.cancelOptionBtn}
                   >
-                    <Text style={styles.cancelOptionText}>{language === 'ar' ? 'إلغاء' : 'Cancel'}</Text>
+                    <Text style={styles.cancelOptionText}>{loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}</Text>
                   </Pressable>
                 </View>
               </>
