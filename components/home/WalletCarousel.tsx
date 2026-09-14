@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,7 +14,7 @@ import {
 import { useTransactions } from '@/lib/TransactionContext';
 import { normalizeAmountInput } from '@/lib/arabicNumbers';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -95,6 +95,19 @@ export default function WalletCarousel({
     monthTransfers?: number;
     remainingPlanBudget?: number;
   } | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      getAllPlans().then(all => {
+        if (isMounted) setPlans(all || {});
+      }).catch(() => {});
+      getJameyas().then(list => {
+        if (isMounted) setJameyas(list || []);
+      }).catch(() => {});
+      return () => { isMounted = false; };
+    }, [])
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -259,9 +272,16 @@ export default function WalletCarousel({
           let isPlanLinked = false;
           let remainingPlanBudget = 0;
 
-          if (walletPlan && Number(walletPlan.monthlyExpense) > 0) {
+          const customOverride = walletPlan?.customMonthlyOverrides?.[currentMonthKey];
+          const activeMonthlyExpense = customOverride?.expense ?? walletPlan?.monthlyExpense;
+          const activeMonthlyIncome = customOverride?.income ?? walletPlan?.monthlyIncome;
+          const activeMonthlySaving = (customOverride?.income !== undefined && customOverride?.expense !== undefined)
+            ? (customOverride.income - customOverride.expense)
+            : walletPlan?.monthlySaving;
+
+          if (walletPlan && Number(activeMonthlyExpense) > 0) {
             isPlanLinked = true;
-            remainingPlanBudget = Math.max(0, Number(walletPlan.monthlyExpense) - (monthExpenses + monthTransfers));
+            remainingPlanBudget = Math.max(0, Number(activeMonthlyExpense) - (monthExpenses + monthTransfers));
             const effectiveAvailable = Math.min(spendableBalance, remainingPlanBudget);
             dailySafeLimit = effectiveAvailable > 0
               ? Number((effectiveAvailable / daysRemaining).toFixed(precision))
@@ -392,8 +412,8 @@ export default function WalletCarousel({
                     remainingToday,
                     isPlanLinked,
                     planGoalName: walletPlan?.goalName,
-                    monthlyPlanExpense: walletPlan?.monthlyExpense,
-                    monthlyPlanSaving: walletPlan?.monthlySaving,
+                    monthlyPlanExpense: activeMonthlyExpense,
+                    monthlyPlanSaving: activeMonthlySaving,
                     monthExpenses,
                     monthTransfers,
                     remainingPlanBudget,

@@ -1072,37 +1072,44 @@ export default function FinancialPlanScreen() {
     const { avgIncome, avgExpense, hasCompletedMonths } = averageMonthlyData;
     const rawAvgSaving = avgIncome - avgExpense;
 
+    const thisMonthKey = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    const thisMonthOverride = plan?.customMonthlyOverrides?.[thisMonthKey];
+    const currentPlannedExp = thisMonthOverride?.expense ?? plan.monthlyExpense;
+    const currentPlannedInc = thisMonthOverride?.income ?? plan.monthlyIncome;
+    const currentPlannedSaving = (thisMonthOverride?.income !== undefined && thisMonthOverride?.expense !== undefined)
+      ? (thisMonthOverride.income - thisMonthOverride.expense)
+      : plan.monthlySaving;
+
     // Realistic capped monthly saving rate:
-    // If no completed past months exist OR if rawAvgSaving > plan.monthlyIncome, fallback to plan.monthlySaving!
-    const maxPossibleSaving = plan.monthlyIncome > 0 ? plan.monthlyIncome : (avgIncome > 0 ? avgIncome : 999999);
+    const maxPossibleSaving = currentPlannedInc > 0 ? currentPlannedInc : (avgIncome > 0 ? avgIncome : 999999);
     const avgSaving = (!hasCompletedMonths || rawAvgSaving > maxPossibleSaving || rawAvgSaving <= 0)
-      ? (plan.monthlySaving > 0 ? plan.monthlySaving : Math.max(1, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0)))
+      ? (currentPlannedSaving > 0 ? currentPlannedSaving : Math.max(1, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0)))
       : Math.min(maxPossibleSaving, rawAvgSaving);
 
     const getInsights = () => {
       const insights = [];
 
       // 1. Expense check (current month vs planned)
-      if (totalExpense > plan.monthlyExpense) {
-        const diff = totalExpense - plan.monthlyExpense;
+      if (totalExpense > currentPlannedExp) {
+        const diff = totalExpense - currentPlannedExp;
         insights.push({
           type: 'danger',
           message: formatTranslation(t.expenseWarning || '', {
             actual: `${formatCurrency(totalExpense)} ${sym}`,
-            expected: `${formatCurrency(plan.monthlyExpense)} ${sym}`,
+            expected: `${formatCurrency(currentPlannedExp)} ${sym}`,
             diff: `${formatCurrency(diff)} ${sym}`,
           }),
         });
       }
 
       // 2. Income check (current month vs planned)
-      if (totalIncome < plan.monthlyIncome) {
-        const diff = plan.monthlyIncome - totalIncome;
+      if (totalIncome < currentPlannedInc) {
+        const diff = currentPlannedInc - totalIncome;
         insights.push({
           type: 'warning',
           message: formatTranslation(t.incomeWarning || '', {
             actual: `${formatCurrency(totalIncome)} ${sym}`,
-            expected: `${formatCurrency(plan.monthlyIncome)} ${sym}`,
+            expected: `${formatCurrency(currentPlannedInc)} ${sym}`,
             diff: `${formatCurrency(diff)} ${sym}`,
           }),
         });
@@ -1120,7 +1127,7 @@ export default function FinancialPlanScreen() {
               `⚠️ ഇപ്പോഴത്തെ യഥാർത്ഥ സമ്പാദ്യ നിരക്കിൽ (${formatCurrency(avgSaving)} ${sym}), നിങ്ങൾക്ക് സാമ്പത്തിക ലക്ഷ്യം നേടാനാകില്ല. ചെലവുകൾ കുറയ്ക്കാൻ ശുപാർശ ചെയ്യുന്നു.`
             ),
           });
-        } else if (avgSaving < plan.monthlySaving) {
+        } else if (avgSaving < currentPlannedSaving) {
           const remainingToTarget = target - actualSavings;
           const monthsNeeded = Math.ceil(remainingToTarget / avgSaving);
           const additionalMonths = monthsNeeded - monthsRemaining;
@@ -1134,7 +1141,7 @@ export default function FinancialPlanScreen() {
             });
           }
         } else {
-          const diff = avgSaving - plan.monthlySaving;
+          const diff = avgSaving - currentPlannedSaving;
           if (diff > 0) {
             insights.push({
               type: 'success',
@@ -1151,34 +1158,236 @@ export default function FinancialPlanScreen() {
 
     const insights = getInsights();
 
+    // Estimated completion tag calculation
+    const target = plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings;
+    const remaining = Math.max(0, target - actualSavings);
+
+    let estimatedTag: { label: string; color: string; bg: string } | null = null;
+    if (isCompleted) {
+      estimatedTag = {
+        label: loc('🏆 الهدف محقق بالفعل!', '🏆 Goal Already Achieved!', '🏆 ലക്ഷ്യം ഇതിനകം നേടി!'),
+        color: Colors.accent,
+        bg: Colors.accent + '15',
+      };
+    } else if (avgSaving <= 0) {
+      estimatedTag = {
+        label: loc('⚠️ معدل الادخار سلبي — راجع مصاريفك', '⚠️ Negative savings rate — review your expenses', '⚠️ സമ്പാദ്യ നിരക്ക് നെഗറ്റീവ് ആണ് — ചെലവുകൾ അവലോകനം ചെയ്യുക'),
+        color: Colors.expense,
+        bg: Colors.expense + '12',
+      };
+    } else {
+      const monthsToGoal = Math.ceil(remaining / avgSaving);
+      const completionDate = new Date();
+      completionDate.setMonth(completionDate.getMonth() + monthsToGoal);
+      const completionStr = completionDate.toLocaleDateString(
+        isMl ? 'ml-IN' : isAr ? 'ar-EG' : 'en-US',
+        { month: 'long', year: 'numeric' }
+      );
+      const isOnSchedule = monthsToGoal <= monthsRemaining;
+      estimatedTag = {
+        label: loc(
+          `${isOnSchedule ? '✅' : '⚠️'} متوقع التحقيق: ${completionStr} (${monthsToGoal} ${monthsToGoal === 1 ? 'شهر' : 'أشهر'})`,
+          `${isOnSchedule ? '✅' : '⚠️'} Est. completion: ${completionStr} (${monthsToGoal} mo)`,
+          `${isOnSchedule ? '✅' : '⚠️'} ലക്ഷ്യത്തിലെത്തുന്നത്: ${completionStr} (${monthsToGoal} മാസം)`
+        ),
+        color: isOnSchedule ? Colors.income : Colors.expense,
+        bg: isOnSchedule ? Colors.income + '12' : Colors.expense + '12',
+      };
+    }
+
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
       >
-        <View style={styles.planHeader}>
-          <View style={styles.planBadge}>
-            <MaterialIcons name="flag" size={16} color={colors.primary} />
-            <Text style={styles.planBadgeText}>
-              {t.planActive} {selectedWallet ? `· ${selectedWallet.name}` : ''}
+        {isCompleted && (
+          <View style={styles.celebrationCard}>
+            <Text style={styles.celebrationText}>
+              {loc('تهانينا! لقد حققت هدفك المالي بنجاح 🎉🏆', 'Congratulations! You have successfully achieved your financial goal! 🎉🏆', 'അഭിനന്ദനങ്ങൾ! സാമ്പത്തിക ലക്ഷ്യം വിജയകരമായി നേടി 🎉🏆')}
             </Text>
           </View>
-          <View style={styles.planActions}>
-            <Pressable onPress={startEdit} hitSlop={8} style={styles.planActionBtn}>
-              <MaterialIcons name="edit" size={18} color={colors.primary} />
+        )}
+
+        {/* 1. MASTER EXECUTIVE GOAL & PROGRESS HERO CARD */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 18,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 14,
+          marginBottom: 14,
+        }}>
+          {/* Card Top: Plan Title, Wallet, Quick Actions */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <View style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                backgroundColor: colors.primary + '18',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <MaterialIcons name="emoji-events" size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }} numberOfLines={1}>
+                  {plan.goalName || loc('خطة الادخار', 'Savings Plan', 'സമ്പാദ്യ പ്ലാൻ')}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                    {selectedWallet ? selectedWallet.name : loc('كل المحافظ', 'All Wallets', 'എല്ലാ വാലറ്റുകളും')}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textTertiary }}>
+                    · {Math.round(plan.durationMonths / 12)} {Math.round(plan.durationMonths / 12) === 1 ? loc('سنة', 'Year', 'വർഷം') : loc('سنوات', 'Years', 'വർഷങ്ങൾ')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Quick Actions (Edit & Delete) */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Pressable
+                onPress={startEdit}
+                hitSlop={8}
+                style={({ pressed }) => [{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }, pressed && { opacity: 0.7 }]}
+              >
+                <MaterialIcons name="edit" size={16} color={colors.primary} />
+              </Pressable>
+              <Pressable
+                onPress={handleDelete}
+                hitSlop={8}
+                style={({ pressed }) => [{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }, pressed && { opacity: 0.7 }]}
+              >
+                <MaterialIcons name="delete-outline" size={16} color={colors.expense} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Card Middle: Progress Ring + Goal Target & Realistic Forecast */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.surfaceAlt + '60',
+            borderRadius: 16,
+            padding: 12,
+            gap: 14,
+            borderWidth: 1,
+            borderColor: colors.borderLight,
+          }}>
+            <View style={styles.chartWrapMini}>
+              <Svg width={78} height={78}>
+                <Circle cx={39} cy={39} r={31} fill="none" stroke={colors.surfaceAlt} strokeWidth={8} />
+                <Circle
+                  cx={39}
+                  cy={39}
+                  r={31}
+                  fill="none"
+                  stroke={isCompleted ? Colors.accent : (isOnTrack ? Colors.income : Colors.expense)}
+                  strokeWidth={8}
+                  strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 31} ${2 * Math.PI * 31}`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 39 39)"
+                />
+              </Svg>
+              <View style={styles.chartCenterAbsMini}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                  {isCompleted ? '🏆' : `${Math.round(progressPercent)}%`}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {loc('المبلغ المستهدف:', 'Target Goal:', 'ലക്ഷ്യ തുക:')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 17, color: colors.primary }}>
+                {formatCurrency(plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings)} <Text style={{ fontSize: 11, color: colors.textSecondary }}>{sym}</Text>
+              </Text>
+              {estimatedTag && (
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: estimatedTag.color, marginTop: 2 }}>
+                  {estimatedTag.label}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Card Bottom: Segmented Planning Methodology Switcher */}
+          <View style={{
+            flexDirection: 'row',
+            backgroundColor: colors.surfaceAlt,
+            borderRadius: 12,
+            padding: 3,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: 4,
+          }}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setIsKakeiboMode(false);
+              }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: !isKakeiboMode ? '#10B981' : 'transparent',
+              }}
+            >
+              <Ionicons name="pie-chart-outline" size={14} color={!isKakeiboMode ? '#FFF' : colors.textSecondary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: !isKakeiboMode ? '#FFF' : colors.textSecondary }}>
+                {loc('الخطة الرقمية 50/30/20', 'Standard 50/30/20', '50/30/20')}
+              </Text>
             </Pressable>
-            <Pressable onPress={handleDelete} hitSlop={8} style={styles.planActionBtn}>
-              <MaterialIcons name="delete-outline" size={18} color={colors.expense} />
+
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setIsKakeiboMode(true);
+              }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor: isKakeiboMode ? '#8B5CF6' : 'transparent',
+              }}
+            >
+              <Ionicons name="sparkles-outline" size={14} color={isKakeiboMode ? '#FFF' : colors.textSecondary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: isKakeiboMode ? '#FFF' : colors.textSecondary }}>
+                {loc('طريقة Kakeibo اليابانية', 'Japanese Kakeibo', 'കാകെയ്ബോ')}
+              </Text>
             </Pressable>
           </View>
         </View>
-
-        {/* 3D Methodology Selector Card Grid */}
-        <Methodology3DSelector
-          isKakeiboMode={isKakeiboMode}
-          onSelectMode={(isKakeibo) => setIsKakeiboMode(isKakeibo)}
-        />
 
         {isKakeiboMode && (
           <KakeiboSection
@@ -1200,347 +1409,280 @@ export default function FinancialPlanScreen() {
           />
         )}
 
-        {isCompleted && (
-          <View style={styles.celebrationCard}>
-            <Text style={styles.celebrationText}>
-              {loc('تهانينا! لقد حققت هدفك المالي بنجاح 🎉🏆', 'Congratulations! You have successfully achieved your financial goal! 🎉🏆', 'അഭിനന്ദനങ്ങൾ! സാമ്പത്തിക ലക്ഷ്യം വിജയകരമായി നേടി 🎉🏆')}
-            </Text>
-          </View>
-        )}
-
-        {/* Dynamic unified Goal Hero Row */}
-        <View style={styles.goalHeroRow}>
-          <View style={{ flex: 1, gap: 4 }}>
+        {/* 2. CASH FLOW PULSE & NET ASSETS PERFORMANCE CARD */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 12,
+          marginBottom: 14,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent + '15', alignItems: 'center', justifyContent: 'center' }}>
-                <MaterialIcons name="emoji-events" size={20} color={Colors.accent} />
+              <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="pulse-outline" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.goalTitleText} numberOfLines={1}>{plan.goalName}</Text>
-            </View>
-            <Text style={styles.goalDetailSub}>
-              {loc(
-                `المدة: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'سنة' : 'سنوات'}`,
-                `Duration: ${Math.round(plan.durationMonths / 12)} ${Math.round(plan.durationMonths / 12) === 1 ? 'Year' : 'Years'}`,
-                `കാലാവധി: ${Math.round(plan.durationMonths / 12)} വർഷം`
-              )}
-            </Text>
-            {plan.savingsGoal > 0 && (
-              <Text style={styles.goalTargetText}>
-                {loc(`المستهدف: ${formatCurrency(plan.savingsGoal)} ${sym}`, `Target: ${formatCurrency(plan.savingsGoal)} ${sym}`, `ലക്ഷ്യം: ${formatCurrency(plan.savingsGoal)} ${sym}`)}
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                {loc('نبض التدفق النقدي لهذا الشهر', 'This Month Cash Flow Pulse', 'ഈ മാസത്തെ പണമിടപാട്')}
               </Text>
+            </View>
+            {thisMonthOverride && (
+              <View style={{ backgroundColor: colors.accent + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: colors.accent }}>
+                  {loc('استهداف مخصص 🎯', 'Custom Target 🎯', 'കസ്റ്റം ലക്ഷ്യം 🎯')}
+                </Text>
+              </View>
             )}
           </View>
-          <View style={styles.chartWrapMini}>
-            <Svg width={80} height={80}>
-              <Circle cx={40} cy={40} r={32} fill="none" stroke={Colors.surfaceAlt} strokeWidth={8} />
-              <Circle
-                cx={40}
-                cy={40}
-                r={32}
-                fill="none"
-                stroke={isCompleted ? Colors.accent : (isOnTrack ? Colors.income : Colors.expense)}
-                strokeWidth={8}
-                strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 32} ${2 * Math.PI * 32}`}
-                strokeLinecap="round"
-                transform="rotate(-90 40 40)"
-              />
-            </Svg>
-            <View style={styles.chartCenterAbsMini}>
-              <Text style={styles.chartPercentMini}>{isCompleted ? '🏆' : `${Math.round(progressPercent)}%`}</Text>
-            </View>
-          </View>
-        </View>
 
-        {/* Estimated Completion & Realism Bar */}
-        {(() => {
-          const target = plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings;
-          const remaining = Math.max(0, target - actualSavings);
-
-          let estimatedTag: { label: string; color: string; bg: string } | null = null;
-
-          if (isCompleted) {
-            estimatedTag = {
-              label: loc('🏆 الهدف محقق بالفعل!', '🏆 Goal Already Achieved!', '🏆 ലക്ഷ്യം ഇതിനകം നേടി!'),
-              color: Colors.accent,
-              bg: Colors.accent + '15',
-            };
-          } else if (avgSaving <= 0) {
-            estimatedTag = {
-              label: loc('⚠️ معدل الادخار سلبي — راجع مصاريفك', '⚠️ Negative savings rate — review your expenses', '⚠️ സമ്പാദ്യ നിരക്ക് നെഗറ്റീവ് ആണ് — ചെലവുകൾ അവലോകനം ചെയ്യുക'),
-              color: Colors.expense,
-              bg: Colors.expense + '12',
-            };
-          } else {
-            const monthsToGoal = Math.ceil(remaining / avgSaving);
-            const completionDate = new Date();
-            completionDate.setMonth(completionDate.getMonth() + monthsToGoal);
-            const completionStr = completionDate.toLocaleDateString(
-              isMl ? 'ml-IN' : isAr ? 'ar-EG' : 'en-US',
-              { month: 'long', year: 'numeric' }
-            );
-            const isOnSchedule = monthsToGoal <= monthsRemaining;
-            estimatedTag = {
-              label: loc(
-                `${isOnSchedule ? '✅' : '⚠️'} متوقع التحقيق: ${completionStr} (${monthsToGoal} شهر)`,
-                `${isOnSchedule ? '✅' : '⚠️'} Est. completion: ${completionStr} (${monthsToGoal} mo)`,
-                `${isOnSchedule ? '✅' : '⚠️'} ലക്ഷ്യത്തിലെത്തുന്നത്: ${completionStr} (${monthsToGoal} മാസം)`
-              ),
-              color: isOnSchedule ? Colors.income : Colors.expense,
-              bg: isOnSchedule ? Colors.income + '12' : Colors.expense + '12',
-            };
-          }
-
-          return estimatedTag ? (
-            <View style={{ backgroundColor: estimatedTag.bg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 8 }}>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: estimatedTag.color, textAlign: 'left' }}>
-                {estimatedTag.label}
-              </Text>
-              {!isCompleted && avgSaving > 0 && (
-                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: Colors.textSecondary, marginTop: 2, textAlign: 'left' }}>
-                  {loc(
-                    `متوسط ادخارك الفعلي الشهري: ${formatCurrency(avgSaving)} ${sym}`,
-                    `Your avg. monthly savings: ${formatCurrency(avgSaving)} ${sym}`,
-                    `ശരാശരി പ്രതിമാസ സമ്പാദ്യം: ${formatCurrency(avgSaving)} ${sym}`
-                  )}
-                </Text>
-              )}
-            </View>
-          ) : null;
-        })()}
-
-        {/* Streamlined Unified Financial Performance & Solvency Integration Card */}
-        <View style={styles.integrationCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="stats-chart" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.integrationTitle} numberOfLines={1}>
-                {loc('ملاءة الأصول والأداء الفعلي', 'Financial Assets & Performance', 'സാമ്പത്തിക ആസ്തികളും പ്രകടനവും')}
-              </Text>
-            </View>
-          </View>
-
-          {/* 3-Pillar Monthly Cash Flow KPI Overview */}
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+          {/* 3 KPI Columns: Income, Expenses, Net */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
                 {loc('الدخل', 'Income', 'വരുമാനം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>
-                +{formatCurrency(totalIncome)} {sym}
+                +{formatCurrency(totalIncome)}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`المخطط: ${formatCurrency(plan.monthlyIncome)}`, `Plan: ${formatCurrency(plan.monthlyIncome)}`, `പ്ലാൻ: ${formatCurrency(plan.monthlyIncome)}`)}
+                {loc(`المخطط: ${formatCurrency(currentPlannedInc)}`, `Plan: ${formatCurrency(currentPlannedInc)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedInc)}`)}
               </Text>
             </View>
 
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
                 {loc('المصاريف', 'Expenses', 'ചെലവുകൾ')}
               </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > plan.monthlyExpense ? colors.expense : colors.text }} numberOfLines={1}>
-                -{formatCurrency(totalExpense)} {sym}
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > currentPlannedExp ? colors.expense : colors.text }} numberOfLines={1}>
+                -{formatCurrency(totalExpense)}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`المخطط: ${formatCurrency(plan.monthlyExpense)}`, `Plan: ${formatCurrency(plan.monthlyExpense)}`, `പ്ലാൻ: ${formatCurrency(plan.monthlyExpense)}`)}
+                {loc(`المخطط: ${formatCurrency(currentPlannedExp)}`, `Plan: ${formatCurrency(currentPlannedExp)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedExp)}`)}
               </Text>
             </View>
 
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: colors.border, justifyContent: 'space-between', minHeight: 84 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
               <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
                 {loc('الصافي', 'Net', 'അറ്റ തുക')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
-                {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)} {sym}
+                {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)}
               </Text>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`الهدف: ${formatCurrency(plan.monthlySaving)}`, `Target: ${formatCurrency(plan.monthlySaving)}`, `ലക്ഷ്യം: ${formatCurrency(plan.monthlySaving)}`)}
+                {loc(`الهدف: ${formatCurrency(currentPlannedSaving)}`, `Target: ${formatCurrency(currentPlannedSaving)}`, `ലക്ഷ്യം: ${formatCurrency(currentPlannedSaving)}`)}
               </Text>
             </View>
           </View>
 
-          {/* Solvency & Net Integrated Assets Breakdown List */}
-          <View style={{ gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-            <View style={styles.integrationRow}>
-              <Text style={styles.integrationLabel}>{loc('رصيد المحفظة النقدي المتاح', 'Available Wallet Balance', 'ലഭ്യമായ വാലറ്റ് ബാലൻസ്')}</Text>
-              <Text style={styles.integrationValue}>{formatCurrency(walletNetBalance)} {sym}</Text>
+          {/* Solvency & Net Integrated Assets breakdown */}
+          <View style={{ gap: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {loc('رصيد المحفظة المتاح', 'Available Wallet Balance', 'ലഭ്യമായ ബാലൻസ്')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.text }}>
+                {formatCurrency(walletNetBalance)} {sym}
+              </Text>
             </View>
 
+            {unpaidLoans > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.income }}>
+                  {loc('قروض مستردة (لي)', 'Loans Owed to Me', 'ലഭിക്കാനുള്ള കടങ്ങൾ')}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                  +{formatCurrency(unpaidLoans)} {sym}
+                </Text>
+              </View>
+            )}
+
+            {unpaidDebts > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.expense }}>
+                  {loc('ديون معلقة (عليّ)', 'Outstanding Debts', 'നൽകാനുള്ള കടങ്ങൾ')}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.expense }}>
+                  -{formatCurrency(unpaidDebts)} {sym}
+                </Text>
+              </View>
+            )}
+
             {totalSavedInGoals > 0 && (
-              <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{loc('المودع في حصالات الادخار والأهداف', 'Saved in Savings Jars & Goals', 'സമ്പാദ്യ ലക്ഷ്യങ്ങളിലുള്ള തുക')}</Text>
-                <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(totalSavedInGoals)} {sym}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.income }}>
+                  {loc('حصالات الأهداف', 'Savings Jars', 'സമ്പാദ്യ ലക്ഷ്യങ്ങൾ')}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.income }}>
+                  +{formatCurrency(totalSavedInGoals)} {sym}
+                </Text>
               </View>
             )}
 
             {totalJameyaAccumulatedSavings > 0 && (
-              <View style={styles.integrationRow}>
-                <Text style={[styles.integrationLabel, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
-                  🤝 {loc('مدفوعات ومدخرات الجمعيات', 'Jameya Savings Asset', 'ചിട്ടി സമ്പാദ്യം')}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: '#10B981' }}>
+                  {loc('مدخرات الجمعيات 🤝', 'Jameya Savings 🤝', 'ചിട്ടി സമ്പാദ്യം 🤝')}
                 </Text>
-                <Text style={[styles.integrationValue, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: '#10B981' }}>
                   +{formatCurrency(totalJameyaAccumulatedSavings)} {sym}
                 </Text>
               </View>
             )}
 
-            {totalConsumerCommitments > 0 && (
-              <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{loc('المصاريف المتكررة والأقساط الاستهلاكية', 'Monthly Bills & Card Installments', 'പ്രതിമാസ ബില്ലുകളും തവണകളും')}</Text>
-                <Text style={[styles.integrationValue, { color: colors.textSecondary }]}>{formatCurrency(totalConsumerCommitments)} {sym}</Text>
-              </View>
-            )}
-
-            {unpaidDebts > 0 && (
-              <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{loc('ديون معلقة (عليّ)', 'Outstanding Debts', 'നൽകാനുള്ള കടങ്ങൾ')}</Text>
-                <Text style={[styles.integrationValue, { color: Colors.expense }]}>-{formatCurrency(unpaidDebts)} {sym}</Text>
-              </View>
-            )}
-
-            {unpaidLoans > 0 && (
-              <View style={styles.integrationRow}>
-                <Text style={styles.integrationLabel}>{loc('قروض مستردة (لي)', 'Loans Owed to Me', 'ലഭിക്കാനുള്ള കടങ്ങൾ')}</Text>
-                <Text style={[styles.integrationValue, { color: Colors.income }]}>+{formatCurrency(unpaidLoans)} {sym}</Text>
-              </View>
-            )}
-
-            <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }} />
-
-            <View style={styles.integrationRow}>
-              <Text style={[styles.integrationLabel, { fontFamily: 'Cairo_700Bold', color: Colors.text, fontSize: 13 }]}>
-                {loc('إجمالي الصافي الادخاري الشامل (الأصول المتاحة)', 'Total Net Savings Assets', 'ആകെ അറ്റ സമ്പാദ്യ ആസ്തി')}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceAlt,
+              padding: 10,
+              borderRadius: 12,
+              marginTop: 4,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                {loc('إجمالي الصافي الادخاري الشامل', 'Total Net Savings Assets', 'ആകെ അറ്റ സമ്പാദ്യ ആസ്തി')}
               </Text>
-              <Text style={[styles.integrationValue, { fontFamily: 'Cairo_700Bold', color: Colors.primary, fontSize: 15 }]}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.primary }}>
                 {formatCurrency(actualSavings)} {sym}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Multi-Year Savings Projection Card */}
-        <View style={styles.projectionCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Ionicons name="rocket-outline" size={20} color={Colors.primary} />
-            <Text style={styles.projectionTitle}>
-              {loc('توقعات النمو والادخار بعيد المدى', 'Long-term Savings Projection', 'ദീർഘകാല സമ്പാദ്യ പ്രവചനം')}
-            </Text>
-          </View>
-          <Text style={styles.projectionDesc}>
-            {loc(
-              'إذا حافظت على معدل ادخارك المستهدف الحالي، فإليك كم ستملك في المستقبل:',
-              'If you maintain your current target savings rate, here is what you will accumulate:',
-              'ഇപ്പോഴത്തെ സമ്പാദ്യ നിരക്ക് തുടർന്നാൽ ഭാവിയിൽ നിങ്ങൾക്ക് ലഭിക്കുന്നത്:'
-            )}
-          </Text>
-          <View style={styles.projectionGrid}>
-            <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{loc('سنة واحدة', '1 Year', '1 വർഷം')}</Text>
-              <Text style={styles.projectionValue}>{formatCurrency(plan.monthlySaving * 12)} {sym}</Text>
-            </View>
-            <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{loc('3 سنوات', '3 Years', '3 വർഷം')}</Text>
-              <Text style={[styles.projectionValue, { color: Colors.primary }]}>{formatCurrency(plan.monthlySaving * 36)} {sym}</Text>
-            </View>
-            <View style={styles.projectionCol}>
-              <Text style={styles.projectionPeriod}>{loc('5 سنوات', '5 Years', '5 വർഷം')}</Text>
-              <Text style={[styles.projectionValue, { color: Colors.accent }]}>{formatCurrency(plan.monthlySaving * 60)} {sym}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Gold Challenges & Achievements Banner Card */}
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/challenges');
-          }}
-          style={({ pressed }) => [
-            styles.challengesGoldCard,
-            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-          ]}
-        >
-          <LinearGradient
-            colors={['#D4A843', '#B8860B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.challengesGoldGradient}
-          >
-            <View style={styles.challengesGoldIconWrap}>
-              <MaterialIcons name="emoji-events" size={26} color="#FFF" />
-            </View>
-            <View style={styles.challengesGoldInfo}>
-              <Text style={styles.challengesGoldTitle}>
-                {loc('تحديات الادخار والأوسمة المالية', 'Savings Challenges & Trophies', 'സമ്പാദ്യ വെല്ലുവിളികളും ട്രോഫികളും')}
-              </Text>
-              <Text style={styles.challengesGoldSub}>
-                {loc('افتح أوسمة الإنجاز وتنافس في التحديات المالية!', 'Unlock achievement badges and compete in savings challenges!', 'നേട്ടങ്ങളുടെ ബാഡ്ജുകൾ നേടൂ, സമ്പാദ്യ വെല്ലുവിളികളിൽ പങ്കെടുക്കൂ!')}
-              </Text>
-            </View>
-            <Ionicons name={loc('chevron-back', 'chevron-forward', 'chevron-forward') as any} size={20} color="#fff" />
-          </LinearGradient>
-        </Pressable>
-
-        {/* Smart Insights & Alerts Section */}
-        <View style={styles.insightsSection}>
-          <Text style={styles.insightsTitle}>{t.smartInsights}</Text>
-          {insights.length === 0 ? (
-            <View style={styles.insightRowSuccess}>
-              <MaterialIcons name="check-circle" size={20} color={Colors.income} />
-              <Text style={styles.insightTextSuccess}>
-                {loc(
-                  'خطة الادخار الخاصة بك تسير بشكل ممتاز ومتوافقة تماماً مع ميزانيتك!',
-                  'Your savings plan is on track and fully aligned with your budget!',
-                  'നിങ്ങളുടെ സമ്പാദ്യ പ്ലാൻ ബജറ്റുമായി കൃത്യമായി പൊരുത്തപ്പെടുന്നു!'
-                )}
-              </Text>
-            </View>
-          ) : (
-            insights.map((insight, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.insightRow,
-                  insight.type === 'danger' && styles.insightRowDanger,
-                  insight.type === 'warning' && styles.insightRowWarning,
-                  insight.type === 'success' && styles.insightRowSuccess,
-                ]}
-              >
-                <MaterialIcons
-                  name={insight.type === 'danger' ? 'error' : insight.type === 'warning' ? 'warning' : 'check-circle'}
-                  size={20}
-                  color={insight.type === 'danger' ? Colors.expense : insight.type === 'warning' ? Colors.accent : Colors.income}
-                />
-                <Text
-                  style={[
-                    styles.insightText,
-                    insight.type === 'danger' && styles.insightTextDanger,
-                    insight.type === 'warning' && styles.insightTextWarning,
-                    insight.type === 'success' && styles.insightTextSuccess,
-                  ]}
-                >
-                  {insight.message}
-                </Text>
+        {/* 3. COMPACT HORIZON PROJECTIONS & SMART ADVISOR */}
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 12,
+          marginBottom: 14,
+        }}>
+          {/* Header with Challenges quick link */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="rocket-outline" size={16} color={colors.primary} />
               </View>
-            ))
-          )}
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                {loc('توقعات الادخار بعيد المدى', 'Long-term Savings Projection', 'ദീർഘകാല സമ്പാദ്യ പ്രവചനം')}
+              </Text>
+            </View>
 
-          {/* Quick Adjust Plan Button */}
-          {avgIncome > 0 && (
+            {/* Compact Challenges Link */}
             <Pressable
-              onPress={handleAutoAdjust}
-              style={({ pressed }) => [
-                styles.adjustButton,
-                {
-                  opacity: pressed ? 0.9 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                },
-              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/challenges');
+              }}
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: '#D4A84320',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#D4A84340',
+              }, pressed && { opacity: 0.8 }]}
             >
-              <MaterialIcons name="auto-fix-high" size={18} color={Colors.primary} />
-              <Text style={styles.adjustButtonText}>{t.adjustPlanToReality}</Text>
+              <MaterialIcons name="emoji-events" size={14} color="#D4A843" />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: '#D4A843' }}>
+                {loc('التحديات 🏆', 'Challenges 🏆', 'വെല്ലുവിളികൾ 🏆')}
+              </Text>
             </Pressable>
+          </View>
+
+          {/* 3-Pill Projection Grid */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.borderLight }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                {loc('1 سنة', '1 Year', '1 വർഷം')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                {formatCurrency(currentPlannedSaving * 12)}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.primary + '40' }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                {loc('3 سنوات', '3 Years', '3 വർഷം')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
+                {formatCurrency(currentPlannedSaving * 36)}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.accent + '40' }}>
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.textSecondary }}>
+                {loc('5 سنوات', '5 Years', '5 വർഷം')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.accent }}>
+                {formatCurrency(currentPlannedSaving * 60)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Smart Insights Alert inside this container */}
+          {insights.length > 0 && (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              {insights.map((insight, idx) => (
+                <View
+                  key={idx}
+                  style={{
+                    backgroundColor: insight.type === 'danger' ? '#EF444415' : insight.type === 'warning' ? '#F59E0B15' : '#10B98115',
+                    borderRadius: 12,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderColor: insight.type === 'danger' ? '#EF444430' : insight.type === 'warning' ? '#F59E0B30' : '#10B98130',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <MaterialIcons
+                    name={insight.type === 'danger' ? 'error' : insight.type === 'warning' ? 'warning' : 'check-circle'}
+                    size={18}
+                    color={insight.type === 'danger' ? colors.expense : insight.type === 'warning' ? colors.accent : colors.income}
+                  />
+                  <Text style={{
+                    flex: 1,
+                    fontFamily: 'Cairo_600SemiBold',
+                    fontSize: 11,
+                    color: insight.type === 'danger' ? colors.expense : insight.type === 'warning' ? colors.accent : colors.income,
+                    textAlign: 'left',
+                    lineHeight: 16,
+                  }}>
+                    {insight.message}
+                  </Text>
+                </View>
+              ))}
+
+              {avgIncome > 0 && (
+                <Pressable
+                  onPress={handleAutoAdjust}
+                  style={({ pressed }) => [{
+                    height: 38,
+                    borderRadius: 12,
+                    backgroundColor: colors.surfaceAlt,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }, pressed && { opacity: 0.85 }]}
+                >
+                  <MaterialIcons name="auto-fix-high" size={16} color={colors.primary} />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
+                    {t.adjustPlanToReality}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           )}
         </View>
 

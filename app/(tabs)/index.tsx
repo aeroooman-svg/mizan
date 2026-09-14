@@ -253,6 +253,12 @@ export default function HomeScreen() {
     loadExtraData();
   }, [selectedWallet, walletTransactions]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadExtraData();
+    }, [selectedWallet?.id])
+  );
+
   useEffect(() => {
     async function loadData() {
       if (selectedWallet) {
