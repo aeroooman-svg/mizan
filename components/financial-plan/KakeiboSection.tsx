@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -56,6 +56,7 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
 }) => {
   const isAr = language === 'ar';
   const isMl = language === 'ml' || language === 'hi';
+  const [showHistory, setShowHistory] = useState(false);
 
   const loc = (ar: string, en: string, ml?: string) => {
     if (isMl) return ml || en;
@@ -68,12 +69,18 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
   const kbCulture = plan.kakeiboBudgets?.culture || 0;
   const kbExtra = plan.kakeiboBudgets?.extra || 0;
 
+  const totalBudget = kbSurvival + kbWants + kbCulture + kbExtra;
+  const totalKakeiboSpent =
+    spentByPillar.survival + spentByPillar.wants + spentByPillar.culture + spentByPillar.extra;
+  const projectedNet = totalIncome - totalBudget;
+  const remainingBudget = Math.max(0, totalBudget - totalKakeiboSpent);
+
   const pillars = [
     {
       id: 'survival',
-      nameAr: 'الاحتياجات الأساسية (Survival)',
+      nameAr: 'الأساسيات (Survival)',
       nameEn: 'Survival / Needs',
-      nameMl: 'അടിസ്ഥാന ആവശ്യങ്ങൾ (Survival)',
+      nameMl: 'അടിസ്ഥാനം (Needs)',
       icon: 'restaurant',
       color: '#10B981',
       spent: spentByPillar.survival,
@@ -81,9 +88,9 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
     },
     {
       id: 'wants',
-      nameAr: 'الرغبات الترفيهية (Wants)',
+      nameAr: 'الرغبات (Wants)',
       nameEn: 'Wants / Optional',
-      nameMl: 'വിനോദവും ആഗ്രഹങ്ങളും (Wants)',
+      nameMl: 'ആഗ്രഹങ്ങൾ (Wants)',
       icon: 'shopping-bag',
       color: '#F59E0B',
       spent: spentByPillar.wants,
@@ -91,9 +98,9 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
     },
     {
       id: 'culture',
-      nameAr: 'الثقافة والتعليم (Culture)',
+      nameAr: 'الثقافة (Culture)',
       nameEn: 'Culture & Mind',
-      nameMl: 'സംസ്കാരവും വിദ്യാഭ്യാസവും (Culture)',
+      nameMl: 'സംസ്കാരം (Culture)',
       icon: 'book',
       color: '#6366F1',
       spent: spentByPillar.culture,
@@ -101,9 +108,9 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
     },
     {
       id: 'extra',
-      nameAr: 'مصاريف طارئة/أخرى (Extra)',
+      nameAr: 'الطوارئ (Extra)',
       nameEn: 'Extra / Unplanned',
-      nameMl: 'അപ്രതീക്ഷിത ചെലവുകൾ (Extra)',
+      nameMl: 'അപ്രതീക്ഷിതം (Extra)',
       icon: 'more-horiz',
       color: '#EF4444',
       spent: spentByPillar.extra,
@@ -111,25 +118,36 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
     },
   ];
 
-  const totalKakeiboSpent =
-    spentByPillar.survival + spentByPillar.wants + spentByPillar.culture + spentByPillar.extra;
-  const wantsRatio = totalKakeiboSpent > 0 ? (spentByPillar.wants / totalKakeiboSpent) * 100 : 0;
-  const needsRatio = totalKakeiboSpent > 0 ? (spentByPillar.survival / totalKakeiboSpent) * 100 : 0;
-  const isMindfulBalanced = wantsRatio <= 25 && needsRatio <= 65;
+  const survivalRatio = totalKakeiboSpent > 0 ? (spentByPillar.survival / totalKakeiboSpent) : 0;
+  const wantsRatio = totalKakeiboSpent > 0 ? (spentByPillar.wants / totalKakeiboSpent) : 0;
+  const cultureRatio = totalKakeiboSpent > 0 ? (spentByPillar.culture / totalKakeiboSpent) : 0;
+  const extraRatio = totalKakeiboSpent > 0 ? (spentByPillar.extra / totalKakeiboSpent) : 0;
+
+  const wantsPctOfTotal = Math.round(wantsRatio * 100);
+  const needsPctOfTotal = Math.round(survivalRatio * 100);
+  const isMindfulBalanced = wantsPctOfTotal <= 25 && needsPctOfTotal <= 65;
+
+  // Donut Ring Geometry
+  const RING_R = 40;
+  const CIRCUMFERENCE = 2 * Math.PI * RING_R;
+  const survivalDash = survivalRatio * CIRCUMFERENCE;
+  const wantsDash = wantsRatio * CIRCUMFERENCE;
+  const cultureDash = cultureRatio * CIRCUMFERENCE;
+  const extraDash = extraRatio * CIRCUMFERENCE;
 
   const moods = [
-    { emoji: '🤩', labelAr: 'ممتاز جداً', labelEn: 'Superb', labelMl: 'വളരെ മികച്ചത്' },
-    { emoji: '😊', labelAr: 'مستقر وراضٍ', labelEn: 'Satisfied', labelMl: 'തൃപ്തികരം' },
-    { emoji: '😐', labelAr: 'متوسط', labelEn: 'Neutral', labelMl: 'ശരാശരി' },
-    { emoji: '😓', labelAr: 'يحتاج تحسين', labelEn: 'Needs Improvement', labelMl: 'മെച്ചപ്പെടുത്തേണ്ടതുണ്ട്' },
+    { emoji: '🤩', labelAr: 'ممتازة', labelEn: 'Superb', labelMl: 'മികച്ചത്' },
+    { emoji: '😊', labelAr: 'مستقرة', labelEn: 'Satisfied', labelMl: 'തൃപ്തികരം' },
+    { emoji: '😐', labelAr: 'متوسطة', labelEn: 'Neutral', labelMl: 'ശരാശരി' },
+    { emoji: '😓', labelAr: 'تحتاج تحسين', labelEn: 'Needs Work', labelMl: 'മെച്ചപ്പെടുത്തണം' },
   ];
 
   const quickActionOptions = [
-    { id: 'cut_subs', labelAr: '✂️ إلغاء اشتراكات غير مستغلة', labelEn: '✂️ Cancel unused subs', labelMl: '✂️ വരിസംഖ്യകൾ റദ്ദാക്കുക' },
-    { id: 'reduce_delivery', labelAr: '🍳 تقليل طلبات المطاعم', labelEn: '🍳 Cut dining out', labelMl: '🍳 പുറത്തുനിന്നുള്ള ഭക്ഷണം കുറയ്ക്കുക' },
-    { id: 'save_gas', labelAr: '⛽ ترشيد البنزين والمواصلات', labelEn: '⛽ Save on fuel/rides', labelMl: '⛽ ഇന്ധനച്ചെലവ് ലാഭിക്കുക' },
-    { id: 'boost_saving', labelAr: '💰 زيادة الادخار الشهري 5%', labelEn: '💰 Boost savings 5%', labelMl: '💰 സമ്പാദ്യം 5% കൂട്ടുക' },
-    { id: 'delay_wants', labelAr: '🎁 تأجيل الشراء العاطفي', labelEn: '🎁 Pause impulse buys', labelMl: '🎁 അനാവശ്യ വാങ്ങലുകൾ മാറ്റിവെക്കുക' },
+    { id: 'cut_subs', labelAr: '✂️ إلغاء اشتراكات', labelEn: '✂️ Cancel subs', labelMl: '✂️ വരിസംഖ്യകൾ റദ്ദാക്കുക' },
+    { id: 'reduce_delivery', labelAr: '🍳 تقليل طلبات المطاعم', labelEn: '🍳 Cut dining out', labelMl: '🍳 പുറത്തുനിന്നുള്ള ഭക്ഷണം' },
+    { id: 'save_gas', labelAr: '⛽ ترشيد المواصلات', labelEn: '⛽ Save on fuel/rides', labelMl: '⛽ ഇന്ധനം ലാഭിക്കുക' },
+    { id: 'boost_saving', labelAr: '💰 زيادة الادخار 5%', labelEn: '💰 Boost savings 5%', labelMl: '💰 സമ്പാദ്യം 5% കൂട്ടുക' },
+    { id: 'delay_wants', labelAr: '🎁 منع الشراء العاطفي', labelEn: '🎁 Pause impulse buys', labelMl: '🎁 അനാവശ്യ വാങ്ങൽ' },
   ];
 
   const toggleAction = (actId: string) => {
@@ -141,468 +159,519 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
     }
   };
 
-  const totalBudget = kbSurvival + kbWants + kbCulture + kbExtra;
-  const projectedNet = totalIncome - totalBudget;
+  const spentPctOfBudget = totalBudget > 0 ? Math.min(100, Math.round((totalKakeiboSpent / totalBudget) * 100)) : 0;
 
   return (
-    <View style={styles.container}>
-      {/* Live Income & Kakeibo Balance Summary Bar */}
-      <View style={[styles.summaryBar, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-        <View style={styles.summaryRow}>
-          <View style={styles.iconTextRow}>
-            <Ionicons name="wallet-outline" size={16} color={colors.income} />
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              {loc('الدخل الفعلي للشهر الحالي:', 'Actual Monthly Income:', 'ഈ മാസത്തെ യഥാർത്ഥ വരുമാനം:')}
-            </Text>
-          </View>
-          <Text style={[styles.summaryAmount, { color: colors.income }]}>
-            +{formatCurrency(totalIncome)} {sym}
-          </Text>
-        </View>
-
-        <View style={styles.summaryRow}>
-          <View style={styles.iconTextRow}>
-            <Ionicons name="pie-chart-outline" size={16} color={colors.primary} />
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              {loc('إجمالي ميزانية الأعمدة الأربعة:', 'Total 4 Pillars Budget:', '4 സ്തംഭങ്ങളുടെ ആകെ ബജറ്റ്:')}
-            </Text>
-          </View>
-          <Text style={[styles.summaryAmount, { color: colors.text }]}>
-            {formatCurrency(totalBudget)} {sym}
-          </Text>
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-        <View style={styles.summaryRow}>
-          <Text style={[styles.boldLabel, { color: colors.text }]}>
-            {loc('الادخار المتوقع (الدخل - الميزانية):', 'Projected Net Savings:', 'പ്രതീക്ഷിത അറ്റ സമ്പാദ്യം:')}
-          </Text>
-          <Text
-            style={[
-              styles.summaryAmount,
-              { color: projectedNet >= 0 ? colors.primary : colors.expense },
-            ]}
-          >
-            {formatCurrency(projectedNet)} {sym}
-          </Text>
-        </View>
-      </View>
-
-      {/* Visual Japanese Mindfulness Donut Chart Card */}
+    <View style={{ gap: 14 }}>
+      {/* 1. SMART MINDFULNESS & 4-PILLAR HUB CARD */}
       <View
-        style={[
-          styles.donutCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 14,
+        }}
       >
-        <View style={styles.donutHeader}>
-          <View style={styles.donutHeaderTitle}>
-            <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-            <Text style={[styles.donutHeading, { color: colors.text }]} numberOfLines={1}>
-              {loc('دائرة الوعي المالي', 'Mindfulness Ring', 'സാമ്പത്തിക അവബോധ ചക്രം')}
-            </Text>
+        {/* Hub Header: Title + Status + Quick Edit Button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#8B5CF618', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="sparkles" size={17} color="#8B5CF6" />
+            </View>
+            <View>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                {loc('دائرة الوعي وتوزيع الميزانية', 'Mindfulness & Budget Hub', 'സാമ്പത്തിക അവബോധ ചക്രം')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+                {loc('منهجية Kakeibo اليابانية الذكية', 'Smart Japanese Kakeibo Method', 'ജാപ്പനീസ് കാകെയ്ബോ രീതി')}
+              </Text>
+            </View>
           </View>
-          <View
-            style={[
-              styles.badgeStatus,
-              {
-                backgroundColor: isMindfulBalanced
-                  ? 'rgba(16,185,129,0.15)'
-                  : 'rgba(245,158,11,0.15)',
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.badgeStatusText,
-                { color: isMindfulBalanced ? '#10B981' : '#F59E0B' },
-              ]}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View
+              style={{
+                backgroundColor: isMindfulBalanced ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: isMindfulBalanced ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)',
+              }}
             >
-              {isMindfulBalanced
-                ? loc('🟢 متزن', '🟢 Balanced', '🟢 സമതുലിതം')
-                : loc('🟡 تنبيه', '🟡 Review', '🟡 പരിശോധിക്കുക')}
-            </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: isMindfulBalanced ? '#10B981' : '#F59E0B' }}>
+                {isMindfulBalanced ? loc('🟢 متزن', '🟢 Balanced', '🟢 സമതുലിതം') : loc('🟡 مراجعة', '🟡 Review', '🟡 പരിശോധിക്കുക')}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onOpenKakeiboBudgetModal();
+              }}
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: colors.surfaceAlt,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }, pressed && { opacity: 0.7 }]}
+            >
+              <MaterialIcons name="edit" size={12} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: colors.primary }}>
+                {loc('تعديل ✏️', 'Edit ✏️', 'മാറ്റുക ✏️')}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
-        {/* Donut Visual Display */}
-        <View style={styles.donutRow}>
-          <View style={styles.donutSvgWrap}>
-            <Svg width={110} height={110}>
-              <Circle cx={55} cy={55} r={42} fill="none" stroke={colors.surfaceAlt} strokeWidth={14} />
-              <Circle
-                cx={55}
-                cy={55}
-                r={42}
-                fill="none"
-                stroke="#10B981"
-                strokeWidth={14}
-                strokeDasharray={`${(needsRatio / 100) * 2 * Math.PI * 42} ${2 * Math.PI * 42}`}
-                strokeLinecap="round"
-                transform="rotate(-90 55 55)"
-              />
+        {/* Hub Body: Multi-Color Donut Ring + Pulse Indicators */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.surfaceAlt + '60',
+          borderRadius: 18,
+          padding: 12,
+          gap: 14,
+          borderWidth: 1,
+          borderColor: colors.borderLight,
+        }}>
+          {/* Donut Chart */}
+          <View style={{ width: 104, height: 104, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <Svg width={104} height={104}>
+              <Circle cx={52} cy={52} r={RING_R} fill="none" stroke={colors.surfaceAlt} strokeWidth={11} />
+              {totalKakeiboSpent > 0 && (
+                <>
+                  {survivalDash > 0 && (
+                    <Circle
+                      cx={52}
+                      cy={52}
+                      r={RING_R}
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth={11}
+                      strokeDasharray={`${survivalDash} ${CIRCUMFERENCE}`}
+                      strokeDashoffset={0}
+                      strokeLinecap="round"
+                      transform="rotate(-90 52 52)"
+                    />
+                  )}
+                  {wantsDash > 0 && (
+                    <Circle
+                      cx={52}
+                      cy={52}
+                      r={RING_R}
+                      fill="none"
+                      stroke="#F59E0B"
+                      strokeWidth={11}
+                      strokeDasharray={`${wantsDash} ${CIRCUMFERENCE}`}
+                      strokeDashoffset={-survivalDash}
+                      strokeLinecap="round"
+                      transform="rotate(-90 52 52)"
+                    />
+                  )}
+                  {cultureDash > 0 && (
+                    <Circle
+                      cx={52}
+                      cy={52}
+                      r={RING_R}
+                      fill="none"
+                      stroke="#6366F1"
+                      strokeWidth={11}
+                      strokeDasharray={`${cultureDash} ${CIRCUMFERENCE}`}
+                      strokeDashoffset={-(survivalDash + wantsDash)}
+                      strokeLinecap="round"
+                      transform="rotate(-90 52 52)"
+                    />
+                  )}
+                  {extraDash > 0 && (
+                    <Circle
+                      cx={52}
+                      cy={52}
+                      r={RING_R}
+                      fill="none"
+                      stroke="#EF4444"
+                      strokeWidth={11}
+                      strokeDasharray={`${extraDash} ${CIRCUMFERENCE}`}
+                      strokeDashoffset={-(survivalDash + wantsDash + cultureDash)}
+                      strokeLinecap="round"
+                      transform="rotate(-90 52 52)"
+                    />
+                  )}
+                </>
+              )}
             </Svg>
-            <View style={styles.donutCenter}>
-              <Text style={[styles.donutTotalSpent, { color: colors.text }]}>
+            <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
                 {formatCurrency(totalKakeiboSpent)}
               </Text>
-              <Text style={[styles.donutSpentSub, { color: colors.textSecondary }]}>
-                {sym} {loc('منصرف', 'spent', 'ചെലവഴിച്ചത്')}
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.textSecondary }}>
+                {spentPctOfBudget}% {loc('مستهلك', 'spent', 'ചെലവ്')}
               </Text>
             </View>
           </View>
 
-          {/* Legend Grid */}
-          <View style={styles.donutLegend}>
-            {pillars.map((p) => (
-              <View key={p.id} style={styles.legendRow}>
-                <View style={styles.legendLeft}>
-                  <View style={[styles.legendDot, { backgroundColor: p.color }]} />
-                  <Text style={[styles.legendName, { color: colors.text }]}>
-                    {isMl ? p.nameMl.split(' ')[0] : isAr ? p.nameAr.split(' ')[0] : p.nameEn.split(' ')[0]}
-                  </Text>
-                </View>
-                <Text style={[styles.legendSpent, { color: colors.textSecondary }]}>
-                  {formatCurrency(p.spent)} {sym}
-                </Text>
-              </View>
-            ))}
+          {/* Hub Summary Pulse Metrics */}
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {loc('الميزانية المحددة:', 'Kakeibo Budget:', 'ആകെ ബജറ്റ്:')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                {formatCurrency(totalBudget)} {sym}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {loc('المتبقي من الميزانية:', 'Remaining Budget:', 'ബാക്കി തുക:')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: remainingBudget > 0 ? '#10B981' : colors.expense }}>
+                {formatCurrency(remainingBudget)} {sym}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                {loc('الادخار المتوقع:', 'Projected Savings:', 'പ്രതീക്ഷിത സമ്പാദ്യം:')}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: projectedNet >= 0 ? colors.primary : colors.expense }}>
+                {formatCurrency(projectedNet)} {sym}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Smart Feedback Note */}
-        <View style={[styles.feedbackNote, { backgroundColor: colors.surfaceAlt }]}>
-          <Text style={[styles.feedbackNoteText, { color: colors.textSecondary }]}>
-            {wantsRatio > 25
+        {/* Insight Badge Footer */}
+        <View style={{
+          backgroundColor: wantsPctOfTotal > 25 ? '#F59E0B15' : '#10B98115',
+          borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderWidth: 1,
+          borderColor: wantsPctOfTotal > 25 ? '#F59E0B30' : '#10B98130',
+        }}>
+          <Text style={{
+            fontFamily: 'Cairo_600SemiBold',
+            fontSize: 11,
+            color: wantsPctOfTotal > 25 ? '#F59E0B' : '#10B981',
+            textAlign: 'left',
+            lineHeight: 16,
+          }}>
+            {wantsPctOfTotal > 25
               ? loc(
-                  `⚠️ تشكل رغباتك الترفيهية ${Math.round(wantsRatio)}% من مصاريفك (أعلى من الحد الموصى به 25%). ينصح بتأجيل مشتريات الترفيه غير الحاكمة.`,
-                  `⚠️ Wants represent ${Math.round(wantsRatio)}% of spending (higher than recommended 25%). Try pausing impulse buys.`,
-                  `⚠️ ആഗ്രഹങ്ങൾ ചെലവിന്റെ ${Math.round(wantsRatio)}% ആണ് (ശുപാർശ ചെയ്യുന്ന 25% പരിധിക്ക് മുകളിൽ). അനാവശ്യ വാങ്ങലുകൾ മാറ്റിവെക്കുന്നത് നല്ലതാണ്.`
+                  `⚠️ تشكل الرغبات الترفيهية ${wantsPctOfTotal}% من المصاريف (المعدل المثالي ≤ 25%). ينصح بتأجيل الشراء العاطفي لحماية ادخارك.`,
+                  `⚠️ Wants represent ${wantsPctOfTotal}% of total spending (recommended ≤ 25%). Try pausing impulse buys.`,
+                  `⚠️ ആഗ്രഹങ്ങൾ ചെലവിന്റെ ${wantsPctOfTotal}% ആണ് (ശുപാർശ ചെയ്യുന്നത് ≤ 25%). അനാവശ്യ വാങ്ങലുകൾ മാറ്റിവെക്കുക.`
                 )
               : loc(
-                  `🟢 رائع! ميزانيتك متزنة تماماً. رغباتك الترفيهية تشكل ${Math.round(wantsRatio)}% فقط من منصرفك.`,
-                  `🟢 Great! Your wants represent only ${Math.round(wantsRatio)}% of total spending.`,
-                  `🟢 മികച്ചത്! നിങ്ങളുടെ ബജറ്റ് സമതുലിതമാണ്. ആഗ്രഹങ്ങൾ ആകെ ചെലവിന്റെ ${Math.round(wantsRatio)}% മാത്രമാണ്.`
+                  `🟢 رائع! ميزانيتك متزنة بانضباط عالي، تشكل الرغبات ${wantsPctOfTotal}% فقط من الإنفاق.`,
+                  `🟢 Great! Your spending is well balanced. Wants represent only ${wantsPctOfTotal}% of total spend.`,
+                  `🟢 മികച്ചത്! നിങ്ങളുടെ ബജറ്റ് സമതുലിതമാണ്. ആഗ്രഹങ്ങൾ ${wantsPctOfTotal}% മാത്രമാണ്.`
                 )}
           </Text>
         </View>
       </View>
 
-      {/* Pillars List */}
-      <View style={styles.pillarsList}>
-        {pillars.map((p) => {
-          const pct = p.budget > 0 ? Math.round((p.spent / p.budget) * 100) : 0;
-          const isOver = p.spent > p.budget;
-          return (
-            <View
-              key={p.id}
-              style={[
-                styles.pillarCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <View style={styles.pillarHeader}>
-                <View style={styles.pillarHeaderLeft}>
-                  <View style={[styles.pillarIconWrap, { backgroundColor: p.color + '15' }]}>
-                    <MaterialIcons name={p.icon as any} size={18} color={p.color} />
-                  </View>
-                  <View>
-                    <Text style={[styles.pillarName, { color: colors.text }]}>
-                      {isMl ? p.nameMl : isAr ? p.nameAr : p.nameEn}
+      {/* 2. THE 4 PILLARS IN A SMART 2x2 INTERACTIVE GRID */}
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="grid-outline" size={15} color={colors.primary} />
+            </View>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+              {loc('الأعمدة الأربعة (Kakeibo Pillars)', 'The 4 Kakeibo Pillars', '4 സ്തംഭങ്ങൾ')}
+            </Text>
+          </View>
+          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+            {loc('توزيع الميزانية والمنصرف', 'Budget vs Actual', 'ബജറ്റും ചെലവും')}
+          </Text>
+        </View>
+
+        {/* 2x2 Grid */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {pillars.map((p) => {
+            const pct = p.budget > 0 ? Math.round((p.spent / p.budget) * 100) : 0;
+            const isOver = p.spent > p.budget;
+            const remainingPillar = Math.max(0, p.budget - p.spent);
+
+            return (
+              <View
+                key={p.id}
+                style={{
+                  width: '48.4%',
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 16,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: isOver ? colors.expense : colors.borderLight,
+                  gap: 6,
+                  justifyContent: 'space-between',
+                }}
+              >
+                {/* Pillar Header */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 8, backgroundColor: p.color + '20', alignItems: 'center', justifyContent: 'center' }}>
+                      <MaterialIcons name={p.icon as any} size={14} color={p.color} />
+                    </View>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }} numberOfLines={1}>
+                      {isMl ? p.nameMl.split(' ')[0] : isAr ? p.nameAr.split(' ')[0] : p.nameEn.split(' ')[0]}
                     </Text>
-                    <Text style={[styles.pillarBudgetSubtitle, { color: colors.textSecondary }]}>
-                      {loc(`الميزانية: ${formatCurrency(p.budget)} ${sym}`, `Budget: ${formatCurrency(p.budget)} ${sym}`, `ബജറ്റ്: ${formatCurrency(p.budget)} ${sym}`)}
-                    </Text>
                   </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: isOver ? colors.expense : colors.text }}>
+                    {formatCurrency(p.spent)}
+                  </Text>
                 </View>
-                <Text style={[styles.pillarSpentAmount, { color: isOver ? colors.expense : colors.text }]}>
-                  {formatCurrency(p.spent)} {sym}
+
+                {/* Subtitle Budget */}
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
+                  {loc(`الميزانية: ${formatCurrency(p.budget)} ${sym}`, `Budget: ${formatCurrency(p.budget)} ${sym}`, `ബജറ്റ്: ${formatCurrency(p.budget)}`)}
                 </Text>
-              </View>
 
-              <View style={[styles.pillarProgressBg, { backgroundColor: colors.surfaceAlt }]}>
-                <View
-                  style={[
-                    styles.pillarProgressFill,
-                    { width: `${Math.min(100, pct)}%`, backgroundColor: p.color },
-                  ]}
-                />
-              </View>
+                {/* Mini Progress Bar */}
+                <View style={{ height: 5, backgroundColor: colors.surface, borderRadius: 3, overflow: 'hidden' }}>
+                  <View
+                    style={{
+                      height: '100%',
+                      width: `${Math.min(100, pct)}%`,
+                      backgroundColor: isOver ? colors.expense : p.color,
+                      borderRadius: 3,
+                    }}
+                  />
+                </View>
 
-              <View style={styles.pillarStatusRow}>
-                <Text
-                  style={[
-                    styles.progressNoteText,
-                    { color: colors.textSecondary },
-                    isOver && { color: colors.expense, fontFamily: 'Cairo_700Bold' },
-                  ]}
-                >
-                  {isOver
-                    ? loc(
-                        `⚠️ تجاوزت الميزانية بـ ${formatCurrency(p.spent - p.budget)} ${sym}!`,
-                        `⚠️ Over budget by ${formatCurrency(p.spent - p.budget)} ${sym}!`,
-                        `⚠️ ബജറ്റിനേക്കാൾ ${formatCurrency(p.spent - p.budget)} ${sym} കവിഞ്ഞു!`
-                      )
-                    : loc(`${pct}% من الميزانية`, `${pct}% of budget`, `ബജറ്റിന്റെ ${pct}%`)}
-                </Text>
-                {p.budget > p.spent && (
-                  <Text style={[styles.progressNoteText, { color: colors.textSecondary }]}>
-                    {loc(
-                      `المتبقي: ${formatCurrency(p.budget - p.spent)} ${sym}`,
-                      `Remaining: ${formatCurrency(p.budget - p.spent)} ${sym}`,
-                      `ബാക്കി: ${formatCurrency(p.budget - p.spent)} ${sym}`
-                    )}
+                {/* Footer Metrics */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: isOver ? colors.expense : colors.textSecondary }}>
+                    {pct}%
                   </Text>
-                )}
-              </View>
-
-              {/* Instant Overrun Rebalance Action Plan */}
-              {isOver && (
-                <View
-                  style={[
-                    styles.rebalanceBox,
-                    {
-                      backgroundColor: colors.expense + '12',
-                      borderColor: colors.expense + '30',
-                    },
-                  ]}
-                >
-                  <Text style={[styles.rebalanceText, { color: colors.expense }]}>
-                    {loc(
-                      `💡 خطة التوازن التلقائية: تم رصد تجاوز بـ ${formatCurrency(p.spent - p.budget)} ${sym}. خصم المبلغ من ركيزة (الطوارئ/الرغبات) يحمي ادخارك النهائي.`,
-                      `💡 Rebalance Plan: Overrun of ${formatCurrency(p.spent - p.budget)} ${sym} detected. Offsetting protects your savings.`,
-                      `💡 ഓട്ടോ-റീബാലൻസ് പ്ലാൻ: അധികം വന്ന ${formatCurrency(p.spent - p.budget)} ${sym} ക്രമീകരിക്കുന്നത് നിങ്ങളുടെ സമ്പാദ്യത്തെ സംരക്ഷിക്കും.`
-                    )}
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: isOver ? colors.expense : '#10B981' }}>
+                    {isOver
+                      ? loc(`+${formatCurrency(p.spent - p.budget)}`, `+${formatCurrency(p.spent - p.budget)}`, `+${formatCurrency(p.spent - p.budget)}`)
+                      : loc(`${formatCurrency(remainingPillar)} متبقي`, `${formatCurrency(remainingPillar)} left`, `${formatCurrency(remainingPillar)} ബാക്കി`)}
                   </Text>
+                </View>
+
+                {/* Overrun 1-Tap Rebalance */}
+                {isOver && (
                   <Pressable
                     onPress={() => onApplyKakeiboRebalance(p.spent - p.budget, p.id)}
-                    style={({ pressed }) => [
-                      styles.rebalanceBtn,
-                      { backgroundColor: colors.expense },
-                      pressed && { opacity: 0.8 },
-                    ]}
+                    style={({ pressed }) => [{
+                      backgroundColor: colors.expense + '20',
+                      borderRadius: 8,
+                      paddingVertical: 4,
+                      paddingHorizontal: 6,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: colors.expense + '40',
+                      marginTop: 2,
+                    }, pressed && { opacity: 0.8 }]}
                   >
-                    <Text style={styles.rebalanceBtnText}>
-                      {loc('تطبيق إعادة التوازن المالي ⚖️', 'Apply Auto-Rebalance ⚖️', 'റീബാലൻസ് നടപ്പിലാക്കുക ⚖️')}
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: colors.expense }}>
+                      {loc('⚖️ إعادة توازن', '⚖️ Rebalance', '⚖️ റീബാലൻസ്')}
                     </Text>
                   </Pressable>
-                </View>
-              )}
-            </View>
-          );
-        })}
+                )}
+              </View>
+            );
+          })}
+        </View>
       </View>
 
-      {/* Adjust Kakeibo Budget Button */}
-      <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onOpenKakeiboBudgetModal();
+      {/* 3. INTERACTIVE MINDFUL JOURNALING & SMART ACTIONS */}
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 22,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: colors.border,
+          gap: 12,
         }}
-        style={({ pressed }) => [
-          styles.adjustBtn,
-          { backgroundColor: colors.primary },
-          pressed && { opacity: 0.9 },
-        ]}
       >
-        <MaterialIcons name="edit" size={16} color="#FFF" />
-        <Text style={styles.adjustBtnText}>
-          {loc('تعديل ميزانية الأعمدة الأربعة', 'Edit Kakeibo Pillar Budgets', '4 സ്തംഭ ബജറ്റ് മാറ്റുക')}
-        </Text>
-      </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: '#F59E0B18', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialIcons name="border-color" size={15} color="#F59E0B" />
+            </View>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+              {loc('التأمل المالي والقرارات الذكية', 'Mindful Journaling & Decisions', 'സാമ്പത്തിക ചിന്തകളും തീരുമാനങ്ങളും')}
+            </Text>
+          </View>
 
-      {/* Interactive Quick Mindful Reflection Card */}
-      <View style={[styles.reflectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.reflectionHeader}>
-          <MaterialIcons name="border-color" size={20} color={colors.accent} />
-          <Text style={[styles.reflectionTitle, { color: colors.text }]}>
-            {loc('التأمل والتخطيط المالي السريع', 'Interactive Mindful Journaling', 'ദ്രുത സാമ്പത്തിക ചിന്തകളും പ്ലാനിംഗും')}
-          </Text>
+          {plan.kakeiboReflections && plan.kakeiboReflections.length > 0 && (
+            <Pressable
+              onPress={() => setShowHistory(!showHistory)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: colors.primary }}>
+                {loc(`السجل (${plan.kakeiboReflections.length})`, `History (${plan.kakeiboReflections.length})`, `ചരിത്രം (${plan.kakeiboReflections.length})`)}
+              </Text>
+              <Ionicons name={showHistory ? 'chevron-up' : 'chevron-down'} size={12} color={colors.primary} />
+            </Pressable>
+          )}
         </View>
 
-        <View style={{ gap: 16 }}>
-          {/* 1. Emoji Mood Selector */}
-          <View style={{ gap: 8 }}>
-            <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {loc(
-                'كيف تقيّم شعورك المالي وانظباطك هذا الشهر؟',
-                'How do you feel about your finances this month?',
-                'ഈ മാസം നിങ്ങളുടെ സാമ്പത്തിക അച്ചടക്കത്തെ എങ്ങനെ വിലയിരുത്തുന്നു?'
-              )}
-            </Text>
-            <View style={styles.moodsRow}>
-              {moods.map((m) => (
+        {/* Mood Selector Row */}
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+            {loc('كيف تقيّم انضباطك المالي هذا الشهر؟', 'How do you feel about your discipline?', 'സാമ്പത്തിക അച്ചടക്കം എങ്ങനെ?')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {moods.map((m) => {
+              const isSelected = selectedEmojiMood === m.emoji;
+              return (
                 <Pressable
                   key={m.emoji}
                   onPress={() => {
                     Haptics.selectionAsync();
                     setSelectedEmojiMood(m.emoji);
                   }}
-                  style={[
-                    styles.moodBtn,
-                    {
-                      borderColor: selectedEmojiMood === m.emoji ? colors.primary : colors.border,
-                      backgroundColor:
-                        selectedEmojiMood === m.emoji ? colors.primary + '15' : colors.surfaceAlt,
-                    },
-                  ]}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isSelected ? colors.primary + '18' : colors.surfaceAlt,
+                    borderColor: isSelected ? colors.primary : colors.borderLight,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingVertical: 8,
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
                 >
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.moodText,
-                      {
-                        color:
-                          selectedEmojiMood === m.emoji ? colors.primary : colors.textSecondary,
-                      },
-                    ]}
-                  >
+                  <Text style={{ fontSize: 16 }}>{m.emoji}</Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: isSelected ? colors.primary : colors.textSecondary }}>
                     {isMl ? m.labelMl : isAr ? m.labelAr : m.labelEn}
                   </Text>
                 </Pressable>
-              ))}
-            </View>
+              );
+            })}
           </View>
-
-          {/* 2. Quick Action Chips for Next Month */}
-          <View style={{ gap: 8 }}>
-            <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {loc(
-                'اختر قرار التغيير للشهر القادم بنقرة واحدة:',
-                'Pick 1-tap improvements for next month:',
-                'അടുത്ത മാസത്തേക്കുള്ള മാറ്റങ്ങൾ തിരഞ്ഞെടുക്കുക:'
-              )}
-            </Text>
-            <View style={styles.actionsGrid}>
-              {quickActionOptions.map((opt) => {
-                const isSelected = selectedQuickActions.includes(opt.id);
-                return (
-                  <Pressable
-                    key={opt.id}
-                    onPress={() => toggleAction(opt.id)}
-                    style={[
-                      styles.actionChip,
-                      {
-                        borderColor: isSelected ? colors.accent : colors.border,
-                        backgroundColor: isSelected ? colors.accent + '20' : colors.surfaceAlt,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.actionChipText,
-                        { color: isSelected ? colors.accent : colors.text },
-                      ]}
-                    >
-                      {isMl ? opt.labelMl : isAr ? opt.labelAr : opt.labelEn}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Explanatory Note on Impact */}
-          <View
-            style={[
-              styles.impactNote,
-              {
-                backgroundColor: colors.primary + '10',
-                borderColor: colors.primary + '30',
-              },
-            ]}
-          >
-            <Text style={[styles.impactNoteText, { color: colors.primary }]}>
-              {loc(
-                '💡 تأثير التأمل الياباني: يحدد هذا الجزء مدى انضباطك المالي، وتُستخدم قراراتك لتعديل الميزانية تلقائياً بالشهر القادم وتحديث مؤشر دائرة الوعي المالي.',
-                '💡 Kakeibo Impact: Your monthly reflection adjusts next month’s budget allocation automatically and updates your Mindfulness Ring.',
-                '💡 കാകെയ്ബോ സ്വാധീനം: നിങ്ങളുടെ പ്രതിമാസ ചിന്തകൾ അടുത്ത മാസത്തെ ബജറ്റ് ക്രമീകരിക്കാൻ സഹായിക്കുന്നു.'
-              )}
-            </Text>
-          </View>
-
-          {/* Text Notes input */}
-          <View style={{ gap: 6 }}>
-            <Text style={[styles.reflectionLabel, { color: colors.textSecondary }]}>
-              {loc('ملاحظات إضافية وقراراتك الذاتية (اختياري):', 'Additional Reflection Notes (Optional):', 'കൂടുതൽ കുറിപ്പുകൾ (ഓപ്ഷണൽ):')}
-            </Text>
-            <TextInput
-              style={[
-                styles.reflectionInput,
-                {
-                  backgroundColor: colors.surfaceAlt,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              multiline
-              placeholder={loc('اكتب طموحاتك وملاحظاتك المالية...', 'Write your notes or goals...', 'നിങ്ങളുടെ സാമ്പത്തിക കുറിപ്പുകൾ ഇവിടെ എഴുതുക...')}
-              placeholderTextColor={colors.textSecondary}
-              value={refQ4}
-              onChangeText={setRefQ4}
-            />
-          </View>
-
-          <Pressable
-            onPress={onSaveKakeiboReflection}
-            style={({ pressed }) => [
-              styles.saveReflectionBtn,
-              { backgroundColor: colors.accent },
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <Ionicons name="save-outline" size={16} color="#FFF" />
-            <Text style={styles.saveReflectionBtnText}>
-              {loc('حفظ التأمل المالي بنقرة واحدة', 'Save Reflection Journal', 'സാമ്പത്തിക ചിന്തകൾ സേവ് ചെയ്യുക')}
-            </Text>
-          </Pressable>
         </View>
-      </View>
 
-      {/* Saved Reflections & Decision Log History */}
-      {plan.kakeiboReflections && plan.kakeiboReflections.length > 0 && (
-        <View style={[styles.historyCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <View style={styles.historyHeader}>
-            <Ionicons name="journal-outline" size={18} color={colors.primary} />
-            <Text style={[styles.historyTitle, { color: colors.text }]}>
-              {loc('📖 سجل التأملات والقرارات المحفوظة', '📖 Saved Reflections History Log', '📖 സേവ് ചെയ്ത ചിന്തകളുടെ ചരിത്രം')}
-            </Text>
+        {/* 1-Tap Improvement Decision Chips */}
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+            {loc('قرارات التحسين للشهر القادم بنقرة واحدة:', '1-Tap Improvements for next month:', 'അടുത്ത മാസത്തേക്കുള്ള മാറ്റങ്ങൾ:')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {quickActionOptions.map((opt) => {
+              const isSelected = selectedQuickActions.includes(opt.id);
+              return (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => toggleAction(opt.id)}
+                  style={{
+                    backgroundColor: isSelected ? colors.accent + '22' : colors.surfaceAlt,
+                    borderColor: isSelected ? colors.accent : colors.borderLight,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    paddingVertical: 5,
+                    paddingHorizontal: 8,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 10, color: isSelected ? colors.accent : colors.text }}>
+                    {isMl ? opt.labelMl : isAr ? opt.labelAr : opt.labelEn}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
+        </View>
 
-          <View style={{ gap: 8 }}>
+        {/* Personal Note Input */}
+        <View style={{ gap: 4 }}>
+          <TextInput
+            style={{
+              backgroundColor: colors.surfaceAlt,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.borderLight,
+              padding: 10,
+              color: colors.text,
+              fontFamily: 'Cairo_400Regular',
+              fontSize: 11,
+              minHeight: 38,
+              textAlign: isAr ? 'right' : 'left',
+            }}
+            placeholder={loc('ملاحظات شخصية أو أهداف ترغب في تذكرها (اختياري)...', 'Personal goals or notes (optional)...', 'വ്യക്തിഗത കുറിപ്പുകൾ...')}
+            placeholderTextColor={colors.textSecondary}
+            value={refQ4}
+            onChangeText={setRefQ4}
+          />
+        </View>
+
+        {/* Save Reflection Button */}
+        <Pressable
+          onPress={onSaveKakeiboReflection}
+          style={({ pressed }) => [{
+            backgroundColor: '#F59E0B',
+            borderRadius: 12,
+            height: 40,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+        >
+          <Ionicons name="save-outline" size={15} color="#FFF" />
+          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#FFF' }}>
+            {loc('حفظ التأمل المالي الذكي 🎯', 'Save Reflection 🎯', 'ചിന്തകൾ സേവ് ചെയ്യുക 🎯')}
+          </Text>
+        </Pressable>
+
+        {/* Collapsible Saved Reflections History */}
+        {showHistory && plan.kakeiboReflections && plan.kakeiboReflections.length > 0 && (
+          <View style={{ gap: 8, marginTop: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }}>
+              {loc('📖 سجل القرارات والتأملات المحفوظة:', '📖 Saved Reflections History:', '📖 സേവ് ചെയ്ത ചിന്തകൾ:')}
+            </Text>
             {plan.kakeiboReflections.map((ref, rIdx) => (
               <View
                 key={rIdx}
-                style={[
-                  styles.historyItem,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
+                style={{
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 12,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderColor: colors.borderLight,
+                  gap: 4,
+                }}
               >
-                <View style={styles.historyItemTop}>
-                  <View style={styles.historyItemTopLeft}>
-                    <Text style={{ fontSize: 18 }}>{ref.emojiMood || '😊'}</Text>
-                    <Text style={[styles.historyMonthName, { color: colors.text }]}>
-                      {loc(`تأمل شهر ${ref.monthKey}`, `Reflection ${ref.monthKey}`, `പ്രതിമാസ ചിന്ത ${ref.monthKey}`)}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 15 }}>{ref.emojiMood || '😊'}</Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.text }}>
+                      {ref.monthKey}
                     </Text>
                   </View>
-                  <View style={[styles.savedTag, { backgroundColor: colors.primary + '18' }]}>
-                    <Text style={[styles.savedTagText, { color: colors.primary }]}>
-                      {loc('تم حفظ القرار 🟢', 'Decision Saved 🟢', 'തീരുമാനം സേവ് ചെയ്തു 🟢')}
-                    </Text>
-                  </View>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: '#10B981' }}>
+                    {loc('محفوظ 🟢', 'Saved 🟢', 'സേവ് ചെയ്തു 🟢')}
+                  </Text>
                 </View>
 
                 {ref.quickActions && ref.quickActions.length > 0 && (
-                  <View style={styles.historyChipsRow}>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
                     {ref.quickActions.map((actId) => {
                       const actObj = quickActionOptions.find((o) => o.id === actId);
                       return (
-                        <View
-                          key={actId}
-                          style={[styles.historyChip, { backgroundColor: colors.accent + '15' }]}
-                        >
-                          <Text style={[styles.historyChipText, { color: colors.accent }]}>
+                        <View key={actId} style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9, color: colors.accent }}>
                             {actObj ? (isMl ? actObj.labelMl : isAr ? actObj.labelAr : actObj.labelEn) : actId}
                           </Text>
                         </View>
@@ -612,398 +681,15 @@ export const KakeiboSection: React.FC<KakeiboSectionProps> = ({
                 )}
 
                 {ref.q4 ? (
-                  <Text style={[styles.historyNotes, { color: colors.textSecondary }]}>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
                     {`"${ref.q4}"`}
                   </Text>
                 ) : null}
               </View>
             ))}
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 16,
-  },
-  summaryBar: {
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  iconTextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  summaryLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 12,
-  },
-  summaryAmount: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-  },
-  boldLabel: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
-  },
-  divider: {
-    height: 1,
-  },
-  donutCard: {
-    borderWidth: 1,
-    padding: 16,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  donutHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 12,
-    gap: 8,
-  },
-  donutHeaderTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  donutHeading: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    flex: 1,
-  },
-  badgeStatus: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeStatusText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 10,
-  },
-  donutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginVertical: 8,
-  },
-  donutSvgWrap: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  donutCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  donutTotalSpent: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
-  },
-  donutSpentSub: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 9,
-  },
-  donutLegend: {
-    gap: 6,
-    flex: 1,
-    marginLeft: 16,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  legendLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendName: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-  },
-  legendSpent: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 11,
-  },
-  feedbackNote: {
-    padding: 10,
-    borderRadius: 12,
-    marginTop: 8,
-    width: '100%',
-  },
-  feedbackNoteText: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    textAlign: 'left',
-    lineHeight: 16,
-  },
-  pillarsList: {
-    gap: 12,
-  },
-  pillarCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-  },
-  pillarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pillarHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pillarIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pillarName: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-  },
-  pillarBudgetSubtitle: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-  },
-  pillarSpentAmount: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-  },
-  pillarProgressBg: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 12,
-  },
-  pillarProgressFill: {
-    height: 8,
-    borderRadius: 4,
-  },
-  pillarStatusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  progressNoteText: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-  },
-  rebalanceBox: {
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-    gap: 6,
-  },
-  rebalanceText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    textAlign: 'left',
-    lineHeight: 16,
-  },
-  rebalanceBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  rebalanceBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 11,
-    color: '#FFF',
-  },
-  adjustBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  adjustBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#FFF',
-  },
-  reflectionCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  reflectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  reflectionTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-  },
-  reflectionLabel: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-  },
-  moodsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  moodBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  moodEmoji: {
-    fontSize: 22,
-    marginBottom: 2,
-  },
-  moodText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 9,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  actionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  actionChipText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-  },
-  impactNote: {
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginVertical: 4,
-  },
-  impactNoteText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-    textAlign: 'left',
-    lineHeight: 16,
-  },
-  reflectionInput: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 13,
-    minHeight: 64,
-    textAlignVertical: 'top',
-  },
-  saveReflectionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 14,
-    marginTop: 4,
-  },
-  saveReflectionBtnText: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 13,
-    color: '#FFF',
-  },
-  historyCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    gap: 10,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  historyTitle: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 14,
-  },
-  historyItem: {
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 6,
-  },
-  historyItemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  historyItemTopLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  historyMonthName: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 12,
-  },
-  savedTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  savedTagText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 10,
-  },
-  historyChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 2,
-  },
-  historyChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  historyChipText: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 10,
-  },
-  historyNotes: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 11,
-    marginTop: 2,
-  },
-});

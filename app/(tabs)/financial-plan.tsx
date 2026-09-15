@@ -1419,65 +1419,78 @@ export default function FinancialPlanScreen() {
           gap: 12,
           marginBottom: 14,
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          {!isKakeiboMode ? (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="pulse-outline" size={16} color={colors.primary} />
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                    {loc('نبض التدفق النقدي لهذا الشهر', 'This Month Cash Flow Pulse', 'ഈ മാസത്തെ പണമിടപാട്')}
+                  </Text>
+                </View>
+                {thisMonthOverride && (
+                  <View style={{ backgroundColor: colors.accent + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: colors.accent }}>
+                      {loc('استهداف مخصص 🎯', 'Custom Target 🎯', 'കസ്റ്റം ലക്ഷ്യം 🎯')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* 3 KPI Columns: Income, Expenses, Net */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc('الدخل', 'Income', 'വരുമാനം')}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>
+                    +{formatCurrency(totalIncome)}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc(`المخطط: ${formatCurrency(currentPlannedInc)}`, `Plan: ${formatCurrency(currentPlannedInc)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedInc)}`)}
+                  </Text>
+                </View>
+
+                <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc('المصاريف', 'Expenses', 'ചെലവുകൾ')}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > currentPlannedExp ? colors.expense : colors.text }} numberOfLines={1}>
+                    -{formatCurrency(totalExpense)}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc(`المخطط: ${formatCurrency(currentPlannedExp)}`, `Plan: ${formatCurrency(currentPlannedExp)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedExp)}`)}
+                  </Text>
+                </View>
+
+                <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc('الصافي', 'Net', 'അറ്റ തുക')}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
+                    {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)}
+                  </Text>
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
+                    {loc(`الهدف: ${formatCurrency(currentPlannedSaving)}`, `Target: ${formatCurrency(currentPlannedSaving)}`, `ലക്ഷ്യം: ${formatCurrency(currentPlannedSaving)}`)}
+                  </Text>
+                </View>
+              </View>
+            </>
+          ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="pulse-outline" size={16} color={colors.primary} />
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
               </View>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
-                {loc('نبض التدفق النقدي لهذا الشهر', 'This Month Cash Flow Pulse', 'ഈ മാസത്തെ പണമിടപാട്')}
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                {loc('ملاءة الأصول والسيولة الكلية', 'Total Assets & Solvency', 'ആകെ ആസ്തികൾ')}
               </Text>
             </View>
-            {thisMonthOverride && (
-              <View style={{ backgroundColor: colors.accent + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: colors.accent }}>
-                  {loc('استهداف مخصص 🎯', 'Custom Target 🎯', 'കസ്റ്റം ലക്ഷ്യം 🎯')}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* 3 KPI Columns: Income, Expenses, Net */}
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {loc('الدخل', 'Income', 'വരുമാനം')}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.income }} numberOfLines={1}>
-                +{formatCurrency(totalIncome)}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`المخطط: ${formatCurrency(currentPlannedInc)}`, `Plan: ${formatCurrency(currentPlannedInc)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedInc)}`)}
-              </Text>
-            </View>
-
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {loc('المصاريف', 'Expenses', 'ചെലവുകൾ')}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: totalExpense > currentPlannedExp ? colors.expense : colors.text }} numberOfLines={1}>
-                -{formatCurrency(totalExpense)}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`المخطط: ${formatCurrency(currentPlannedExp)}`, `Plan: ${formatCurrency(currentPlannedExp)}`, `പ്ലാൻ: ${formatCurrency(currentPlannedExp)}`)}
-              </Text>
-            </View>
-
-            <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, gap: 3 }}>
-              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                {loc('الصافي', 'Net', 'അറ്റ തുക')}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: (totalIncome - totalExpense) >= 0 ? colors.income : colors.expense }} numberOfLines={1}>
-                {(totalIncome - totalExpense) >= 0 ? '+' : ''}{formatCurrency(totalIncome - totalExpense)}
-              </Text>
-              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }} numberOfLines={1}>
-                {loc(`الهدف: ${formatCurrency(currentPlannedSaving)}`, `Target: ${formatCurrency(currentPlannedSaving)}`, `ലക്ഷ്യം: ${formatCurrency(currentPlannedSaving)}`)}
-              </Text>
-            </View>
-          </View>
+          )}
 
           {/* Solvency & Net Integrated Assets breakdown */}
-          <View style={{ gap: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+          <View style={{ gap: 6, paddingTop: !isKakeiboMode ? 10 : 4, borderTopWidth: !isKakeiboMode ? 1 : 0, borderTopColor: colors.borderLight }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
                 {loc('رصيد المحفظة المتاح', 'Available Wallet Balance', 'ലഭ്യമായ ബാലൻസ്')}
