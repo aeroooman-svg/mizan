@@ -508,6 +508,36 @@ export default function SettingsScreen() {
             )}
           </View>
 
+          {/* Open Banking Integration */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionIconBadge, { backgroundColor: '#0284C718' }]}>
+                <Ionicons name="business-outline" size={18} color="#0284C7" />
+              </View>
+              <Text style={styles.sectionTitle}>{loc('الربط البنكي المفتوح', 'Open Banking', 'ബാങ്ക് കണക്റ്റിവിറ്റി')}</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                safeHaptic.selection();
+                router.push('/bank-connect' as any);
+              }}
+              style={({ pressed }) => [styles.compactMenuRow, pressed && { opacity: 0.7 }]}
+            >
+              <View style={[styles.menuRowLeft, { flex: 1 }]}>
+                <Ionicons name="card-outline" size={18} color="#0284C7" />
+                <View style={{ flex: 1, marginHorizontal: 8 }}>
+                  <Text style={[styles.compactMenuText, { color: colors.text }]}>
+                    {loc('ربط الحسابات البنكية تلقائياً', 'Connect Bank Accounts', 'ബാങ്ക് അക്കൗണ്ടുകൾ ബന്ധിപ്പിക്കുക')}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
+                    {loc('مزامنة آمنة ومشفرة في السعودية والإمارات ومصر', 'Secure & encrypted sync in KSA, UAE, Egypt', 'സുരക്ഷിത ബാങ്ക് ലിങ്കിംഗ്')}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.textTertiary} />
+            </Pressable>
+          </View>
+
           {/* 2. Appearance, Language & Widgets */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
