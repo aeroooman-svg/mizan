@@ -36,6 +36,8 @@ import {
   isOpenBankingAvailable,
 } from '@/lib/openBankingService';
 
+import BankAuthModal from '@/components/bank-connect/BankAuthModal';
+
 export default function BankConnectScreen() {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
@@ -58,6 +60,10 @@ export default function BankConnectScreen() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
+  // Bank Auth Modal State
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedBankForAuth, setSelectedBankForAuth] = useState<SupportedBank | null>(null);
+
   const countries = getSupportedCountries();
 
   // Load connections
@@ -72,83 +78,12 @@ export default function BankConnectScreen() {
     loadConnections();
   }, [loadConnections]);
 
-  // Handle bank selection for connection
-  const handleSelectBank = async (bank: SupportedBank) => {
+  // Handle bank selection for connection -> Opens full Auth Modal
+  const handleSelectBank = (bank: SupportedBank) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (!isOpenBankingAvailable()) {
-      // Demo mode — simulate connection
-      Alert.alert(
-        loc('وضع التجربة 🧪', 'Demo Mode 🧪'),
-        loc(
-          'الربط البنكي يحتاج إعداد Lean Technologies API Token. سيتم إضافة اتصال تجريبي بمعاملات عرض توضيحية.',
-          'Bank linking requires Lean Technologies API Token setup. A demo connection with sample transactions will be created.'
-        ),
-        [
-          { text: loc('إلغاء', 'Cancel'), style: 'cancel' },
-          {
-            text: loc('تجربة تجريبية', 'Try Demo'),
-            onPress: () => createDemoConnection(bank),
-          },
-        ]
-      );
-      return;
-    }
-
-    // Production flow: Open Lean Connect
-    Alert.alert(
-      loc('ربط حسابك البنكي', 'Connect Your Bank'),
-      loc(
-        `سيتم فتح صفحة آمنة لربط حسابك في ${bank.nameAr}. بياناتك محمية بتشفير بنكي.`,
-        `A secure page will open to connect your ${bank.name} account. Your data is protected with bank-grade encryption.`
-      ),
-      [
-        { text: loc('إلغاء', 'Cancel'), style: 'cancel' },
-        {
-          text: loc('متابعة', 'Continue'),
-          onPress: () => {
-            // In production: LeanConnect.connect({ bankId: bank.id })
-            // For now: create demo
-            createDemoConnection(bank);
-          },
-        },
-      ]
-    );
-  };
-
-  const createDemoConnection = async (bank: SupportedBank) => {
-    try {
-      const walletId = selectedWallet?.id || wallets[0]?.id;
-      if (!walletId) {
-        Alert.alert(loc('خطأ', 'Error'), loc('أنشئ محفظة أولاً', 'Create a wallet first'));
-        return;
-      }
-
-      const demoEntityId = `demo_entity_${bank.id}_${Date.now()}`;
-      const connection = await registerBankConnection(demoEntityId, bank, walletId);
-
-      // Auto-sync demo transactions
-      const result = await performFullSync(connection, transactions);
-      setSyncResult(result);
-      
-      await loadConnections();
-      setShowAddModal(false);
-      
-      if (result.success) {
-        refresh(); // Refresh transactions context
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          loc('تم الربط بنجاح! 🎉', 'Connected Successfully! 🎉'),
-          loc(
-            `تم ربط ${bank.nameAr} وإضافة ${result.newTransactions} معاملة جديدة.`,
-            `${bank.name} connected and ${result.newTransactions} new transactions added.`
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Bank connection error:', error);
-      Alert.alert(loc('خطأ', 'Error'), loc('فشل ربط البنك', 'Failed to connect bank'));
-    }
+    setShowAddModal(false);
+    setSelectedBankForAuth(bank);
+    setShowAuthModal(true);
   };
 
   // Sync a specific connection
@@ -521,6 +456,27 @@ export default function BankConnectScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Interactive Bank Authentication Modal */}
+      <BankAuthModal
+        visible={showAuthModal}
+        bank={selectedBankForAuth}
+        onClose={() => {
+          setShowAuthModal(false);
+          setSelectedBankForAuth(null);
+        }}
+        onComplete={(conn, res) => {
+          loadConnections();
+          refresh();
+          setShowAuthModal(false);
+          setSelectedBankForAuth(null);
+        }}
+        wallets={wallets}
+        transactions={transactions}
+        language={language}
+        colors={colors}
+        theme={theme}
+      />
     </View>
   );
 }

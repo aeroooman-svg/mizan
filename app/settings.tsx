@@ -15,9 +15,10 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBankConnections, BankConnection } from '@/lib/openBankingService';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useSecurity } from '@/lib/SecurityContext';
@@ -97,6 +98,15 @@ export default function SettingsScreen() {
 
   // Danger Zone Expandable State
   const [isDangerExpanded, setIsDangerExpanded] = useState(false);
+
+  // Bank Connections State
+  const [bankConnections, setBankConnections] = useState<BankConnection[]>([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      getBankConnections().then(setBankConnections);
+    }, [])
+  );
 
   // Confirm Modal State
   const [confirmModalState, setConfirmModalState] = useState<{
@@ -511,10 +521,17 @@ export default function SettingsScreen() {
           {/* Open Banking Integration */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={[styles.sectionIconBadge, { backgroundColor: '#0284C718' }]}>
-                <Ionicons name="business-outline" size={18} color="#0284C7" />
+              <View style={[styles.sectionIconBadge, { backgroundColor: '#10B98118' }]}>
+                <Ionicons name="business-outline" size={18} color="#10B981" />
               </View>
-              <Text style={styles.sectionTitle}>{loc('الربط البنكي المفتوح', 'Open Banking', 'ബാങ്ക് കണക്റ്റിവിറ്റി')}</Text>
+              <Text style={styles.sectionTitle}>{loc('الربط البنكي المفتوح (Open Banking)', 'Open Banking', 'ബാങ്ക് കണക്റ്റിവിറ്റി')}</Text>
+              {bankConnections.length > 0 && (
+                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: isAr ? 0 : 'auto', marginRight: isAr ? 'auto' : 0 }}>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
+                    {loc(`${bankConnections.length} متصل`, `${bankConnections.length} Connected`)}
+                  </Text>
+                </View>
+              )}
             </View>
             <Pressable
               onPress={() => {
@@ -524,17 +541,17 @@ export default function SettingsScreen() {
               style={({ pressed }) => [styles.compactMenuRow, pressed && { opacity: 0.7 }]}
             >
               <View style={[styles.menuRowLeft, { flex: 1 }]}>
-                <Ionicons name="card-outline" size={18} color="#0284C7" />
-                <View style={{ flex: 1, marginHorizontal: 8 }}>
-                  <Text style={[styles.compactMenuText, { color: colors.text }]}>
-                    {loc('ربط الحسابات البنكية تلقائياً', 'Connect Bank Accounts', 'ബാങ്ക് അക്കൗണ്ടുകൾ ബന്ധിപ്പിക്കുക')}
+                <Ionicons name="card-outline" size={20} color="#10B981" />
+                <View style={{ flex: 1, marginHorizontal: 10 }}>
+                  <Text style={[styles.compactMenuText, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
+                    {loc('ربط الحسابات البنكية والمزامنة الفورية', 'Connect Bank Accounts & Live Sync', 'ബാങ്ക് അക്കൗണ്ടുകൾ ബന്ധിപ്പിക്കുക')}
                   </Text>
                   <Text style={{ fontSize: 11, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
-                    {loc('مزامنة آمنة ومشفرة في السعودية والإمارات ومصر', 'Secure & encrypted sync in KSA, UAE, Egypt', 'സുരക്ഷിത ബാങ്ക് ലിങ്കിംഗ്')}
+                    {loc('🇰🇼 الكويت • 🇸🇦 السعودية • 🇦🇪 الإمارات • 🇪🇬 مصر • 🇧🇭 البحرين', '🇰🇼 Kuwait • 🇸🇦 KSA • 🇦🇪 UAE • 🇪🇬 Egypt • 🇧🇭 Bahrain')}
                   </Text>
                 </View>
               </View>
-              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={14} color={colors.textTertiary} />
+              <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={15} color={colors.textTertiary} />
             </Pressable>
           </View>
 

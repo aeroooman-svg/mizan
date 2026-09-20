@@ -14,7 +14,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Transaction, Wallet, CurrencyCode } from './storage';
+import { Transaction, Wallet, CurrencyCode, saveWallet } from './storage';
 import { parseBankSMS } from './smsParser';
 
 // ── Configuration ──────────────────────────────────────────
@@ -100,6 +100,16 @@ export interface SupportedBank {
 }
 
 export const SUPPORTED_BANKS: SupportedBank[] = [
+  // 🇰🇼 Kuwait
+  { id: 'nbk', name: 'National Bank of Kuwait (NBK)', nameAr: 'بنك الكويت الوطني (NBK)', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: true },
+  { id: 'kfh', name: 'Kuwait Finance House (KFH)', nameAr: 'بيت التمويل الكويتي (بيتك)', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: true },
+  { id: 'boubyan', name: 'Boubyan Bank', nameAr: 'بنك بوبيان', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: true },
+  { id: 'gulf_bank', name: 'Gulf Bank', nameAr: 'بنك الخليج', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: true },
+  { id: 'burgan', name: 'Burgan Bank', nameAr: 'بنك برقان', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: false },
+  { id: 'warba', name: 'Warba Bank', nameAr: 'بنك وربة', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: false },
+  { id: 'cbk_kw', name: 'Commercial Bank of Kuwait', nameAr: 'البنك التجاري الكويتي', logo: '🏦', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: false },
+  { id: 'weyay', name: 'Weyay Bank (Digital)', nameAr: 'بنك وياي الرقمي', logo: '💳', country: 'KW', countryFlag: '🇰🇼', currency: 'KWD', isPopular: true },
+
   // 🇸🇦 Saudi Arabia
   { id: 'alrajhi', name: 'Al Rajhi Bank', nameAr: 'مصرف الراجحي', logo: '🏦', country: 'SA', countryFlag: '🇸🇦', currency: 'SAR', isPopular: true },
   { id: 'alahli', name: 'SNB (Al Ahli)', nameAr: 'البنك الأهلي السعودي', logo: '🏦', country: 'SA', countryFlag: '🇸🇦', currency: 'SAR', isPopular: true },
@@ -134,6 +144,7 @@ export function getPopularBanks(): SupportedBank[] {
 
 export function getSupportedCountries(): { code: string; flag: string; nameAr: string; nameEn: string }[] {
   return [
+    { code: 'KW', flag: '🇰🇼', nameAr: 'الكويت', nameEn: 'Kuwait' },
     { code: 'SA', flag: '🇸🇦', nameAr: 'السعودية', nameEn: 'Saudi Arabia' },
     { code: 'AE', flag: '🇦🇪', nameAr: 'الإمارات', nameEn: 'UAE' },
     { code: 'EG', flag: '🇪🇬', nameAr: 'مصر', nameEn: 'Egypt' },
@@ -226,6 +237,52 @@ export function getLeanConnectParams(bankId?: string, country?: string): LeanCon
  * After user completes Lean Connect, we receive an entityId.
  * This function registers the new connection in MIZAN.
  */
+
+/**
+ * Automatically creates a real Mizan Wallet for a connected bank
+ */
+export async function createWalletForBank(bank: SupportedBank, initialBalance: number = 0): Promise<Wallet> {
+  const bankColors: Record<string, string> = {
+    nbk: '#002B49',
+    kfh: '#007A3D',
+    boubyan: '#B8860B',
+    gulf_bank: '#C41230',
+    burgan: '#005494',
+    warba: '#0047BA',
+    cbk_kw: '#003366',
+    weyay: '#4F46E5',
+    alrajhi: '#05318A',
+    alahli: '#006B3F',
+    riyad: '#002D62',
+    alinma: '#008374',
+    stc_pay: '#4F008C',
+    enbd: '#002D72',
+    fab: '#001A9C',
+    mashreq: '#FF6B00',
+    adib: '#0070BA',
+    cib_eg: '#003B70',
+    nbe: '#006B3F',
+    banque_misr: '#B22222',
+    qnb_eg: '#800020',
+    nbb: '#CE1126',
+    kfh_bh: '#007A3D',
+  };
+
+  const newWallet: Wallet = {
+    id: `wallet_bank_${bank.id}_${Date.now()}`,
+    name: `${bank.nameAr}`,
+    currency: bank.currency,
+    icon: bank.logo === '💳' ? 'card' : 'business',
+    color: bankColors[bank.id] || '#0284C7',
+    cardStyle: 'classic',
+    initialBalance,
+    createdAt: new Date().toISOString(),
+  };
+
+  await saveWallet(newWallet);
+  return newWallet;
+}
+
 export async function registerBankConnection(
   entityId: string,
   bank: SupportedBank,
@@ -257,11 +314,11 @@ export async function registerBankConnection(
  * Fetch bank accounts from Lean API.
  * Returns list of accounts associated with the entityId.
  */
-export async function fetchBankAccounts(entityId: string): Promise<BankAccount[]> {
+export async function fetchBankAccounts(entityId: string, bank?: SupportedBank): Promise<BankAccount[]> {
   try {
     if (!LEAN_APP_TOKEN) {
       console.warn('Lean API token not configured');
-      return getDemoAccounts();
+      return getDemoAccounts(bank);
     }
 
     const response = await fetch(`${API_BASE}/data/v2/accounts`, {
@@ -275,7 +332,7 @@ export async function fetchBankAccounts(entityId: string): Promise<BankAccount[]
 
     if (!response.ok) {
       console.warn('Lean API accounts error:', response.status);
-      return getDemoAccounts();
+      return getDemoAccounts(bank);
     }
 
     const data = await response.json();
@@ -291,7 +348,7 @@ export async function fetchBankAccounts(entityId: string): Promise<BankAccount[]
     }));
   } catch (error) {
     console.warn('Failed to fetch bank accounts:', error);
-    return getDemoAccounts();
+    return getDemoAccounts(bank);
   }
 }
 
@@ -305,11 +362,12 @@ export async function fetchBankTransactions(
   entityId: string,
   fromDate?: string,
   toDate?: string,
+  bank?: SupportedBank,
 ): Promise<BankTransaction[]> {
   try {
     if (!LEAN_APP_TOKEN) {
       console.warn('Lean API token not configured');
-      return getDemoTransactions();
+      return getDemoTransactions(bank);
     }
 
     const body: any = { entity_id: entityId };
@@ -327,7 +385,7 @@ export async function fetchBankTransactions(
 
     if (!response.ok) {
       console.warn('Lean API transactions error:', response.status);
-      return getDemoTransactions();
+      return getDemoTransactions(bank);
     }
 
     const data = await response.json();
@@ -345,7 +403,7 @@ export async function fetchBankTransactions(
     }));
   } catch (error) {
     console.warn('Failed to fetch bank transactions:', error);
-    return getDemoTransactions();
+    return getDemoTransactions(bank);
   }
 }
 
@@ -501,10 +559,16 @@ export async function performFullSync(
   // Fetch last 90 days of transactions
   const fromDate = new Date();
   fromDate.setDate(fromDate.getDate() - 90);
+
+  const bank = SUPPORTED_BANKS.find(
+    b => b.id === connection.id.split('_')[1] || b.name === connection.bankName || b.nameAr === connection.bankNameAr
+  );
   
   const bankTxns = await fetchBankTransactions(
     connection.entityId,
     fromDate.toISOString().split('T')[0],
+    undefined,
+    bank
   );
 
   return syncBankTransactionsToWallet(connection, bankTxns, existingTransactions);
@@ -620,30 +684,108 @@ export async function getSyncLog(): Promise<SyncLogEntry[]> {
 
 // ── Demo Data (for development/testing) ────────────────────
 
-function getDemoAccounts(): BankAccount[] {
+function getDemoAccounts(bank?: SupportedBank): BankAccount[] {
+  const bName = bank?.nameAr || bank?.name || 'البنك';
+  const curr = bank?.currency || 'KWD';
+
+  if (curr === 'KWD' || bank?.country === 'KW') {
+    return [
+      {
+        accountId: 'acc_kw_1',
+        name: 'حساب جاري رئيسي (رواتب ومعاملات)',
+        number: '****4921',
+        type: 'current',
+        balance: 1450.750,
+        currency: 'KWD',
+        bankName: bName,
+      },
+      {
+        accountId: 'acc_kw_2',
+        name: 'حساب التوفير الذكي (عوائد واستثمار)',
+        number: '****8812',
+        type: 'savings',
+        balance: 4200.000,
+        currency: 'KWD',
+        bankName: bName,
+      },
+    ];
+  }
+
+  if (curr === 'EGP' || bank?.country === 'EG') {
+    return [
+      {
+        accountId: 'acc_eg_1',
+        name: 'حساب جاري بالجنيه',
+        number: '****3821',
+        type: 'current',
+        balance: 48500.00,
+        currency: 'EGP',
+        bankName: bName,
+      },
+      {
+        accountId: 'acc_eg_2',
+        name: 'حساب يوم بيوم توفير',
+        number: '****7124',
+        type: 'savings',
+        balance: 120000.00,
+        currency: 'EGP',
+        bankName: bName,
+      },
+    ];
+  }
+
+  if (curr === 'AED' || bank?.country === 'AE') {
+    return [
+      {
+        accountId: 'acc_ae_1',
+        name: 'Current Account (Salary & POS)',
+        number: '****6291',
+        type: 'current',
+        balance: 18450.00,
+        currency: 'AED',
+        bankName: bName,
+      },
+    ];
+  }
+
+  if (curr === 'BHD' || bank?.country === 'BH') {
+    return [
+      {
+        accountId: 'acc_bh_1',
+        name: 'حساب جاري دينار بحريني',
+        number: '****5510',
+        type: 'current',
+        balance: 1850.500,
+        currency: 'BHD',
+        bankName: bName,
+      },
+    ];
+  }
+
+  // Default SAR
   return [
     {
       accountId: 'demo_acc_1',
-      name: 'حساب جاري',
+      name: 'حساب جاري (رواتب ومشتريات)',
       number: '****4521',
       type: 'current',
       balance: 25340.50,
       currency: 'SAR',
-      bankName: 'Al Rajhi Bank',
+      bankName: bName,
     },
     {
       accountId: 'demo_acc_2',
-      name: 'حساب ادخار',
+      name: 'حساب ادخار عوائد شهرية',
       number: '****8732',
       type: 'savings',
       balance: 82100.00,
       currency: 'SAR',
-      bankName: 'Al Rajhi Bank',
+      bankName: bName,
     },
   ];
 }
 
-function getDemoTransactions(): BankTransaction[] {
+function getDemoTransactions(bank?: SupportedBank): BankTransaction[] {
   const now = new Date();
   const daysAgo = (d: number) => {
     const date = new Date(now);
@@ -651,8 +793,50 @@ function getDemoTransactions(): BankTransaction[] {
     return date.toISOString();
   };
 
+  const curr = bank?.currency || 'KWD';
+
+  if (curr === 'KWD' || bank?.country === 'KW') {
+    return [
+      { id: 'kw_tx_1', amount: 850.000, currency: 'KWD', type: 'credit', description: 'تحويل راتب شهري — ديوان الخدمة المدنية', merchantName: 'ديوان الخدمة المدنية', date: daysAgo(1), status: 'posted' },
+      { id: 'kw_tx_2', amount: 18.500, currency: 'KWD', type: 'debit', description: 'POS - كارفور هايبرماركت 360 مول', merchantName: 'كارفور الكويت', date: daysAgo(1), status: 'posted' },
+      { id: 'kw_tx_3', amount: 2.750, currency: 'KWD', type: 'debit', description: 'POS - ستاربكس كافيه — مجمع الأفنيوز', merchantName: 'ستاربكس الأفنيوز', date: daysAgo(2), status: 'posted' },
+      { id: 'kw_tx_4', amount: 12.000, currency: 'KWD', type: 'debit', description: 'ONLINE - فاتورة باقة زين الكويت', merchantName: 'Zain KW', date: daysAgo(3), status: 'posted' },
+      { id: 'kw_tx_5', amount: 26.400, currency: 'KWD', type: 'debit', description: 'POS - مركز سلطان الكوت مول', merchantName: 'مركز سلطان', date: daysAgo(4), status: 'posted' },
+      { id: 'kw_tx_6', amount: 6.250, currency: 'KWD', type: 'debit', description: 'ONLINE - طلبات الكويت توصيل وجبة', merchantName: 'طلبات Talabat', date: daysAgo(5), status: 'posted' },
+      { id: 'kw_tx_7', amount: 4.500, currency: 'KWD', type: 'debit', description: 'POS - محطة وقود الأولى كويت KNPC', merchantName: 'محطة وقود الأولى', date: daysAgo(6), status: 'posted' },
+      { id: 'kw_tx_8', amount: 8.900, currency: 'KWD', type: 'debit', description: 'POS - صيدلية بوتس Boots الأفنيوز', merchantName: 'صيدلية بوتس Boots', date: daysAgo(8), status: 'posted' },
+      { id: 'kw_tx_9', amount: 50.000, currency: 'KWD', type: 'debit', description: 'ATM - سحب نقدي صراف كي نت K-Net', merchantName: 'صراف كي نت K-Net', date: daysAgo(9), status: 'posted' },
+      { id: 'kw_tx_10', amount: 35.000, currency: 'KWD', type: 'credit', description: 'تحويل بنكي فوري من فهد — سداد قطية', merchantName: 'تحويل محلي فوري', date: daysAgo(11), status: 'posted' },
+    ];
+  }
+
+  if (curr === 'EGP' || bank?.country === 'EG') {
+    return [
+      { id: 'eg_tx_1', amount: 25000, currency: 'EGP', type: 'credit', description: 'تحويل راتب شهري — فودافون مصر', merchantName: 'راتب شركة', date: daysAgo(1), status: 'posted' },
+      { id: 'eg_tx_2', amount: 850.50, currency: 'EGP', type: 'debit', description: 'POS - كارفور هايبرماركت المعادي', merchantName: 'كارفور مصر', date: daysAgo(1), status: 'posted' },
+      { id: 'eg_tx_3', amount: 120, currency: 'EGP', type: 'debit', description: 'POS - كوستا كوفي — الزمالك', merchantName: 'كوستا كوفي', date: daysAgo(2), status: 'posted' },
+      { id: 'eg_tx_4', amount: 250, currency: 'EGP', type: 'debit', description: 'ONLINE - فودافون فاتورة إنترنت', merchantName: 'فودافون مصر', date: daysAgo(3), status: 'posted' },
+      { id: 'eg_tx_5', amount: 1400, currency: 'EGP', type: 'debit', description: 'POS - مترو ماركت الدقي', merchantName: 'مترو ماركت', date: daysAgo(4), status: 'posted' },
+      { id: 'eg_tx_6', amount: 180, currency: 'EGP', type: 'debit', description: 'POS - أوبر مصر', merchantName: 'أوبر مصر', date: daysAgo(5), status: 'posted' },
+      { id: 'eg_tx_7', amount: 350, currency: 'EGP', type: 'debit', description: 'POS - صيدليات العزبي', merchantName: 'صيدليات العزبي', date: daysAgo(7), status: 'posted' },
+      { id: 'eg_tx_8', amount: 3000, currency: 'EGP', type: 'debit', description: 'ATM - سحب نقدي ماكينة بنك مصر', date: daysAgo(9), status: 'posted' },
+    ];
+  }
+
+  if (curr === 'AED' || bank?.country === 'AE') {
+    return [
+      { id: 'ae_tx_1', amount: 18000, currency: 'AED', type: 'credit', description: 'Salary Transfer — TECOM Group', merchantName: 'Salary Transfer', date: daysAgo(1), status: 'posted' },
+      { id: 'ae_tx_2', amount: 340.50, currency: 'AED', type: 'debit', description: 'POS - Carrefour Mall of the Emirates', merchantName: 'Carrefour UAE', date: daysAgo(1), status: 'posted' },
+      { id: 'ae_tx_3', amount: 45, currency: 'AED', type: 'debit', description: 'POS - Starbucks Dubai Marina', merchantName: 'Starbucks', date: daysAgo(2), status: 'posted' },
+      { id: 'ae_tx_4', amount: 350, currency: 'AED', type: 'debit', description: 'ONLINE - DEWA Electricity & Water', merchantName: 'DEWA', date: daysAgo(3), status: 'posted' },
+      { id: 'ae_tx_5', amount: 65, currency: 'AED', type: 'debit', description: 'ONLINE - Careem Food Delivery', merchantName: 'Careem', date: daysAgo(4), status: 'posted' },
+      { id: 'ae_tx_6', amount: 120, currency: 'AED', type: 'debit', description: 'POS - ENOC Fuel Station', merchantName: 'ENOC', date: daysAgo(5), status: 'posted' },
+    ];
+  }
+
+  // Default SAR
   return [
-    { id: 'demo_tx_1', amount: 15000, currency: 'SAR', type: 'credit', description: 'تحويل راتب — شركة الاتصالات', date: daysAgo(1), status: 'posted' },
+    { id: 'demo_tx_1', amount: 15000, currency: 'SAR', type: 'credit', description: 'تحويل راتب — شركة الاتصالات السعودية', date: daysAgo(1), status: 'posted' },
     { id: 'demo_tx_2', amount: 245.50, currency: 'SAR', type: 'debit', description: 'POS - كارفور هايبرماركت', merchantName: 'كارفور', date: daysAgo(1), status: 'posted' },
     { id: 'demo_tx_3', amount: 85, currency: 'SAR', type: 'debit', description: 'POS - ستاربكس — الرياض بارك', merchantName: 'ستاربكس', date: daysAgo(2), status: 'posted' },
     { id: 'demo_tx_4', amount: 150, currency: 'SAR', type: 'debit', description: 'ONLINE - STC فاتورة', merchantName: 'STC', date: daysAgo(3), status: 'posted' },

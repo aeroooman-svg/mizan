@@ -17,7 +17,7 @@ interface HomeMenuDrawerProps {
   onClose: () => void;
   language: string;
   colors: any;
-  onOpenMonthlyReport: () => void;
+  onOpenMonthlyReport?: () => void;
   onOpenConverterModal: () => void;
 }
 
@@ -26,7 +26,6 @@ export default function HomeMenuDrawer({
   onClose,
   language,
   colors,
-  onOpenMonthlyReport,
   onOpenConverterModal,
 }: HomeMenuDrawerProps) {
   const router = useRouter();
@@ -94,20 +93,9 @@ export default function HomeMenuDrawer({
 
           <ScrollView
             style={{ flex: 1, marginVertical: 8 }}
-            contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
-            showsVerticalScrollIndicator={true}
+            contentContainerStyle={{ gap: 8, paddingBottom: 16 }}
+            showsVerticalScrollIndicator={false}
           >
-            {/* Open Banking Integration */}
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/bank-connect')}
-            >
-              <Ionicons name="business-outline" size={22} color="#10B981" />
-              <Text style={[styles.drawerLinkText, { color: '#10B981', fontFamily: 'Cairo_700Bold' }]}>
-                {loc('🏦 الربط البنكي المباشر (Open Banking)', '🏦 Bank Connect (Open Banking)', '🏦 ബാങ്ക് കണക്ട് (ഓപ്പൺ ബാങ്കിംഗ്)')}
-              </Text>
-            </Pressable>
-
             <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
               onPress={() => navigateTo('/challenges')}
@@ -210,75 +198,7 @@ export default function HomeMenuDrawer({
                 {loc('محول العملات الحي', 'Live Currency Converter', 'തത്സമയ കറൻസി കൺവെർട്ടർ')}
               </Text>
             </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/widgets-setup')}
-            >
-              <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {loc('📱 ودجت الشاشة الرئيسية والقفل', '📱 Live Home & Lock Screen Widgets', '📱 ഹോം & ലോക്ക് സ്ക്രീൻ വിജറ്റുകൾ')}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => {
-                onClose();
-                onOpenMonthlyReport();
-              }}
-            >
-              <Ionicons name="sparkles-outline" size={22} color="#F59E0B" />
-              <Text style={[styles.drawerLinkText, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
-                {loc('📊 التقرير المالي الشهري المقارن', '📊 Monthly Financial Digest', '📊 പ്രതിമാസ സാമ്പത്തിക ഡൈജസ്റ്റ്')}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/(tabs)/stats')}
-            >
-              <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {loc('تحليل الميزانية والرسوم', 'Budget Analytics', 'ബജറ്റും ചെലവ് അവലോകനവും')}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/settings')}
-            >
-              <Ionicons name="settings-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {loc('إعدادات التطبيق والأمان', 'Settings & Security', 'ആപ്പ് ക്രമീകരണങ്ങളും സുരക്ഷയും')}
-              </Text>
-            </Pressable>
           </ScrollView>
-
-          {/* Scroll Indicator Cue Banner */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            paddingVertical: 7,
-            paddingHorizontal: 14,
-            backgroundColor: 'rgba(20, 184, 166, 0.12)',
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: 'rgba(20, 184, 166, 0.3)',
-            marginBottom: 8,
-            alignSelf: 'center',
-          }}>
-            <Ionicons name="arrow-down-circle-outline" size={16} color="#14B8A6" />
-            <Text style={{
-              fontFamily: 'Cairo_700Bold',
-              fontSize: 11,
-              color: '#14B8A6',
-            }}>
-              {loc('اسحب للأسفل لعرض باقي الأدوات ↓', 'Scroll down for more features ↓', 'കൂടുതൽ ഫീച്ചറുകൾക്കായി താഴേക്ക് സ്ക്രോൾ ചെയ്യുക ↓')}
-            </Text>
-          </View>
 
           <Pressable
             style={({ pressed }) => [styles.drawerCloseBtn, pressed && { opacity: 0.8 }]}
