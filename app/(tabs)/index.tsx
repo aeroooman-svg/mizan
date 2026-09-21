@@ -56,6 +56,9 @@ import getHomeStyles from '@/components/home/homeStyles';
 import HomeMenuDrawer from '@/components/home/HomeMenuDrawer';
 
 import { getUnreadNotificationsCount } from '@/lib/smartNotifications';
+import { checkClipboardForBankSMS, markClipboardTextProcessed, saveParsedSmsTransaction } from '@/lib/clipboardSmsService';
+import ClipboardSmsPromptModal from '@/components/home/ClipboardSmsPromptModal';
+import { ParsedBankSMS } from '@/lib/smsParser';
 
 export default function HomeScreen() {
   const { colors, theme } = useTheme();
@@ -142,12 +145,51 @@ export default function HomeScreen() {
     } catch (e) { }
   }, []);
 
+  const [detectedSms, setDetectedSms] = useState<{ text: string; parsed: ParsedBankSMS } | null>(null);
+
+  const checkClipboard = useCallback(async () => {
+    try {
+      const detected = await checkClipboardForBankSMS();
+      if (detected) {
+        setDetectedSms(detected);
+      }
+    } catch (e) {}
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       computeUnreadCount();
       loadWidgetConfig();
-    }, [computeUnreadCount, loadWidgetConfig])
+      checkClipboard();
+    }, [computeUnreadCount, loadWidgetConfig, checkClipboard])
   );
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkClipboard();
+      }
+    });
+    return () => sub.remove();
+  }, [checkClipboard]);
+
+  const handleConfirmClipboardSms = async (targetWalletId: string) => {
+    if (!detectedSms) return;
+    try {
+      await saveParsedSmsTransaction(detectedSms.parsed, targetWalletId);
+      refresh();
+      setDetectedSms(null);
+    } catch (e) {
+      Alert.alert(loc('خطأ', 'Error'), loc('تعذر تسجيل المعاملة', 'Failed to save transaction'));
+    }
+  };
+
+  const handleDismissClipboardSms = async () => {
+    if (detectedSms) {
+      await markClipboardTextProcessed(detectedSms.text);
+      setDetectedSms(null);
+    }
+  };
 
   const [adjustingItem, setAdjustingItem] = useState<RecurringTransaction | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
@@ -975,6 +1017,17 @@ export default function HomeScreen() {
         onSuccess={() => {
           refresh();
         }}
+      />
+
+      {/* Smart Clipboard Bank SMS Prompt Modal */}
+      <ClipboardSmsPromptModal
+        visible={!!detectedSms}
+        data={detectedSms}
+        onConfirm={handleConfirmClipboardSms}
+        onDismiss={handleDismissClipboardSms}
+        wallets={wallets}
+        selectedWallet={selectedWallet}
+        language={language}
       />
 
       

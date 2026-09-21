@@ -106,25 +106,7 @@ export default function HomeMenuDrawer({
               </Text>
             </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/recurring-list')}
-            >
-              <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {loc('المصاريف والفواتير المتكررة', 'Recurring Subscriptions', 'തുടർ ചെലവുകളും സബ്‌സ്‌ക്രിപ്ഷനുകളും')}
-              </Text>
-            </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}
-              onPress={() => navigateTo('/(tabs)/financial-plan')}
-            >
-              <Ionicons name="flag-outline" size={22} color={Colors.primary} />
-              <Text style={styles.drawerLinkText}>
-                {loc('الخطة المالية الذكية', 'Smart Financial Plan', 'സ്മാർട്ട് സാമ്പത്തിക പ്ലാൻ')}
-              </Text>
-            </Pressable>
 
             <Pressable
               style={({ pressed }) => [styles.drawerLinkBtn, pressed && { backgroundColor: Colors.border }]}

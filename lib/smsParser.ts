@@ -131,20 +131,55 @@ const MERCHANT_CATEGORY_MAP: Record<string, string> = {
 
 // Known Bank Identification Patterns
 const BANK_PATTERNS: { name: string; regex: RegExp }[] = [
+  // Egypt
   { name: 'CIB', regex: /CIB|البنك التجاري الدولي/i },
-  { name: 'البنك الأهلي المصري', regex: /NBE|البنك الأهلي المصري|Ahli/i },
+  { name: 'البنك الأهلي المصري', regex: /NBE|البنك الأهلي المصري|Al Ahli Bank of Egypt/i },
   { name: 'بنك مصر', regex: /Banque Misr|بنك مصر/i },
-  { name: 'QNB', regex: /QNB|كيو إن بي/i },
-  { name: 'InstaPay', regex: /InstaPay|انستاباي|انستا باي/i },
+  { name: 'QNB الأهلي', regex: /QNB|كيو إن بي/i },
+  { name: 'InstaPay إنستاباي', regex: /InstaPay|انستاباي|انستا باي/i },
   { name: 'فوري', regex: /Fawry|فوري/i },
   { name: 'فودافون كاش', regex: /Vodafone Cash|فودافون كاش/i },
-  { name: 'مصرف الراجحي', regex: /Al Rajhi|الراجحي/i },
-  { name: 'SNB البنك الأهلي', regex: /SNB|الأهلي السعودي/i },
+  { name: 'أورنج كاش', regex: /Orange Cash|اورنج كاش|أورنج كاش/i },
+  { name: 'اتصالات كاش', regex: /Etisalat Cash|اتصالات كاش/i },
+  { name: 'WE Pay وي باي', regex: /WE Pay|وي باي/i },
   { name: 'بنك الإسكندرية', regex: /AlexBank|بنك الاسكندرية|بنك الإسكندرية/i },
-  { name: 'Emirates NBD', regex: /Emirates NBD|الإمارات دبي الوطني/i },
   { name: 'بنك القاهرة', regex: /Banque du Caire|بنك القاهرة/i },
+  { name: 'بنك فيصل الإسلامي', regex: /Faisal Islamic|بنك فيصل/i },
   { name: 'HSBC', regex: /HSBC/i },
-  // Indian Banks & UPI
+
+  // Saudi Arabia
+  { name: 'مصرف الراجحي', regex: /Al Rajhi|الراجحي/i },
+  { name: 'البنك الأهلي السعودي SNB', regex: /SNB|الأهلي السعودي/i },
+  { name: 'مصرف الإنماء', regex: /Alinma|الإنماء|الانماء/i },
+  { name: 'بنك الرياض', regex: /Riyad Bank|بنك الرياض/i },
+  { name: 'بنك البلاد', regex: /Bank Albilad|بنك البلاد/i },
+  { name: 'بنك الجزيرة', regex: /Bank AlJazira|بنك الجزيرة/i },
+  { name: 'البنك العربي الوطني ANB', regex: /ANB|العربي الوطني/i },
+  { name: 'stc pay', regex: /stc pay|stcpay|اس تي سي باي/i },
+  { name: 'urpay', regex: /urpay|يورباي/i },
+
+  // Kuwait
+  { name: 'بنك الكويت الوطني NBK', regex: /NBK|الكويت الوطني|وطني/i },
+  { name: 'بنك بوبيان', regex: /Boubyan|بوبيان/i },
+  { name: 'بيت التمويل الكويتي KFH', regex: /KFH|بيتك|بيت التمويل/i },
+  { name: 'بنك الخليج', regex: /Gulf Bank|بنك الخليج/i },
+  { name: 'بنك برقان', regex: /Burgan|برقان/i },
+  { name: 'بنك وربة', regex: /Warba|وربة/i },
+  { name: 'KNET', regex: /KNET|كي نت/i },
+
+  // UAE
+  { name: 'Emirates NBD', regex: /Emirates NBD|الإمارات دبي الوطني/i },
+  { name: 'أبوظبي الأول FAB', regex: /FAB|First Abu Dhabi|أبوظبي الأول/i },
+  { name: 'أبوظبي التجاري ADCB', regex: /ADCB|أبوظبي التجاري/i },
+  { name: 'بنك المشرق', regex: /Mashreq|المشرق/i },
+  { name: 'دبي الإسلامي DIB', regex: /Dubai Islamic|دبي الإسلامي|DIB/i },
+
+  // Bahrain & Qatar
+  { name: 'بنك البحرين الوطني NBB', regex: /NBB|البحرين الوطني/i },
+  { name: 'BenefitPay', regex: /BenefitPay|بنفت|Benefit/i },
+  { name: 'QNB قطر', regex: /QNB Qatar|قطر الوطني/i },
+
+  // Global & India
   { name: 'HDFC Bank', regex: /HDFC|HDFCBK/i },
   { name: 'SBI Bank', regex: /SBI|State Bank of India|SBIN/i },
   { name: 'ICICI Bank', regex: /ICICI/i },
@@ -172,7 +207,7 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
 
   // 2. Identify Transaction Type (Expense vs Income)
   const isIncomeKeywords = [
-    'إيداع', 'تحويل إليك', 'تم استقبال', 'استلام', 'وارد', 'credit', 'credited', 'received', 'deposit', 'refund', 'مرتجع', 'اضافة', 'إضافة'
+    'إيداع', 'تحويل إليك', 'تم استقبال', 'استلام', 'وارد', 'credit', 'credited', 'received', 'deposit', 'refund', 'مرتجع', 'اضافة', 'إضافة', 'حوالة واردة'
   ];
   const isIncome = isIncomeKeywords.some(kw => lowerText.includes(kw));
   const type: 'expense' | 'income' = isIncome ? 'income' : 'expense';
@@ -183,11 +218,15 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
 
   // Currency detection
   if (/inr|rs\.?|₹|rupees?|रुपये/i.test(normalizedText)) currency = 'INR';
-  else if (/kwd|د\.ك|دينار/i.test(normalizedText)) currency = 'KWD';
-  else if (/sar|ر\.س|ريال/i.test(normalizedText)) currency = 'SAR';
+  else if (/kwd|د\.ك|دينار كويتي|دينار/i.test(normalizedText)) currency = 'KWD';
+  else if (/sar|ر\.س|ريال سعودي|ريال/i.test(normalizedText)) currency = 'SAR';
+  else if (/aed|د\.إ|درهم إماراتي|درهم/i.test(normalizedText)) currency = 'AED';
+  else if (/bhd|د\.ب|دينار بحريني/i.test(normalizedText)) currency = 'BHD';
+  else if (/omr|ر\.ع|ريال عماني/i.test(normalizedText)) currency = 'OMR';
+  else if (/qar|ر\.ق|ريال قطري/i.test(normalizedText)) currency = 'QAR';
   else if (/usd|\$|دولار/i.test(normalizedText)) currency = 'USD';
-  else if (/aed|د\.إ|درهم/i.test(normalizedText)) currency = 'AED';
   else if (/eur|€|يورو/i.test(normalizedText)) currency = 'EUR';
+  else if (/gbp|£|إسترليني/i.test(normalizedText)) currency = 'GBP';
   else currency = 'EGP';
 
   // Amount extraction regexes

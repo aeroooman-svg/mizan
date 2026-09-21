@@ -18,7 +18,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getBankConnections, BankConnection } from '@/lib/openBankingService';
+import { getClipboardSmsSettings, saveClipboardSmsSettings, ClipboardSmsSettings } from '@/lib/clipboardSmsService';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { useSecurity } from '@/lib/SecurityContext';
@@ -99,12 +99,16 @@ export default function SettingsScreen() {
   // Danger Zone Expandable State
   const [isDangerExpanded, setIsDangerExpanded] = useState(false);
 
-  // Bank Connections State
-  const [bankConnections, setBankConnections] = useState<BankConnection[]>([]);
+  // Smart Bank SMS & Clipboard Settings State
+  const [smsSettings, setSmsSettings] = useState<ClipboardSmsSettings>({
+    autoDetect: true,
+    notifyHaptic: true,
+    lastProcessedText: '',
+  });
 
   useFocusEffect(
     React.useCallback(() => {
-      getBankConnections().then(setBankConnections);
+      getClipboardSmsSettings().then(setSmsSettings);
     }, [])
   );
 
@@ -518,41 +522,62 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          {/* Open Banking Integration */}
+          {/* Smart Bank SMS & Clipboard Reader */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionIconBadge, { backgroundColor: '#10B98118' }]}>
-                <Ionicons name="business-outline" size={18} color="#10B981" />
+                <Ionicons name="chatbox-ellipses-outline" size={18} color="#10B981" />
               </View>
-              <Text style={styles.sectionTitle}>{loc('الربط البنكي المفتوح (Open Banking)', 'Open Banking', 'ബാങ്ക് കണക്റ്റിവിറ്റി')}</Text>
-              {bankConnections.length > 0 && (
-                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: isAr ? 0 : 'auto', marginRight: isAr ? 'auto' : 0 }}>
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
-                    {loc(`${bankConnections.length} متصل`, `${bankConnections.length} Connected`)}
-                  </Text>
-                </View>
-              )}
+              <Text style={styles.sectionTitle}>{loc('قارئ رسائل البنك الذكي (Smart SMS)', 'Smart Bank SMS Reader', 'സ്മാർട്ട് ബാങ്ക് SMS')}</Text>
+              <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: isAr ? 0 : 'auto', marginRight: isAr ? 'auto' : 0 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
+                  {loc('محلي وآمن 100%', '100% Secure & Local')}
+                </Text>
+              </View>
             </View>
+
             <Pressable
               onPress={() => {
                 safeHaptic.selection();
-                router.push('/bank-connect' as any);
+                router.push('/bank-sms' as any);
               }}
               style={({ pressed }) => [styles.compactMenuRow, pressed && { opacity: 0.7 }]}
             >
               <View style={[styles.menuRowLeft, { flex: 1 }]}>
-                <Ionicons name="card-outline" size={20} color="#10B981" />
+                <Ionicons name="flash-outline" size={20} color="#10B981" />
                 <View style={{ flex: 1, marginHorizontal: 10 }}>
                   <Text style={[styles.compactMenuText, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
-                    {loc('ربط الحسابات البنكية والمزامنة الفورية', 'Connect Bank Accounts & Live Sync', 'ബാങ്ക് അക്കൗണ്ടുകൾ ബന്ധിപ്പിക്കുക')}
+                    {loc('تحليل رسائل البنوك وInstaPay تلقائياً', 'Instant Bank & InstaPay SMS Parser', 'ബാങ്ക് SMS സ്വയമേവ വിശകലനം ചെയ്യുക')}
                   </Text>
                   <Text style={{ fontSize: 11, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
-                    {loc('🇰🇼 الكويت • 🇸🇦 السعودية • 🇦🇪 الإمارات • 🇪🇬 مصر • 🇧🇭 البحرين', '🇰🇼 Kuwait • 🇸🇦 KSA • 🇦🇪 UAE • 🇪🇬 Egypt • 🇧🇭 Bahrain')}
+                    {loc('تحليل محلي فوري للمبالغ والمتاجر بدون كلمات سر أو أطراف ثالثة', 'Instant local parsing of amounts & stores without passwords')}
                   </Text>
                 </View>
               </View>
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={15} color={colors.textTertiary} />
             </Pressable>
+
+            {/* Quick Toggle for Auto-Detect */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <View style={{ flex: 1, paddingRight: isAr ? 0 : 8, paddingLeft: isAr ? 8 : 0 }}>
+                <Text style={[styles.compactMenuText, { fontSize: 12.5, color: colors.text }]}>
+                  {loc('الكشف التلقائي عن الحافظة عند فتح التطبيق', 'Auto-Detect Copied SMS on Open')}
+                </Text>
+                <Text style={{ fontSize: 10.5, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
+                  {loc('إشعار فوري عند نسخ رسالة بنكية لتسجيلها بضغطة زر واحدة', 'Instant prompt to log transactions when an SMS is copied')}
+                </Text>
+              </View>
+              <Switch
+                value={smsSettings.autoDetect}
+                onValueChange={async (val) => {
+                  safeHaptic.selection();
+                  const updated = await saveClipboardSmsSettings({ autoDetect: val });
+                  setSmsSettings(updated);
+                }}
+                trackColor={{ false: colors.border, true: '#10B981' }}
+                thumbColor="#FFF"
+              />
+            </View>
           </View>
 
           {/* 2. Appearance, Language & Widgets */}

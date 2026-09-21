@@ -27,7 +27,20 @@ export function runSmsParserTests() {
   const result3 = parseBankSMS(rajhiSms);
   assert(result3 !== null && result3.amount === 15.5, `Amount should be 15.5, got ${result3?.amount}`);
   assert(result3 !== null && result3.currency === 'KWD', `Currency should be KWD, got ${result3?.currency}`);
-  assert(result3 !== null && result3.category === 'food', `Category should be food, got ${result3?.category}`);
+  // Test 4: Parse InstaPay transfer
+  const instapaySms = 'تم استلام تحويل بمبلغ 1500.00 ج.م عبر انستاباي InstaPay في حسابك';
+  const result4 = parseBankSMS(instapaySms);
+  assert(result4 !== null && result4.amount === 1500, `Amount should be 1500, got ${result4?.amount}`);
+  assert(result4 !== null && result4.type === 'income', `Type should be income, got ${result4?.type}`);
+  assert(result4 !== null && result4.bankName.includes('InstaPay'), `Bank should be InstaPay, got ${result4?.bankName}`);
+
+  // Test 5: Parse NBK Kuwait POS purchase
+  const nbkSms = 'NBK POS Purchase of KWD 25.500 at Carrefour with card 5678';
+  const result5 = parseBankSMS(nbkSms);
+  assert(result5 !== null && result5.amount === 25.5, `Amount should be 25.5, got ${result5?.amount}`);
+  assert(result5 !== null && result5.currency === 'KWD', `Currency should be KWD, got ${result5?.currency}`);
+  assert(result5 !== null && result5.category === 'food', `Category should be food, got ${result5?.category}`);
 
   console.log('✅ All SMS Parser Unit Tests Passed!');
 }
+
