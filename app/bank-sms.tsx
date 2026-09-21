@@ -176,15 +176,34 @@ export default function BankSmsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleBack = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/settings');
+    }
+  };
+
+  const handleCloseToHome = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    router.replace('/(tabs)');
+  };
+
   const currentCategories = parsedResult?.type === 'income' ? incomeCategories : expenseCategories;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top || (Platform.OS === 'web' ? 10 : 0) }]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => router.back()}
+          onPress={handleBack}
+          hitSlop={14}
         >
           <Ionicons name={isAr ? 'chevron-forward' : 'chevron-back'} size={24} color={colors.text} />
         </Pressable>
@@ -192,7 +211,13 @@ export default function BankSmsScreen() {
           <Text style={styles.headerTitle}>{loc('قارئ رسائل البنك الذكي', 'Smart Bank SMS')}</Text>
           <Text style={styles.headerSubtitle}>{loc('تحليل فوري آمن ومحلي 100%', '100% Local & Secure')}</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <Pressable
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          onPress={handleCloseToHome}
+          hitSlop={14}
+        >
+          <Ionicons name="close" size={22} color={colors.text} />
+        </Pressable>
       </View>
 
       <ScrollView

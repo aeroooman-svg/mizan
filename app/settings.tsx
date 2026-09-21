@@ -433,8 +433,14 @@ export default function SettingsScreen() {
   };
 
   const handleClose = () => {
-    safeHaptic.selection();
-    router.replace('/');
+    try {
+      safeHaptic.selection();
+    } catch {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (

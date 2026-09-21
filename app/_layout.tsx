@@ -190,6 +190,14 @@ function RootLayoutNav() {
           name="privacy-policy"
           options={getSheetScreenOptions(colors, 0.92)}
         />
+        <Stack.Screen
+          name="bank-sms"
+          options={getSheetScreenOptions(colors, 0.92)}
+        />
+        <Stack.Screen
+          name="bank-connect"
+          options={getSheetScreenOptions(colors, 0.92)}
+        />
       </Stack>
     </>
   );
