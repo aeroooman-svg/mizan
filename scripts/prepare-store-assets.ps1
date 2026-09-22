@@ -1,32 +1,37 @@
 Add-Type -AssemblyName System.Drawing
 
-$targetDir = "c:\Users\mm_al\OneDrive\Desktop\Daily-Expense-Tracker\assets\store-assets"
-if (!(Test-Path $targetDir)) {
-    New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+$destDir = "c:\Users\mm_al\OneDrive\Desktop\Daily-Expense-Tracker\assets\store-assets"
+if (!(Test-Path $destDir)) {
+    New-Item -ItemType Directory -Path $destDir -Force | Out-Null
 }
 
-$brainDir = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73"
+$files = @(
+    @{ Src = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_app_store_1_1790117345507.jpg"; Dest = "$destDir\1_Home_and_Wallets.jpg" },
+    @{ Src = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_app_store_2_1790117372791.jpg"; Dest = "$destDir\2_Smart_Bank_SMS.jpg" },
+    @{ Src = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_app_store_3_1790117404098.jpg"; Dest = "$destDir\3_Analytics_and_Heatmap.jpg" },
+    @{ Src = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_app_store_4_1790117437935.jpg"; Dest = "$destDir\4_Zakat_Calculator.jpg" },
+    @{ Src = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_app_store_5_1790117474870.jpg"; Dest = "$destDir\5_Gamification_and_Goals.jpg" }
+)
 
-Copy-Item (Join-Path $brainDir "mizan_store_screen_1_1790037410812.jpg") (Join-Path $targetDir "1_Home_and_Wallets.jpg") -Force
-Copy-Item (Join-Path $brainDir "mizan_store_screen_2_1790037426647.jpg") (Join-Path $targetDir "2_Smart_Bank_SMS.jpg") -Force
-Copy-Item (Join-Path $brainDir "mizan_store_screen_3_1790037442580.jpg") (Join-Path $targetDir "3_Analytics_and_Heatmap.jpg") -Force
-Copy-Item (Join-Path $brainDir "mizan_store_screen_4_1790037458865.jpg") (Join-Path $targetDir "4_Cashflow_Forecast.jpg") -Force
-Copy-Item (Join-Path $brainDir "mizan_store_screen_5_1790037477999.jpg") (Join-Path $targetDir "5_Savings_and_Debts.jpg") -Force
+foreach ($f in $files) {
+    Copy-Item -Path $f.Src -Destination $f.Dest -Force
+    Write-Host "Copied: $($f.Dest)"
+}
 
-# Resize Feature Graphic to exact 1024x500 (Google Play requirement)
-$srcFg = Join-Path $brainDir "mizan_feature_graphic_1790037494364.jpg"
-$img = [System.Drawing.Image]::FromFile($srcFg)
-$bmp = New-Object System.Drawing.Bitmap(1024, 500)
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-$g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-$g.DrawImage($img, 0, 0, 1024, 500)
-$img.Dispose()
-$g.Dispose()
+# Resize Feature Graphic to exact 1024x500 for Google Play
+$bannerSrc = "C:\Users\mm_al\.gemini\antigravity-ide\brain\620e0551-5018-4129-836e-e7f08230be73\mizan_store_banner_pro_1790117516495.jpg"
+$bannerDest = "$destDir\Feature_Graphic_1024x500.png"
 
-$outFg = Join-Path $targetDir "Feature_Graphic_1024x500.png"
-$bmp.Save($outFg, [System.Drawing.Imaging.ImageFormat]::Png)
-$bmp.Dispose()
+$orig = [System.Drawing.Image]::FromFile($bannerSrc)
+$resized = New-Object System.Drawing.Bitmap 1024, 500
+$graph = [System.Drawing.Graphics]::FromImage($resized)
+$graph.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+$graph.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+$graph.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+$graph.DrawImage($orig, 0, 0, 1024, 500)
+$orig.Dispose()
+$graph.Dispose()
+$resized.Save($bannerDest, [System.Drawing.Imaging.ImageFormat]::Png)
+$resized.Dispose()
 
-Write-Host "SUCCESS: All 5 Screenshots and Feature Graphic ready in assets\store-assets!"
+Write-Host "Feature Graphic generated at: $bannerDest (1024x500 PNG)"
