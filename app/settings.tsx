@@ -563,27 +563,29 @@ export default function SettingsScreen() {
               <Ionicons name={isAr ? 'chevron-back' : 'chevron-forward'} size={15} color={colors.textTertiary} />
             </Pressable>
 
-            {/* Quick Toggle for Auto-Detect */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <View style={{ flex: 1, paddingRight: isAr ? 0 : 8, paddingLeft: isAr ? 8 : 0 }}>
-                <Text style={[styles.compactMenuText, { fontSize: 12.5, color: colors.text }]}>
-                  {loc('الكشف التلقائي عن الحافظة عند فتح التطبيق', 'Auto-Detect Copied SMS on Open')}
-                </Text>
-                <Text style={{ fontSize: 10.5, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
-                  {loc('إشعار فوري عند نسخ رسالة بنكية لتسجيلها بضغطة زر واحدة', 'Instant prompt to log transactions when an SMS is copied')}
-                </Text>
+            {/* Quick Toggle for Auto-Detect (Mobile Native Only) */}
+            {Platform.OS !== 'web' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <View style={{ flex: 1, paddingRight: isAr ? 0 : 8, paddingLeft: isAr ? 8 : 0 }}>
+                  <Text style={[styles.compactMenuText, { fontSize: 12.5, color: colors.text }]}>
+                    {loc('الكشف التلقائي عن الحافظة عند فتح التطبيق', 'Auto-Detect Copied SMS on Open')}
+                  </Text>
+                  <Text style={{ fontSize: 10.5, fontFamily: 'Cairo_400Regular', color: colors.textTertiary, marginTop: 2 }}>
+                    {loc('إشعار فوري عند نسخ رسالة بنكية لتسجيلها بضغطة زر واحدة', 'Instant prompt to log transactions when an SMS is copied')}
+                  </Text>
+                </View>
+                <Switch
+                  value={smsSettings.autoDetect}
+                  onValueChange={async (val) => {
+                    safeHaptic.selection();
+                    const updated = await saveClipboardSmsSettings({ autoDetect: val });
+                    setSmsSettings(updated);
+                  }}
+                  trackColor={{ false: colors.border, true: '#10B981' }}
+                  thumbColor="#FFF"
+                />
               </View>
-              <Switch
-                value={smsSettings.autoDetect}
-                onValueChange={async (val) => {
-                  safeHaptic.selection();
-                  const updated = await saveClipboardSmsSettings({ autoDetect: val });
-                  setSmsSettings(updated);
-                }}
-                trackColor={{ false: colors.border, true: '#10B981' }}
-                thumbColor="#FFF"
-              />
-            </View>
+            )}
           </View>
 
           {/* 2. Appearance, Language & Widgets */}

@@ -77,6 +77,33 @@ function RootLayoutNav() {
     scheduleDailyReminder(21, 0); // 9:00 PM daily
   }, []);
 
+  // Web iOS touch and selection fixes
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const styleId = 'mizan-ios-touch-fix';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          * {
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-touch-callout: none !important;
+          }
+          [role="button"], [role="tab"], button, a, svg {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+          }
+          input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }, []);
+
   const isLoading = isSecurityLoading || isTransactionsLoading || !minTimeElapsed || !isOnboardingChecked;
 
   if (isLoading) {

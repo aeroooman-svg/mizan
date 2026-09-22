@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -59,6 +60,13 @@ export async function markClipboardTextProcessed(text: string): Promise<void> {
  */
 export async function checkClipboardForBankSMS(): Promise<{ text: string; parsed: ParsedBankSMS } | null> {
   try {
+    // In web browsers (especially iOS Safari), querying navigator.clipboard.readText()
+    // without direct user interaction causes Safari to display a native OS "Paste" callout bubble
+    // over whatever button the user just tapped (Close, Back, Home tabs).
+    if (Platform.OS === 'web') {
+      return null;
+    }
+
     const settings = await getClipboardSmsSettings();
     if (!settings.autoDetect) return null;
 

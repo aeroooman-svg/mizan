@@ -148,6 +148,7 @@ export default function HomeScreen() {
   const [detectedSms, setDetectedSms] = useState<{ text: string; parsed: ParsedBankSMS } | null>(null);
 
   const checkClipboard = useCallback(async () => {
+    if (Platform.OS === 'web') return;
     try {
       const detected = await checkClipboardForBankSMS();
       if (detected) {
@@ -160,11 +161,14 @@ export default function HomeScreen() {
     useCallback(() => {
       computeUnreadCount();
       loadWidgetConfig();
-      checkClipboard();
+      if (Platform.OS !== 'web') {
+        checkClipboard();
+      }
     }, [computeUnreadCount, loadWidgetConfig, checkClipboard])
   );
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     const sub = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
         checkClipboard();
