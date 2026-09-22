@@ -40,7 +40,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!privacy-policy\\.html).*)",
+      "source": "/((?!privacy-policy\\.html|promo-video\\.html).*)",
       "destination": "/index.html"
     }
   ]

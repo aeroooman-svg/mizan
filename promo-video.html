@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MIZAN Promo Showcase | إعلان تطبيق ميزان التفاعلي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Manrope:wght@500;700;800&family=Noto+Sans+Malayalam:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070B12;
+      --card-bg: rgba(18, 26, 43, 0.75);
+      --primary: #10B981;
+      --primary-glow: rgba(16, 185, 129, 0.4);
+      --gold: #F59E0B;
+      --gold-glow: rgba(245, 158, 11, 0.35);
+      --accent-purple: #8B5CF6;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Cairo', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+    }
+
+    /* Container */
+    .app-wrapper {
+      width: 100%;
+      max-width: 1200px;
+      padding: 20px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 950px) {
+      .app-wrapper {
+        flex-direction: column;
+        padding: 16px;
+        gap: 24px;
+      }
+    }
+
+    /* Left: Phone Canvas (9:16 Aspect) */
+    .phone-container {
+      position: relative;
+      width: 360px;
+      height: 640px;
+      background: #000;
+      border-radius: 46px;
+      box-shadow: 
+        0 0 0 10px #1E293B,
+        0 0 0 12px #334155,
+        0 25px 60px -15px rgba(0, 0, 0, 0.9),
+        0 0 50px rgba(16, 185, 129, 0.2);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Dynamic Island */
+    .island {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 105px;
+      height: 26px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    .island-dot {
+      width: 10px;
+      height: 10px;
+      background: #111;
+      border-radius: 50%;
+    }
+
+    /* Video Reel Screen Canvas */
+    .reel-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #060A11;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Animated Scene Backgrounds */
+    .scene-view {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: scale(0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 55px 20px 30px;
+      text-align: center;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .scene-view.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    /* Scene Overlay Gradient */
+    .scene-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(6, 10, 17, 0.85) 0%, rgba(6, 10, 17, 0.2) 40%, rgba(6, 10, 17, 0.85) 100%);
+      z-index: 1;
+    }
+
+    .scene-content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Scene Titles & Badges */
+    .scene-badge {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--primary);
+      color: #34D399;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+      backdrop-filter: blur(8px);
+      letter-spacing: 0.5px;
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); }
+      50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+    }
+
+    .scene-headline {
+      font-size: 20px;
+      font-weight: 900;
+      color: #FFF;
+      line-height: 1.3;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+      margin-bottom: 6px;
+    }
+
+    .scene-sub {
+      font-size: 12px;
+      color: #CBD5E1;
+      line-height: 1.5;
+      max-width: 90%;
+      margin: 0 auto;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    }
+
+    /* Center Graphic Display */
+    .scene-artwork {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin: 15px 0;
+    }
+
+    .scene-img {
+      max-width: 82%;
+      max-height: 290px;
+      border-radius: 24px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(16, 185, 129, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: perspective(800px) rotateY(-5deg) rotateX(4deg);
+      transition: transform 0.5s ease;
+      animation: floatPhone 4s ease-in-out infinite;
+    }
+
+    @keyframes floatPhone {
+      0%, 100% { transform: perspective(800px) rotateY(-5deg) rotateX(4deg) translateY(0); }
+      50% { transform: perspective(800px) rotateY(-3deg) rotateX(2deg) translateY(-8px); }
+    }
+
+    /* Floating Callout Glass Pill */
+    .floating-pill {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      backdrop-filter: blur(12px);
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #FFF;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: popIn 0.6s ease;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Scene Footer / CTA */
+    .scene-footer {
+      width: 100%;
+      padding-top: 10px;
+    }
+
+    .cta-btn-reel {
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #FFF;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+      animation: pulseBtn 1.8s infinite;
+    }
+
+    @keyframes pulseBtn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    /* Reel Progress Bar (Top Bar) */
+    .story-progress-container {
+      position: absolute;
+      top: 48px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      gap: 5px;
+      z-index: 110;
+    }
+    .story-bar {
+      flex: 1;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 2px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .story-fill {
+      width: 0%;
+      height: 100%;
+      background: #10B981;
+      transition: width 0.1s linear;
+    }
+
+    /* Right: Control Deck */
+    .controls-deck {
+      max-width: 480px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFF;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Language Switcher */
+    .lang-tabs {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .lang-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 10px 8px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .lang-btn.active {
+      background: #1E293B;
+      color: #10B981;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Action Buttons */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #FFF;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(16, 185, 129, 0.6);
+    }
+    .btn-secondary {
+      background: #1E293B;
+      color: #CBD5E1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: #FFF;
+    }
+
+    /* Voiceover Box */
+    .script-box {
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 13px;
+      color: #E2E8F0;
+      line-height: 1.8;
+      border-right: 3px solid #10B981;
+      max-height: 140px;
+      overflow-y: auto;
+      font-family: inherit;
+    }
+
+    /* Scene Dots Selector */
+    .scene-selector {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .scene-dot {
+      flex: 1;
+      padding: 8px;
+      background: #1E293B;
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .scene-dot.active {
+      background: #10B981;
+      color: #000;
+    }
+
+    /* Instructions Box */
+    .tip-box {
+      font-size: 12px;
+      color: #94A3B8;
+      line-height: 1.6;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    /* Audio Speaker Icon */
+    .sound-toggle {
+      position: absolute;
+      top: 50px;
+      right: 18px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #FFF;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 120;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-wrapper">
+
+    <!-- Phone Reel View -->
+    <div class="phone-container" id="phoneMockup">
+      <!-- Dynamic Island -->
+      <div class="island">
+        <div class="island-dot"></div>
+      </div>
+
+      <!-- Story Progress Bars -->
+      <div class="story-progress-container" id="progressContainer">
+        <div class="story-bar" onclick="jumpToScene(0)"><div class="story-fill" id="fill-0"></div></div>
+        <div class="story-bar" onclick="jumpToScene(1)"><div class="story-fill" id="fill-1"></div></div>
+        <div class="story-bar" onclick="jumpToScene(2)"><div class="story-fill" id="fill-2"></div></div>
+        <div class="story-bar" onclick="jumpToScene(3)"><div class="story-fill" id="fill-3"></div></div>
+        <div class="story-bar" onclick="jumpToScene(4)"><div class="story-fill" id="fill-4"></div></div>
+      </div>
+
+      <!-- Sound Toggle -->
+      <button class="sound-toggle" id="soundToggle" onclick="toggleAudio()" title="كتم/تشغيل الصوت">🔊</button>
+
+      <!-- Screen Container -->
+      <div class="reel-screen">
+
+        <!-- Scene 1: The Problem & Solution -->
+        <div class="scene-view active" id="scene-0">
+          <div class="scene-overlay"></div>
+          <div class="scene-content">
+            <div>
+              <span class="scene-badge" id="s1-badge">✨ ميزان MIZAN</span>
+              <h2 class="scene-headline" id="s1-title">أين تذهب أموالك كل شهر؟</h2>
+              <p class="scene-sub" id="s1-sub">تحكم كامل بمصاريفك ومحفظتك الذكية في شاشة واحدة</p>
+            </div>
+
+            <div class="scene-artwork">
+              <img src="assets/store-assets/1_Home_and_Wallets.jpg" class="scene-img" alt="Home & Wallets">
+              <div class="floating-pill" style="top: 15%; left: 5%;">
+                <span>💳</span>
+                <span id="s1-pill">محافظ وبطاقات ذكية</span>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="cta-btn-reel" id="s1-cta">📱 حمّل ميزان الآن</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 2: Smart Bank SMS Parser -->
+        <div class="scene-view" id="scene-1">
+          <div class="scene-overlay"></div>
+          <div class="scene-content">
+            <div>
+              <span class="scene-badge" id="s2-badge">⚡ ميزة حصرية</span>
+              <h2 class="scene-headline" id="s2-title">قراءة رسائل البنوك و InstaPay</h2>
+              <p class="scene-sub" id="s2-sub">تحليل فوري للمبالغ والمتاجر بدون كلمات سر أو أطراف ثالثة</p>
+            </div>
+
+            <div class="scene-artwork">
+              <img src="assets/store-assets/2_Smart_Bank_SMS.jpg" class="scene-img" alt="Smart Bank SMS">
+              <div class="floating-pill" style="bottom: 20%; right: 5%; border-color: #10B981;">
+                <span>⚡</span>
+                <span id="s2-pill">تسجيل تلقائي بدون كتابة</span>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="cta-btn-reel" id="s2-cta">100% خصوصية وأمان محلي</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 3: Heatmap & Analytics -->
+        <div class="scene-view" id="scene-2">
+          <div class="scene-overlay"></div>
+          <div class="scene-content">
+            <div>
+              <span class="scene-badge" id="s3-badge">📊 تحليلات متقدمة</span>
+              <h2 class="scene-headline" id="s3-title">خريطة المصاريف الحرارية</h2>
+              <p class="scene-sub" id="s3-sub">اكتشف عادات إنفاقك برسم بياني حراري تفاعلي دقيق</p>
+            </div>
+
+            <div class="scene-artwork">
+              <img src="assets/store-assets/3_Analytics_and_Heatmap.jpg" class="scene-img" alt="Analytics & Heatmap">
+              <div class="floating-pill" style="top: 25%; right: 5%; border-color: #F59E0B;">
+                <span>🔥</span>
+                <span id="s3-pill">تقويم حراري ذكي</span>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="cta-btn-reel" id="s3-cta">تحليلات ورسوم تفاعلية</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 4: Zakat Calculator -->
+        <div class="scene-view" id="scene-3">
+          <div class="scene-overlay"></div>
+          <div class="scene-content">
+            <div>
+              <span class="scene-badge" id="s4-badge">🕌 دقة شرعية</span>
+              <h2 class="scene-headline" id="s4-title">حاسبة الزكاة اللحظية</h2>
+              <p class="scene-sub" id="s4-sub">ربط مباشر بأسعار الذهب والفضة عالمياً لحساب النصاب</p>
+            </div>
+
+            <div class="scene-artwork">
+              <img src="assets/store-assets/4_Zakat_Calculator.jpg" class="scene-img" alt="Zakat Calculator">
+              <div class="floating-pill" style="bottom: 18%; left: 5%; border-color: #F59E0B;">
+                <span>🥇</span>
+                <span id="s4-pill">نصاب الذهب والفضة لحظياً</span>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="cta-btn-reel" id="s4-cta">حساب الزكاة الشرعية بدقة</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 5: Gamification & Download CTA -->
+        <div class="scene-view" id="scene-4">
+          <div class="scene-overlay"></div>
+          <div class="scene-content">
+            <div>
+              <span class="scene-badge" id="s5-badge">🎯 تحديات ادخار</span>
+              <h2 class="scene-headline" id="s5-title">ضاعف مدخراتك بحماس</h2>
+              <p class="scene-sub" id="s5-sub">تحديات يومية، نقاط خبرة XP، ومكافآت ذكية لتوفير أموالك</p>
+            </div>
+
+            <div class="scene-artwork">
+              <img src="assets/store-assets/5_Gamification_and_Goals.jpg" class="scene-img" alt="Gamification & Goals">
+              <div class="floating-pill" style="top: 20%; left: 8%; border-color: #8B5CF6;">
+                <span>🏆</span>
+                <span id="s5-pill">Streak 24 Days 🔥</span>
+              </div>
+            </div>
+
+            <div class="scene-footer">
+              <div class="cta-btn-reel" style="background: linear-gradient(135deg, #F59E0B, #D97706); box-shadow: 0 4px 25px rgba(245, 158, 11, 0.6);" id="s5-cta">
+                ⭐ متاح مجاناً على Google Play
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Controls & Script Deck -->
+    <div class="controls-deck">
+
+      <!-- Card: Language Selector -->
+      <div class="card">
+        <div class="card-title">🌐 اختر لغة الفيديو الإعلاني</div>
+        <div class="lang-tabs">
+          <button class="lang-btn active" id="btn-ar" onclick="setLanguage('ar')">🇸🇦 العربية</button>
+          <button class="lang-btn" id="btn-en" onclick="setLanguage('en')">🇬🇧 English</button>
+          <button class="lang-btn" id="btn-ml" onclick="setLanguage('ml')">🇮🇳 മലയാളം</button>
+        </div>
+      </div>
+
+      <!-- Card: Player Controls -->
+      <div class="card">
+        <div class="card-title">🎬 التحكم في العرض الترويجي</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">
+            <span id="playIcon">▶</span> <span id="playText">تشغيل العرض التلقائي</span>
+          </button>
+          <button class="btn btn-secondary" onclick="restartVideo()">🔄 إعادة من البداية</button>
+        </div>
+
+        <div class="scene-selector">
+          <div class="scene-dot active" id="dot-0" onclick="jumpToScene(0)">1. المقدمة</div>
+          <div class="scene-dot" id="dot-1" onclick="jumpToScene(1)">2. رسائل البنوك</div>
+          <div class="scene-dot" id="dot-2" onclick="jumpToScene(2)">3. التحليلات</div>
+          <div class="scene-dot" id="dot-3" onclick="jumpToScene(3)">4. حاسبة الزكاة</div>
+          <div class="scene-dot" id="dot-4" onclick="jumpToScene(4)">5. التحميل</div>
+        </div>
+      </div>
+
+      <!-- Card: Voiceover Script -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+          <span>🎙️ النص الصوتي المكتوب (Voiceover)</span>
+          <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px;" onclick="copyScript()">📋 نسخ النص</button>
+        </div>
+        <div class="script-box" id="scriptContent">
+          جاري تحميل الاسكربت...
+        </div>
+      </div>
+
+      <!-- Card: Tips for Recording -->
+      <div class="tip-box">
+        💡 <strong>نصيحة لتسجيل فيديو TikTok / Reels:</strong><br>
+        شغّل مسجل الشاشة (Screen Recorder) على جهازك أو هاتفك، واضغط <strong>"تشغيل العرض التلقائي"</strong> واستمتع بتسجيل فيديو فائق الجودة بالانتقالات والمؤثرات الصوتية جاهز للنشر فوراً!
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // --- Data & Translations ---
+    const CONTENT = {
+      ar: {
+        dir: 'rtl',
+        font: "'Cairo', sans-serif",
+        script: "فلوسك بتطير ومش عارف راحت فين؟ 🤔 مع تطبيق ميزان.. انسى التدوين اليدوي! التطبيق يقرأ رسائل البنوك و InstaPay ويسجل مصاريفك تلقائياً وبأمان تام. حاسبة زكاة شرعية لحظية بأسعار الذهب، وخريطة حرارية لمصاريفك وتحديات ادخار تزيد مدخراتك. نظّم مستقبلك المالي الآن.. ميزان متاح مجاناً على Google Play! 📲",
+        scenes: [
+          { badge: "✨ ميزان MIZAN", title: "أين تذهب أموالك كل شهر؟", sub: "تحكم كامل بمصاريفك ومحفظتك الذكية في شاشة واحدة", pill: "محافظ وبطاقات ذكية", cta: "📱 حمّل ميزان الآن" },
+          { badge: "⚡ ميزة حصرية", title: "قراءة رسائل البنوك و InstaPay", sub: "تحليل فوري للمبالغ والمتاجر بدون كلمات سر أو أطراف ثالثة", pill: "تسجيل تلقائي بدون كتابة", cta: "100% خصوصية وأمان محلي" },
+          { badge: "📊 تحليلات متقدمة", title: "خريطة المصاريف الحرارية", sub: "اكتشف عادات إنفاقك برسم بياني حراري تفاعلي دقيق", pill: "تقويم حراري ذكي", cta: "تحليلات ورسوم تفاعلية" },
+          { badge: "🕌 دقة شرعية", title: "حاسبة الزكاة اللحظية", sub: "ربط مباشر بأسعار الذهب والفضة عالمياً لحساب النصاب", pill: "نصاب الذهب والفضة لحظياً", cta: "حساب الزكاة الشرعية بدقة" },
+          { badge: "🎯 تحديات ادخار", title: "ضاعف مدخراتك بحماس", sub: "تحديات يومية، نقاط خبرة XP، ومكافآت ذكية لتوفير أموالك", pill: "Streak 24 Days 🔥", cta: "⭐ متاح مجاناً على Google Play" }
+        ],
+        dots: ["1. المقدمة", "2. رسائل البنوك", "3. التحليلات", "4. حاسبة الزكاة", "5. التحميل"],
+        playText: "تشغيل العرض التلقائي",
+        pauseText: "إيقاف مؤقت"
+      },
+      en: {
+        dir: 'ltr',
+        font: "'Manrope', sans-serif",
+        script: "Ever wonder where your money disappears each month? 📉 Meet MIZAN — your smart personal wealth manager. No more manual typing! MIZAN automatically detects bank and digital payment SMS and logs expenses instantly with 100% privacy. Track spending heatmaps, calculate Islamic Zakat with live gold prices, and achieve your savings goals. Take control of your financial life today. Download MIZAN now on Google Play! 📲",
+        scenes: [
+          { badge: "✨ MIZAN APP", title: "Where does your money go?", sub: "Complete control over all your cards & expenses in one dashboard", pill: "Smart Wallets & Cards", cta: "📱 Download Mizan Now" },
+          { badge: "⚡ Exclusive Feature", title: "Instant Bank & InstaPay SMS Parser", sub: "Zero manual typing: instant secure parsing without passwords", pill: "Auto-Log Expenses", cta: "100% Local & Secure" },
+          { badge: "📊 Smart Analytics", title: "Visual Spending Heatmap", sub: "Interactive calendar grid & deep category spending insights", pill: "Smart Spending Heatmap", cta: "Deep Financial Trends" },
+          { badge: "🕌 Islamic Finance", title: "Real-Time Zakat Calculator", sub: "Live global gold & silver rates to calculate exact Nisab instantly", pill: "Live Gold Nisab Rates", cta: "Accurate Sharia Zakat" },
+          { badge: "🎯 Gamification", title: "Boost Your Savings Faster", sub: "Daily quests, XP streaks, and fun budget envelopes to save more", pill: "Streak 24 Days 🔥", cta: "⭐ Get it Free on Google Play" }
+        ],
+        dots: ["1. Intro", "2. Bank SMS", "3. Analytics", "4. Zakat Calc", "5. Download"],
+        playText: "Play Auto Showcase",
+        pauseText: "Pause Showcase"
+      },
+      ml: {
+        dir: 'ltr',
+        font: "'Noto Sans Malayalam', sans-serif",
+        script: "എല്ലാ മാസവും നിങ്ങളുടെ പണം എങ്ങോട്ടാണ് പോകുന്നതെന്ന് ആലോചിക്കാറുണ്ടോ? 📉 ഇനി വരവുചിലവുകൾ എഴുതിവെക്കേണ്ടതില്ല! മീസാൻ (MIZAN) ആപ്പ് നിങ്ങളുടെ ബാങ്ക് SMS സന്ദേശങ്ങൾ സ്വയം വായിച്ച് ചിലവുകൾ തൽക്ഷണം രേഖപ്പെടുത്തുന്നു — 100% സുരക്ഷിതമായി. തത്സമയ സ്വർണ്ണവിലയിലുള്ള സകാത്ത് കാൽക്കുലേറ്ററും മികച്ച സമ്പാദ്യ ലക്ഷ്യങ്ങളും. നിങ്ങളുടെ പണമിടപാടുകൾ ഇനി വിരൽത്തുമ്പിൽ. ഇപ്പോൾ തന്നെ ഗൂഗിൾ പ്ലേയിൽ നിന്നും MIZAN സൗജന്യമായി ഡൗൺലോഡ് ചെയ്യൂ! 📲",
+        scenes: [
+          { badge: "✨ MIZAN ആപ്പ്", title: "പണം എങ്ങോട്ട് പോകുന്നു?", sub: "വരവുചിലവുകളും ബാങ്ക് കാർഡുകളും ഇനി ഒരൊറ്റ സ്ക്രീനിൽ", pill: "സ്മാർട്ട് വാലറ്റുകൾ", cta: "📱 ഇപ്പോൾ ഡൗൺലോഡ് ചെയ്യൂ" },
+          { badge: "⚡ സ്മാർട്ട് ഫീച്ചർ", title: "ബാങ്ക് SMS തൽക്ഷണം സേവ് ചെയ്യാം", sub: "ടൈപ്പ് ചെയ്യാതെ തന്നെ ബാങ്ക് സന്ദേശങ്ങളിൽ നിന്നും ചിലവുകൾ സ്വയം രേഖപ്പെടുത്താം", pill: "ഓട്ടോമാറ്റിക് എൻട്രി", cta: "100% സ്വകാര്യതയും സുരക്ഷിതത്വവും" },
+          { badge: "📊 കൃത്യമായ കണക്കുകൾ", title: "ചിലവുകളുടെ ഹീറ്റ്മാപ്പ് ചാർട്ട്", sub: "ദിവസേനയുള്ള ചിലവുകൾ എളുപ്പത്തിൽ മനസിലാക്കാൻ സ്മാർട്ട് കലണ്ടർ", pill: "സ്മാർട്ട് ചിലവ് കലണ്ടർ", cta: "വിശദമായ സാമ്പത്തിക വിശകലനം" },
+          { badge: "🕌 ശരിയായ സകാത്ത്", title: "തത്സമയ സകാത്ത് കാൽക്കുലേറ്റർ", sub: "ലൈവ് സ്വർണ്ണ-വെള്ളി വിലകളിലൂടെ സകാത്ത് നിസ്വാബ് തൽക്ഷണം കണക്കാക്കാം", pill: "ലൈവ് സ്വർണ്ണ നിരക്ക്", cta: "കൃത്യമായ ശരിഅത്ത് സകാത്ത്" },
+          { badge: "🎯 സേവിംഗ്സ് ലക്ഷ്യങ്ങൾ", title: "നിങ്ങളുടെ സമ്പാദ്യം വർദ്ധിപ്പിക്കൂ", sub: "ദിവസേനയുള്ള ടാസ്കുകളും XP പോയിന്റുകളും വഴി പണം ലാഭിക്കാം", pill: "Streak 24 Days 🔥", cta: "⭐ ഗൂഗിൾ പ്ലേയിൽ സൗജന്യമായി ലഭ്യമാണ്" }
+        ],
+        dots: ["1. ആമുഖം", "2. ബാങ്ക് SMS", "3. ചാർട്ടുകൾ", "4. സകാത്ത്", "5. ഡൗൺലോഡ്"],
+        playText: "ഓട്ടോ പ്ലേ ചെയ്യുക",
+        pauseText: "പോസ് ചെയ്യുക"
+      }
+    };
+
+    let currentLang = 'ar';
+    let currentScene = 0;
+    let isPlaying = false;
+    let sceneDuration = 5500; // 5.5s per scene = ~28s total
+    let timer = null;
+    let progressTimer = null;
+    let progressStartTime = 0;
+    let audioEnabled = true;
+
+    // --- Audio Synthesizer (Fintech Sound FX using Web Audio API) ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'whoosh') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.25);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'chime') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(587.33, now); // D5
+          osc.frequency.setValueAtTime(880, now + 0.1); // A5
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'success') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+          osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById('soundToggle').innerText = audioEnabled ? '🔊' : '🔇';
+    }
+
+    // --- Language Change ---
+    function setLanguage(lang) {
+      currentLang = lang;
+      const data = CONTENT[lang];
+
+      document.documentElement.dir = data.dir;
+      document.documentElement.lang = lang;
+      document.body.style.fontFamily = data.font;
+
+      // Update Tab Styles
+      ['ar', 'en', 'ml'].forEach(l => {
+        document.getElementById(`btn-${l}`).classList.toggle('active', l === lang);
+      });
+
+      // Update Script
+      document.getElementById('scriptContent').innerText = data.script;
+
+      // Update Scenes Text
+      for (let i = 0; i < 5; i++) {
+        const s = data.scenes[i];
+        document.getElementById(`s${i+1}-badge`).innerText = s.badge;
+        document.getElementById(`s${i+1}-title`).innerText = s.title;
+        document.getElementById(`s${i+1}-sub`).innerText = s.sub;
+        document.getElementById(`s${i+1}-pill`).innerText = s.pill;
+        document.getElementById(`s${i+1}-cta`).innerText = s.cta;
+        document.getElementById(`dot-${i}`).innerText = data.dots[i];
+      }
+
+      // Update Button Text
+      const playTextEl = document.getElementById('playText');
+      playTextEl.innerText = isPlaying ? data.pauseText : data.playText;
+    }
+
+    // --- Scene Navigation ---
+    function showScene(idx) {
+      currentScene = idx;
+
+      for (let i = 0; i < 5; i++) {
+        const sceneEl = document.getElementById(`scene-${i}`);
+        const dotEl = document.getElementById(`dot-${i}`);
+        const fillEl = document.getElementById(`fill-${i}`);
+
+        if (i < idx) {
+          sceneEl.classList.remove('active');
+          dotEl.classList.remove('active');
+          fillEl.style.width = '100%';
+        } else if (i === idx) {
+          sceneEl.classList.add('active');
+          dotEl.classList.add('active');
+          fillEl.style.width = '0%';
+        } else {
+          sceneEl.classList.remove('active');
+          dotEl.classList.remove('active');
+          fillEl.style.width = '0%';
+        }
+      }
+
+      if (idx === 4) {
+        playSound('success');
+      } else {
+        playSound('whoosh');
+      }
+
+      if (isPlaying) {
+        startProgress(idx);
+      }
+    }
+
+    function jumpToScene(idx) {
+      clearInterval(timer);
+      cancelAnimationFrame(progressTimer);
+      showScene(idx);
+      if (isPlaying) {
+        runAutoPlay();
+      }
+    }
+
+    function startProgress(idx) {
+      cancelAnimationFrame(progressTimer);
+      progressStartTime = performance.now();
+      const fillEl = document.getElementById(`fill-${idx}`);
+
+      function step(now) {
+        const elapsed = now - progressStartTime;
+        const pct = Math.min(100, (elapsed / sceneDuration) * 100);
+        if (fillEl) fillEl.style.width = `${pct}%`;
+
+        if (elapsed < sceneDuration && isPlaying) {
+          progressTimer = requestAnimationFrame(step);
+        }
+      }
+      progressTimer = requestAnimationFrame(step);
+    }
+
+    function runAutoPlay() {
+      clearInterval(timer);
+      startProgress(currentScene);
+
+      timer = setInterval(() => {
+        if (currentScene < 4) {
+          showScene(currentScene + 1);
+        } else {
+          // Finished loop
+          showScene(0);
+        }
+      }, sceneDuration);
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const data = CONTENT[currentLang];
+      const icon = document.getElementById('playIcon');
+      const text = document.getElementById('playText');
+
+      if (isPlaying) {
+        icon.innerText = '⏸';
+        text.innerText = data.pauseText;
+        runAutoPlay();
+      } else {
+        icon.innerText = '▶';
+        text.innerText = data.playText;
+        clearInterval(timer);
+        cancelAnimationFrame(progressTimer);
+      }
+    }
+
+    function restartVideo() {
+      clearInterval(timer);
+      cancelAnimationFrame(progressTimer);
+      showScene(0);
+      if (isPlaying) {
+        runAutoPlay();
+      }
+    }
+
+    function copyScript() {
+      const script = CONTENT[currentLang].script;
+      navigator.clipboard.writeText(script).then(() => {
+        alert(currentLang === 'ar' ? 'تم نسخ الاسكربت بنجاح إلى الحافظة! 📋' : 'Voiceover script copied to clipboard! 📋');
+      });
+    }
+
+    // Initialize with Arabic
+    setLanguage('ar');
+    showScene(0);
+  </script>
+</body>
+</html>

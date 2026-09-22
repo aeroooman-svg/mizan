@@ -14,6 +14,21 @@ if (fs.existsSync(privacyPolicySrc)) {
   console.log('✓ Successfully copied privacy-policy.html to dist/');
 }
 
+const promoVideoSrc = path.join(__dirname, '..', 'promo-video.html');
+const promoVideoDest = path.join(distDir, 'promo-video.html');
+if (fs.existsSync(promoVideoSrc)) {
+  fs.copyFileSync(promoVideoSrc, promoVideoDest);
+  console.log('✓ Successfully copied promo-video.html to dist/');
+}
+
+// Copy store-assets into dist/assets/store-assets
+const storeAssetsSrc = path.join(__dirname, '..', 'assets', 'store-assets');
+const storeAssetsDest = path.join(distDir, 'assets', 'store-assets');
+if (fs.existsSync(storeAssetsSrc)) {
+  fs.cpSync(storeAssetsSrc, storeAssetsDest, { recursive: true });
+  console.log('✓ Successfully copied assets/store-assets to dist/assets/store-assets');
+}
+
 // Inject iOS Safari touch and callout fixes into dist/index.html
 const indexHtmlPath = path.join(distDir, 'index.html');
 if (fs.existsSync(indexHtmlPath)) {
