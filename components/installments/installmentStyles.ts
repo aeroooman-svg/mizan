@@ -195,8 +195,9 @@ export const getInstallmentStyles = (colors: any, theme: string) => StyleSheet.c
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
+    gap: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 2,
     borderRadius: 12,
   },
   segmentBtnActive: {
@@ -204,7 +205,7 @@ export const getInstallmentStyles = (colors: any, theme: string) => StyleSheet.c
   },
   segmentText: {
     fontFamily: 'Cairo_600SemiBold',
-    fontSize: 13,
+    fontSize: 11.5,
     color: colors.textSecondary,
   },
   segmentTextActive: {

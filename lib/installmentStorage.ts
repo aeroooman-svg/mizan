@@ -16,6 +16,10 @@ export interface InstallmentPlan {
   dueDay: number;
   createdAt: string;
   lastPaidMonth?: string; // YYYY-MM
+  isSmartYieldFunded?: boolean;
+  smartYieldCoverPercent?: number;
+  smartYieldMonthlyReturn?: number;
+  smartAssetCashPrice?: number;
 }
 
 export async function getInstallmentPlans(): Promise<InstallmentPlan[]> {
