@@ -29,6 +29,7 @@ interface MonthlyBreakdownModalProps {
   t: any;
   language: Language;
   loc: (ar: string, en: string, ml?: string) => string;
+  periodLabel?: string;
 }
 
 export const MonthlyBreakdownModal: React.FC<MonthlyBreakdownModalProps> = ({
@@ -47,12 +48,15 @@ export const MonthlyBreakdownModal: React.FC<MonthlyBreakdownModalProps> = ({
   t,
   language,
   loc,
+  periodLabel,
 }) => {
   const [breakdownSearchQuery, setBreakdownSearchQuery] = useState('');
 
   const isExp = breakdownType === 'expense';
   const isInc = breakdownType === 'income';
   const isTrans = breakdownType === 'transfer';
+
+  const activePeriod = periodLabel || t.months[viewMonth];
 
   // Sub totals calculation
   const pureExp = monthlyTransactions
@@ -119,12 +123,12 @@ export const MonthlyBreakdownModal: React.FC<MonthlyBreakdownModalProps> = ({
             </Pressable>
             <Text style={styles.modalTitle}>
               {breakdownType === 'income'
-                ? loc(`تفاصيل الدخل (${t.months[viewMonth]})`, `Income Breakdown (${t.months[viewMonth]})`, `വരുമാന വിവരണം (${t.months[viewMonth]})`)
+                ? loc(`تفاصيل الدخل (${activePeriod})`, `Income Breakdown (${activePeriod})`, `വരുമാന വിവരണം (${activePeriod})`)
                 : breakdownType === 'expense'
-                ? loc(`تفاصيل المصاريف (${t.months[viewMonth]})`, `Expenses Breakdown (${t.months[viewMonth]})`, `ചെലവ് വിവരണം (${t.months[viewMonth]})`)
+                ? loc(`تفاصيل المصاريف (${activePeriod})`, `Expenses Breakdown (${activePeriod})`, `ചെലവ് വിവരണം (${activePeriod})`)
                 : breakdownType === 'transfer'
-                ? loc(`تفاصيل التحويلات (${t.months[viewMonth]})`, `Transfers Breakdown (${t.months[viewMonth]})`, `കൈമാറ്റ വിവരണം (${t.months[viewMonth]})`)
-                : loc(`تفاصيل الادخار والجمعيات (${t.months[viewMonth]})`, `Savings & ROSCA Breakdown (${t.months[viewMonth]})`, `സമ്പാദ്യ & ചിട്ടി വിവരണം (${t.months[viewMonth]})`)}
+                ? loc(`تفاصيل التحويلات (${activePeriod})`, `Transfers Breakdown (${activePeriod})`, `കൈമാറ്റ വിവരണം (${activePeriod})`)
+                : loc(`تفاصيل الادخار والجمعيات (${activePeriod})`, `Savings & ROSCA Breakdown (${activePeriod})`, `സമ്പാദ്യ & ചിട്ടി വിവരണം (${activePeriod})`)}
             </Text>
             <View style={{ width: 32 }} />
           </View>

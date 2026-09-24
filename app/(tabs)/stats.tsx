@@ -31,7 +31,7 @@ import { getGoals, SavingsGoal } from '@/lib/goalStorage';
 import { getAllTags, Tag, parseTransactionTags } from '@/lib/tagStorage';
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';
 import { BarChartMonthly } from '@/components/stats/BarChartMonthly';
-import { YearlyOverview } from '@/components/stats/YearlyOverview';
+import { YearlyOverview, YearlyFinancialInsights } from '@/components/stats/YearlyOverview';
 import { TagBreakdown } from '@/components/stats/TagBreakdown';
 import { DonutChart } from '@/components/stats/DonutChart';
 import { BudgetManagerModal } from '@/components/stats/BudgetManagerModal';
@@ -224,6 +224,17 @@ export default function StatsScreen() {
     });
   }, [walletTransactions, currentMonth, currentYear]);
 
+  const yearlyTransactions = useMemo(() => {
+    return walletTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === currentYear;
+    });
+  }, [walletTransactions, currentYear]);
+
+  const activeTransactions = useMemo(() => {
+    return scope === 'monthly' ? monthlyTransactions : yearlyTransactions;
+  }, [scope, monthlyTransactions, yearlyTransactions]);
+
   const yearlyMonthsData = useMemo(() => {
     const months = [];
     for (let m = 0; m < 12; m++) {
@@ -272,7 +283,7 @@ export default function StatsScreen() {
 
   const categoryStats = useMemo((): CategoryStat[] => {
     const isExpense = viewType === 'expense';
-    const filtered = monthlyTransactions.filter(t => {
+    const filtered = activeTransactions.filter(t => {
       if (isExpense) {
         return t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan';
       } else {
@@ -280,7 +291,7 @@ export default function StatsScreen() {
       }
     });
 
-    const transferOutTotal = monthlyTransactions
+    const transferOutTotal = activeTransactions
       .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -328,7 +339,7 @@ export default function StatsScreen() {
 
     stats.sort((a, b) => b.total - a.total);
     return stats;
-  }, [monthlyTransactions, viewType, customCategories, selectedWallet, language]);
+  }, [activeTransactions, viewType, customCategories, selectedWallet, language]);
 
   const categoryStatsWithColors = useMemo(() => {
     return categoryStats.map((stat, idx) => {
@@ -705,9 +716,146 @@ export default function StatsScreen() {
     return monthlyJameyaSavings + monthlyGoalSavings;
   }, [monthlyJameyaSavings, monthlyGoalSavings]);
 
-  const totalExpenseWithTransfers = monthlyExpense + monthlyTransfersOut;
-  const totalAmount = viewType === 'expense' ? totalExpenseWithTransfers : monthlyIncome;
-  const totalAll = monthlyIncome + totalExpenseWithTransfers;
+  // Yearly aggregates and comprehensive insights
+  const yearlyIncome = useMemo(() => {
+    return yearlyTransactions
+      .filter(t => t.type === 'income' && t.category !== 'debt_loan')
+      .reduce((s, t) => s + t.amount, 0);
+  }, [yearlyTransactions]);
+
+  const yearlyExpense = useMemo(() => {
+    return yearlyTransactions
+      .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+      .reduce((s, t) => s + t.amount, 0);
+  }, [yearlyTransactions]);
+
+  const yearlyTransfersOut = useMemo(() => {
+    return yearlyTransactions
+      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+  }, [yearlyTransactions, selectedWallet]);
+
+  const yearlyJameyaSavings = useMemo(() => {
+    return yearlyTransactions.filter(t => t.category === 'jameya_savings').reduce((s, t) => s + t.amount, 0);
+  }, [yearlyTransactions]);
+
+  const yearlyGoalSavings = useMemo(() => {
+    return yearlyTransactions
+      .filter(t => t.category === 'savings_goal' || t.category === 'goal_deposit')
+      .reduce((s, t) => s + t.amount, 0);
+  }, [yearlyTransactions]);
+
+  const yearlyTotalSavings = useMemo(() => {
+    return yearlyJameyaSavings + yearlyGoalSavings;
+  }, [yearlyJameyaSavings, yearlyGoalSavings]);
+
+  const prevYearTransactions = useMemo(() => {
+    return walletTransactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === currentYear - 1;
+    });
+  }, [walletTransactions, currentYear]);
+
+  const prevYearExpense = useMemo(() => {
+    return prevYearTransactions
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+  }, [prevYearTransactions, selectedWallet]);
+
+  const prevYearIncome = useMemo(() => {
+    return prevYearTransactions
+      .filter(t => t.type === 'income' || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id))
+      .reduce((s, t) => s + t.amount, 0);
+  }, [prevYearTransactions, selectedWallet]);
+
+  const financialInsights = useMemo((): YearlyFinancialInsights => {
+    const elapsedMonths = Math.max(1, currentYear === now.getFullYear() ? (now.getMonth() + 1) : 12);
+    const monthlyAvgExpense = Math.round(yearlyExpense / elapsedMonths);
+    const monthlyAvgIncome = Math.round(yearlyIncome / elapsedMonths);
+    const monthlyAvgSavings = Math.round((yearlyIncome - yearlyExpense) / elapsedMonths);
+
+    // Peak expense month
+    const validExpenseMonths = yearlyMonthsData.filter(m => m.expense > 0);
+    let peakExpenseMonth: { monthName: string; amount: number } | null = null;
+    if (validExpenseMonths.length > 0) {
+      const sortedByExpense = [...validExpenseMonths].sort((a, b) => b.expense - a.expense);
+      peakExpenseMonth = {
+        monthName: sortedByExpense[0].monthName,
+        amount: sortedByExpense[0].expense,
+      };
+    }
+
+    // Lowest expense month among elapsed
+    const elapsedMonthsData = yearlyMonthsData.slice(0, elapsedMonths).filter(m => m.expense > 0);
+    let lowestExpenseMonth: { monthName: string; amount: number } | null = null;
+    if (elapsedMonthsData.length > 0) {
+      const sortedLowest = [...elapsedMonthsData].sort((a, b) => a.expense - b.expense);
+      lowestExpenseMonth = {
+        monthName: sortedLowest[0].monthName,
+        amount: sortedLowest[0].expense,
+      };
+    }
+
+    // Best savings month
+    const validSavingsMonths = yearlyMonthsData.filter(m => m.savings > 0);
+    let bestSavingsMonth: { monthName: string; amount: number } | null = null;
+    if (validSavingsMonths.length > 0) {
+      const sortedSavings = [...validSavingsMonths].sort((a, b) => b.savings - a.savings);
+      bestSavingsMonth = {
+        monthName: sortedSavings[0].monthName,
+        amount: sortedSavings[0].savings,
+      };
+    }
+
+    let yoyExpenseChangePercent = 0;
+    if (prevYearExpense > 0) {
+      yoyExpenseChangePercent = Math.round(((yearlyExpense - prevYearExpense) / prevYearExpense) * 100);
+    } else if (yearlyExpense > 0) {
+      yoyExpenseChangePercent = 100;
+    }
+
+    let yoyIncomeChangePercent = 0;
+    if (prevYearIncome > 0) {
+      yoyIncomeChangePercent = Math.round(((yearlyIncome - prevYearIncome) / prevYearIncome) * 100);
+    } else if (yearlyIncome > 0) {
+      yoyIncomeChangePercent = 100;
+    }
+
+    return {
+      monthlyAvgExpense,
+      monthlyAvgIncome,
+      monthlyAvgSavings,
+      peakExpenseMonth,
+      lowestExpenseMonth,
+      bestSavingsMonth,
+      elapsedMonths,
+      yearlyTransfersOut,
+      yearlyTotalSavings,
+      yoyExpenseChangePercent,
+      yoyIncomeChangePercent,
+      prevYearExpense,
+      prevYearIncome,
+      prevYear: currentYear - 1,
+    };
+  }, [
+    currentYear,
+    now,
+    yearlyExpense,
+    yearlyIncome,
+    yearlyMonthsData,
+    prevYearExpense,
+    prevYearIncome,
+    yearlyTransfersOut,
+    yearlyTotalSavings,
+  ]);
+
+  const activeIncome = scope === 'monthly' ? monthlyIncome : yearlyIncome;
+  const activeExpense = scope === 'monthly' ? monthlyExpense : yearlyExpense;
+  const activeTransfersOut = scope === 'monthly' ? monthlyTransfersOut : yearlyTransfersOut;
+
+  const totalExpenseWithTransfers = activeExpense + activeTransfersOut;
+  const totalAmount = viewType === 'expense' ? totalExpenseWithTransfers : activeIncome;
+  const totalAll = activeIncome + totalExpenseWithTransfers;
 
   const netWorth = activeNetWorth;
 
@@ -722,7 +870,7 @@ export default function StatsScreen() {
   const tagStats = useMemo(() => {
     const map: Record<string, number> = {};
 
-    monthlyTransactions.forEach(tx => {
+    activeTransactions.forEach(tx => {
       if (tx.type !== viewType) return;
       const tagsList = parseTransactionTags(tx.tags);
       tagsList.forEach(tagId => {
@@ -743,7 +891,7 @@ export default function StatsScreen() {
 
     entries.sort((a, b) => b.amount - a.amount);
     return entries;
-  }, [monthlyTransactions, viewType, totalAmount, availableTags]);
+  }, [activeTransactions, viewType, totalAmount, availableTags]);
 
   const allExpenseCategories = useMemo(() => {
     const userCats = customCategories.filter(c => c.type === 'expense');
@@ -938,12 +1086,14 @@ export default function StatsScreen() {
                   <View style={{ flex: 1, alignItems: 'flex-start' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary }}>
-                        {loc('مصاريف الشهر', 'Monthly Spending', 'പ്രതിമാസ ചെലവ്')}
+                        {scope === 'monthly'
+                          ? loc('مصاريف الشهر', 'Monthly Spending', 'പ്രതിമാസ ചെലവ്')
+                          : loc('مصاريف السنة', 'Yearly Spending', 'വാർഷിക ചെലവ്')}
                       </Text>
                       <Ionicons name="chevron-forward" size={10} color={colors.textTertiary} />
                     </View>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }} numberOfLines={1} adjustsFontSizeToFit>
-                      {formatCurrency(monthlyExpense)} <Text style={{ fontSize: 9, fontFamily: 'Cairo_600SemiBold' }}>{currencySymbol}</Text>
+                      {formatCurrency(scope === 'monthly' ? monthlyExpense : yearlyExpense)} <Text style={{ fontSize: 9, fontFamily: 'Cairo_600SemiBold' }}>{currencySymbol}</Text>
                     </Text>
                   </View>
                 </Pressable>
@@ -955,7 +1105,7 @@ export default function StatsScreen() {
                       {loc('معدل الادخار', 'Savings Goal', 'സമ്പാദ്യ നിരക്ക്')}
                     </Text>
                     <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: '#10B981' }}>
-                      {savingsRate}%
+                      {scope === 'monthly' ? savingsRate : yearlyTotals.savingsRate}%
                     </Text>
                   </View>
 
@@ -965,7 +1115,7 @@ export default function StatsScreen() {
                       colors={['#10B981', '#06B6D4']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
-                      style={{ width: `${Math.min(100, Math.max(5, savingsRate))}%`, height: '100%', borderRadius: 3 }}
+                      style={{ width: `${Math.min(100, Math.max(5, scope === 'monthly' ? savingsRate : yearlyTotals.savingsRate))}%`, height: '100%', borderRadius: 3 }}
                     />
                   </View>
                 </View>
@@ -1046,32 +1196,30 @@ export default function StatsScreen() {
             </View>
           )}
 
-          {scope === 'monthly' && (
-            <View style={styles.segmentedControl}>
-              <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setViewType('expense');
-                }}
-                style={[styles.segmentBtn, viewType === 'expense' && styles.segmentBtnActiveExpense]}
-              >
-                <Text style={[styles.segmentText, viewType === 'expense' && styles.segmentTextActive]}>
-                  {t.expenses}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setViewType('income');
-                }}
-                style={[styles.segmentBtn, viewType === 'income' && styles.segmentBtnActiveIncome]}
-              >
-                <Text style={[styles.segmentText, viewType === 'income' && styles.segmentTextActive]}>
-                  {t.income}
-                </Text>
-              </Pressable>
-            </View>
-          )}
+          <View style={styles.segmentedControl}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('expense');
+              }}
+              style={[styles.segmentBtn, viewType === 'expense' && styles.segmentBtnActiveExpense]}
+            >
+              <Text style={[styles.segmentText, viewType === 'expense' && styles.segmentTextActive]}>
+                {t.expenses}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewType('income');
+              }}
+              style={[styles.segmentBtn, viewType === 'income' && styles.segmentBtnActiveIncome]}
+            >
+              <Text style={[styles.segmentText, viewType === 'income' && styles.segmentTextActive]}>
+                {t.income}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* YEARLY ZOOM OUT VIEW */}
@@ -1079,6 +1227,14 @@ export default function StatsScreen() {
           <YearlyOverview
             yearlyTotals={yearlyTotals}
             yearlyMonthsData={yearlyMonthsData}
+            financialInsights={financialInsights}
+            categoryStatsWithColors={categoryStatsWithColors}
+            tagStats={tagStats}
+            viewType={viewType}
+            totalAmount={totalAmount}
+            budgets={budgets}
+            theme={theme}
+            t={t}
             currentYear={currentYear}
             currentMonth={currentMonth}
             currencySymbol={currencySymbol}
@@ -1087,6 +1243,11 @@ export default function StatsScreen() {
             onSelectMonth={(monthIndex) => {
               setViewMonth(monthIndex);
               setScope('monthly');
+            }}
+            onCardPress={(type) => {
+              setBreakdownType(type);
+              setBreakdownSearchQuery('');
+              setDetailedBreakdownVisible(true);
             }}
           />
         ) : null}
@@ -1871,7 +2032,12 @@ export default function StatsScreen() {
         breakdownType={breakdownType}
         setBreakdownType={setBreakdownType}
         viewMonth={viewMonth}
-        monthlyTransactions={monthlyTransactions}
+        monthlyTransactions={activeTransactions}
+        periodLabel={
+          scope === 'monthly'
+            ? `${t.months[viewMonth]} ${currentYear}`
+            : loc(`عام ${currentYear}`, `Year ${currentYear}`, `${currentYear}`)
+        }
         selectedWallet={selectedWallet}
         wallets={wallets}
         currencySymbol={currencySymbol}
