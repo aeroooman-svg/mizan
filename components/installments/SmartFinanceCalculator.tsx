@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -23,6 +23,62 @@ interface SmartFinanceCalculatorProps {
   onSwitchToInstallmentsTab?: () => void;
 }
 
+// Realistic currency-based presets and interest rates
+function getCurrencyDefaults(currency: string) {
+  const c = (currency || '').toUpperCase();
+  if (['KWD', 'BHD', 'OMR'].includes(c)) {
+    return {
+      cashPrice: '300',
+      downPayment: '0',
+      months: '12',
+      monthlyInstallment: '25',
+      yieldPresets: [
+        { labelAr: 'ودائع بنكية / مرابحة (4.5%)', labelEn: 'Bank Deposit (4.5%)', rate: 4.5, icon: 'bank' },
+        { labelAr: 'صناديق استثمار / صكوك (8.0%)', labelEn: 'Investment Funds (8.0%)', rate: 8.0, icon: 'chart-line' },
+      ],
+      defaultYieldRate: 4.5,
+    };
+  }
+  if (['SAR', 'AED', 'QAR'].includes(c)) {
+    return {
+      cashPrice: '3000',
+      downPayment: '0',
+      months: '12',
+      monthlyInstallment: '250',
+      yieldPresets: [
+        { labelAr: 'وديعة بنكية / مرابحة (5.0%)', labelEn: 'Bank Deposit (5.0%)', rate: 5.0, icon: 'bank' },
+        { labelAr: 'صكوك واستثمارات (8.5%)', labelEn: 'Sukuk & Funds (8.5%)', rate: 8.5, icon: 'chart-line' },
+      ],
+      defaultYieldRate: 5.0,
+    };
+  }
+  if (['EGP'].includes(c)) {
+    return {
+      cashPrice: '25000',
+      downPayment: '0',
+      months: '12',
+      monthlyInstallment: '2500',
+      yieldPresets: [
+        { labelAr: 'شهادات بنكية (22%)', labelEn: 'Bank CDs (22%)', rate: 22.0, icon: 'bank' },
+        { labelAr: 'أذون خزانة وصناديق (20%)', labelEn: 'T-Bills & Funds (20%)', rate: 20.0, icon: 'shield-check' },
+      ],
+      defaultYieldRate: 22.0,
+    };
+  }
+  // USD / EUR / Other
+  return {
+    cashPrice: '1000',
+    downPayment: '0',
+    months: '12',
+    monthlyInstallment: '85',
+    yieldPresets: [
+      { labelAr: 'حساب عوائد بنكي (5.0%)', labelEn: 'High-Yield Savings (5.0%)', rate: 5.0, icon: 'bank' },
+      { labelAr: 'مؤشر أسهم / استثمار (9.0%)', labelEn: 'Index Funds (9.0%)', rate: 9.0, icon: 'chart-line' },
+    ],
+    defaultYieldRate: 5.0,
+  };
+}
+
 export default function SmartFinanceCalculator({
   onPlanCreated,
   onSwitchToInstallmentsTab,
@@ -31,19 +87,34 @@ export default function SmartFinanceCalculator({
   const { language } = useLanguage();
   const isAr = language === 'ar';
   const { selectedWallet, wallets } = useTransactions();
-  const currency = selectedWallet?.currency || 'EGP';
+  const currency = selectedWallet?.currency || 'KWD';
 
-  // Inputs
-  const [productTitle, setProductTitle] = useState(isAr ? 'سيارة جديدة' : 'New Car');
-  const [cashPriceInput, setCashPriceInput] = useState('600000');
-  const [downPaymentInput, setDownPaymentInput] = useState('100000');
-  const [monthsInput, setMonthsInput] = useState('36');
-  const [monthlyInstallmentInput, setMonthlyInstallmentInput] = useState('18500');
-  const [annualYieldRate, setAnnualYieldRate] = useState<number>(27); // Default 27% (Egyptian certificates)
-  const [customYieldInput, setCustomYieldInput] = useState('27');
+  const currencyDefaults = useMemo(() => getCurrencyDefaults(currency), [currency]);
+
+  // Form Inputs
+  const [productTitle, setProductTitle] = useState(isAr ? 'هاتف ذكي / جهاز' : 'Smartphone / Gadget');
+  const [cashPriceInput, setCashPriceInput] = useState(currencyDefaults.cashPrice);
+  const [downPaymentInput, setDownPaymentInput] = useState(currencyDefaults.downPayment);
+  const [monthsInput, setMonthsInput] = useState(currencyDefaults.months);
+  const [monthlyInstallmentInput, setMonthlyInstallmentInput] = useState(currencyDefaults.monthlyInstallment);
+
+  // Strategy Mode: Direct comparison (from salary) vs investing the cash
+  const [enableInvestmentMode, setEnableInvestmentMode] = useState(false);
+  const [annualYieldRate, setAnnualYieldRate] = useState<number>(currencyDefaults.defaultYieldRate);
+  const [customYieldInput, setCustomYieldInput] = useState(currencyDefaults.defaultYieldRate.toString());
   const [isCustomYield, setIsCustomYield] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync defaults when currency changes
+  useEffect(() => {
+    setCashPriceInput(currencyDefaults.cashPrice);
+    setDownPaymentInput(currencyDefaults.downPayment);
+    setMonthsInput(currencyDefaults.months);
+    setMonthlyInstallmentInput(currencyDefaults.monthlyInstallment);
+    setAnnualYieldRate(currencyDefaults.defaultYieldRate);
+    setCustomYieldInput(currencyDefaults.defaultYieldRate.toString());
+  }, [currencyDefaults]);
 
   // Numeric parsed values
   const cashPrice = Math.max(0, parseFloat(cashPriceInput) || 0);
@@ -52,72 +123,69 @@ export default function SmartFinanceCalculator({
   const monthlyInstallment = Math.max(0, parseFloat(monthlyInstallmentInput) || 0);
   const yieldRate = isCustomYield ? (parseFloat(customYieldInput) || 0) : annualYieldRate;
 
-  // Investment Presets
-  const yieldPresets = [
-    { labelAr: 'شهادات بنكية 27%', labelEn: 'CDs 27%', rate: 27, icon: 'bank' },
-    { labelAr: 'أذون خزانة 23%', labelEn: 'T-Bills 23%', rate: 23, icon: 'shield-check' },
-    { labelAr: 'صناديق نقدية 19%', labelEn: 'Money Funds 19%', rate: 19, icon: 'chart-line' },
-  ];
-
   // Duration Presets
-  const durationPresets = [12, 24, 36, 48, 60];
+  const durationPresets = [3, 6, 12, 24, 36];
 
   // Core Financial Logic
   const calculation = useMemo(() => {
-    // Investable capital if choosing installment: cash price minus down payment
-    const investableAmount = Math.max(0, cashPrice - downPayment);
-
-    // Monthly return from investment
-    // Annual return = investableAmount * (yieldRate / 100)
-    // Monthly return = Annual return / 12
-    const monthlyReturn = (investableAmount * (yieldRate / 100)) / 12;
-
-    // Total returns over the entire installment duration
-    const totalReturnsEarned = monthlyReturn * months;
-
-    // Total paid via installment: downPayment + (monthlyInstallment * months)
+    // Total amount paid via installment
     const totalInstallmentPaid = downPayment + (monthlyInstallment * months);
 
-    // The nominal installment interest (over cash price)
-    const rawFinancingFee = Math.max(0, totalInstallmentPaid - cashPrice);
+    // Financing Markup & Interest (Difference between installment & cash price)
+    const financingFee = Math.max(0, totalInstallmentPaid - cashPrice);
+    const markupPercent = cashPrice > 0 ? ((totalInstallmentPaid - cashPrice) / cashPrice) * 100 : 0;
+    const isZeroInterest = totalInstallmentPaid <= cashPrice && cashPrice > 0;
 
-    // Net actual cost of the asset if investing the capital:
-    // (Total Paid - Total Investment Return)
-    const netActualCost = Math.max(0, totalInstallmentPaid - totalReturnsEarned);
+    // Approximate annual financing APR (فائدة التقسيط السنوية الفعلية)
+    const annualizedAPR = months > 0 && cashPrice > 0
+      ? Math.max(0, (markupPercent / (months / 12)))
+      : 0;
 
-    // Net Effective percentage of cash price (e.g. 52% of cash price!)
-    const effectivePricePercent = cashPrice > 0 ? (netActualCost / cashPrice) * 100 : 0;
+    // Investment Capital: The cash retained in your pocket if you choose installment
+    const investableAmount = Math.max(0, cashPrice - downPayment);
 
-    // Percentage of monthly installment covered by investment returns
-    const monthlyCoverPercent = monthlyInstallment > 0
+    // Monthly & Total Return if capital is kept in savings/investments
+    const monthlyReturn = enableInvestmentMode ? (investableAmount * (yieldRate / 100)) / 12 : 0;
+    const totalReturnsEarned = enableInvestmentMode ? monthlyReturn * months : 0;
+
+    // Net Out-of-pocket monthly payment after deducting returns
+    const netMonthlyOutflow = Math.max(0, monthlyInstallment - monthlyReturn);
+
+    // Percentage of monthly installment covered by investment
+    const monthlyCoverPercent = monthlyInstallment > 0 && enableInvestmentMode
       ? Math.min(100, Math.round((monthlyReturn / monthlyInstallment) * 100))
       : 0;
 
-    // Net monthly out-of-pocket payment
-    const netMonthlyOutflow = Math.max(0, monthlyInstallment - monthlyReturn);
+    // Net Financial Advantage:
+    // If NO investment: advantage of cash = saving the financing fee.
+    // If WITH investment: advantage = investment return - financing fee.
+    const netInvestmentGain = totalReturnsEarned - financingFee;
 
-    // Net benefit of smart strategy vs paying cash:
-    // Scenario A (Pay Cash): You spend cashPrice now. Remaining capital = 0.
-    // Scenario B (Smart Financing): You pay downPayment now, invest remainder.
-    // At end of term, you still have investableAmount capital!
-    // Total financial gain = Total Returns - Raw Financing Fee
-    const netFinancialAdvantage = totalReturnsEarned - rawFinancingFee;
-    const isSmartWin = netFinancialAdvantage > 0;
+    // Decision Logic:
+    let verdictType: 'zero_interest' | 'invest_wins' | 'cash_wins';
+    if (isZeroInterest) {
+      verdictType = 'zero_interest';
+    } else if (enableInvestmentMode && netInvestmentGain > 0) {
+      verdictType = 'invest_wins';
+    } else {
+      verdictType = 'cash_wins';
+    }
 
     return {
+      totalInstallmentPaid,
+      financingFee,
+      markupPercent: Math.round(markupPercent * 10) / 10,
+      annualizedAPR: Math.round(annualizedAPR * 10) / 10,
+      isZeroInterest,
       investableAmount,
       monthlyReturn,
       totalReturnsEarned,
-      totalInstallmentPaid,
-      rawFinancingFee,
-      netActualCost,
-      effectivePricePercent: Math.round(effectivePricePercent),
-      monthlyCoverPercent,
       netMonthlyOutflow,
-      netFinancialAdvantage: Math.abs(netFinancialAdvantage),
-      isSmartWin,
+      monthlyCoverPercent,
+      netInvestmentGain: Math.abs(netInvestmentGain),
+      verdictType,
     };
-  }, [cashPrice, downPayment, months, monthlyInstallment, yieldRate]);
+  }, [cashPrice, downPayment, months, monthlyInstallment, yieldRate, enableInvestmentMode]);
 
   // Handle Save Plan into Mizan Installments
   const handleSaveToInstallments = async () => {
@@ -138,11 +206,11 @@ export default function SmartFinanceCalculator({
         monthlyAmount: monthlyInstallment,
         totalMonths: months,
         remainingMonths: months,
-        provider: 'bank_card',
+        provider: calculation.isZeroInterest ? 'tabby' : 'bank_card',
         dueDay: 5,
         category: 'shopping',
         walletId: targetWalletId,
-        isSmartYieldFunded: true,
+        isSmartYieldFunded: enableInvestmentMode,
         smartYieldCoverPercent: calculation.monthlyCoverPercent,
         smartYieldMonthlyReturn: Math.round(calculation.monthlyReturn),
         smartAssetCashPrice: cashPrice,
@@ -153,8 +221,8 @@ export default function SmartFinanceCalculator({
       Alert.alert(
         isAr ? 'تمت إضافة القسط بنجاح! 🚀' : 'Plan Added! 🚀',
         isAr
-          ? `تم إدراج "${productTitle}" ضمن أقساطك النشطة مع وسم التمويل الذكي من الاستثمار بنسبة تغطية ${calculation.monthlyCoverPercent}%.`
-          : `"${productTitle}" added to active installments with smart yield coverage badge (${calculation.monthlyCoverPercent}%).`,
+          ? `تم إدراج "${productTitle}" ضمن أقساطك النشطة بقسط شهري ${formatCurrency(monthlyInstallment)} ${currency}.`
+          : `"${productTitle}" added to active installments (${formatCurrency(monthlyInstallment)} ${currency}/mo).`,
         [
           {
             text: isAr ? 'عرض الأقساط' : 'View Installments',
@@ -180,9 +248,9 @@ export default function SmartFinanceCalculator({
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Concept Hero Header Banner */}
+      {/* Intro Header Banner */}
       <LinearGradient
-        colors={theme === 'dark' ? ['#1E1B4B', '#31104B', '#0F172A'] : ['#EDE9FE', '#F3E8FF', '#EFF6FF']}
+        colors={theme === 'dark' ? ['#1E1B4B', '#2E1065', '#0F172A'] : ['#EDE9FE', '#F3E8FF', '#EFF6FF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
@@ -192,49 +260,49 @@ export default function SmartFinanceCalculator({
             <View style={styles.heroTagBadge}>
               <Ionicons name="sparkles" size={13} color="#8B5CF6" />
               <Text style={styles.heroTagText}>
-                {isAr ? 'استراتيجية بيزنساوي للشراء الذكي' : 'Smart Opportunity Cost Strategy'}
+                {isAr ? 'مقارن القرار المالي الذكي' : 'Smart Financial Decision'}
               </Text>
             </View>
             <Text style={[styles.heroHeading, { color: theme === 'dark' ? '#FFF' : '#1E1B4B' }]}>
-              {isAr ? 'كاش ولا تقسيط واستثمار؟ 💡' : 'Cash or Smart Financing? 💡'}
+              {isAr ? 'كاش ولا تقسيط؟ 💡' : 'Cash vs Installment? 💡'}
             </Text>
             <Text style={[styles.heroDescription, { color: theme === 'dark' ? '#CBD5E1' : '#64748B' }]}>
               {isAr
-                ? 'قارن بين دفع الكاش فوراً وبين تشغيل رأس المال في أوعية ذات عائد دوري ليسدد القسط نيابة عنك.'
-                : 'Compare paying upfront vs investing the capital to let monthly yields pay off your installments.'}
+                ? 'اكتشف بدقة: هل الدفع كاش أوفر لك، أم التقسيط يحميك من استنزاف السيولة؟ وحساب نسبة الفائدة الحقيقية على القسط.'
+                : 'Compare upfront cash vs installment costs, unveil real financing markup, and see if investing your capital is wiser.'}
             </Text>
           </View>
 
           <View style={styles.heroIconCircle}>
-            <MaterialCommunityIcons name="calculator-variant" size={32} color="#8B5CF6" />
+            <MaterialCommunityIcons name="scale-balance" size={32} color="#8B5CF6" />
           </View>
         </View>
       </LinearGradient>
 
-      {/* Input Section Card */}
+      {/* 1. Item Details Card */}
       <View style={[styles.sectionCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
         <View style={styles.sectionHeaderRow}>
-          <Ionicons name="create-outline" size={18} color={colors.primary} />
+          <Ionicons name="cart-outline" size={18} color={colors.primary} />
           <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
-            {isAr ? 'بيانات السلعة والتمويل' : 'Asset & Financing Details'}
+            {isAr ? 'بيانات السلعة ونظام التقسيط' : 'Item & Financing Details'}
           </Text>
         </View>
 
         {/* Product Title */}
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-            {isAr ? 'اسم السلعة / المنتج' : 'Item / Asset Name'}
+            {isAr ? 'اسم السلعة / المنتج' : 'Item Name'}
           </Text>
           <TextInput
             style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
             value={productTitle}
             onChangeText={setProductTitle}
-            placeholder={isAr ? 'مثال: سيارة، أجهزة كهربائية...' : 'e.g. Car, Laptop...'}
+            placeholder={isAr ? 'مثال: آيفون، لابتوب، جهاز منزلي...' : 'e.g. Phone, Laptop...'}
             placeholderTextColor={colors.textTertiary}
           />
         </View>
 
-        {/* Row: Cash Price & Down Payment */}
+        {/* Cash Price & Down Payment */}
         <View style={styles.twoColRow}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: isAr ? 0 : 10, marginLeft: isAr ? 10 : 0 }]}>
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
@@ -244,7 +312,7 @@ export default function SmartFinanceCalculator({
               style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
               value={cashPriceInput}
               onChangeText={setCashPriceInput}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={colors.textTertiary}
             />
@@ -258,7 +326,7 @@ export default function SmartFinanceCalculator({
               style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
               value={downPaymentInput}
               onChangeText={setDownPaymentInput}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={colors.textTertiary}
             />
@@ -268,7 +336,7 @@ export default function SmartFinanceCalculator({
         {/* Duration in Months */}
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-            {isAr ? 'مدة التقسيط (بالأشهر)' : 'Installment Duration (Months)'}
+            {isAr ? 'مدة التقسيط' : 'Installment Duration'}
           </Text>
           <View style={styles.presetsRow}>
             {durationPresets.map(preset => (
@@ -291,7 +359,7 @@ export default function SmartFinanceCalculator({
                     months === preset && { color: '#FFF', fontFamily: 'Cairo_700Bold' },
                   ]}
                 >
-                  {preset} {isAr ? 'ش' : 'mo'}
+                  {preset} {isAr ? 'أشهر' : 'mo'}
                 </Text>
               </Pressable>
             ))}
@@ -304,7 +372,7 @@ export default function SmartFinanceCalculator({
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
               {isAr ? `القسط الشهري المطلوب (${currency})` : `Monthly Installment (${currency})`}
             </Text>
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.primary }}>
+            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.primary }}>
               {isAr ? `إجمالي السداد: ${formatCurrency(calculation.totalInstallmentPaid)} ${currency}` : `Total: ${formatCurrency(calculation.totalInstallmentPaid)}`}
             </Text>
           </View>
@@ -312,116 +380,233 @@ export default function SmartFinanceCalculator({
             style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
             value={monthlyInstallmentInput}
             onChangeText={setMonthlyInstallmentInput}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="0"
             placeholderTextColor={colors.textTertiary}
           />
         </View>
+      </View>
 
-        {/* Alternative Investment Yield Presets */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-            {isAr ? 'عائد الوعاء الاستثماري البديل (سنوياً %)' : 'Alternative Investment Return (% p.a.)'}
+      {/* 2. Real Interest & Markup Breakdown Card (Where did interest come from?) */}
+      <View style={[styles.sectionCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+        <View style={styles.sectionHeaderRow}>
+          <Ionicons name="calculator-outline" size={18} color="#8B5CF6" />
+          <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+            {isAr ? 'تحليل فائدة التقسيط الحقيقية' : 'Real Financing Markup Analysis'}
           </Text>
-          <View style={styles.presetsColumn}>
-            {yieldPresets.map(preset => {
-              const isSelected = !isCustomYield && annualYieldRate === preset.rate;
-              return (
-                <Pressable
-                  key={preset.rate}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setIsCustomYield(false);
-                    setAnnualYieldRate(preset.rate);
-                  }}
-                  style={[
-                    styles.yieldCard,
-                    { backgroundColor: colors.background, borderColor: colors.border },
-                    isSelected && { borderColor: '#8B5CF6', backgroundColor: '#8B5CF618' },
-                  ]}
-                >
-                  <View style={styles.yieldCardLeft}>
-                    <MaterialCommunityIcons
-                      name={preset.icon as any}
-                      size={20}
-                      color={isSelected ? '#8B5CF6' : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.yieldCardTitle,
-                        { color: colors.text },
-                        isSelected && { color: '#8B5CF6', fontFamily: 'Cairo_700Bold' },
-                      ]}
-                    >
-                      {isAr ? preset.labelAr : preset.labelEn}
-                    </Text>
-                  </View>
-                  <View style={[styles.yieldPercentBadge, isSelected && { backgroundColor: '#8B5CF6' }]}>
-                    <Text style={[styles.yieldPercentText, isSelected && { color: '#FFF' }]}>
-                      {preset.rate}%
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+        </View>
 
-            {/* Custom Yield Option */}
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                setIsCustomYield(true);
-              }}
+        <View style={[styles.breakdownBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
+              {isAr ? 'سعر الشراء كاش:' : 'Cash Price:'}
+            </Text>
+            <Text style={[styles.breakdownVal, { color: colors.text }]}>
+              {formatCurrency(cashPrice)} {currency}
+            </Text>
+          </View>
+
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: colors.textSecondary }]}>
+              {isAr ? `إجمالي ما ستدفعه بالتقسيط (${months} شهر):` : `Total Installments (${months} mo):`}
+            </Text>
+            <Text style={[styles.breakdownVal, { color: colors.text, fontFamily: 'Cairo_700Bold' }]}>
+              {formatCurrency(calculation.totalInstallmentPaid)} {currency}
+            </Text>
+          </View>
+
+          <View style={[styles.breakdownDivider, { backgroundColor: colors.border }]} />
+
+          {/* Real Interest Result */}
+          <View style={styles.breakdownRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons
+                name={calculation.isZeroInterest ? "checkmark-circle" : "alert-circle"}
+                size={16}
+                color={calculation.isZeroInterest ? "#10B981" : "#F59E0B"}
+              />
+              <Text style={[styles.breakdownLabel, { color: calculation.isZeroInterest ? "#10B981" : "#F59E0B", fontFamily: 'Cairo_700Bold' }]}>
+                {calculation.isZeroInterest
+                  ? (isAr ? 'فائدة التقسيط الفعلية:' : 'Financing Interest:')
+                  : (isAr ? 'تكلفة التقسيط الإضافية (الفائدة):' : 'Financing Markup / Cost:')}
+              </Text>
+            </View>
+            <Text
               style={[
-                styles.yieldCard,
-                { backgroundColor: colors.background, borderColor: colors.border },
-                isCustomYield && { borderColor: '#8B5CF6', backgroundColor: '#8B5CF618' },
+                styles.breakdownVal,
+                { color: calculation.isZeroInterest ? '#10B981' : '#F59E0B', fontFamily: 'Cairo_700Bold' },
               ]}
             >
-              <View style={styles.yieldCardLeft}>
-                <MaterialCommunityIcons
-                  name="tune"
-                  size={20}
-                  color={isCustomYield ? '#8B5CF6' : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.yieldCardTitle,
-                    { color: colors.text },
-                    isCustomYield && { color: '#8B5CF6', fontFamily: 'Cairo_700Bold' },
-                  ]}
-                >
-                  {isAr ? 'عائد سنوي مخصص' : 'Custom Annual Yield'}
-                </Text>
-              </View>
-
-              {isCustomYield ? (
-                <TextInput
-                  style={[styles.customYieldInput, { color: '#8B5CF6', borderColor: '#8B5CF6' }]}
-                  value={customYieldInput}
-                  onChangeText={setCustomYieldInput}
-                  keyboardType="numeric"
-                  placeholder="%"
-                />
-              ) : (
-                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.textSecondary }}>
-                  {customYieldInput}%
-                </Text>
-              )}
-            </Pressable>
+              {calculation.isZeroInterest
+                ? (isAr ? '0% (بدون أي فوائد 🎉)' : '0% (Zero Interest 🎉)')
+                : `+${formatCurrency(calculation.financingFee)} ${currency} (+${calculation.markupPercent}%)`}
+            </Text>
           </View>
+
+          {!calculation.isZeroInterest && calculation.annualizedAPR > 0 && (
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textTertiary, marginTop: 4, textAlign: 'left' }}>
+              {isAr
+                ? `💡 هذه الزيادة تعادل معدل فائدة سنوي حقيقي قدره حوالي ${calculation.annualizedAPR}% على مدة التقسيط.`
+                : `💡 This represents an annualized financing rate of approx ~${calculation.annualizedAPR}%.`}
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Smart Verdict Banner */}
+      {/* 3. Optional: Invest Capital Strategy Switch */}
+      <View style={[styles.sectionCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            setEnableInvestmentMode(prev => !prev);
+          }}
+          style={styles.switchHeaderRow}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={[styles.switchIconCircle, { backgroundColor: enableInvestmentMode ? '#8B5CF622' : colors.background }]}>
+              <MaterialCommunityIcons
+                name="trending-up"
+                size={20}
+                color={enableInvestmentMode ? '#8B5CF6' : colors.textSecondary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+                {isAr ? 'مقارنة مع استثمار رأس المال 📈' : 'Compare with Investing Capital 📈'}
+              </Text>
+              <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                {isAr
+                  ? 'إذا كنت تملك مبلغ الكاش وتفكر في تشغيله في وديعة أو صندوق واستخدام العائد لسداد القسط'
+                  : 'If you have the cash and consider investing it to let yields cover the installment'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons
+            name={enableInvestmentMode ? 'checkbox' : 'square-outline'}
+            size={24}
+            color={enableInvestmentMode ? '#8B5CF6' : colors.textTertiary}
+          />
+        </Pressable>
+
+        {enableInvestmentMode && (
+          <View style={{ marginTop: 14 }}>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+              {isAr ? `عائد الاستثمار البنكي الواقعي (${currency}):` : `Realistic Investment Yield (${currency}):`}
+            </Text>
+
+            <View style={styles.presetsColumn}>
+              {currencyDefaults.yieldPresets.map(preset => {
+                const isSelected = !isCustomYield && annualYieldRate === preset.rate;
+                return (
+                  <Pressable
+                    key={preset.rate}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setIsCustomYield(false);
+                      setAnnualYieldRate(preset.rate);
+                    }}
+                    style={[
+                      styles.yieldCard,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                      isSelected && { borderColor: '#8B5CF6', backgroundColor: '#8B5CF618' },
+                    ]}
+                  >
+                    <View style={styles.yieldCardLeft}>
+                      <MaterialCommunityIcons
+                        name={preset.icon as any}
+                        size={18}
+                        color={isSelected ? '#8B5CF6' : colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.yieldCardTitle,
+                          { color: colors.text },
+                          isSelected && { color: '#8B5CF6', fontFamily: 'Cairo_700Bold' },
+                        ]}
+                      >
+                        {isAr ? preset.labelAr : preset.labelEn}
+                      </Text>
+                    </View>
+                    <View style={[styles.yieldPercentBadge, isSelected && { backgroundColor: '#8B5CF6' }]}>
+                      <Text style={[styles.yieldPercentText, isSelected && { color: '#FFF' }]}>
+                        {preset.rate}%
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+
+              {/* Custom Yield Option */}
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setIsCustomYield(true);
+                }}
+                style={[
+                  styles.yieldCard,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                  isCustomYield && { borderColor: '#8B5CF6', backgroundColor: '#8B5CF618' },
+                ]}
+              >
+                <View style={styles.yieldCardLeft}>
+                  <MaterialCommunityIcons
+                    name="tune"
+                    size={18}
+                    color={isCustomYield ? '#8B5CF6' : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.yieldCardTitle,
+                      { color: colors.text },
+                      isCustomYield && { color: '#8B5CF6', fontFamily: 'Cairo_700Bold' },
+                    ]}
+                  >
+                    {isAr ? 'عائد سنوي مخصص' : 'Custom Annual Yield'}
+                  </Text>
+                </View>
+
+                {isCustomYield ? (
+                  <TextInput
+                    style={[styles.customYieldInput, { color: '#8B5CF6', borderColor: '#8B5CF6' }]}
+                    value={customYieldInput}
+                    onChangeText={setCustomYieldInput}
+                    keyboardType="decimal-pad"
+                    placeholder="%"
+                  />
+                ) : (
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.textSecondary }}>
+                    {customYieldInput}%
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+
+            {/* Yield Impact Snapshot */}
+            <View style={[styles.yieldImpactBox, { backgroundColor: '#8B5CF612', borderColor: '#8B5CF630' }]}>
+              <Ionicons name="sparkles" size={16} color="#8B5CF6" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#8B5CF6' }}>
+                  {isAr ? 'تأثير الاستثمار على القسط:' : 'Investment Yield Impact:'}
+                </Text>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                  {isAr
+                    ? `رأس المال المتبقي (${formatCurrency(calculation.investableAmount)} ${currency}) يولد أرباحاً قدرها ${formatCurrency(calculation.monthlyReturn)} ${currency}/شهرياً، فتغطي ${calculation.monthlyCoverPercent}% من قسطك!`
+                    : `Investing ${formatCurrency(calculation.investableAmount)} ${currency} generates ${formatCurrency(calculation.monthlyReturn)} ${currency}/mo, covering ${calculation.monthlyCoverPercent}% of your installment.`}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* 4. Smart Verdict & Recommendation */}
       <LinearGradient
         colors={
-          calculation.isSmartWin
-            ? theme === 'dark'
-              ? ['#064E3B', '#065F46', '#022C22']
-              : ['#ECFDF5', '#D1FAE5', '#A7F3D0']
-            : theme === 'dark'
-              ? ['#7F1D1D', '#991B1B', '#450A0A']
-              : ['#FEF2F2', '#FEE2E2', '#FECACA']
+          calculation.verdictType === 'zero_interest'
+            ? theme === 'dark' ? ['#064E3B', '#065F46', '#022C22'] : ['#ECFDF5', '#D1FAE5', '#A7F3D0']
+            : calculation.verdictType === 'invest_wins'
+              ? theme === 'dark' ? ['#1E1B4B', '#312E81', '#0F172A'] : ['#EDE9FE', '#DDD6FE', '#C4B5FD']
+              : theme === 'dark' ? ['#7F1D1D', '#991B1B', '#450A0A'] : ['#FEF2F2', '#FEE2E2', '#FECACA']
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -431,25 +616,53 @@ export default function SmartFinanceCalculator({
           <View
             style={[
               styles.verdictIconWrapper,
-              { backgroundColor: calculation.isSmartWin ? '#10B98130' : '#EF444430' },
+              {
+                backgroundColor:
+                  calculation.verdictType === 'zero_interest'
+                    ? '#10B98135'
+                    : calculation.verdictType === 'invest_wins'
+                      ? '#8B5CF635'
+                      : '#EF444435',
+              },
             ]}
           >
             <Ionicons
-              name={calculation.isSmartWin ? 'trophy' : 'alert-circle'}
+              name={
+                calculation.verdictType === 'zero_interest'
+                  ? 'checkmark-done-circle'
+                  : calculation.verdictType === 'invest_wins'
+                    ? 'trophy'
+                    : 'wallet'
+              }
               size={26}
-              color={calculation.isSmartWin ? '#10B981' : '#EF4444'}
+              color={
+                calculation.verdictType === 'zero_interest'
+                  ? '#10B981'
+                  : calculation.verdictType === 'invest_wins'
+                    ? '#8B5CF6'
+                    : '#EF4444'
+              }
             />
           </View>
           <View style={{ flex: 1 }}>
             <Text
               style={[
                 styles.verdictTitle,
-                { color: calculation.isSmartWin ? (theme === 'dark' ? '#6EE7B7' : '#065F46') : (theme === 'dark' ? '#FCA5A5' : '#991B1B') },
+                {
+                  color:
+                    calculation.verdictType === 'zero_interest'
+                      ? (theme === 'dark' ? '#6EE7B7' : '#065F46')
+                      : calculation.verdictType === 'invest_wins'
+                        ? (theme === 'dark' ? '#C4B5FD' : '#4C1D95')
+                        : (theme === 'dark' ? '#FCA5A5' : '#991B1B'),
+                },
               ]}
             >
-              {calculation.isSmartWin
-                ? (isAr ? '🏆 استراتيجية رابحة: التقسيط مع الاستثمار أفضل!' : '🏆 Winning Strategy: Smart Financing is Superior!')
-                : (isAr ? '⚠️ تنبيه: الشراء كاش أوفر لك في هذه الحالة!' : '⚠️ Notice: Paying Cash is Cheaper!')}
+              {calculation.verdictType === 'zero_interest'
+                ? (isAr ? '🎉 التقسيط هو الأفضل (بدون أي فوائد 0%)' : '🎉 Installment Wins (0% Interest)')
+                : calculation.verdictType === 'invest_wins'
+                  ? (isAr ? '🏆 التقسيط مع الاستثمار رابح!' : '🏆 Financing + Investing Wins!')
+                  : (isAr ? '💵 الشراء كاش هو الأوفر لك!' : '💵 Paying Cash is Cheaper!')}
             </Text>
             <Text
               style={[
@@ -457,144 +670,81 @@ export default function SmartFinanceCalculator({
                 { color: theme === 'dark' ? '#E2E8F0' : '#334155' },
               ]}
             >
-              {calculation.isSmartWin
+              {calculation.verdictType === 'zero_interest'
                 ? (isAr
-                  ? `استثمار مبلغ الكاش (${formatCurrency(calculation.investableAmount)}) سيحقق لك عائداً إجمالياً قدره ${formatCurrency(calculation.totalReturnsEarned)} ${currency}، متفوقاً على فوائد التقسيط بفارق صافٍ قدره ${formatCurrency(calculation.netFinancialAdvantage)} ${currency}!`
-                  : `Investing the cash (${formatCurrency(calculation.investableAmount)}) yields ${formatCurrency(calculation.totalReturnsEarned)} ${currency}, beating financing costs by ${formatCurrency(calculation.netFinancialAdvantage)} ${currency}!`)
-                : (isAr
-                  ? `فوائد التقسيط البالغة ${formatCurrency(calculation.rawFinancingFee)} ${currency} تفوق عوائد الاستثمار المتاحة بمقدار ${formatCurrency(calculation.netFinancialAdvantage)} ${currency}. الأفضل الدفع كاش إن توفرت السيولة.`
-                  : `Financing interest exceeds available investment returns by ${formatCurrency(calculation.netFinancialAdvantage)} ${currency}. Cash is better.`)}
+                  ? `بما أن إجمالي الأقساط يساوي سعر الكاش تماماً بدون فوائد، فالتقسيط خيار ذكي ومريح يحافظ على سيولتك النقدية للطوارئ دون دفع أي فلس إضافي.`
+                  : `Since total installments equal the cash price with zero interest, installment preserves your cash flow with zero penalty.`)
+                : calculation.verdictType === 'invest_wins'
+                  ? (isAr
+                    ? `عوائد استثمار رأس المال (${formatCurrency(calculation.totalReturnsEarned)} ${currency}) تتفوق على تكلفة فوائد التقسيط (${formatCurrency(calculation.financingFee)} ${currency}) بصافي ربح ${formatCurrency(calculation.netInvestmentGain)} ${currency} لصالحك!`
+                    : `Investment returns (${formatCurrency(calculation.totalReturnsEarned)} ${currency}) beat financing fees (${formatCurrency(calculation.financingFee)} ${currency}) by +${formatCurrency(calculation.netInvestmentGain)} ${currency}!`)
+                  : (isAr
+                    ? `تكلفة فوائد التقسيط الإضافية هي ${formatCurrency(calculation.financingFee)} ${currency}. إن كانت السيولة متوفرة لديك، فالدفع كاش يوفر عليك هذا المبلغ تماماً.`
+                    : `Financing adds an extra ${formatCurrency(calculation.financingFee)} ${currency} in markup. Paying cash saves you this markup entirely.`)}
             </Text>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Real Magic Analytics Metrics */}
-      <View style={styles.metricsGrid}>
-        {/* Metric 1: Coverage Percent */}
-        <View style={[styles.metricCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="pie-chart-outline" size={16} color="#8B5CF6" />
-            <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
-              {isAr ? 'تغطية القسط من العائد' : 'Yield Coverage'}
-            </Text>
-          </View>
-          <Text style={[styles.metricBigVal, { color: '#8B5CF6' }]}>
-            {calculation.monthlyCoverPercent}%
-          </Text>
-          <Text style={[styles.metricSub, { color: colors.textSecondary }]}>
-            {isAr ? 'يسدد الاستثمار تلقائياً شهرياً' : 'Paid automatically each month'}
-          </Text>
-        </View>
-
-        {/* Metric 2: Net Monthly Out-of-pocket */}
-        <View style={[styles.metricCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="wallet-outline" size={16} color="#10B981" />
-            <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
-              {isAr ? 'صافي ما تدفعه شهرياً' : 'Net Monthly Paid'}
-            </Text>
-          </View>
-          <Text style={[styles.metricBigVal, { color: '#10B981' }]}>
-            {formatCurrency(calculation.netMonthlyOutflow)} <Text style={{ fontSize: 11 }}>{currency}</Text>
-          </Text>
-          <Text style={[styles.metricSub, { color: colors.textSecondary }]}>
-            {isAr ? `بدلاً من ${formatCurrency(monthlyInstallment)}` : `instead of ${formatCurrency(monthlyInstallment)}`}
-          </Text>
-        </View>
-
-        {/* Metric 3: Monthly Return Earned */}
-        <View style={[styles.metricCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="trending-up" size={16} color="#3B82F6" />
-            <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
-              {isAr ? 'العائد الشهري للاستثمار' : 'Monthly Yield'}
-            </Text>
-          </View>
-          <Text style={[styles.metricBigVal, { color: '#3B82F6' }]}>
-            +{formatCurrency(calculation.monthlyReturn)} <Text style={{ fontSize: 11 }}>{currency}</Text>
-          </Text>
-          <Text style={[styles.metricSub, { color: colors.textSecondary }]}>
-            {isAr ? `بمعدل عائد سنوي ${yieldRate}%` : `@ ${yieldRate}% annual rate`}
-          </Text>
-        </View>
-
-        {/* Metric 4: Effective Price Paid */}
-        <View style={[styles.metricCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="pricetag-outline" size={16} color="#F59E0B" />
-            <Text style={[styles.metricTitle, { color: colors.textSecondary }]}>
-              {isAr ? 'التكلفة الصافية الفعلية' : 'Effective Net Cost'}
-            </Text>
-          </View>
-          <Text style={[styles.metricBigVal, { color: '#F59E0B' }]}>
-            {calculation.effectivePricePercent}%
-          </Text>
-          <Text style={[styles.metricSub, { color: colors.textSecondary }]}>
-            {isAr
-              ? (calculation.effectivePricePercent <= 50 ? '🎉 اشتريتها بأقل من نصف ثمنها!' : 'من سعر الكاش الأصلي')
-              : 'of original cash price'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Side by Side Comparison Visual Card */}
+      {/* 5. Direct Side-by-Side Comparison */}
       <View style={[styles.sectionCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
         <View style={styles.sectionHeaderRow}>
-          <Ionicons name="git-compare-outline" size={18} color="#8B5CF6" />
+          <Ionicons name="git-compare-outline" size={18} color={colors.primary} />
           <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
-            {isAr ? 'مقارنة السيناريوهين بعد انتهاء المدة' : 'Scenario Comparison at End of Term'}
+            {isAr ? 'مقارنة الخيارين وجهاً لوجه' : 'Head-to-Head Comparison'}
           </Text>
         </View>
 
-        {/* Scenario 1: Paying Cash */}
+        {/* Option 1: Cash */}
         <View style={[styles.scenarioRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <View style={styles.scenarioLeft}>
-            <View style={[styles.scenarioDot, { backgroundColor: '#EF4444' }]} />
-            <View>
-              <Text style={[styles.scenarioTitle, { color: colors.text }]}>
-                {isAr ? 'المسار أ: الدفع كاش فوراً' : 'Path A: Pay Cash Upfront'}
-              </Text>
-              <Text style={[styles.scenarioSub, { color: colors.textSecondary }]}>
-                {isAr ? 'خروج السيولة بالكامل فوراً وتوقف نموها' : 'Total cash drain upfront, zero growth'}
-              </Text>
-            </View>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.scenarioVal, { color: '#EF4444' }]}>
-              -{formatCurrency(cashPrice)} {currency}
-            </Text>
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
-              {isAr ? 'المتبقي معك: 0 ج.م' : 'Remaining cash: 0'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Scenario 2: Smart Financing + Investing */}
-        <View style={[styles.scenarioRow, { backgroundColor: colors.background, borderColor: '#8B5CF6' }]}>
           <View style={styles.scenarioLeft}>
             <View style={[styles.scenarioDot, { backgroundColor: '#10B981' }]} />
             <View>
               <Text style={[styles.scenarioTitle, { color: colors.text }]}>
-                {isAr ? 'المسار ب: التقسيط مع الاستثمار (بيزنساوي)' : 'Path B: Smart Financing + Investing'}
+                {isAr ? 'خيار (١): الدفع كاش فوراً' : 'Option 1: Pay Cash'}
               </Text>
               <Text style={[styles.scenarioSub, { color: colors.textSecondary }]}>
-                {isAr ? 'أصل المال محفوظ والعائد يسدد القسط' : 'Principal preserved, yields pay debt'}
+                {calculation.isZeroInterest
+                  ? (isAr ? 'دفع المبلغ دفعة واحدة، لا التزامات لاحقة' : 'One-time payment, no monthly debt')
+                  : (isAr ? `يوفر عليك ${formatCurrency(calculation.financingFee)} ${currency} فوائد` : `Saves ${formatCurrency(calculation.financingFee)} ${currency} in fees`)}
               </Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.scenarioVal, { color: '#10B981' }]}>
-              +{formatCurrency(calculation.investableAmount)} {currency}
+            <Text style={[styles.scenarioVal, { color: colors.text }]}>
+              {formatCurrency(cashPrice)} {currency}
             </Text>
-            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: '#10B981' }}>
-              {isAr ? 'رأس مالك لا زال في جيبك!' : 'Principal still with you!'}
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+              {isAr ? 'دفعة واحدة' : 'Upfront'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Option 2: Installment */}
+        <View style={[styles.scenarioRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={styles.scenarioLeft}>
+            <View style={[styles.scenarioDot, { backgroundColor: '#8B5CF6' }]} />
+            <View>
+              <Text style={[styles.scenarioTitle, { color: colors.text }]}>
+                {isAr ? 'خيار (٢): الشراء بالتقسيط' : 'Option 2: Installment'}
+              </Text>
+              <Text style={[styles.scenarioSub, { color: colors.textSecondary }]}>
+                {isAr ? `${formatCurrency(monthlyInstallment)} ${currency} شهرياً × ${months} شهر` : `${formatCurrency(monthlyInstallment)} ${currency}/mo for ${months} mo`}
+              </Text>
+            </View>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.scenarioVal, { color: '#8B5CF6' }]}>
+              {formatCurrency(calculation.totalInstallmentPaid)} {currency}
+            </Text>
+            <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 10, color: colors.textSecondary }}>
+              {isAr ? 'إجمالي السداد' : 'Total Paid'}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Accordion Explaining the concept */}
+      {/* 6. Expandable Financial Tip */}
       <Pressable
         onPress={() => {
           Haptics.selectionAsync();
@@ -605,7 +755,7 @@ export default function SmartFinanceCalculator({
         <View style={styles.accordionHeaderLeft}>
           <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
           <Text style={[styles.accordionTitle, { color: colors.text }]}>
-            {isAr ? '💡 كيف تعمل هذه الاستراتيجية؟ ومتى تطبقها؟' : '💡 How does this strategy work?'}
+            {isAr ? '💡 نصائح ذهبية عند الشراء كاش أو قسط' : '💡 Golden Rules for Cash vs Installment'}
           </Text>
         </View>
         <Ionicons
@@ -619,25 +769,23 @@ export default function SmartFinanceCalculator({
         <View style={[styles.accordionBody, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
           <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
             {isAr
-              ? `1️⃣ تكلفة الفرصة البديلة (Opportunity Cost): عندما تشتري كاش في بيئة ذات فائدة وتضخم مرتفع، فإنك تضحي بالأرباح التي كان من الممكن أن يولدها رأس مالك شهرياً.\n\n` +
-                `2️⃣ سداد القسط من الأرباح (Yield-funded): بوضع ثمن السلعة في شهادات أو أذون خزانة، يقوم البنك بدفع أرباح شهرية لك، وتلك الأرباح تسدد الجزء الأكبر من قسطك الشهري.\n\n` +
-                `3️⃣ التضخم لصالحك: بعد مرور سنتين أو 3 سنوات، القسط الثابت بالجنيه تقل قيمته الشرائية بفعل التضخم، بينما أصل مالك وأرباحك ظلت تنمو.\n\n` +
-                `⚠️ شروط الأمان المالي: هذه الخطة تشترط أن يكون لديك ثمن السلعة بالفعل ولا تخاطر به في استثمارات مجهولة، بل في أوعية آمنة (شهادات/أذون/صناديق نقدية) مع التزامك بالانضباط بعدم سحب رأس المال.`
-              : `1️⃣ Opportunity Cost: Paying cash destroys the monthly returns your capital could generate.\n\n` +
-                `2️⃣ Yield-funded debt: High-yield CDs or T-bills generate monthly interest that pays the majority of your installment.\n\n` +
-                `3️⃣ Inflation leverage: Fixed installment burdens decrease in real value over time, while your invested capital remains yours.\n\n` +
-                `⚠️ Safety First: This strategy requires having the liquidity upfront and placing it strictly into low-risk, guaranteed yield vehicles.`}
+              ? `1️⃣ متى تختار التقسيط؟\n- إذا كان بدون فوائد ومصاريف إدارية (0%)، فهو دائماً خيار ممتاز للحفاظ على السيولة.\n- إذا كانت الأقساط الشهرية لا تتعدى 25% من دخلك الشهري.\n\n` +
+                `2️⃣ متى تختار الكاش؟\n- إذا كان التاجر يضيف فائدة كبيرة تفوق أي عائد استثماري قد تحققه.\n- إذا كنت تملك سيولة طوارئ كافية ولا تريد التزامات شهرية تشغل بالك.\n\n` +
+                `3️⃣ من أين تأتي الفائدة؟\n- فائدة التقسيط ليست رقماً عشوائياً، بل هي (إجمالي ما ستدفعه مقسطاً مطروحاً منه سعر الكاش). ميزان يحسبها لك آلياً بدقة.`
+              : `1️⃣ When to choose installment?\n- Zero-interest promotions (0% APR) preserve liquidity.\n- When monthly debt remains under 25% of your income.\n\n` +
+                `2️⃣ When to choose cash?\n- When financing markup is higher than safe investment yields.\n- When you have plenty of emergency savings and want peace of mind.\n\n` +
+                `3️⃣ How is interest calculated?\n- It is the exact difference between total installments paid and the cash price.`}
           </Text>
         </View>
       )}
 
-      {/* Action Button: Save as Plan into Mizan */}
+      {/* 7. Action Button: Save as Active Installment */}
       <Pressable
         onPress={handleSaveToInstallments}
         disabled={isSaving}
         style={({ pressed }) => [
           styles.actionBtn,
-          { backgroundColor: '#8B5CF6' },
+          { backgroundColor: colors.primary },
           pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
         ]}
       >
@@ -645,7 +793,7 @@ export default function SmartFinanceCalculator({
         <Text style={styles.actionBtnText}>
           {isSaving
             ? (isAr ? 'جاري الحفظ...' : 'Saving...')
-            : (isAr ? 'اعتماد الخطة وحفظها كقسط في ميزان 🚀' : 'Save Plan as Active Installment 🚀')}
+            : (isAr ? 'اعتماد وحفظ القسط في خطتك الشهرية 🚀' : 'Save Plan as Active Installment 🚀')}
         </Text>
       </Pressable>
     </ScrollView>
@@ -715,7 +863,7 @@ const styles = StyleSheet.create({
   },
   sectionHeaderTitle: {
     fontFamily: 'Cairo_700Bold',
-    fontSize: 15,
+    fontSize: 14,
   },
   inputGroup: {
     marginBottom: 14,
@@ -752,6 +900,41 @@ const styles = StyleSheet.create({
   presetBtnText: {
     fontFamily: 'Cairo_600SemiBold',
     fontSize: 12,
+  },
+  breakdownBox: {
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  breakdownLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 12,
+  },
+  breakdownVal: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 13,
+  },
+  breakdownDivider: {
+    height: 1,
+    marginVertical: 8,
+  },
+  switchHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   presetsColumn: {
     gap: 8,
@@ -794,6 +977,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_700Bold',
     fontSize: 13,
   },
+  yieldImpactBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 10,
+  },
   verdictCard: {
     borderRadius: 18,
     padding: 16,
@@ -820,37 +1012,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Cairo_400Regular',
     fontSize: 12,
     lineHeight: 18,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  metricCard: {
-    width: '48%',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  metricTitle: {
-    fontFamily: 'Cairo_600SemiBold',
-    fontSize: 11,
-  },
-  metricBigVal: {
-    fontFamily: 'Cairo_700Bold',
-    fontSize: 18,
-    marginBottom: 2,
-  },
-  metricSub: {
-    fontFamily: 'Cairo_400Regular',
-    fontSize: 10,
   },
   scenarioRow: {
     flexDirection: 'row',
@@ -919,7 +1080,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

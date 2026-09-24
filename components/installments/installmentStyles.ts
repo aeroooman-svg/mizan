@@ -189,6 +189,7 @@ export const getInstallmentStyles = (colors: any, theme: string) => StyleSheet.c
     gap: 4,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 16,
   },
   segmentBtn: {
     flex: 1,
@@ -884,4 +885,75 @@ export const getInstallmentStyles = (colors: any, theme: string) => StyleSheet.c
     color: colors.text,
     flex: 1,
   },
+  /* Quick Add Smart Modal */
+  quickAddOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  quickAddSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 36,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  quickAddHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  quickAddTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 17,
+    color: colors.text,
+  },
+  quickAddCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickAddCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    gap: 14,
+  },
+  quickAddCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickAddCardContent: {
+    flex: 1,
+  },
+  quickAddCardTitle: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 2,
+    textAlign: 'left',
+  },
+  quickAddCardSub: {
+    fontFamily: 'Cairo_400Regular',
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 16,
+  },
 });
+
