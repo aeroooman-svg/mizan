@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,6 +59,7 @@ export default function BankSmsScreen() {
   const { language } = useLanguage();
   const isAr = language === 'ar';
   const { wallets, selectedWallet, refresh } = useTransactions();
+  const params = useLocalSearchParams<{ text?: string }>();
 
   const loc = (ar: string, en: string, ml?: string) => {
     if (language === 'ml' || language === 'hi') return ml || en;
@@ -73,11 +74,21 @@ export default function BankSmsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('other');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [automationPlatform, setAutomationPlatform] = useState<'ios' | 'android'>(
+    Platform.OS === 'ios' ? 'ios' : 'android'
+  );
   const [settings, setSettings] = useState<ClipboardSmsSettings>({
     autoDetect: true,
     notifyHaptic: true,
     lastProcessedText: '',
   });
+
+  // Handle incoming deep link with text
+  useEffect(() => {
+    if (params.text && typeof params.text === 'string' && params.text.trim()) {
+      setInputText(params.text.trim());
+    }
+  }, [params.text]);
 
   // Load Settings
   useEffect(() => {
@@ -174,6 +185,20 @@ export default function BankSmsScreen() {
     const updated = await saveClipboardSmsSettings({ notifyHaptic: val });
     setSettings(updated);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleCopyAutomationLink = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Clipboard.setStringAsync('mizan://bank-sms?text=');
+      Alert.alert(
+        loc('تم نسخ الرابط 📋', 'Link Copied 📋'),
+        loc(
+          'تم نسخ رابط الأتمتة:\nmizan://bank-sms?text=\n\nيمكنك الآن استخدامه في إجراء "فتح العناوين" داخل اختصارات Apple أو تطبيقات أندرويد.',
+          'Automation link copied:\nmizan://bank-sms?text=\n\nPaste it into "Open URLs" in Apple Shortcuts or Android automation.'
+        )
+      );
+    } catch {}
   };
 
   const handleBack = () => {
@@ -506,6 +531,223 @@ export default function BankSmsScreen() {
           </View>
         </View>
 
+        {/* Instant Automation Guide (Apple iOS & Android) */}
+        <View style={[styles.card, { borderColor: '#8B5CF640' }]}>
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <View style={[styles.iconCircle, { backgroundColor: '#8B5CF620' }]}>
+                <Ionicons name="flash" size={18} color="#8B5CF6" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{loc('⚡ القراءة التلقائية الفورية للرسائل', '⚡ Instant Automatic SMS Reader')}</Text>
+                <Text style={styles.cardSubtitle}>
+                  {loc(
+                    'كيف تجعل هاتفك يقرأ رسالة البنك فور وصولها بضغطة موافقة واحدة؟',
+                    'How to automatically capture bank SMS with 1-tap confirmation'
+                  )}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Platform Toggle */}
+          <View style={styles.autoPlatformTabs}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAutomationPlatform('ios');
+              }}
+              style={[
+                styles.autoPlatformTab,
+                automationPlatform === 'ios' && styles.autoPlatformTabActive,
+              ]}
+            >
+              <Ionicons
+                name="logo-apple"
+                size={16}
+                color={automationPlatform === 'ios' ? '#FFF' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.autoPlatformTabText,
+                  automationPlatform === 'ios' && styles.autoPlatformTabTextActive,
+                ]}
+              >
+                {loc('آيفون (Apple iOS)', 'Apple iPhone')}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAutomationPlatform('android');
+              }}
+              style={[
+                styles.autoPlatformTab,
+                automationPlatform === 'android' && styles.autoPlatformTabActive,
+              ]}
+            >
+              <Ionicons
+                name="logo-android"
+                size={16}
+                color={automationPlatform === 'android' ? '#FFF' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.autoPlatformTabText,
+                  automationPlatform === 'android' && styles.autoPlatformTabTextActive,
+                ]}
+              >
+                {loc('أندرويد (Android)', 'Android')}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* iOS Content */}
+          {automationPlatform === 'ios' ? (
+            <View style={styles.autoStepsWrap}>
+              <View style={styles.autoStepRow}>
+                <View style={[styles.autoStepNum, { backgroundColor: '#8B5CF625' }]}>
+                  <Text style={[styles.autoStepNumText, { color: '#8B5CF6' }]}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.autoStepTitle, { color: colors.text }]}>
+                    {loc('افتح تطبيق "الاختصارات" (Shortcuts) في الآيفون', 'Open "Shortcuts" app on your iPhone')}
+                  </Text>
+                  <Text style={[styles.autoStepDesc, { color: colors.textSecondary }]}>
+                    {loc(
+                      'اضغط على تبويب "التحكم التلقائي" (Automation) بالأسفل ثم اضغط (+) لإنشاء تحكم تلقائي جديد.',
+                      'Go to the "Automation" tab at the bottom and tap (+) to create a new automation.'
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.autoStepRow}>
+                <View style={[styles.autoStepNum, { backgroundColor: '#8B5CF625' }]}>
+                  <Text style={[styles.autoStepNumText, { color: '#8B5CF6' }]}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.autoStepTitle, { color: colors.text }]}>
+                    {loc('اختر مشغّل "رسالة" (Message)', 'Select "Message" trigger')}
+                  </Text>
+                  <Text style={[styles.autoStepDesc, { color: colors.textSecondary }]}>
+                    {loc(
+                      'في خانة "الرسالة تحتوي على": ضع كلمات مثل (خصم، شراء، تحويل، سحب، رصيدك، CIB، الراجحي).',
+                      'In "Message Contains": add keywords like (Purchase, Debit, Transfer, CIB, AlRajhi).'
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.autoStepRow}>
+                <View style={[styles.autoStepNum, { backgroundColor: '#8B5CF625' }]}>
+                  <Text style={[styles.autoStepNumText, { color: '#8B5CF6' }]}>3</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.autoStepTitle, { color: colors.text }]}>
+                    {loc('أضف إجراء: "فتح العناوين" (Open URLs)', 'Add action: "Open URLs"')}
+                  </Text>
+                  <Text style={[styles.autoStepDesc, { color: colors.textSecondary }]}>
+                    {loc(
+                      'ضع الرابط التالي مع دمج محتوى الرسالة (Shortcut Input):',
+                      'Use this URL and append the Shortcut Input:'
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Copy URL Button */}
+              <Pressable
+                onPress={handleCopyAutomationLink}
+                style={({ pressed }) => [
+                  styles.copyUrlBtn,
+                  { backgroundColor: colors.surfaceAlt, borderColor: '#8B5CF660' },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <Ionicons name="link-outline" size={18} color="#8B5CF6" />
+                  <Text style={[styles.copyUrlText, { color: colors.text }]} numberOfLines={1}>
+                    mizan://bank-sms?text=
+                  </Text>
+                </View>
+                <View style={[styles.copyPill, { backgroundColor: '#8B5CF6' }]}>
+                  <Ionicons name="copy-outline" size={13} color="#FFF" />
+                  <Text style={styles.copyPillText}>{loc('نسخ الرابط', 'Copy URL')}</Text>
+                </View>
+              </Pressable>
+
+              <View style={[styles.autoTipBadge, { backgroundColor: '#10B98115' }]}>
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                <Text style={[styles.autoTipText, { color: '#10B981' }]}>
+                  {loc(
+                    'النتيجة: فور وصول رسالة البنك، ينقلك الآيفون بلمسة واحدة إلى ميزان لتأكيد المعاملة بضغطة موافقة واحدة! 🎉',
+                    'Result: Upon bank SMS arrival, iOS triggers Mizan with a 1-tap confirmation! 🎉'
+                  )}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.autoStepsWrap}>
+              <View style={styles.autoStepRow}>
+                <View style={[styles.autoStepNum, { backgroundColor: '#10B98125' }]}>
+                  <Text style={[styles.autoStepNumText, { color: '#10B981' }]}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.autoStepTitle, { color: colors.text }]}>
+                    {loc('الكشف الفوري عند النسخ (Zero-Setup)', 'Instant Clipboard Detection (Zero-Setup)')}
+                  </Text>
+                  <Text style={[styles.autoStepDesc, { color: colors.textSecondary }]}>
+                    {loc(
+                      'أسهل وأسرع طريقة: بمجرد نسخ أي رسالة أو إشعار بنكي وفتح تطبيق ميزان، تظهر لك نافذة منبثقة تلقائياً ببيانات المعاملة لتوكيدها بلمسة واحدة.',
+                      'Simply copy any bank notification/SMS. Upon opening Mizan, a 1-tap confirmation sheet appears.'
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.autoStepRow}>
+                <View style={[styles.autoStepNum, { backgroundColor: '#10B98125' }]}>
+                  <Text style={[styles.autoStepNumText, { color: '#10B981' }]}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.autoStepTitle, { color: colors.text }]}>
+                    {loc('الأتمتة التلقائية الكاملة عبر MacroDroid / Tasker', 'Full Automation via MacroDroid or Tasker')}
+                  </Text>
+                  <Text style={[styles.autoStepDesc, { color: colors.textSecondary }]}>
+                    {loc(
+                      'يمكنك إنشاء مهمة تستمع لإشعارات تطبيق البنك أو الـ SMS وتقوم بفتح الرابط المباشر أدناه لتسجيل المصروف لحظياً.',
+                      'Create a trigger on bank notification arrival to open the deep link below.'
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Copy URL Button */}
+              <Pressable
+                onPress={handleCopyAutomationLink}
+                style={({ pressed }) => [
+                  styles.copyUrlBtn,
+                  { backgroundColor: colors.surfaceAlt, borderColor: '#10B98160' },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <Ionicons name="link-outline" size={18} color="#10B981" />
+                  <Text style={[styles.copyUrlText, { color: colors.text }]} numberOfLines={1}>
+                    mizan://bank-sms?text=
+                  </Text>
+                </View>
+                <View style={[styles.copyPill, { backgroundColor: '#10B981' }]}>
+                  <Ionicons name="copy-outline" size={13} color="#FFF" />
+                  <Text style={styles.copyPillText}>{loc('نسخ الرابط', 'Copy URL')}</Text>
+                </View>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
         {/* Settings & Automation */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{loc('إعدادات الالتقاط الذكي', 'Smart Detection Settings')}</Text>
@@ -682,6 +924,12 @@ function getStyles(colors: any, theme: string) {
       fontFamily: 'Cairo_700Bold',
       fontSize: 14,
       color: colors.text,
+    },
+    cardSubtitle: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
     clearText: {
       fontFamily: 'Cairo_600SemiBold',
@@ -893,6 +1141,115 @@ function getStyles(colors: any, theme: string) {
       fontSize: 11,
       color: colors.textSecondary,
       marginTop: 2,
+      lineHeight: 16,
+    },
+    iconCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    autoPlatformTabs: {
+      flexDirection: 'row',
+      backgroundColor: isDark ? '#ffffff08' : '#00000006',
+      borderRadius: 12,
+      padding: 4,
+      gap: 6,
+      marginTop: 6,
+    },
+    autoPlatformTab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    autoPlatformTabActive: {
+      backgroundColor: colors.primary,
+    },
+    autoPlatformTabText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    autoPlatformTabTextActive: {
+      fontFamily: 'Cairo_700Bold',
+      color: '#FFFFFF',
+    },
+    autoStepsWrap: {
+      gap: 12,
+      marginTop: 8,
+    },
+    autoStepRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    autoStepNum: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    autoStepNumText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+    },
+    autoStepTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+    },
+    autoStepDesc: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      marginTop: 2,
+      lineHeight: 16,
+    },
+    copyUrlBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      marginTop: 4,
+    },
+    copyUrlText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      flex: 1,
+    },
+    copyPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+    },
+    copyPillText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 11,
+      color: '#FFFFFF',
+    },
+    autoTipBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      padding: 10,
+      borderRadius: 10,
+      marginTop: 4,
+    },
+    autoTipText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 11,
+      flex: 1,
       lineHeight: 16,
     },
   });

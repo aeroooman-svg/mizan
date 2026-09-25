@@ -92,7 +92,7 @@ export default function SmartFinanceCalculator({
   const currencyDefaults = useMemo(() => getCurrencyDefaults(currency), [currency]);
 
   // Form Inputs
-  const [productTitle, setProductTitle] = useState(isAr ? 'هاتف ذكي / جهاز' : 'Smartphone / Gadget');
+  const [productTitle, setProductTitle] = useState('');
   const [cashPriceInput, setCashPriceInput] = useState(currencyDefaults.cashPrice);
   const [downPaymentInput, setDownPaymentInput] = useState(currencyDefaults.downPayment);
   const [monthsInput, setMonthsInput] = useState(currencyDefaults.months);

@@ -1477,8 +1477,6 @@ export default function StatsScreen() {
           theme={theme}
           t={t}
         />
-        </>
-        )}
 
         {/* Dedicated Premium Budgets Dashboard */}
         <View style={styles.budgetsSection}>
@@ -1573,6 +1571,8 @@ export default function StatsScreen() {
             </View>
           )}
         </View>
+        </>
+        )}
       </ScrollView>
 
       {/* Manage Budgets Modal */}

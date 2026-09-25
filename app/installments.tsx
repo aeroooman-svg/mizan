@@ -675,109 +675,150 @@ export default function InstallmentsScreen({ initialTab }: InstallmentsScreenPro
         {activeTab === 'installments' ? (
           <>
             {/* Installments Executive Summary Hero Banner */}
-            <LinearGradient
-              colors={
-                theme === 'dark'
-                  ? ['#1E1B4B', '#111827', '#0A1128']
-                  : ['#EEF2FF', '#E0E7FF', '#EFF6FF']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroBanner}
-            >
-              <View style={styles.heroTopRow}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.heroPositionBadge}>
-                    <Ionicons name="shield-checkmark" size={14} color={safetyLevel.color} />
-                    <Text style={[styles.heroPositionText, { color: safetyLevel.color }]}>
-                      {safetyLevel.label} {userHasIncome ? `(${obligationRatio}% ${isAr ? 'من الدخل' : 'of income'})` : ''}
+            {activePlans.length > 0 ? (
+              <LinearGradient
+                colors={
+                  theme === 'dark'
+                    ? ['#1E1B4B', '#111827', '#0A1128']
+                    : ['#EEF2FF', '#E0E7FF', '#EFF6FF']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroBanner}
+              >
+                <View style={styles.heroTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.heroPositionBadge}>
+                      <Ionicons name="shield-checkmark" size={14} color={safetyLevel.color} />
+                      <Text style={[styles.heroPositionText, { color: safetyLevel.color }]}>
+                        {safetyLevel.label} {userHasIncome ? `(${obligationRatio}% ${isAr ? 'من الدخل' : 'of income'})` : ''}
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.heroMainAmount, { color: theme === 'dark' ? '#FFF' : '#1E293B' }]}>
+                      {formatCurrency(totalRemainingDebt)}{' '}
+                      <Text style={styles.heroCurrencySymbol}>{currency}</Text>
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                      {isAr ? 'إجمالي المتبقي من الديون والأقساط' : 'Total Remaining Debt'}
                     </Text>
                   </View>
 
-                  <Text style={[styles.heroMainAmount, { color: theme === 'dark' ? '#FFF' : '#1E293B' }]}>
-                    {formatCurrency(totalRemainingDebt)}{' '}
-                    <Text style={styles.heroCurrencySymbol}>{currency}</Text>
-                  </Text>
-                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
-                    {isAr ? 'إجمالي المتبقي من الديون والأقساط' : 'Total Remaining Debt'}
-                  </Text>
-                </View>
-
-                <View style={[styles.heroIconBadge, { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)' }]}>
-                  <MaterialCommunityIcons
-                    name="credit-card-chip-outline"
-                    size={30}
-                    color="#6366F1"
-                  />
-                </View>
-              </View>
-
-              {/* Sub Metrics Grid */}
-              <View style={styles.heroSubGrid}>
-                <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
-                  <View style={styles.heroSubCardHeader}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.primary} />
-                    <Text style={styles.heroSubLabel}>{isAr ? 'الالتزام الشهري' : 'Monthly Due'}</Text>
+                  <View style={[styles.heroIconBadge, { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)' }]}>
+                    <MaterialCommunityIcons
+                      name="credit-card-chip-outline"
+                      size={30}
+                      color="#6366F1"
+                    />
                   </View>
-                  <Text style={[styles.heroSubVal, { color: colors.primary }]}>
-                    {formatCurrency(totalMonthlyCommitment)} <Text style={{ fontSize: 9 }}>{currency}</Text>
-                  </Text>
-                  <Text style={styles.heroSubCount}>
-                    {activePlans.length} {isAr ? 'أقساط نشطة' : 'plans'}
-                  </Text>
                 </View>
 
-                <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
-                  <View style={styles.heroSubCardHeader}>
-                    <Ionicons name="pie-chart-outline" size={13} color={isDebtOverIncome ? '#EF4444' : '#F59E0B'} />
-                    <Text style={styles.heroSubLabel}>{isAr ? 'نسبة الاستقطاع' : 'Income Ratio'}</Text>
+                {/* Sub Metrics Grid */}
+                <View style={styles.heroSubGrid}>
+                  <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+                    <View style={styles.heroSubCardHeader}>
+                      <Ionicons name="calendar-outline" size={13} color={colors.primary} />
+                      <Text style={styles.heroSubLabel}>{isAr ? 'الالتزام الشهري' : 'Monthly Due'}</Text>
+                    </View>
+                    <Text style={[styles.heroSubVal, { color: colors.primary }]}>
+                      {formatCurrency(totalMonthlyCommitment)} <Text style={{ fontSize: 9 }}>{currency}</Text>
+                    </Text>
+                    <Text style={styles.heroSubCount}>
+                      {activePlans.length} {isAr ? 'أقساط نشطة' : 'plans'}
+                    </Text>
                   </View>
-                  <Text style={[styles.heroSubVal, { color: isDebtOverIncome ? '#EF4444' : '#F59E0B' }]}>
-                    {userHasIncome ? (isDebtOverIncome ? '>100%' : `${obligationRatio}%`) : '--'}
-                  </Text>
-                  <Text style={styles.heroSubCount}>
-                    {userHasIncome ? (isAr ? 'من الدخل الشهري' : 'of income') : (isAr ? 'حدد الدخل' : 'Set income')}
-                  </Text>
-                </View>
 
-                <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
-                  <View style={styles.heroSubCardHeader}>
-                    <Ionicons name="sparkles-outline" size={13} color="#10B981" />
-                    <Text style={styles.heroSubLabel}>{isAr ? 'التحرر التام' : 'Freedom Date'}</Text>
+                  <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+                    <View style={styles.heroSubCardHeader}>
+                      <Ionicons name="pie-chart-outline" size={13} color={isDebtOverIncome ? '#EF4444' : '#F59E0B'} />
+                      <Text style={styles.heroSubLabel}>{isAr ? 'نسبة الاستقطاع' : 'Income Ratio'}</Text>
+                    </View>
+                    <Text style={[styles.heroSubVal, { color: isDebtOverIncome ? '#EF4444' : '#F59E0B' }]}>
+                      {userHasIncome ? (isDebtOverIncome ? '>100%' : `${obligationRatio}%`) : '--'}
+                    </Text>
+                    <Text style={styles.heroSubCount}>
+                      {userHasIncome ? (isAr ? 'من الدخل الشهري' : 'of income') : (isAr ? 'حدد الدخل' : 'Set income')}
+                    </Text>
                   </View>
-                  <Text style={[styles.heroSubVal, { color: '#10B981', fontSize: 11 }]} numberOfLines={1}>
-                    {freedomDateFormatted || (isAr ? 'محرر ماليّاً' : 'Debt-Free')}
-                  </Text>
-                  <Text style={styles.heroSubCount}>
-                    {isAr ? 'خطة تصفية الديون' : 'target date'}
-                  </Text>
-                </View>
-              </View>
 
-              {/* Alert Notice Tag inside Hero */}
-              {urgentStats.overdueCount > 0 ? (
-                <View style={[styles.heroNoticeTag, { backgroundColor: '#EF444425' }]}>
-                  <Ionicons name="alert-circle" size={15} color="#EF4444" />
-                  <Text style={[styles.heroNoticeText, { color: '#EF4444' }]} numberOfLines={1}>
-                    {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط متأخر يستوجب السداد فوراً!` : `Alert: ${urgentStats.overdueCount} overdue installment(s)!`}
-                  </Text>
+                  <View style={[styles.heroSubCard, { backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.32)' : 'rgba(255,255,255,0.75)' }]}>
+                    <View style={styles.heroSubCardHeader}>
+                      <Ionicons name="sparkles-outline" size={13} color="#10B981" />
+                      <Text style={styles.heroSubLabel}>{isAr ? 'التحرر التام' : 'Freedom Date'}</Text>
+                    </View>
+                    <Text style={[styles.heroSubVal, { color: '#10B981', fontSize: 11 }]} numberOfLines={1}>
+                      {freedomDateFormatted || (isAr ? 'محرر ماليّاً' : 'Debt-Free')}
+                    </Text>
+                    <Text style={styles.heroSubCount}>
+                      {isAr ? 'خطة تصفية الديون' : 'target date'}
+                    </Text>
+                  </View>
                 </View>
-              ) : urgentStats.dueSoonCount > 0 ? (
-                <View style={styles.heroNoticeTag}>
-                  <Ionicons name="time-outline" size={15} color="#F59E0B" />
-                  <Text style={styles.heroNoticeText} numberOfLines={1}>
-                    {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
-                  </Text>
+
+                {/* Alert Notice Tag inside Hero */}
+                {urgentStats.overdueCount > 0 ? (
+                  <View style={[styles.heroNoticeTag, { backgroundColor: '#EF444425' }]}>
+                    <Ionicons name="alert-circle" size={15} color="#EF4444" />
+                    <Text style={[styles.heroNoticeText, { color: '#EF4444' }]} numberOfLines={1}>
+                      {isAr ? `تنبيه عاجل: لديك ${urgentStats.overdueCount} قسط متأخر يستوجب السداد فوراً!` : `Alert: ${urgentStats.overdueCount} overdue installment(s)!`}
+                    </Text>
+                  </View>
+                ) : urgentStats.dueSoonCount > 0 ? (
+                  <View style={styles.heroNoticeTag}>
+                    <Ionicons name="time-outline" size={15} color="#F59E0B" />
+                    <Text style={styles.heroNoticeText} numberOfLines={1}>
+                      {isAr ? `تنبيه: لديك ${urgentStats.dueSoonCount} قسط قادم خلال هذا الشهر` : `Notice: ${urgentStats.dueSoonCount} installment(s) due soon`}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.heroNoticeTag, { backgroundColor: '#10B98120' }]}>
+                    <Ionicons name="checkmark-done-circle" size={15} color="#10B981" />
+                    <Text style={[styles.heroNoticeText, { color: '#10B981' }]} numberOfLines={1}>
+                      {isAr ? 'وضعك ممتاز! جميع أقساط هذا الشهر مسددة بالكامل 🎉' : 'All clear! All installments for this month paid 🎉'}
+                    </Text>
+                  </View>
+                )}
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={
+                  theme === 'dark'
+                    ? ['#064E3B20', '#111827', '#0F172A']
+                    : ['#ECFDF5', '#D1FAE5', '#F8FAFC']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.heroBanner, { borderColor: '#10B98130', borderWidth: 1 }]}
+              >
+                <View style={styles.heroTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={[styles.heroPositionBadge, { backgroundColor: '#10B98118' }]}>
+                      <Ionicons name="sparkles" size={13} color="#10B981" />
+                      <Text style={[styles.heroPositionText, { color: '#10B981' }]}>
+                        {isAr ? 'حرية مالية كاملة 🛡️' : 'Debt-Free Zone 🛡️'}
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.heroMainAmount, { color: '#10B981', fontSize: 20, marginTop: 4 }]}>
+                      {isAr ? 'لا توجد أي أقساط أو ديون مسجلة' : 'Zero Debts & Installments'}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, marginTop: 2, lineHeight: 18 }}>
+                      {isAr
+                        ? 'سجلك نظيف وخالٍ من الأقساط. يمكنك إضافة أي التزام جديد لجدولته ومتابعة استقطاعه من دخلك بدقة.'
+                        : 'Your record is completely clean. Add an installment to schedule and track commitments.'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.heroIconBadge, { backgroundColor: '#10B98118' }]}>
+                    <Ionicons
+                      name="shield-checkmark"
+                      size={28}
+                      color="#10B981"
+                    />
+                  </View>
                 </View>
-              ) : activePlans.length > 0 ? (
-                <View style={[styles.heroNoticeTag, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="checkmark-done-circle" size={15} color="#10B981" />
-                  <Text style={[styles.heroNoticeText, { color: '#10B981' }]} numberOfLines={1}>
-                    {isAr ? 'وضعك ممتاز! جميع أقساط هذا الشهر مسددة بالكامل 🎉' : 'All clear! All installments for this month paid 🎉'}
-                  </Text>
-                </View>
-              ) : null}
-            </LinearGradient>
+              </LinearGradient>
+            )}
 
             {/* Direct Add Installment Shortcut Banner */}
             <Pressable
