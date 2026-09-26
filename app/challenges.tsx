@@ -12,16 +12,17 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTransactions } from '@/lib/TransactionContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { getFinancialPlan } from '@/lib/planStorage';
 import { getBudgetsForWallet } from '@/lib/budgetStorage';
-import { expenseCategories, formatCurrency } from '@/lib/categories';
+import { expenseCategories } from '@/lib/categories';
 import {
   CustomChallenge,
   getCustomChallenges,
@@ -34,7 +35,18 @@ import {
   getUserLevel,
   calculateStreak,
   calculateWalletHealth,
+  getTreeCareState,
+  saveTreeCareState,
+  getDailyMysteryChest,
+  claimDailyMysteryChest,
+  getDailyQuizAnswered,
+  saveDailyQuizAnswered,
 } from '@/lib/gamificationStorage';
+
+import MoneyTreeGarden from '@/components/gamification/MoneyTreeGarden';
+import MysteryChestSection from '@/components/gamification/MysteryChestSection';
+import DailyQuizSection from '@/components/gamification/DailyQuizSection';
+import CelebrationConfetti from '@/components/gamification/CelebrationConfetti';
 
 type ActiveTab = 'challenges' | 'quests' | 'badges';
 
@@ -42,7 +54,7 @@ export default function ChallengesScreen() {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const insets = useSafeAreaInsets();
-  const { transactions, wallets, selectedWallet, selectWallet, currencySymbol, currencyCode } = useTransactions();
+  const { transactions, wallets, selectedWallet, currencySymbol, currencyCode } = useTransactions();
   const { language } = useLanguage();
   const isAr = language === 'ar';
 
@@ -56,6 +68,15 @@ export default function ChallengesScreen() {
   const [bonusXP, setBonusXP] = useState<number>(0);
   const [hasPlan, setHasPlan] = useState(false);
   const [hasBudgets, setHasBudgets] = useState(false);
+
+  // Tree & Garden State
+  const [treeCareState, setTreeCareState] = useState<{ watered: boolean; harvested: boolean }>({
+    watered: false,
+    harvested: false,
+  });
+  const [mysteryChestOpened, setMysteryChestOpened] = useState(false);
+  const [dailyQuizAnswered, setDailyQuizAnswered] = useState(false);
+  const [confettiActive, setConfettiActive] = useState(false);
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,16 +113,29 @@ export default function ChallengesScreen() {
       .reduce((sum, t) => sum + t.amount, 0);
   }, [activeWalletTransactions]);
 
-  // Load custom challenges and quests data
+  const savingsRate = useMemo(() => {
+    if (activeWalletIncome <= 0) return 0;
+    const diff = activeWalletIncome - activeWalletExpense;
+    return Math.max(0, Math.min(100, (diff / activeWalletIncome) * 100));
+  }, [activeWalletIncome, activeWalletExpense]);
+
+  // Load gamification data
   const loadGamificationData = useCallback(async () => {
-    const [cChallenges, claimed, bXP] = await Promise.all([
+    const [cChallenges, claimed, bXP, treeState, chestOpened, quizAnswered] = await Promise.all([
       getCustomChallenges(),
       getClaimedDailyQuests(todayKey),
       getBonusXP(),
+      getTreeCareState(todayKey),
+      getDailyMysteryChest(todayKey),
+      getDailyQuizAnswered(todayKey),
     ]);
+
     setCustomChallenges(cChallenges);
     setClaimedQuests(claimed);
     setBonusXP(bXP);
+    setTreeCareState(treeState);
+    setMysteryChestOpened(chestOpened);
+    setDailyQuizAnswered(quizAnswered);
 
     if (selectedWallet) {
       const plan = await getFinancialPlan(selectedWallet.id);
@@ -115,11 +149,17 @@ export default function ChallengesScreen() {
     loadGamificationData();
   }, [loadGamificationData]);
 
+  const triggerConfetti = () => {
+    setConfettiActive(false);
+    setTimeout(() => {
+      setConfettiActive(true);
+    }, 50);
+  };
+
   // Calculations
   const streakDays = useMemo(() => calculateStreak(transactions), [transactions]);
 
-  // --- Dynamic Built-in Challenges ---
-  // 1. Coffee Saver Challenge: No shopping or entertainment in last 5 days
+  // 1. Coffee Saver Challenge
   const coffeeProgress = useMemo(() => {
     const nonEssentialCats = ['shopping', 'entertainment'];
     const now = new Date();
@@ -135,15 +175,15 @@ export default function ChallengesScreen() {
     return Math.max(0, 100 - nonEssentialTx.length * 20);
   }, [activeWalletTransactions]);
 
-  // 2. 50% Savings Challenge: save >= 50% of income
+  // 2. 50% Savings Challenge
   const savingsChallengeProgress = useMemo(() => {
     if (activeWalletIncome <= 0) return 0;
     const actualSavings = activeWalletIncome - activeWalletExpense;
-    const savingsRatio = actualSavings / activeWalletIncome;
-    return Math.min(100, Math.max(0, Math.round((savingsRatio / 0.5) * 100)));
+    const ratio = actualSavings / activeWalletIncome;
+    return Math.min(100, Math.max(0, Math.round((ratio / 0.5) * 100)));
   }, [activeWalletIncome, activeWalletExpense]);
 
-  // 3. No-Spend Week: non-essential expenses < 15 KWD or equivalent in 7 days
+  // 3. No-Spend Week
   const noSpendWeekProgress = useMemo(() => {
     const essentialCategories = ['rent', 'bills', 'health', 'education', 'salary', 'freelance', 'investment', 'gift', 'bonus', 'jameya_savings', 'debt_loan'];
     const now = new Date();
@@ -163,7 +203,7 @@ export default function ChallengesScreen() {
     return Math.round(((limit - nonEssentialTotal) / limit) * 100);
   }, [activeWalletTransactions, currencyCode]);
 
-  // 4. Budget Guardian Challenge (Spend < 85% of total budget/income)
+  // 4. Budget Guardian Challenge
   const budgetDisciplineProgress = useMemo(() => {
     if (activeWalletIncome <= 0) return 50;
     const ratio = activeWalletExpense / activeWalletIncome;
@@ -172,7 +212,7 @@ export default function ChallengesScreen() {
     return Math.round((1 - (ratio - 0.7) / 0.3) * 100);
   }, [activeWalletIncome, activeWalletExpense]);
 
-  // --- Dynamic Badges Calculations ---
+  // Badges calculations
   const badgeFirstStepCount = transactions.length;
   const badgeFirstStepTier = badgeFirstStepCount >= 100 ? 4 : badgeFirstStepCount >= 30 ? 3 : badgeFirstStepCount >= 5 ? 2 : badgeFirstStepCount >= 1 ? 1 : 0;
   const badgePlanMaster = hasPlan;
@@ -180,9 +220,8 @@ export default function ChallengesScreen() {
   const badgeFrugalHero = activeWalletIncome > 0 && (activeWalletExpense / activeWalletIncome) <= 0.5;
   const badgeStreakTier = streakDays >= 30 ? 4 : streakDays >= 14 ? 3 : streakDays >= 7 ? 2 : streakDays >= 3 ? 1 : 0;
   const badgeMultiWallet = wallets.length >= 2;
-  const badgeCustomChampion = customChallenges.length >= 1;
 
-  // Total XP Calculation
+  // Total XP
   const totalXP = useMemo(() => {
     let xp = transactions.length * 10;
     if (coffeeProgress === 100) xp += 150;
@@ -235,7 +274,9 @@ export default function ChallengesScreen() {
     });
 
     const hasLoggedToday = todayTxs.length > 0;
-    const hasNoShoppingToday = !todayTxs.some(t => t.type === 'expense' && (t.category === 'shopping' || t.category === 'entertainment'));
+    const hasNoShoppingToday = !todayTxs.some(
+      t => t.type === 'expense' && (t.category === 'shopping' || t.category === 'entertainment')
+    );
 
     return [
       {
@@ -250,9 +291,20 @@ export default function ChallengesScreen() {
         claimed: claimedQuests.includes('quest_log_tx'),
       },
       {
+        id: 'quest_water_tree',
+        titleAr: 'رعاية وسقي شجرة الثروة',
+        titleEn: 'Tend Your Money Tree',
+        descAr: 'اروَ شجرتك يومياً لتعزيز صحتها المالية',
+        descEn: 'Water your money tree to keep its vitality glowing',
+        xp: 20,
+        icon: 'water-outline',
+        completed: treeCareState.watered,
+        claimed: claimedQuests.includes('quest_water_tree'),
+      },
+      {
         id: 'quest_no_shopping',
         titleAr: 'يوم بلا تسوق عاطفي',
-        titleEn: 'Zero Shopping Day',
+        titleEn: 'Zero Impulse Shopping',
         descAr: 'تجنب الصرف على كماليات التسوق والترفيه اليوم',
         descEn: 'Avoid spending on shopping or luxury entertainment today',
         xp: 30,
@@ -263,7 +315,7 @@ export default function ChallengesScreen() {
       {
         id: 'quest_check_wallets',
         titleAr: 'مراجعة أرصدة المحافظ',
-        titleEn: 'Check Wallet Balances',
+        titleEn: 'Review Wallet Balances',
         descAr: 'تفقد صحة وتوازن محافظك المالية',
         descEn: 'Review the health and balance of your wallets',
         xp: 15,
@@ -271,24 +323,58 @@ export default function ChallengesScreen() {
         completed: true,
         claimed: claimedQuests.includes('quest_check_wallets'),
       },
-      {
-        id: 'quest_daily_wisdom',
-        titleAr: 'الحكمة المالية اليومية',
-        titleEn: 'Daily Financial Wisdom',
-        descAr: 'القاعدة الذهبية: "لا توفر ما يتبقى بعد الصرف، بل اصرف ما يتبقى بعد التوفير"',
-        descEn: '"Do not save what is left after spending, but spend what is left after saving"',
-        xp: 20,
-        icon: 'bulb-outline',
-        completed: true,
-        claimed: claimedQuests.includes('quest_daily_wisdom'),
-      },
     ];
-  }, [transactions, claimedQuests]);
+  }, [transactions, claimedQuests, treeCareState.watered]);
+
+  const canUnlockMysteryChest = useMemo(() => {
+    return (
+      claimedQuests.length > 0 ||
+      transactions.some(t => {
+        const d = new Date(t.date);
+        const now = new Date();
+        return d.toDateString() === now.toDateString();
+      })
+    );
+  }, [claimedQuests.length, transactions]);
+
+  // Handlers
+  const handleWaterTree = async () => {
+    await saveTreeCareState(todayKey, { watered: true });
+    await addBonusXP(15);
+    setTreeCareState(prev => ({ ...prev, watered: true }));
+    triggerConfetti();
+    loadGamificationData();
+  };
+
+  const handleHarvestFruits = async () => {
+    await saveTreeCareState(todayKey, { harvested: true });
+    await addBonusXP(25);
+    setTreeCareState(prev => ({ ...prev, harvested: true }));
+    triggerConfetti();
+    loadGamificationData();
+  };
+
+  const handleOpenMysteryChest = async (rewardXP: number) => {
+    await claimDailyMysteryChest(todayKey);
+    await addBonusXP(rewardXP);
+    setMysteryChestOpened(true);
+    triggerConfetti();
+    loadGamificationData();
+  };
+
+  const handleAnswerQuiz = async (rewardXP: number) => {
+    await saveDailyQuizAnswered(todayKey);
+    await addBonusXP(rewardXP);
+    setDailyQuizAnswered(true);
+    triggerConfetti();
+    loadGamificationData();
+  };
 
   const handleClaimQuest = async (questId: string, xpReward: number) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await claimDailyQuest(questId, todayKey);
     await addBonusXP(xpReward);
+    triggerConfetti();
     await loadGamificationData();
   };
 
@@ -323,6 +409,7 @@ export default function ChallengesScreen() {
 
     await saveCustomChallenge(newChallenge);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    triggerConfetti();
     setShowCreateModal(false);
     setChallengeTitle('');
     setChallengeTargetAmount('');
@@ -366,29 +453,32 @@ export default function ChallengesScreen() {
 
   // Translations
   const t = {
-    title: isAr ? 'التحديات والمستويات' : 'Challenges & Levels',
+    title: isAr ? 'التحديات وشجرة الثروة' : 'Challenges & Wealth Tree',
     allWallets: isAr ? 'جميع المحافظ' : 'All Wallets',
     healthTitle: isAr ? 'مؤشر صحة المحفظة' : 'Wallet Health Score',
     tabChallenges: isAr ? 'تحديات الادخار' : 'Challenges',
     tabQuests: isAr ? 'المهام اليومية' : 'Daily Quests',
     tabBadges: isAr ? 'خزانة الأوسمة' : 'Badges',
-    streakLabel: isAr ? 'سلسلة الالتزام' : 'Streak',
     streakDays: isAr ? `${streakDays} أيام 🔥` : `${streakDays} Days 🔥`,
-    streakSub: isAr ? 'استمر في تسجيل معاملاتك يومياً لرفع رتبتك' : 'Keep logging transactions to maintain your streak',
     levelLabel: isAr ? `المستوى ${levelInfo.current.level}` : `Level ${levelInfo.current.level}`,
     xpToNext: levelInfo.next
-      ? (isAr ? `${levelInfo.next.minXP - totalXP} XP للمستوى التالي` : `${levelInfo.next.minXP - totalXP} XP to Next Level`)
-      : (isAr ? 'وصلت للحد الأقصى!' : 'Max Level Reached!'),
-    createChallenge: isAr ? '+ تحدي مخصص' : '+ Custom Challenge',
+      ? isAr
+        ? `${levelInfo.next.minXP - totalXP} XP للمستوى القادم`
+        : `${levelInfo.next.minXP - totalXP} XP to Next Rank`
+      : isAr
+      ? 'وصلت للحد الأقصى! 👑'
+      : 'Max Level Reached! 👑',
     customChallengesHeader: isAr ? 'تحدياتك المخصصة' : 'Your Custom Challenges',
-    noCustomChallenges: isAr ? 'لم تنشئ أي تحدٍ مخصص بعد. اضغط على الزر بالأعلى للبدء!' : 'No custom challenges yet. Tap above to create one!',
+    noCustomChallenges: isAr
+      ? 'لم تنشئ أي تحدٍ مخصص بعد. اضغط على الزر بالأعلى للبدء!'
+      : 'No custom challenges yet. Tap above to create one!',
     claim: isAr ? 'استلام' : 'Claim',
     claimed: isAr ? 'تم الاستلام ✓' : 'Claimed ✓',
     active: isAr ? 'نشط' : 'Active',
     completed: isAr ? 'مكتمل 🎉' : 'Completed 🎉',
   };
 
-  // Tiered Badges List
+  // Tiered Badges
   const badgesList = [
     {
       id: 'first_step',
@@ -466,6 +556,9 @@ export default function ChallengesScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Confetti Particle Burst */}
+      <CelebrationConfetti active={confettiActive} onFinish={() => setConfettiActive(false)} />
+
       {/* HEADER ROW */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 12 }]}>
         <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
@@ -479,7 +572,7 @@ export default function ChallengesScreen() {
           }}
           style={styles.headerActionBtn}
         >
-          <Ionicons name="add-circle" size={26} color={colors.primary} />
+          <Ionicons name="add-circle" size={28} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -494,7 +587,7 @@ export default function ChallengesScreen() {
           <View style={styles.heroTopRow}>
             <View style={styles.levelBadgeContainer}>
               <View style={[styles.levelIconCircle, { backgroundColor: levelInfo.current.color + '33' }]}>
-                <Ionicons name={levelInfo.current.icon as any} size={24} color="#FDE047" />
+                <Ionicons name={levelInfo.current.icon as any} size={26} color="#FDE047" />
               </View>
               <View>
                 <Text style={styles.heroLevelTag}>{t.levelLabel}</Text>
@@ -503,7 +596,7 @@ export default function ChallengesScreen() {
             </View>
 
             <View style={styles.heroStreakBadge}>
-              <Ionicons name="flame" size={18} color="#F97316" />
+              <Ionicons name="flame" size={20} color="#F97316" />
               <Text style={styles.heroStreakText}>{t.streakDays}</Text>
             </View>
           </View>
@@ -520,7 +613,34 @@ export default function ChallengesScreen() {
           </View>
         </LinearGradient>
 
-        {/* 2. WALLET SELECTOR & HEALTH SCORE */}
+        {/* 2. THE LIVING MONEY TREE GARDEN */}
+        <MoneyTreeGarden
+          userLevel={levelInfo.current.level}
+          healthScore={walletHealth.score}
+          isAr={isAr}
+          watered={treeCareState.watered}
+          harvested={treeCareState.harvested}
+          onWaterTree={handleWaterTree}
+          onHarvestFruits={handleHarvestFruits}
+          savingsRate={savingsRate}
+        />
+
+        {/* 3. DAILY MYSTERY CHEST */}
+        <MysteryChestSection
+          isAr={isAr}
+          openedToday={mysteryChestOpened}
+          canUnlock={canUnlockMysteryChest}
+          onOpenChest={handleOpenMysteryChest}
+        />
+
+        {/* 4. DAILY FLASH QUIZ */}
+        <DailyQuizSection
+          isAr={isAr}
+          answeredToday={dailyQuizAnswered}
+          onAnswerCorrect={handleAnswerQuiz}
+        />
+
+        {/* 5. WALLET SELECTOR & HEALTH SCORE */}
         <View style={styles.walletFilterSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
             <Pressable
@@ -573,7 +693,7 @@ export default function ChallengesScreen() {
           </View>
         </View>
 
-        {/* 3. TABS SELECTOR */}
+        {/* 6. TABS SELECTOR */}
         <View style={styles.tabsRow}>
           <Pressable
             onPress={() => {
@@ -827,8 +947,8 @@ export default function ChallengesScreen() {
               <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.questsNoticeText}>
                 {isAr
-                  ? 'تتجدد هذه المهام يومياً لكسب نقاط XP ورفع مستواك المالي.'
-                  : 'Daily quests reset every day to earn XP and level up faster.'}
+                  ? 'تتجدد هذه المهام يومياً لكسب نقاط XP وتغذية شجرة الثروة ورفع مستواك المالي.'
+                  : 'Daily quests reset every day to nourish your Money Tree and earn XP.'}
               </Text>
             </View>
 
@@ -1100,7 +1220,7 @@ const getStyles = (colors: any, theme: string) =>
     },
     headerTitle: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 19,
+      fontSize: 18,
       color: colors.text,
     },
     headerActionBtn: {
@@ -1136,9 +1256,9 @@ const getStyles = (colors: any, theme: string) =>
       gap: 12,
     },
     levelIconCircle: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       justifyContent: 'center',
       alignItems: 'center',
     },

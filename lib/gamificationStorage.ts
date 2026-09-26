@@ -76,6 +76,58 @@ export async function addBonusXP(amount: number): Promise<number> {
   return next;
 }
 
+const MYSTERY_CHEST_KEY = '@mizan_mystery_chest_v1';
+const TREE_CARE_KEY = '@mizan_tree_care_v1';
+const DAILY_QUIZ_KEY = '@mizan_daily_quiz_v1';
+
+export async function getDailyMysteryChest(dateKey: string): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(`${MYSTERY_CHEST_KEY}_${dateKey}`);
+    return raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function claimDailyMysteryChest(dateKey: string): Promise<void> {
+  await AsyncStorage.setItem(`${MYSTERY_CHEST_KEY}_${dateKey}`, 'true');
+}
+
+export interface TreeCareState {
+  watered: boolean;
+  harvested: boolean;
+}
+
+export async function getTreeCareState(dateKey: string): Promise<TreeCareState> {
+  try {
+    const raw = await AsyncStorage.getItem(`${TREE_CARE_KEY}_${dateKey}`);
+    if (!raw) return { watered: false, harvested: false };
+    return JSON.parse(raw);
+  } catch {
+    return { watered: false, harvested: false };
+  }
+}
+
+export async function saveTreeCareState(dateKey: string, updates: Partial<TreeCareState>): Promise<TreeCareState> {
+  const current = await getTreeCareState(dateKey);
+  const next = { ...current, ...updates };
+  await AsyncStorage.setItem(`${TREE_CARE_KEY}_${dateKey}`, JSON.stringify(next));
+  return next;
+}
+
+export async function getDailyQuizAnswered(dateKey: string): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(`${DAILY_QUIZ_KEY}_${dateKey}`);
+    return raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function saveDailyQuizAnswered(dateKey: string): Promise<void> {
+  await AsyncStorage.setItem(`${DAILY_QUIZ_KEY}_${dateKey}`, 'true');
+}
+
 // Level definition
 export interface UserLevelInfo {
   level: number;
