@@ -31,6 +31,9 @@ interface WalletCardRenderProps {
   isOverspentToday?: boolean;
   overspentTodayFormatted?: string;
   adjustedTomorrowLimitFormatted?: string;
+  bankBalanceFormatted?: string;
+  cashBalanceFormatted?: string;
+  onPressCash?: () => void;
 }
 
 export default function WalletCardRender({
@@ -57,6 +60,9 @@ export default function WalletCardRender({
   isOverspentToday,
   overspentTodayFormatted,
   adjustedTomorrowLimitFormatted,
+  bankBalanceFormatted,
+  cashBalanceFormatted,
+  onPressCash,
 }: WalletCardRenderProps) {
   const isMinimal = cardStyle === 'minimal';
   const textColor = isMinimal ? color : '#FFFFFF';
@@ -268,6 +274,34 @@ export default function WalletCardRender({
             <Text style={[styles.balanceValueText, { color: textColor }]} numberOfLines={1}>
               {balanceFormatted} <Text style={styles.currencySubText}>{currencySymbol}</Text>
             </Text>
+            {bankBalanceFormatted !== undefined && cashBalanceFormatted !== undefined && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 5 }}>
+                  <Ionicons name="card-outline" size={10} color={subTextColor} />
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: textColor }}>
+                    {language === 'ar' ? 'بنك: ' : 'Bank: '}{bankBalanceFormatted}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={(e: any) => {
+                    e?.stopPropagation?.();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onPressCash?.();
+                  }}
+                  style={({ pressed }) => [
+                    { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(16,185,129,0.3)', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 5, borderWidth: 0.5, borderColor: 'rgba(16,185,129,0.5)' },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                  hitSlop={6}
+                >
+                  <Ionicons name="cash-outline" size={10} color="#10B981" />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9.5, color: '#A7F3D0' }}>
+                    {language === 'ar' ? 'كاش: ' : 'Cash: '}{cashBalanceFormatted}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </View>
 
           {dailySafeSpend !== undefined && (

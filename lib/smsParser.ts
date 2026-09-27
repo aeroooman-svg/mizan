@@ -12,6 +12,8 @@ export interface ParsedBankSMS {
   date?: string;
   rawText: string;
   confidenceScore: number; // 0 to 1
+  paymentMethod?: 'card' | 'cash';
+  isAtmWithdrawal?: boolean;
 }
 
 // Known Merchants map to categories
@@ -317,6 +319,13 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
     }
   }
 
+  // Check if ATM cash withdrawal
+  const isAtm = /سحب نقدي|سحب كاش|صراف آلي|صراف الى|ماكينة صراف|سحب من atm|atm withdrawal|cash withdrawal|atm w\/d|cash w\/d/i.test(normalizedText);
+  if (isAtm) {
+    category = 'atm_withdrawal';
+    merchant = 'صراف آلي (ATM)';
+  }
+
   // 6. Extract Card Number (Last 4 digits)
   let cardNumber: string | undefined = undefined;
   const cardMatch = normalizedText.match(/(?:card|كارت|بطاقة|account|حساب)\s*(?:\*\*\*|X+|x+|\*+)?(\d{4})/i) ||
@@ -335,11 +344,13 @@ export function parseBankSMS(text: string): ParsedBankSMS | null {
     bankName: detectedBank,
     amount,
     currency,
-    type,
+    type: isAtm ? 'expense' : type,
     merchant,
     category,
     cardNumber,
     rawText: text,
     confidenceScore: Math.min(confidenceScore, 1.0),
+    paymentMethod: isAtm ? 'cash' : 'card',
+    isAtmWithdrawal: isAtm,
   };
 }

@@ -68,6 +68,7 @@ export interface Wallet {
   isJoined?: boolean;
   isOwner?: boolean;
   ownerUsername?: string;
+  initialCashBalance?: number;
 }
 
 export const transactionSchema = z.object({
@@ -85,6 +86,8 @@ export const transactionSchema = z.object({
   userId: z.string().optional(),
   addedBy: z.string().optional(),
   note: z.string().optional(),
+  paymentMethod: z.enum(['card', 'cash']).optional(),
+  isAtmWithdrawal: z.boolean().optional(),
 });
 
 export interface Transaction {
@@ -102,6 +105,8 @@ export interface Transaction {
   userId?: string;
   addedBy?: string;
   note?: string;
+  paymentMethod?: 'card' | 'cash';
+  isAtmWithdrawal?: boolean;
 }
 
 const TRANSACTIONS_KEY = '@mizan_transactions';

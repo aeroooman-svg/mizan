@@ -136,6 +136,8 @@ export default function AddTransactionScreen() {
   const [amount, setAmount] = useState(existingTxn ? existingTxn.amount.toString() : '');
   const [selectedCategory, setSelectedCategory] = useState<string>(existingTxn?.category || '');
   const [description, setDescription] = useState(existingTxn?.description || '');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>(existingTxn?.paymentMethod || (params.prefillCategory === 'atm_withdrawal' ? 'cash' : 'card'));
+  const [isAtmWithdrawal, setIsAtmWithdrawal] = useState<boolean>(existingTxn?.isAtmWithdrawal || params.prefillCategory === 'atm_withdrawal');
   const [isSaving, setIsSaving] = useState(false);
 
   // Time
@@ -349,6 +351,11 @@ export default function AddTransactionScreen() {
         setType(smsParsed.type);
         if (smsParsed.category) setSelectedCategory(smsParsed.category);
         setDescription(`${smsParsed.merchant} (${smsParsed.bankName})`);
+        if (smsParsed.paymentMethod) setPaymentMethod(smsParsed.paymentMethod);
+        if (smsParsed.isAtmWithdrawal) {
+          setIsAtmWithdrawal(true);
+          setPaymentMethod('cash');
+        }
         setShowExtraDetails(true);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -387,6 +394,15 @@ export default function AddTransactionScreen() {
 
       if (parsed.toWalletId) {
         setToWalletId(parsed.toWalletId);
+      }
+
+      if (parsed.paymentMethod) {
+        setPaymentMethod(parsed.paymentMethod);
+      }
+
+      if (parsed.isAtmWithdrawal) {
+        setIsAtmWithdrawal(true);
+        setPaymentMethod('cash');
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -564,8 +580,8 @@ export default function AddTransactionScreen() {
       id: existingTxn?.id || Crypto.randomUUID(),
       type,
       amount: parseFloat(amount),
-      category: type === 'transfer' ? 'transfer' : selectedCategory,
-      description: description.trim(),
+      category: type === 'transfer' ? (isAtmWithdrawal ? 'atm_withdrawal' : 'transfer') : selectedCategory,
+      description: description.trim() || (isAtmWithdrawal ? (language === 'ar' ? 'سحب نقدي من الصراف (ATM)' : 'ATM Cash Withdrawal') : ''),
       date: transactionDate.toISOString(),
       createdAt: existingTxn?.createdAt || new Date().toISOString(),
       walletId: selectedWallet.id,
@@ -573,6 +589,8 @@ export default function AddTransactionScreen() {
       tags: tags || undefined,
       receiptUri: receiptUri || undefined,
       addedBy: existingTxn?.addedBy || currentUser?.username || undefined,
+      paymentMethod: (type === 'transfer' && isAtmWithdrawal) ? 'cash' : paymentMethod,
+      isAtmWithdrawal: isAtmWithdrawal || selectedCategory === 'atm_withdrawal',
     };
 
     if (isEditMode && existingTxn) {
@@ -865,6 +883,93 @@ export default function AddTransactionScreen() {
                   {language === 'ar' ? 'تحويل' : (language === 'ml' || language === 'hi') ? 'ട്രാൻസ്ഫർ' : 'Transfer'}
                 </Text>
               </Pressable>
+            </View>
+          )}
+
+          {/* Payment Method Selector (Card vs Cash in pocket) */}
+          {type !== 'transfer' && (
+            <View style={{ marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.textSecondary }}>
+                  {language === 'ar' ? 'طريقة الدفع ومصدر الأموال:' : 'Payment Method:'}
+                </Text>
+                {selectedWallet && (
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textTertiary }}>
+                    {paymentMethod === 'card' 
+                      ? (language === 'ar' ? '🏦 يُخصم من رصيد البنك' : '🏦 From Bank')
+                      : (language === 'ar' ? '💵 يُخصم من كاش الجيب' : '💵 From Cash')}
+                  </Text>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setPaymentMethod('card');
+                  }}
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: paymentMethod === 'card' ? colors.primary : colors.border,
+                    backgroundColor: paymentMethod === 'card' ? (colors.primary + '18') : colors.surface,
+                  }}
+                >
+                  <Ionicons
+                    name="card"
+                    size={16}
+                    color={paymentMethod === 'card' ? colors.primary : colors.textSecondary}
+                  />
+                  <Text
+                    style={{
+                      fontFamily: paymentMethod === 'card' ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
+                      fontSize: 13,
+                      color: paymentMethod === 'card' ? colors.primary : colors.textSecondary,
+                    }}
+                  >
+                    {language === 'ar' ? '💳 بطاقة / بنك' : '💳 Card / Bank'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setPaymentMethod('cash');
+                  }}
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: paymentMethod === 'cash' ? '#10B981' : colors.border,
+                    backgroundColor: paymentMethod === 'cash' ? '#10B98118' : colors.surface,
+                  }}
+                >
+                  <Ionicons
+                    name="cash"
+                    size={16}
+                    color={paymentMethod === 'cash' ? '#10B981' : colors.textSecondary}
+                  />
+                  <Text
+                    style={{
+                      fontFamily: paymentMethod === 'cash' ? 'Cairo_700Bold' : 'Cairo_600SemiBold',
+                      fontSize: 13,
+                      color: paymentMethod === 'cash' ? '#10B981' : colors.textSecondary,
+                    }}
+                  >
+                    {language === 'ar' ? '💵 كاش من الجيب' : '💵 Pocket Cash'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           )}
 

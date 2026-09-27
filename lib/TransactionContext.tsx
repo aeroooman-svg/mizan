@@ -67,6 +67,13 @@ interface TransactionContextValue {
   addCustomCategory: (nameAr: string, nameEn: string, icon: string, color: string, type: 'expense' | 'income') => Promise<CustomCategory>;
   updateCustomCategory: (cat: CustomCategory) => Promise<void>;
   removeCustomCategory: (id: string) => Promise<void>;
+  // Dual-Balance (Bank + Pocket Cash) & ATM
+  bankBalance: number;
+  cashBalance: number;
+  getWalletCashBalance: (walletId: string) => number;
+  getWalletBankBalance: (walletId: string) => number;
+  recordAtmWithdrawal: (walletId: string, amount: number, note?: string) => Promise<void>;
+  reconcileCashBalance: (walletId: string, actualCash: number) => Promise<number>;
   // Pending recurring transactions (variable)
   pendingRecurring: RecurringTransaction[];
   approveRecurringTransaction: (rec: RecurringTransaction, customAmount?: number, skip?: boolean) => Promise<void>;
@@ -303,7 +310,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const totalExpense = useMemo(() => {
     if (!selectedWallet) return 0;
     return monthlyTransactions
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal') || (t.type === 'transfer' && t.walletId === selectedWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal'))
       .reduce((sum, t) => sum + t.amount, 0);
   }, [monthlyTransactions, selectedWallet]);
 
@@ -312,7 +319,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const allTimeIncome = useMemo(() => {
     if (!selectedWallet) return 0;
     return walletTransactions
-      .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === selectedWallet.id))
+      .filter(t => (t.type === 'income' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal') || (t.type === 'transfer' && t.toWalletId === selectedWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal'))
       .reduce((sum, t) => {
         if (t.type === 'transfer' && t.toWalletId === selectedWallet.id) {
           const fromW = wallets.find(w => w.id === t.walletId);
@@ -326,9 +333,60 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const allTimeExpense = useMemo(() => {
     if (!selectedWallet) return 0;
     return walletTransactions
-      .filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === selectedWallet.id))
+      .filter(t => (t.type === 'expense' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal') || (t.type === 'transfer' && t.walletId === selectedWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal'))
       .reduce((sum, t) => sum + t.amount, 0);
   }, [walletTransactions, selectedWallet]);
+
+  const getWalletCashBalance = useCallback((walletId: string): number => {
+    const targetWallet = wallets.find(w => w.id === walletId);
+    if (!targetWallet) return 0;
+
+    const txns = transactions.filter(t => t.walletId === walletId);
+    const atmSum = txns
+      .filter(t => t.isAtmWithdrawal === true || t.category === 'atm_withdrawal')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const cashIncome = txns
+      .filter(t => t.type === 'income' && t.paymentMethod === 'cash')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const cashExpenses = txns
+      .filter(t => t.type === 'expense' && t.paymentMethod === 'cash' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return (targetWallet.initialCashBalance || 0) + atmSum + cashIncome - cashExpenses;
+  }, [wallets, transactions]);
+
+  const getWalletBankBalance = useCallback((walletId: string): number => {
+    const targetWallet = wallets.find(w => w.id === walletId);
+    if (!targetWallet) return 0;
+
+    const inc = transactions
+      .filter(t => t.type === 'income' && t.walletId === walletId)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const exp = transactions
+      .filter(t => t.type === 'expense' && t.walletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const trIn = transactions
+      .filter(t => t.type === 'transfer' && t.toWalletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const trOut = transactions
+      .filter(t => t.type === 'transfer' && t.walletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalBal = (targetWallet.initialBalance || 0) + inc + trIn - exp - trOut;
+    const cashBal = getWalletCashBalance(walletId);
+    return totalBal - cashBal;
+  }, [wallets, transactions, getWalletCashBalance]);
+
+  const cashBalance = useMemo(() => {
+    if (!selectedWallet) return 0;
+    return getWalletCashBalance(selectedWallet.id);
+  }, [selectedWallet, getWalletCashBalance]);
+
+  const bankBalance = useMemo(() => {
+    return balance - cashBalance;
+  }, [balance, cashBalance]);
 
   const currencySymbol = useMemo(() => {
     if (!selectedWallet) return globalAppLanguage === 'ar' ? 'ج.م' : 'EGP';
@@ -699,6 +757,82 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [triggerLiveSync]);
 
+  const recordAtmWithdrawal = useCallback(async (walletId: string, amount: number, note?: string) => {
+    const targetWallet = wallets.find(w => w.id === walletId) || selectedWallet;
+    if (!targetWallet) return;
+
+    const txn: Transaction = {
+      id: Crypto.randomUUID(),
+      type: 'transfer',
+      category: 'atm_withdrawal',
+      amount,
+      description: note?.trim() || (language === 'ar' ? 'سحب نقدي من الصراف (ATM)' : 'ATM Cash Withdrawal'),
+      date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      walletId: targetWallet.id,
+      isAtmWithdrawal: true,
+      paymentMethod: 'cash',
+      tags: 'ATM,Cash',
+    };
+
+    await saveTransaction(txn);
+    setTransactions(prev => [txn, ...prev]);
+    pushSingleTransactionToSupabase(txn).catch(() => { });
+    triggerLiveSync();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [wallets, selectedWallet, language, triggerLiveSync]);
+
+  const reconcileCashBalance = useCallback(async (walletId: string, actualCash: number): Promise<number> => {
+    const targetWallet = wallets.find(w => w.id === walletId) || selectedWallet;
+    if (!targetWallet) return 0;
+
+    const currentCash = getWalletCashBalance(targetWallet.id);
+    const diff = actualCash - currentCash;
+    if (Math.abs(diff) < 0.001) return 0;
+
+    if (diff < 0) {
+      // User has less cash than logged -> difference logged as misc cash expense
+      const expenseAmount = Math.abs(diff);
+      const txn: Transaction = {
+        id: Crypto.randomUUID(),
+        type: 'expense',
+        category: 'misc_cash',
+        amount: expenseAmount,
+        description: language === 'ar' ? 'تسوية كاش (نثريات وفكة مفقودة)' : 'Cash Reconciliation (Petty/Misc Expenses)',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        walletId: targetWallet.id,
+        paymentMethod: 'cash',
+        tags: 'CashReconcile',
+      };
+      await saveTransaction(txn);
+      setTransactions(prev => [txn, ...prev]);
+      pushSingleTransactionToSupabase(txn).catch(() => { });
+    } else {
+      // User has more cash than logged
+      const incomeAmount = diff;
+      const txn: Transaction = {
+        id: Crypto.randomUUID(),
+        type: 'income',
+        category: 'other_income',
+        amount: incomeAmount,
+        description: language === 'ar' ? 'تسوية كاش (إضافة كاش)' : 'Cash Reconciliation (Cash Adjustment)',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        walletId: targetWallet.id,
+        paymentMethod: 'cash',
+        tags: 'CashReconcile',
+      };
+      await saveTransaction(txn);
+      setTransactions(prev => [txn, ...prev]);
+      pushSingleTransactionToSupabase(txn).catch(() => { });
+    }
+
+    triggerLiveSync();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    return diff;
+  }, [wallets, selectedWallet, getWalletCashBalance, language, triggerLiveSync]);
+
   const value = useMemo(() => ({
     transactions,
     wallets,
@@ -728,7 +862,49 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     removeCustomCategory,
     pendingRecurring,
     approveRecurringTransaction,
-  }), [transactions, wallets, selectedWallet, isLoading, isInitialLoading, totalIncome, totalExpense, balance, allTimeIncome, allTimeExpense, currencySymbol, currencyCode, addTransaction, removeTransaction, updateTransaction, addWallet, updateWallet, removeWallet, selectWallet, loadData, getMonthlyTransactions, walletTransactions, customCategories, addCustomCategory, updateCustomCategory, removeCustomCategory, pendingRecurring, approveRecurringTransaction]);
+    // Dual Balance & ATM
+    bankBalance,
+    cashBalance,
+    getWalletCashBalance,
+    getWalletBankBalance,
+    recordAtmWithdrawal,
+    reconcileCashBalance,
+  }), [
+    transactions,
+    wallets,
+    selectedWallet,
+    isLoading,
+    isInitialLoading,
+    totalIncome,
+    totalExpense,
+    balance,
+    allTimeIncome,
+    allTimeExpense,
+    currencySymbol,
+    currencyCode,
+    addTransaction,
+    removeTransaction,
+    updateTransaction,
+    addWallet,
+    updateWallet,
+    removeWallet,
+    selectWallet,
+    loadData,
+    getMonthlyTransactions,
+    walletTransactions,
+    customCategories,
+    addCustomCategory,
+    updateCustomCategory,
+    removeCustomCategory,
+    pendingRecurring,
+    approveRecurringTransaction,
+    bankBalance,
+    cashBalance,
+    getWalletCashBalance,
+    getWalletBankBalance,
+    recordAtmWithdrawal,
+    reconcileCashBalance,
+  ]);
 
   return (
     <TransactionContext.Provider value={value}>

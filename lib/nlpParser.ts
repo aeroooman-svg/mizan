@@ -9,6 +9,8 @@ export interface ParsedTransaction {
   description: string;
   walletId: string | null;
   toWalletId?: string | null;
+  paymentMethod?: 'card' | 'cash';
+  isAtmWithdrawal?: boolean;
 }
 
 // Map of single Arabic number words to values across dialects
@@ -641,12 +643,17 @@ export function parseTransactionText(
     cleanDesc = text.trim();
   }
 
+  const isAtm = /سحب نقدي|سحبت كاش|سحب كاش|سحبت من الصراف|سحب من الصراف|صراف آلي|صراف الى|ماكينة صراف|atm/i.test(normalized);
+  const isCash = cleaned.includes('كاش') || cleaned.includes('نقد') || cleaned.includes('نقدا') || cleaned.includes('cash');
+
   return {
     amount,
-    type,
-    category,
-    description: cleanDesc,
+    type: isAtm ? 'transfer' : type,
+    category: isAtm ? 'atm_withdrawal' : category,
+    description: isAtm ? 'سحب نقدي من الصراف (ATM)' : cleanDesc,
     walletId,
     toWalletId: toWalletId || undefined,
+    paymentMethod: (isAtm || isCash) ? 'cash' : 'card',
+    isAtmWithdrawal: isAtm,
   };
 }

@@ -118,6 +118,8 @@ export async function saveParsedSmsTransaction(
     createdAt: new Date().toISOString(),
     walletId,
     tags: `SMS,${parsed.bankName}`,
+    paymentMethod: parsed.paymentMethod || (parsed.isAtmWithdrawal ? 'cash' : 'card'),
+    isAtmWithdrawal: parsed.isAtmWithdrawal || false,
   };
 
   await saveTransaction(transaction);

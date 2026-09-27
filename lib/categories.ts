@@ -38,6 +38,11 @@ export const incomeCategories: Category[] = [
   { id: 'other_income', name: 'Other', nameAr: 'أخرى', nameMl: 'മറ്റുള്ളവ', nameHi: 'अन्य', icon: 'more-horiz', iconFamily: 'MaterialIcons', color: '#78909C' },
 ];
 
+export const specialCategories: Category[] = [
+  { id: 'atm_withdrawal', name: 'ATM Cash Withdrawal', nameAr: 'سحب نقدي (ATM)', icon: 'local-atm', iconFamily: 'MaterialIcons', color: '#0284C7' },
+  { id: 'misc_cash', name: 'Cash Petty / Misc', nameAr: 'نثريات كاش', icon: 'payments', iconFamily: 'MaterialIcons', color: '#10B981' },
+];
+
 let customCategoriesInMemory: Category[] = [];
 
 export function setCustomCategoriesInMemory(categories: Category[]) {
@@ -45,7 +50,7 @@ export function setCustomCategoriesInMemory(categories: Category[]) {
 }
 
 export function getCategoryById(id: string): Category | undefined {
-  return [...expenseCategories, ...incomeCategories, ...customCategoriesInMemory].find(c => c.id === id);
+  return [...expenseCategories, ...incomeCategories, ...specialCategories, ...customCategoriesInMemory].find(c => c.id === id);
 }
 
 const THREE_DECIMAL_CURRENCIES = ['KWD', 'BHD', 'OMR', 'JOD', 'IQD', 'TND', 'LYD'];

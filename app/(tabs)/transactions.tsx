@@ -349,9 +349,12 @@ export default function TransactionsScreen() {
   };
 
   const renderItem = ({ item }: { item: Transaction }) => {
-    const isTransfer = item.type === 'transfer';
+    const isAtm = item.isAtmWithdrawal || item.category === 'atm_withdrawal';
+    const isTransfer = item.type === 'transfer' && !isAtm;
     const isIncomingTransfer = isTransfer && item.toWalletId === selectedWallet?.id;
-    const cat = isTransfer 
+    const cat = isAtm
+      ? { icon: 'local-atm', color: '#0284C7' }
+      : isTransfer 
       ? { icon: 'swap-horiz', color: isIncomingTransfer ? '#3b82f6' : '#94a3b8' } 
       : getCategoryById(item.category);
 
@@ -363,7 +366,9 @@ export default function TransactionsScreen() {
       : item.amount;
 
     let categoryName = getCategoryName(item.category, language);
-    if (isTransfer) {
+    if (isAtm) {
+      categoryName = language === 'ar' ? 'سحب نقدي من الصراف (ATM)' : 'ATM Cash Withdrawal';
+    } else if (isTransfer) {
       if (isIncomingTransfer) {
         const fromWalletName = fromWallet?.name || '';
         categoryName = language === 'ar' ? `تحويل من ${fromWalletName}` : `Transfer from ${fromWalletName}`;
@@ -381,13 +386,36 @@ export default function TransactionsScreen() {
         onLongPress={() => handleLongPress(item)}
         onPress={() => handleLongPress(item)}
       >
-        <View style={[styles.catIconWrap, { backgroundColor: (isSavings ? '#8B5CF6' : (cat?.color || '#999')) + '15' }]}>
-          <MaterialIcons name={(cat?.icon || (isSavings ? 'account-balance-wallet' : 'receipt')) as any} size={20} color={isSavings ? '#8B5CF6' : (cat?.color || '#999')} />
+        <View style={[styles.catIconWrap, { backgroundColor: (isAtm ? '#0284C7' : isSavings ? '#8B5CF6' : (cat?.color || '#999')) + '15' }]}>
+          <MaterialIcons name={(cat?.icon || (isAtm ? 'local-atm' : isSavings ? 'account-balance-wallet' : 'receipt')) as any} size={20} color={isAtm ? '#0284C7' : isSavings ? '#8B5CF6' : (cat?.color || '#999')} />
         </View>
         
         <View style={styles.transactionMiddle}>
           <Text style={styles.transactionCatName}>{categoryName}</Text>
           <View style={styles.metaRow}>
+            {isAtm ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#0284C720', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 5 }}>
+                <MaterialIcons name="local-atm" size={10} color="#0284C7" />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: '#0284C7' }}>
+                  {language === 'ar' ? 'سحب نقدي' : 'ATM'}
+                </Text>
+              </View>
+            ) : item.paymentMethod === 'cash' ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#10B98120', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 5 }}>
+                <Ionicons name="cash-outline" size={10} color="#10B981" />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9, color: '#10B981' }}>
+                  {language === 'ar' ? 'كاش' : 'Cash'}
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.surfaceAlt, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 5 }}>
+                <Ionicons name="card-outline" size={9} color={colors.textTertiary} />
+                <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 8.5, color: colors.textSecondary }}>
+                  {language === 'ar' ? 'بطاقة' : 'Card'}
+                </Text>
+              </View>
+            )}
+
             {item.addedBy && (
               <View style={styles.addedByBadge}>
                 <Ionicons name="person-outline" size={8} color={colors.primary} />
@@ -422,7 +450,18 @@ export default function TransactionsScreen() {
         </View>
 
         <View style={styles.transactionRight}>
-          {item.category === 'jameya_savings' ? (
+          {isAtm ? (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={[styles.transactionAmount, { color: '#0284C7' }]}>
+                {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+              </Text>
+              <View style={{ backgroundColor: '#0284C718', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
+                <Text style={{ color: '#0284C7', fontFamily: 'Cairo_700Bold', fontSize: 9 }}>
+                  {language === 'ar' ? '🏧 كاش في جيبك' : '🏧 In Pocket'}
+                </Text>
+              </View>
+            </View>
+          ) : item.category === 'jameya_savings' ? (
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.transactionAmount, { color: '#8B5CF6' }]}>
                 {formatCurrency(displayAmount)} <Text style={styles.currencySymbol}>{currencySymbol}</Text>

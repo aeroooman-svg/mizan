@@ -69,7 +69,13 @@ export default function WalletCarousel({
   const [adjustWallet, setAdjustWallet] = useState<Wallet | null>(null);
   const [confirmStopShareWallet, setConfirmStopShareWallet] = useState<Wallet | null>(null);
   const [targetBalanceInput, setTargetBalanceInput] = useState('');
-  const { updateWallet, refresh } = useTransactions();
+  const { updateWallet, refresh, getWalletBankBalance, getWalletCashBalance, recordAtmWithdrawal, reconcileCashBalance } = useTransactions();
+  const [cashModalWallet, setCashModalWallet] = useState<Wallet | null>(null);
+  const [atmModalWallet, setAtmModalWallet] = useState<Wallet | null>(null);
+  const [reconcileModalWallet, setReconcileModalWallet] = useState<Wallet | null>(null);
+  const [atmAmountInput, setAtmAmountInput] = useState('');
+  const [atmNoteInput, setAtmNoteInput] = useState('');
+  const [reconcileAmountInput, setReconcileAmountInput] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
   const [rates, setRates] = useState<Record<string, number>>({});
@@ -159,6 +165,45 @@ export default function WalletCarousel({
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAdjustWallet(null);
+  };
+
+  const handleConfirmAtmWithdrawal = async () => {
+    if (!atmModalWallet) return;
+    const amount = parseFloat(normalizeAmountInput(atmAmountInput)) || 0;
+    if (amount <= 0) {
+      Alert.alert(loc('خطأ', 'Error'), loc('يرجى إدخال مبلغ سحب صحيح', 'Please enter a valid withdrawal amount'));
+      return;
+    }
+    try {
+      await recordAtmWithdrawal(atmModalWallet.id, amount, atmNoteInput);
+      setAtmModalWallet(null);
+      setAtmAmountInput('');
+      setAtmNoteInput('');
+      await refresh();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('🏧 ✅', loc(`تم تسجيل سحب ${amount} ${atmModalWallet.currency} وتحويلها إلى كاش جيبك بنجاح!`, `Successfully recorded ATM withdrawal of ${amount} ${atmModalWallet.currency} to your pocket cash!`));
+    } catch (e) {
+      console.error('ATM withdrawal error:', e);
+    }
+  };
+
+  const handleConfirmReconcile = async () => {
+    if (!reconcileModalWallet) return;
+    const actual = parseFloat(normalizeAmountInput(reconcileAmountInput));
+    if (isNaN(actual) || actual < 0) {
+      Alert.alert(loc('خطأ', 'Error'), loc('يرجى إدخال مبلغ صحيح', 'Please enter a valid amount'));
+      return;
+    }
+    try {
+      await reconcileCashBalance(reconcileModalWallet.id, actual);
+      setReconcileModalWallet(null);
+      setReconcileAmountInput('');
+      await refresh();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('⚖️ ✅', loc('تمت تصفية ومطابقة الكاش بنجاح ليطابق جيبك تماماً!', 'Cash reconciled successfully!'));
+    } catch (e) {
+      console.error('Reconcile error:', e);
+    }
   };
 
   useEffect(() => {
@@ -356,6 +401,9 @@ export default function WalletCarousel({
             return undefined;
           })() : undefined;
 
+          const wBankBal = getWalletBankBalance ? getWalletBankBalance(wallet.id) : walletBalance;
+          const wCashBal = getWalletCashBalance ? getWalletCashBalance(wallet.id) : 0;
+
           return (
             <Pressable
               key={wallet.id}
@@ -382,6 +430,9 @@ export default function WalletCarousel({
               <WalletCardRender
                 name={wallet.name}
                 balanceFormatted={`${walletBalance >= 0 ? '' : '-'}${formatCurrency(Math.abs(walletBalance), language, wallet.currency)}`}
+                bankBalanceFormatted={formatCurrency(wBankBal, language, wallet.currency)}
+                cashBalanceFormatted={formatCurrency(wCashBal, language, wallet.currency)}
+                onPressCash={() => setCashModalWallet(wallet)}
                 currencySymbol={wallet.currency}
                 cardStyle={cardStyle}
                 color={wallet.color}
@@ -541,6 +592,70 @@ export default function WalletCarousel({
                     <Ionicons name="close" size={22} color={colors.textSecondary} />
                   </Pressable>
                 </View>
+
+                {/* Dual-Balance Option 1: ATM Cash Withdrawal */}
+                <Pressable
+                  onPress={() => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    setAtmAmountInput('');
+                    setAtmNoteInput('');
+                    setAtmModalWallet(w);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#0284C718',
+                    borderColor: '#0284C740',
+                    borderWidth: 1,
+                    marginBottom: 8,
+                  }}
+                >
+                  <MaterialIcons name="local-atm" size={20} color="#0284C7" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13.5, color: '#0284C7' }}>
+                      {loc('سحب نقدي من الصراف (ATM) 🏧', 'ATM Cash Withdrawal 🏧', 'ATM പണം പിൻവലിക്കൽ 🏧')}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                      {loc('تحويل فوري من رصيد البنك إلى كاش الجيب', 'Move funds from Bank to Pocket Cash', 'ബാങ്കിൽ നിന്ന് ക്യാഷിലേക്ക് മാറ്റുക')}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* Dual-Balance Option 2: Cash Reconciliation / Pocket Check */}
+                <Pressable
+                  onPress={() => {
+                    const w = actionWallet;
+                    setActionWallet(null);
+                    setCashModalWallet(w);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#10B98118',
+                    borderColor: '#10B98140',
+                    borderWidth: 1,
+                    marginBottom: 8,
+                  }}
+                >
+                  <Ionicons name="wallet-outline" size={20} color="#10B981" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13.5, color: '#10B981' }}>
+                      {loc('محفظة الكاش وتسوية الفكة 💵', 'Pocket Cash & Reconciliation 💵', 'പോക്കറ്റ് ക്യാഷ് 💵')}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary }}>
+                      {loc('مراجعة وتصفية الكاش "كم في جيبك الآن؟"', 'Audit & reconcile physical cash', 'കൈവശമുള്ള ക്യാഷ് പരിശോധിക്കുക')}
+                    </Text>
+                  </View>
+                </Pressable>
 
                 {/* Quick Option: Direct Balance Adjustment */}
                 <Pressable
@@ -886,6 +1001,380 @@ export default function WalletCarousel({
                 </View>
               </>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Smart Pocket Cash Hub Modal */}
+      <Modal
+        visible={!!cashModalWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setCashModalWallet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setCashModalWallet(null)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {cashModalWallet && (() => {
+              const curCash = getWalletCashBalance ? getWalletCashBalance(cashModalWallet.id) : 0;
+              const curBank = getWalletBankBalance ? getWalletBankBalance(cashModalWallet.id) : 0;
+              return (
+                <>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#10B98120', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="cash" size={22} color="#10B981" />
+                      </View>
+                      <View>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                          {loc('محفظة الكاش في جيبك 💵', 'Pocket Cash Wallet 💵')}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#10B981' }}>
+                          {cashModalWallet.name} ({cashModalWallet.currency})
+                        </Text>
+                      </View>
+                    </View>
+                    <Pressable onPress={() => setCashModalWallet(null)} hitSlop={12}>
+                      <Ionicons name="close" size={22} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+
+                  {/* Dual Balance Cards */}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1, backgroundColor: '#10B98115', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#10B98135', alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#10B981' }}>
+                        {loc('💵 كاش في جيبك', '💵 In Your Pocket')}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: '#10B981', marginTop: 4 }}>
+                        {formatCurrency(curCash, language, cashModalWallet.currency)}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary }}>
+                        {loc('🏦 في الحساب البنكي', '🏦 In Bank')}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 18, color: colors.text, marginTop: 4 }}>
+                        {formatCurrency(curBank, language, cashModalWallet.currency)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 12, color: colors.textSecondary, lineHeight: 20 }}>
+                    {loc(
+                      'عندما تسحب كاش من الصراف الآلي (ATM)، ينتقل المبلغ من البنك إلى جيبك دون أن يُحسب كمصروف. وعندما تصرف نقداً، تسجل المعاملة كـ (كاش).',
+                      'When you withdraw from an ATM, money moves from Bank to Pocket without being counted as an expense. When you spend cash, choose (Cash) payment method.'
+                    )}
+                  </Text>
+
+                  {/* Action 1: ATM Withdrawal */}
+                  <Pressable
+                    onPress={() => {
+                      const w = cashModalWallet;
+                      setCashModalWallet(null);
+                      setAtmAmountInput('');
+                      setAtmNoteInput('');
+                      setAtmModalWallet(w);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 14,
+                      borderRadius: 14,
+                      backgroundColor: '#0284C7',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <MaterialIcons name="local-atm" size={20} color="#FFF" />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#FFF' }}>
+                      {loc('سحب كاش جديد من الصراف (ATM) 🏧', 'New ATM Cash Withdrawal 🏧')}
+                    </Text>
+                  </Pressable>
+
+                  {/* Action 2: Audit / Reconcile */}
+                  <Pressable
+                    onPress={() => {
+                      const w = cashModalWallet;
+                      setCashModalWallet(null);
+                      setReconcileAmountInput(curCash > 0 ? curCash.toString() : '');
+                      setReconcileModalWallet(w);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 14,
+                      borderRadius: 14,
+                      backgroundColor: colors.surfaceAlt,
+                      borderWidth: 1,
+                      borderColor: '#10B98160',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="scale-outline" size={18} color="#10B981" />
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: '#10B981' }}>
+                      {loc('تصفية الفكة: "كم في جيبك الآن؟" ⚖️', 'Reconcile: "How Much Cash in Pocket?" ⚖️')}
+                    </Text>
+                  </Pressable>
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ATM Cash Withdrawal Modal */}
+      <Modal
+        visible={!!atmModalWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setAtmModalWallet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setAtmModalWallet(null)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {atmModalWallet && (
+              <>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#0284C720', alignItems: 'center', justifyContent: 'center' }}>
+                      <MaterialIcons name="local-atm" size={22} color="#0284C7" />
+                    </View>
+                    <View>
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                        {loc('سحب نقدي من الصراف (ATM) 🏧', 'ATM Cash Withdrawal 🏧')}
+                      </Text>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#0284C7' }}>
+                        {atmModalWallet.name} ({atmModalWallet.currency})
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setAtmModalWallet(null)} hitSlop={12}>
+                    <Ionicons name="close" size={22} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 13, color: colors.text }}>
+                    {loc(`مبلغ السحب (${atmModalWallet.currency}):`, `Withdrawal Amount (${atmModalWallet.currency}):`)}
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.surfaceAlt,
+                      color: colors.text,
+                      borderRadius: 14,
+                      padding: 14,
+                      fontSize: 22,
+                      fontFamily: 'Cairo_700Bold',
+                      borderWidth: 1.5,
+                      borderColor: '#0284C7',
+                      textAlign: 'right',
+                    }}
+                    value={atmAmountInput}
+                    onChangeText={setAtmAmountInput}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={colors.textTertiary}
+                    autoFocus
+                  />
+                </View>
+
+                {/* Quick Amount Suggestion Chips */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {[10, 20, 50, 100].map((amt) => (
+                    <Pressable
+                      key={amt}
+                      onPress={() => setAtmAmountInput(amt.toString())}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        backgroundColor: '#0284C715',
+                        borderWidth: 1,
+                        borderColor: '#0284C730',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#0284C7' }}>
+                        {amt}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                    {loc('ملاحظات السحب (اختياري):', 'Notes (Optional):')}
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.surfaceAlt,
+                      color: colors.text,
+                      borderRadius: 10,
+                      padding: 10,
+                      fontSize: 13,
+                      fontFamily: 'Cairo_400Regular',
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                    value={atmNoteInput}
+                    onChangeText={setAtmNoteInput}
+                    placeholder={loc('مثلاً: صراف مجمع الأفنيوز', 'e.g. Avenues ATM')}
+                    placeholderTextColor={colors.textTertiary}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                  <Pressable
+                    onPress={() => setAtmModalWallet(null)}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
+                  >
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', color: colors.textSecondary }}>
+                      {loc('إلغاء', 'Cancel')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleConfirmAtmWithdrawal}
+                    style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: '#0284C7', alignItems: 'center' }}
+                  >
+                    <Text style={{ fontFamily: 'Cairo_700Bold', color: '#FFF' }}>
+                      {loc('تأكيد السحب للكاش ⚡', 'Confirm to Pocket ⚡')}
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Pocket Cash Reconciliation Modal */}
+      <Modal
+        visible={!!reconcileModalWallet}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setReconcileModalWallet(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          onPress={() => setReconcileModalWallet(null)}
+        >
+          <Pressable
+            style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {reconcileModalWallet && (() => {
+              const curCash = getWalletCashBalance ? getWalletCashBalance(reconcileModalWallet.id) : 0;
+              const entered = parseFloat(normalizeAmountInput(reconcileAmountInput));
+              const hasVal = !isNaN(entered) && reconcileAmountInput.trim().length > 0;
+              const diff = hasVal ? (entered - curCash) : 0;
+
+              return (
+                <>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#10B98120', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="scale-outline" size={22} color="#10B981" />
+                      </View>
+                      <View>
+                        <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text }}>
+                          {loc('كم في جيبك الآن؟ (تصفية الفكة) ⚖️', 'Reconcile Pocket Cash ⚖️')}
+                        </Text>
+                        <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: '#10B981' }}>
+                          {reconcileModalWallet.name} ({reconcileModalWallet.currency})
+                        </Text>
+                      </View>
+                    </View>
+                    <Pressable onPress={() => setReconcileModalWallet(null)} hitSlop={12}>
+                      <Ionicons name="close" size={22} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
+
+                  <View style={{ backgroundColor: colors.surfaceAlt, padding: 12, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary }}>
+                      {loc('المسجل في التطبيق حالياً ككاش:', 'Logged in App:')}
+                    </Text>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.text }}>
+                      {formatCurrency(curCash, language, reconcileModalWallet.currency)}
+                    </Text>
+                  </View>
+
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.text }}>
+                      {loc(`أدخل المبلغ الفعلي الموجود في جيبك الآن (${reconcileModalWallet.currency}):`, `Enter actual cash in your pocket now:`)}
+                    </Text>
+                    <TextInput
+                      style={{
+                        backgroundColor: colors.surfaceAlt,
+                        color: colors.text,
+                        borderRadius: 14,
+                        padding: 14,
+                        fontSize: 22,
+                        fontFamily: 'Cairo_700Bold',
+                        borderWidth: 1.5,
+                        borderColor: '#10B981',
+                        textAlign: 'right',
+                      }}
+                      value={reconcileAmountInput}
+                      onChangeText={setReconcileAmountInput}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textTertiary}
+                      autoFocus
+                    />
+                  </View>
+
+                  {/* Real-time explanation of reconciliation diff */}
+                  {hasVal && (
+                    <View style={{ backgroundColor: diff < 0 ? 'rgba(239, 68, 68, 0.1)' : '#10B98115', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: diff < 0 ? 'rgba(239, 68, 68, 0.3)' : '#10B98130' }}>
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: diff < 0 ? '#EF4444' : '#10B981', lineHeight: 18 }}>
+                        {diff < 0
+                          ? loc(
+                              `🔍 هناك ${formatCurrency(Math.abs(diff), language, reconcileModalWallet.currency)} فكة ومصاريف غير مسجلة. سيتم تسجيلها تلقائياً كـ (نثريات كاش) ليصبح رصيد جيبك مطابقاً للواقع تماماً (${formatCurrency(entered, language, reconcileModalWallet.currency)}).`,
+                              `🔍 Unrecorded difference of ${formatCurrency(Math.abs(diff))} will be logged as petty cash expenses to match your pocket.`
+                            )
+                          : diff > 0
+                          ? loc(
+                              `➕ سيتم إضافة ${formatCurrency(diff, language, reconcileModalWallet.currency)} إلى رصيد الكاش ليصبح مطابقاً لجيبك تماماً.`,
+                              `➕ ${formatCurrency(diff)} will be added to your pocket cash balance.`
+                            )
+                          : loc('✅ الرصيد مطابق تماماً لما في جيبك!', '✅ Exactly matches your pocket!')}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                    <Pressable
+                      onPress={() => setReconcileModalWallet(null)}
+                      style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}
+                    >
+                      <Text style={{ fontFamily: 'Cairo_600SemiBold', color: colors.textSecondary }}>
+                        {loc('إلغاء', 'Cancel')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleConfirmReconcile}
+                      style={{ flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: '#10B981', alignItems: 'center' }}
+                    >
+                      <Text style={{ fontFamily: 'Cairo_700Bold', color: '#FFF' }}>
+                        {loc('مطابقة الرصيد فوراً ✅', 'Reconcile Now ✅')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              );
+            })()}
           </Pressable>
         </Pressable>
       </Modal>
