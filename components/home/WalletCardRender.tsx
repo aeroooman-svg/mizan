@@ -47,7 +47,7 @@ export default function WalletCardRender({
   expiry = '07/31',
   isShared,
   sharedLabel,
-  height = 180,
+  height = 160,
   dailySafeSpend,
   dailySafeSpendFormatted,
   remainingToday,
@@ -372,17 +372,6 @@ export default function WalletCardRender({
               </Text>
             </Pressable>
           )}
-        </View>
-
-        {/* BOTTOM ROW: Embossed Engraved Card Number & Expiry */}
-        <View style={styles.footerRow}>
-          <Text style={[styles.cardNumberText, { color: textColor }]}>
-            {cardNumber}
-          </Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.expiryLabelText, { color: subTextColor }]}>EXPIRES</Text>
-            <Text style={[styles.expiryValueText, { color: textColor }]}>{expiry}</Text>
-          </View>
         </View>
       </View>
     </View>

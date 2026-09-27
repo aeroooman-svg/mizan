@@ -439,7 +439,7 @@ export default function WalletCarousel({
                 icon={wallet.icon || 'account-balance-wallet'}
                 isShared={Boolean(sharedText)}
                 sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `പങ്കുവെച്ചത്: ${sharedText}`) : undefined}
-                height={190}
+                height={160}
                 dailySafeSpend={dailySafeLimit}
                 dailySafeSpendFormatted={formatCurrency(dailySafeLimit, language, wallet.currency)}
                 remainingToday={remainingToday}
