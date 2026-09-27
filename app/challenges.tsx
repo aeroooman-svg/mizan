@@ -35,6 +35,7 @@ import {
   getUserLevel,
   calculateStreak,
   calculateWalletHealth,
+  TreeCareState,
   getTreeCareState,
   saveTreeCareState,
   getDailyMysteryChest,
@@ -70,9 +71,11 @@ export default function ChallengesScreen() {
   const [hasBudgets, setHasBudgets] = useState(false);
 
   // Tree & Garden State
-  const [treeCareState, setTreeCareState] = useState<{ watered: boolean; harvested: boolean }>({
+  const [treeCareState, setTreeCareState] = useState<TreeCareState>({
     watered: false,
+    waterLevel: 45,
     harvested: false,
+    harvestedFruitIds: [],
   });
   const [mysteryChestOpened, setMysteryChestOpened] = useState(false);
   const [dailyQuizAnswered, setDailyQuizAnswered] = useState(false);
@@ -339,17 +342,37 @@ export default function ChallengesScreen() {
 
   // Handlers
   const handleWaterTree = async () => {
-    await saveTreeCareState(todayKey, { watered: true });
+    const updated = await saveTreeCareState(todayKey, { watered: true, waterLevel: 100 });
     await addBonusXP(15);
-    setTreeCareState(prev => ({ ...prev, watered: true }));
+    setTreeCareState(updated);
     triggerConfetti();
     loadGamificationData();
   };
 
-  const handleHarvestFruits = async () => {
-    await saveTreeCareState(todayKey, { harvested: true });
-    await addBonusXP(25);
-    setTreeCareState(prev => ({ ...prev, harvested: true }));
+  const handleHarvestSingleFruit = async (fruitId: number) => {
+    const currentHarvested = treeCareState.harvestedFruitIds || [];
+    if (currentHarvested.includes(fruitId)) return;
+    const nextIds = [...currentHarvested, fruitId];
+    const updated = await saveTreeCareState(todayKey, {
+      harvestedFruitIds: nextIds,
+      harvested: nextIds.length >= 3,
+    });
+    await addBonusXP(15);
+    setTreeCareState(updated);
+    triggerConfetti();
+    loadGamificationData();
+  };
+
+  const handleHarvestAllFruits = async () => {
+    const currentHarvested = treeCareState.harvestedFruitIds || [];
+    const remaining = [0, 1, 2].filter(id => !currentHarvested.includes(id));
+    if (remaining.length === 0) return;
+    const updated = await saveTreeCareState(todayKey, {
+      harvestedFruitIds: [0, 1, 2],
+      harvested: true,
+    });
+    await addBonusXP(remaining.length * 15);
+    setTreeCareState(updated);
     triggerConfetti();
     loadGamificationData();
   };
@@ -619,9 +642,12 @@ export default function ChallengesScreen() {
           healthScore={walletHealth.score}
           isAr={isAr}
           watered={treeCareState.watered}
+          waterLevel={treeCareState.waterLevel}
           harvested={treeCareState.harvested}
+          harvestedFruitIds={treeCareState.harvestedFruitIds}
           onWaterTree={handleWaterTree}
-          onHarvestFruits={handleHarvestFruits}
+          onHarvestSingleFruit={handleHarvestSingleFruit}
+          onHarvestAllFruits={handleHarvestAllFruits}
           savingsRate={savingsRate}
         />
 

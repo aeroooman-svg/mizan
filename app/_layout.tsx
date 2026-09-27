@@ -264,7 +264,14 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#090E17', justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar style="light" />
+        <SplashLoadingScreen />
+      </View>
+    );
+  }
 
   return (
     <ErrorBoundary>

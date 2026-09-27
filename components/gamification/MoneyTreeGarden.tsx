@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,7 +11,6 @@ import Svg, {
   Path,
   Circle,
   Ellipse,
-  Rect,
   Defs,
   LinearGradient as SvgLinearGradient,
   RadialGradient as SvgRadialGradient,
@@ -29,20 +28,28 @@ interface MoneyTreeGardenProps {
   healthScore: number;
   isAr: boolean;
   watered: boolean;
+  waterLevel?: number; // 0 - 100
   harvested: boolean;
+  harvestedFruitIds?: number[];
   onWaterTree: () => void;
-  onHarvestFruits: () => void;
+  onHarvestSingleFruit: (fruitId: number) => void;
+  onHarvestAllFruits: () => void;
   savingsRate: number; // percentage (0 - 100)
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function MoneyTreeGarden({
   userLevel,
   healthScore,
   isAr,
   watered,
+  waterLevel = 45,
   harvested,
+  harvestedFruitIds = [],
   onWaterTree,
-  onHarvestFruits,
+  onHarvestSingleFruit,
+  onHarvestAllFruits,
   savingsRate,
 }: MoneyTreeGardenProps) {
   // Determine growth stage
@@ -124,116 +131,162 @@ export default function MoneyTreeGarden({
     }
   }, [growthStage, isAr]);
 
-  // Speech bubble text
-  const [speech, setSpeech] = useState('');
+  // Fruit positions on the tree (Relative to 240x200 canvas)
+  const fruitsData = [
+    { id: 0, x: 75, y: 75, nameAr: 'ثمرة الالتزام', nameEn: 'Commitment' },
+    { id: 1, x: 120, y: 48, nameAr: 'ثمرة التوفير', nameEn: 'Savings' },
+    { id: 2, x: 165, y: 75, nameAr: 'ثمرة الذكاء المالي', nameEn: 'Discipline' },
+  ];
 
-  useEffect(() => {
-    if (!watered && healthScore < 50) {
-      setSpeech(
-        isAr
-          ? 'أغصاني عطشى بسبب زيادة المصاريف! اروِني بتسجيل معاملة وضبط النفقات 💧'
-          : 'I feel thirsty from high spending! Water me by controlling expenses 💧'
-      );
-    } else if (vitality.level === 'flourishing') {
-      setSpeech(
-        isAr
-          ? 'أشعر بالحيوية والوفرة! خطتك المالية ممتازة وأوراقي تلمع ذهباً ✨'
-          : 'I feel radiant! Your financial management is shining bright ✨'
-      );
-    } else if (savingsRate >= 40) {
-      setSpeech(
-        isAr
-          ? `نسبة ادخارك ${Math.round(savingsRate)}%! هذا السماد المثالي لنمو ثماري 🪙`
-          : `You saved ${Math.round(savingsRate)}%! The perfect fertilizer for my fruits 🪙`
-      );
-    } else {
-      setSpeech(
-        isAr
-          ? 'كل معاملة تسجلها وكل قرش تدخره يساعدني على النمو والازدهار!'
-          : 'Every expense logged and saved helps me grow stronger every day!'
-      );
-    }
-  }, [vitality.level, watered, healthScore, savingsRate, isAr]);
+  const unharvestedCount = fruitsData.filter(f => !harvestedFruitIds.includes(f.id)).length;
+
+  // Speech bubble state
+  const [speech, setSpeech] = useState('');
+  const [floatingToast, setFloatingToast] = useState<{ text: string; color: string } | null>(null);
 
   // Animations
-  const treeScale = React.useRef(new Animated.Value(1)).current;
-  const fruitBounce = React.useRef(new Animated.Value(0)).current;
-  const waterDropsAnim = React.useRef(new Animated.Value(0)).current;
-  const [showWaterEffect, setShowWaterEffect] = useState(false);
+  const treeScale = useRef(new Animated.Value(1)).current;
+  const fruitPulse = useRef(new Animated.Value(1)).current;
+  const wateringStreamAnim = useRef(new Animated.Value(0)).current;
+  const [isWateringActive, setIsWateringActive] = useState(false);
 
   useEffect(() => {
-    // Subtle breathing animation
+    // Breathing idle animation
     const breath = Animated.loop(
       Animated.sequence([
         Animated.timing(treeScale, {
-          toValue: 1.03,
-          duration: 2500,
-          useNativeDriver: true,
+          toValue: 1.02,
+          duration: 2200,
+          useNativeDriver: !isWeb,
         }),
         Animated.timing(treeScale, {
           toValue: 1,
-          duration: 2500,
-          useNativeDriver: true,
+          duration: 2200,
+          useNativeDriver: !isWeb,
         }),
       ])
     );
     breath.start();
 
-    // Fruit floating
-    const bounce = Animated.loop(
+    // Fruit pulsing animation
+    const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(fruitBounce, {
-          toValue: -6,
-          duration: 1600,
-          useNativeDriver: true,
+        Animated.timing(fruitPulse, {
+          toValue: 1.15,
+          duration: 1000,
+          useNativeDriver: !isWeb,
         }),
-        Animated.timing(fruitBounce, {
-          toValue: 0,
-          duration: 1600,
-          useNativeDriver: true,
+        Animated.timing(fruitPulse, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: !isWeb,
         }),
       ])
     );
-    bounce.start();
+    pulse.start();
 
     return () => {
       breath.stop();
-      bounce.stop();
+      pulse.stop();
     };
   }, []);
 
-  const handleWater = () => {
-    if (watered) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowWaterEffect(true);
-    waterDropsAnim.setValue(0);
+  // Update speech based on state
+  useEffect(() => {
+    if (unharvestedCount === 0) {
+      setSpeech(
+        isAr
+          ? '🎉 رائع! جنيت كل ثمار اليوم بنجاح، استمر في التوفير لتنضج ثمار جديدة غداً!'
+          : '🎉 All fruits harvested today! Keep saving to grow new ones tomorrow!'
+      );
+    } else if (watered) {
+      setSpeech(
+        isAr
+          ? '💦 أشعر بالانتعاش والقوة! رعاية شجرتك يومياً تعكس انضباطك المالي الحقيقي.'
+          : '💦 Refreshed & hydrated! Your daily consistency fuels our wealth journey.'
+      );
+    } else if (healthScore < 50) {
+      setSpeech(
+        isAr
+          ? '🥺 أغصاني عطشى بسبب زيادة المصاريف! اضغط على السقي وضبط الميزانية لترويني.'
+          : '🥺 I feel thirsty from recent spending! Tap to water and stay disciplined.'
+      );
+    } else {
+      setSpeech(
+        isAr
+          ? `🌳 مرحباً بك! لديك ${unharvestedCount} ثمار ناضجة جاهزة للقطف، اضغط عليها مباشرة!`
+          : `🌳 Welcome! You have ${unharvestedCount} golden fruits ready to harvest!`
+      );
+    }
+  }, [unharvestedCount, watered, healthScore, isAr]);
 
-    Animated.timing(waterDropsAnim, {
-      toValue: 1,
-      duration: 1200,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowWaterEffect(false);
+  // Show floating reward toast
+  const showToast = (text: string, color: string = '#FDE047') => {
+    setFloatingToast({ text, color });
+    setTimeout(() => {
+      setFloatingToast(null);
+    }, 2000);
+  };
+
+  // Realistic Water Action
+  const handleWater = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsWateringActive(true);
+    wateringStreamAnim.setValue(0);
+
+    // Tree bounce when drinking water
+    Animated.sequence([
+      Animated.timing(wateringStreamAnim, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: !isWeb,
+      }),
+      Animated.spring(treeScale, {
+        toValue: 1.08,
+        friction: 4,
+        useNativeDriver: !isWeb,
+      }),
+      Animated.spring(treeScale, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: !isWeb,
+      }),
+    ]).start(() => {
+      setIsWateringActive(false);
     });
 
+    showToast(isAr ? '💦 تم ري الشجرة! +15 XP' : '💦 Tree Watered! +15 XP', '#38BDF8');
     setSpeech(
       isAr
-        ? 'يا سلام! انتعشت جذوري برعايتك واكتسبت +15 XP 💦'
-        : 'Splash! Roots refreshed and you earned +15 XP 💦'
+        ? 'يا سلام! جذوري شربت الماء وانتعشت أوراقي، استمر في الحفاظ على ميزانيتك! 🌿✨'
+        : 'Delicious! Roots absorbed the water and leaves are glistening! 🌿✨'
     );
+
     onWaterTree();
   };
 
-  const handleHarvest = () => {
-    if (harvested) return;
+  // Harvest single fruit
+  const handleTapFruit = (fruitId: number) => {
+    if (harvestedFruitIds.includes(fruitId)) return;
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setSpeech(
-      isAr
-        ? 'أحسنت! قطفت ثمار صبرك وادخارك وكسبت +25 XP 🪙'
-        : 'Harvested! You collected your savings reward +25 XP 🪙'
-    );
-    onHarvestFruits();
+    showToast(isAr ? '🪙 قطفت ثمرة ادخار! +15 XP' : '🪙 Harvested Fruit! +15 XP', '#FDE047');
+    onHarvestSingleFruit(fruitId);
   };
+
+  // Harvest all remaining
+  const handleHarvestAll = () => {
+    if (unharvestedCount === 0) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showToast(
+      isAr ? `🎉 جنيت جميع الثمار! +${unharvestedCount * 15} XP` : `🎉 Harvested all! +${unharvestedCount * 15} XP`,
+      '#FBBF24'
+    );
+    onHarvestAllFruits();
+  };
+
+  const currentWaterLevel = watered ? 100 : waterLevel;
 
   return (
     <View style={styles.cardContainer}>
@@ -265,40 +318,60 @@ export default function MoneyTreeGarden({
           <View style={styles.speechTail} />
         </View>
 
-        {/* TREE CANVAS */}
+        {/* FLOATING ACTION TOAST */}
+        {floatingToast && (
+          <View style={styles.floatingToastBox}>
+            <Text style={[styles.floatingToastText, { color: floatingToast.color }]}>
+              {floatingToast.text}
+            </Text>
+          </View>
+        )}
+
+        {/* TREE CANVAS & INTERACTIVE ZONE */}
         <View style={styles.treeArea}>
-          {/* Animated Water Effect */}
-          {showWaterEffect && (
+          {/* WATERING ANIMATION OVERLAY */}
+          {isWateringActive && (
             <Animated.View
               style={[
-                styles.waterDropsContainer,
+                styles.wateringOverlay,
                 {
-                  opacity: waterDropsAnim.interpolate({
+                  opacity: wateringStreamAnim.interpolate({
                     inputRange: [0, 0.2, 0.8, 1],
                     outputRange: [0, 1, 1, 0],
                   }),
-                  transform: [
-                    {
-                      translateY: waterDropsAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-30, 70],
-                      }),
-                    },
-                  ],
                 },
               ]}
               pointerEvents="none"
             >
-              <Text style={{ fontSize: 26 }}>💧 💧 💧</Text>
+              <View style={styles.wateringCanBox}>
+                <Text style={{ fontSize: 36 }}>🫗</Text>
+              </View>
+              <Animated.View
+                style={[
+                  styles.waterStream,
+                  {
+                    transform: [
+                      {
+                        translateY: wateringStreamAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-20, 80],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 24 }}>💧 💦 💧 💦</Text>
+              </Animated.View>
             </Animated.View>
           )}
 
-          {/* SVG RENDERING */}
+          {/* SVG TREE RENDERING */}
           <Animated.View style={{ transform: [{ scale: treeScale }], alignItems: 'center' }}>
             <Svg width={240} height={200} viewBox="0 0 240 200">
               <Defs>
                 <SvgRadialGradient id="auraGlow" cx="50%" cy="50%" rx="50%" ry="50%">
-                  <Stop offset="0%" stopColor={vitality.leafColor1} stopOpacity="0.35" />
+                  <Stop offset="0%" stopColor={vitality.leafColor1} stopOpacity={watered ? 0.45 : 0.25} />
                   <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </SvgRadialGradient>
 
@@ -330,16 +403,27 @@ export default function MoneyTreeGarden({
               {/* Background Aura */}
               <Circle cx="120" cy="100" r="90" fill="url(#auraGlow)" />
 
-              {/* Island / Pot Base */}
+              {/* Pot Base & Soil */}
               <Ellipse cx="120" cy="180" rx="65" ry="14" fill="#090D16" opacity="0.6" />
               <Path
                 d="M 75 160 L 85 182 Q 120 190 155 182 L 165 160 Q 120 166 75 160 Z"
                 fill="url(#potGrad)"
               />
               <Ellipse cx="120" cy="160" rx="45" ry="8" fill="#5A3A1A" />
-              <Ellipse cx="120" cy="159" rx="40" ry="6" fill="#3D2611" />
+              <Ellipse
+                cx="120"
+                cy="159"
+                rx="40"
+                ry="6"
+                fill={watered ? '#2E1D0C' : '#3D2611'}
+              />
 
-              {/* STAGES RENDERING */}
+              {/* RIPPLE EFFECT ON SOIL WHEN WATERED */}
+              {watered && (
+                <Ellipse cx="120" cy="159" rx="36" ry="5" stroke="#38BDF8" strokeWidth="1" fill="none" opacity="0.6" />
+              )}
+
+              {/* GROWTH STAGES */}
               {growthStage === 'seed' && (
                 <G>
                   <Circle cx="120" cy="154" r="14" fill="url(#goldCoinGrad)" />
@@ -353,21 +437,18 @@ export default function MoneyTreeGarden({
 
               {growthStage === 'sprout' && (
                 <G>
-                  {/* Stem */}
                   <Path
                     d="M 120 158 Q 118 135 120 115"
                     stroke="url(#trunkGrad)"
                     strokeWidth="6"
                     strokeLinecap="round"
                   />
-                  {/* Left leaf */}
                   <Path
                     d="M 120 135 C 95 130 92 110 120 118"
                     fill="url(#foliageGrad1)"
                     stroke="#065F46"
                     strokeWidth="1"
                   />
-                  {/* Right leaf */}
                   <Path
                     d="M 120 125 C 145 120 148 100 120 108"
                     fill="url(#foliageGrad1)"
@@ -380,14 +461,12 @@ export default function MoneyTreeGarden({
 
               {growthStage === 'sapling' && (
                 <G>
-                  {/* Trunk */}
                   <Path
                     d="M 115 160 Q 114 130 110 115 Q 120 105 132 90 M 112 120 Q 98 108 92 98"
                     stroke="url(#trunkGrad)"
                     strokeWidth="8"
                     strokeLinecap="round"
                   />
-                  {/* Foliage Clusters */}
                   <Circle cx="90" cy="95" r="24" fill="url(#foliageGrad1)" />
                   <Circle cx="132" cy="85" r="28" fill="url(#foliageGrad1)" />
                   <Circle cx="112" cy="72" r="30" fill="url(#foliageGrad1)" />
@@ -396,14 +475,12 @@ export default function MoneyTreeGarden({
 
               {(growthStage === 'blooming' || growthStage === 'legendary') && (
                 <G>
-                  {/* Rich Curved Trunk */}
                   <Path
                     d="M 112 160 Q 115 130 105 110 Q 95 95 85 85 M 115 125 Q 130 110 145 95 M 110 110 Q 118 90 120 70"
                     stroke="url(#trunkGrad)"
                     strokeWidth="13"
                     strokeLinecap="round"
                   />
-                  {/* Shading branch details */}
                   <Path
                     d="M 115 158 Q 118 132 110 114"
                     stroke="#FEF08A"
@@ -411,66 +488,129 @@ export default function MoneyTreeGarden({
                     opacity="0.4"
                   />
 
-                  {/* Dense Foliage Canopy */}
+                  {/* Dense Foliage */}
                   <Circle cx="75" cy="85" r="32" fill="url(#foliageGrad1)" />
                   <Circle cx="165" cy="85" r="32" fill="url(#foliageGrad1)" />
                   <Circle cx="95" cy="55" r="36" fill="url(#foliageGrad1)" />
                   <Circle cx="145" cy="55" r="36" fill="url(#foliageGrad1)" />
                   <Circle cx="120" cy="45" r="40" fill="url(#foliageGrad1)" />
 
-                  {/* Highlights on top */}
-                  <Circle cx="120" cy="40" r="28" fill={vitality.leafColor3} opacity="0.3" />
+                  <Circle cx="120" cy="40" r="28" fill={vitality.leafColor3} opacity="0.35" />
 
-                  {/* Blooming Flowers or Sparkles if Blooming */}
                   {growthStage === 'blooming' && (
                     <G>
                       <Circle cx="85" cy="75" r="5" fill="#F472B6" />
                       <Circle cx="155" cy="70" r="5" fill="#F472B6" />
                       <Circle cx="120" cy="35" r="6" fill="#F472B6" />
-                      <Circle cx="100" cy="50" r="4" fill="#FDE047" />
-                      <Circle cx="140" cy="50" r="4" fill="#FDE047" />
                     </G>
                   )}
 
-                  {/* Legendary Crown & Golden Accents */}
                   {growthStage === 'legendary' && (
                     <G>
-                      {/* Floating Crown above canopy */}
                       <Path
                         d="M 108 12 L 114 20 L 120 10 L 126 20 L 132 12 L 130 24 L 110 24 Z"
                         fill="url(#goldCoinGrad)"
                       />
                       <Circle cx="120" cy="18" r="2" fill="#FFFFFF" />
-                      {/* Golden Sparkles */}
-                      <Circle cx="60" cy="70" r="3" fill="#FDE047" opacity="0.8" />
-                      <Circle cx="180" cy="70" r="3" fill="#FDE047" opacity="0.8" />
-                      <Circle cx="120" cy="65" r="3" fill="#FDE047" opacity="0.8" />
+                      <Circle cx="60" cy="70" r="3" fill="#FDE047" opacity="0.9" />
+                      <Circle cx="180" cy="70" r="3" fill="#FDE047" opacity="0.9" />
                     </G>
                   )}
                 </G>
               )}
-
-              {/* COIN FRUITS (Interactive) */}
-              {!harvested && (
-                <G>
-                  {/* Left Fruit */}
-                  <Circle cx="90" cy="85" r="10" fill="url(#goldCoinGrad)" />
-                  <Circle cx="90" cy="85" r="8" fill="#FBBF24" />
-                  <Circle cx="90" cy="85" r="4" fill="#FEF08A" opacity="0.7" />
-
-                  {/* Right Fruit */}
-                  <Circle cx="150" cy="85" r="10" fill="url(#goldCoinGrad)" />
-                  <Circle cx="150" cy="85" r="8" fill="#FBBF24" />
-                  <Circle cx="150" cy="85" r="4" fill="#FEF08A" opacity="0.7" />
-
-                  {/* Center Top Fruit */}
-                  <Circle cx="120" cy="60" r="11" fill="url(#goldCoinGrad)" />
-                  <Circle cx="120" cy="60" r="9" fill="#FBBF24" />
-                  <Circle cx="120" cy="60" r="5" fill="#FEF08A" opacity="0.7" />
-                </G>
-              )}
             </Svg>
+
+            {/* DIRECT TAPPABLE FRUITS OVERLAY ON THE CANOPY */}
+            <View style={styles.interactiveFruitsLayer} pointerEvents="box-none">
+              {fruitsData.map((f) => {
+                const isHarvested = harvestedFruitIds.includes(f.id);
+
+                return (
+                  <View
+                    key={f.id}
+                    style={[
+                      styles.fruitTouchTarget,
+                      {
+                        left: f.x - 24,
+                        top: f.y - 24,
+                      },
+                    ]}
+                  >
+                    {!isHarvested ? (
+                      <Pressable
+                        onPress={() => handleTapFruit(f.id)}
+                        hitSlop={14}
+                        style={({ pressed }) => [
+                          styles.fruitPressable,
+                          pressed && { transform: [{ scale: 0.85 }] },
+                        ]}
+                      >
+                        <Animated.View style={{ transform: [{ scale: fruitPulse }] }}>
+                          <LinearGradient
+                            colors={['#FEF08A', '#FACC15', '#CA8A04']}
+                            style={styles.fruitCoinCircle}
+                          >
+                            <Text style={styles.fruitCoinText}>$</Text>
+                          </LinearGradient>
+                        </Animated.View>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.harvestedFlowerBud}>
+                        <Text style={{ fontSize: 13 }}>🌸</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
           </Animated.View>
+        </View>
+
+        {/* HYDRATION & HARVEST PROGRESS BARS */}
+        <View style={styles.metricsRow}>
+          {/* Hydration Bar */}
+          <View style={styles.metricItem}>
+            <View style={styles.metricHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="water" size={14} color="#38BDF8" />
+                <Text style={styles.metricLabel}>
+                  {isAr ? 'مستوى الارتواء' : 'Hydration'}
+                </Text>
+              </View>
+              <Text style={[styles.metricValue, { color: '#38BDF8' }]}>
+                {currentWaterLevel}%
+              </Text>
+            </View>
+            <View style={styles.barBg}>
+              <View style={[styles.barFill, { width: `${currentWaterLevel}%`, backgroundColor: '#38BDF8' }]} />
+            </View>
+          </View>
+
+          {/* Fruit Harvest Bar */}
+          <View style={styles.metricItem}>
+            <View style={styles.metricHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="gift" size={14} color="#FBBF24" />
+                <Text style={styles.metricLabel}>
+                  {isAr ? 'ثمار التوفير' : 'Fruits'}
+                </Text>
+              </View>
+              <Text style={[styles.metricValue, { color: '#FBBF24' }]}>
+                {3 - unharvestedCount} / 3
+              </Text>
+            </View>
+            <View style={styles.barBg}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${((3 - unharvestedCount) / 3) * 100}%`,
+                    backgroundColor: '#FBBF24',
+                  },
+                ]}
+              />
+            </View>
+          </View>
         </View>
 
         {/* INTERACTIVE ACTIONS ROW */}
@@ -478,7 +618,6 @@ export default function MoneyTreeGarden({
           {/* WATER ACTION */}
           <Pressable
             onPress={handleWater}
-            disabled={watered}
             style={({ pressed }) => [
               styles.actionBtn,
               watered ? styles.actionBtnDone : styles.actionBtnWater,
@@ -497,35 +636,35 @@ export default function MoneyTreeGarden({
               ]}
             >
               {watered
-                ? (isAr ? 'تم السقي اليوم ✓' : 'Watered Today ✓')
+                ? (isAr ? 'شبعانة رياً اليوم 💧' : 'Watered Today 💧')
                 : (isAr ? 'اروَ الشجرة 💧 (+15 XP)' : 'Water Tree 💧 (+15 XP)')}
             </Text>
           </Pressable>
 
-          {/* HARVEST ACTION */}
+          {/* HARVEST ALL ACTION */}
           <Pressable
-            onPress={handleHarvest}
-            disabled={harvested}
+            onPress={handleHarvestAll}
+            disabled={unharvestedCount === 0}
             style={({ pressed }) => [
               styles.actionBtn,
-              harvested ? styles.actionBtnDone : styles.actionBtnHarvest,
-              pressed && { opacity: 0.8 },
+              unharvestedCount === 0 ? styles.actionBtnDone : styles.actionBtnHarvest,
+              pressed && unharvestedCount > 0 && { opacity: 0.8 },
             ]}
           >
             <Ionicons
-              name={harvested ? 'checkmark-done' : 'gift'}
+              name={unharvestedCount === 0 ? 'checkmark-done' : 'gift'}
               size={18}
-              color={harvested ? '#10B981' : '#FBBF24'}
+              color={unharvestedCount === 0 ? '#10B981' : '#FBBF24'}
             />
             <Text
               style={[
                 styles.actionBtnText,
-                harvested ? styles.actionBtnTextDone : { color: '#FEF9C3' },
+                unharvestedCount === 0 ? styles.actionBtnTextDone : { color: '#FEF9C3' },
               ]}
             >
-              {harvested
-                ? (isAr ? 'تم جني الثمار ✓' : 'Harvested ✓')
-                : (isAr ? 'اقطف الثمار 🪙 (+25 XP)' : 'Harvest 🪙 (+25 XP)')}
+              {unharvestedCount === 0
+                ? (isAr ? 'تم جني الثمار ✓' : 'All Harvested ✓')
+                : (isAr ? `اقطف الباقي (${unharvestedCount}) 🪙` : `Harvest All (${unharvestedCount}) 🪙`)}
             </Text>
           </Pressable>
         </View>
@@ -591,7 +730,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
-    maxWidth: '92%',
+    maxWidth: '94%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -616,21 +755,138 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.95)',
     alignSelf: 'center',
   },
+  floatingToastBox: {
+    position: 'absolute',
+    top: 50,
+    alignSelf: 'center',
+    zIndex: 999,
+    backgroundColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: '#FBBF24',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingToastText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 13,
+  },
   treeArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 190,
+    height: 200,
     marginVertical: 4,
+    position: 'relative',
   },
-  waterDropsContainer: {
+  wateringOverlay: {
     position: 'absolute',
-    top: 10,
+    top: 0,
+    alignItems: 'center',
+    zIndex: 25,
+  },
+  wateringCanBox: {
+    marginBottom: 2,
+  },
+  waterStream: {
+    alignItems: 'center',
+  },
+  interactiveFruitsLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 240,
+    height: 200,
+  },
+  fruitTouchTarget: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 20,
+  },
+  fruitPressable: {
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fruitCoinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FEF08A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fruitCoinText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 16,
+    color: '#713F12',
+    lineHeight: 20,
+  },
+  harvestedFlowerBud: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  metricItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  metricHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  metricLabel: {
+    fontFamily: 'Cairo_600SemiBold',
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  metricValue: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 12,
+  },
+  barBg: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 6,
+    borderRadius: 3,
   },
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
+    marginTop: 2,
   },
   actionBtn: {
     flex: 1,
@@ -643,12 +899,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionBtnWater: {
-    backgroundColor: 'rgba(14, 165, 233, 0.2)',
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    backgroundColor: 'rgba(14, 165, 233, 0.25)',
+    borderColor: 'rgba(56, 189, 248, 0.5)',
   },
   actionBtnHarvest: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    borderColor: 'rgba(251, 191, 36, 0.4)',
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: 'rgba(251, 191, 36, 0.5)',
   },
   actionBtnDone: {
     backgroundColor: 'rgba(255, 255, 255, 0.07)',

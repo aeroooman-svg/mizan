@@ -34,6 +34,13 @@ const indexHtmlPath = path.join(distDir, 'index.html');
 if (fs.existsSync(indexHtmlPath)) {
   let html = fs.readFileSync(indexHtmlPath, 'utf8');
   const touchStyles = `
+    <style id="mizan-dark-bg-fix">
+      html, body, #root {
+        background-color: #090E17 !important;
+        background: #090E17 !important;
+        color: #FFFFFF !important;
+      }
+    </style>
     <style id="mizan-ios-touch-fix">
       * {
         -webkit-tap-highlight-color: transparent !important;
@@ -51,10 +58,10 @@ if (fs.existsSync(indexHtmlPath)) {
     </style>
   </head>`;
 
-  if (!html.includes('id="mizan-ios-touch-fix"')) {
+  if (!html.includes('id="mizan-dark-bg-fix"')) {
     html = html.replace('</head>', touchStyles);
     fs.writeFileSync(indexHtmlPath, html, 'utf8');
-    console.log('✓ Injected iOS Safari touch fixes into dist/index.html');
+    console.log('✓ Injected dark background and touch fixes into dist/index.html');
   }
 }
 

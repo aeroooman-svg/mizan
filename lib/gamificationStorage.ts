@@ -95,22 +95,43 @@ export async function claimDailyMysteryChest(dateKey: string): Promise<void> {
 
 export interface TreeCareState {
   watered: boolean;
+  waterLevel: number; // 0 - 100
   harvested: boolean;
+  harvestedFruitIds: number[];
 }
 
 export async function getTreeCareState(dateKey: string): Promise<TreeCareState> {
   try {
     const raw = await AsyncStorage.getItem(`${TREE_CARE_KEY}_${dateKey}`);
-    if (!raw) return { watered: false, harvested: false };
-    return JSON.parse(raw);
+    if (!raw) {
+      return { watered: false, waterLevel: 45, harvested: false, harvestedFruitIds: [] };
+    }
+    const parsed = JSON.parse(raw);
+    const fruitIds = Array.isArray(parsed.harvestedFruitIds)
+      ? parsed.harvestedFruitIds
+      : parsed.harvested
+      ? [0, 1, 2]
+      : [];
+    return {
+      watered: !!parsed.watered,
+      waterLevel: typeof parsed.waterLevel === 'number' ? parsed.waterLevel : parsed.watered ? 100 : 45,
+      harvested: fruitIds.length >= 3,
+      harvestedFruitIds: fruitIds,
+    };
   } catch {
-    return { watered: false, harvested: false };
+    return { watered: false, waterLevel: 45, harvested: false, harvestedFruitIds: [] };
   }
 }
 
 export async function saveTreeCareState(dateKey: string, updates: Partial<TreeCareState>): Promise<TreeCareState> {
   const current = await getTreeCareState(dateKey);
-  const next = { ...current, ...updates };
+  const next: TreeCareState = {
+    ...current,
+    ...updates,
+  };
+  if (next.harvestedFruitIds && next.harvestedFruitIds.length >= 3) {
+    next.harvested = true;
+  }
   await AsyncStorage.setItem(`${TREE_CARE_KEY}_${dateKey}`, JSON.stringify(next));
   return next;
 }
