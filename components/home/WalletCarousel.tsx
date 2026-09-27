@@ -432,6 +432,8 @@ export default function WalletCarousel({
                 balanceFormatted={`${walletBalance >= 0 ? '' : '-'}${formatCurrency(Math.abs(walletBalance), language, wallet.currency)}`}
                 bankBalanceFormatted={formatCurrency(wBankBal, language, wallet.currency)}
                 cashBalanceFormatted={formatCurrency(wCashBal, language, wallet.currency)}
+                cashAmount={wCashBal}
+                bankAmount={wBankBal}
                 onPressCash={() => setCashModalWallet(wallet)}
                 currencySymbol={wallet.currency}
                 cardStyle={cardStyle}
@@ -439,7 +441,7 @@ export default function WalletCarousel({
                 icon={wallet.icon || 'account-balance-wallet'}
                 isShared={Boolean(sharedText)}
                 sharedLabel={sharedText ? loc(`مشترك: ${sharedText}`, `Shared: ${sharedText}`, `പങ്കുവെച്ചത്: ${sharedText}`) : undefined}
-                height={160}
+                height={155}
                 dailySafeSpend={dailySafeLimit}
                 dailySafeSpendFormatted={formatCurrency(dailySafeLimit, language, wallet.currency)}
                 remainingToday={remainingToday}
@@ -1944,14 +1946,14 @@ const getStyles = (colors: any, cardWidth: number, cardGap: number) =>
     },
     wallet3DCard: {
       width: cardWidth,
-      height: 175,
+      height: 155,
       borderRadius: 22,
       overflow: 'hidden',
       elevation: 6,
       backgroundColor: 'transparent',
     },
     wallet3DCardSelected: {
-      borderWidth: 2.5,
+      borderWidth: 2,
       borderColor: colors.text,
       elevation: 12,
       shadowColor: colors.primary,
@@ -1965,7 +1967,7 @@ const getStyles = (colors: any, cardWidth: number, cardGap: number) =>
     },
     addWallet3DCard: {
       width: 140,
-      height: 175,
+      height: 155,
       borderRadius: 22,
       borderWidth: 2,
       borderStyle: 'dashed',

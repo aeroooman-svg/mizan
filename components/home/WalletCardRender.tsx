@@ -33,6 +33,8 @@ interface WalletCardRenderProps {
   adjustedTomorrowLimitFormatted?: string;
   bankBalanceFormatted?: string;
   cashBalanceFormatted?: string;
+  cashAmount?: number;
+  bankAmount?: number;
   onPressCash?: () => void;
 }
 
@@ -47,7 +49,7 @@ export default function WalletCardRender({
   expiry = '07/31',
   isShared,
   sharedLabel,
-  height = 160,
+  height = 155,
   dailySafeSpend,
   dailySafeSpendFormatted,
   remainingToday,
@@ -62,14 +64,25 @@ export default function WalletCardRender({
   adjustedTomorrowLimitFormatted,
   bankBalanceFormatted,
   cashBalanceFormatted,
+  cashAmount,
+  bankAmount,
   onPressCash,
 }: WalletCardRenderProps) {
   const isMinimal = cardStyle === 'minimal';
   const textColor = isMinimal ? color : '#FFFFFF';
   const subTextColor = isMinimal ? color + 'AA' : 'rgba(255, 255, 255, 0.75)';
 
+  const hasNonZeroCash =
+    (cashAmount !== undefined && cashAmount > 0) ||
+    (cashBalanceFormatted !== undefined &&
+      cashBalanceFormatted !== '0' &&
+      cashBalanceFormatted !== '0.00' &&
+      cashBalanceFormatted !== '٠' &&
+      cashBalanceFormatted !== '٠.٠٠' &&
+      parseFloat(cashBalanceFormatted.replace(/[^0-9.]/g, '')) > 0);
+
   return (
-    <View style={[styles.cardOuter, { height, borderRadius: 22 }]}>
+    <View style={[styles.cardOuter, { height: height || '100%', borderRadius: 22 }]}>
       {/* --- 1. BACKGROUND LAYER PER THEME --- */}
       {cardStyle === 'classic' && (
         <LinearGradient
@@ -269,19 +282,23 @@ export default function WalletCardRender({
 
           <View style={{ flex: 1, alignItems: 'flex-start', justifyContent: 'center' }}>
             <Text style={[styles.balanceLabelText, { color: subTextColor }]}>
-              {currencySymbol ? 'AVAILABLE BALANCE' : 'BALANCE'}
+              {language === 'ar'
+                ? (hasNonZeroCash ? 'إجمالي الرصيد (بنك + كاش)' : 'الرصيد المتاح')
+                : (hasNonZeroCash ? 'TOTAL (BANK + CASH)' : (currencySymbol ? 'AVAILABLE BALANCE' : 'BALANCE'))}
             </Text>
             <Text style={[styles.balanceValueText, { color: textColor }]} numberOfLines={1}>
               {balanceFormatted} <Text style={styles.currencySubText}>{currencySymbol}</Text>
             </Text>
-            {bankBalanceFormatted !== undefined && cashBalanceFormatted !== undefined && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 5 }}>
-                  <Ionicons name="card-outline" size={10} color={subTextColor} />
-                  <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: textColor }}>
-                    {language === 'ar' ? 'بنك: ' : 'Bank: '}{bankBalanceFormatted}
-                  </Text>
-                </View>
+            {cashBalanceFormatted !== undefined && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                {hasNonZeroCash && bankBalanceFormatted !== undefined && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.28)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 }}>
+                    <Ionicons name="card-outline" size={10} color={subTextColor} />
+                    <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 9.5, color: textColor }}>
+                      {language === 'ar' ? 'بنك: ' : 'Bank: '}{bankBalanceFormatted}
+                    </Text>
+                  </View>
+                )}
 
                 <Pressable
                   onPress={(e: any) => {
@@ -290,13 +307,23 @@ export default function WalletCardRender({
                     onPressCash?.();
                   }}
                   style={({ pressed }) => [
-                    { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(16,185,129,0.3)', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 5, borderWidth: 0.5, borderColor: 'rgba(16,185,129,0.5)' },
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 3.5,
+                      backgroundColor: hasNonZeroCash ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.12)',
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 5,
+                      borderWidth: 0.5,
+                      borderColor: hasNonZeroCash ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.2)',
+                    },
                     pressed && { opacity: 0.7 }
                   ]}
                   hitSlop={6}
                 >
-                  <Ionicons name="cash-outline" size={10} color="#10B981" />
-                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9.5, color: '#A7F3D0' }}>
+                  <Ionicons name="cash-outline" size={10} color={hasNonZeroCash ? '#10B981' : subTextColor} />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 9.5, color: hasNonZeroCash ? '#A7F3D0' : textColor }}>
                     {language === 'ar' ? 'كاش: ' : 'Cash: '}{cashBalanceFormatted}
                   </Text>
                 </Pressable>
@@ -381,6 +408,7 @@ export default function WalletCardRender({
 const styles = StyleSheet.create({
   cardOuter: {
     width: '100%',
+    height: '100%',
     position: 'relative',
     overflow: 'hidden',
     shadowColor: '#000',
@@ -408,7 +436,7 @@ const styles = StyleSheet.create({
   },
   cardContentContainer: {
     flex: 1,
-    padding: 18,
+    padding: 16,
     justifyContent: 'space-between',
   },
 
