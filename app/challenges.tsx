@@ -42,6 +42,10 @@ import {
   claimDailyMysteryChest,
   getDailyQuizAnswered,
   saveDailyQuizAnswered,
+  getTotalTreeHarvestedSavings,
+  addTreeHarvestedSavings,
+  getTreeHarvestLogs,
+  TreeHarvestLog,
 } from '@/lib/gamificationStorage';
 
 import MoneyTreeGarden from '@/components/gamification/MoneyTreeGarden';
@@ -49,7 +53,7 @@ import MysteryChestSection from '@/components/gamification/MysteryChestSection';
 import DailyQuizSection from '@/components/gamification/DailyQuizSection';
 import CelebrationConfetti from '@/components/gamification/CelebrationConfetti';
 
-type ActiveTab = 'challenges' | 'quests' | 'badges';
+type ActiveTab = 'tree' | 'challenges' | 'badges';
 
 export default function ChallengesScreen() {
   const { colors, theme } = useTheme();
@@ -61,7 +65,7 @@ export default function ChallengesScreen() {
 
   // Selected filter wallet ('all' or wallet id)
   const [filterWalletId, setFilterWalletId] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('challenges');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('tree');
 
   // Gamification state
   const [customChallenges, setCustomChallenges] = useState<CustomChallenge[]>([]);
@@ -69,6 +73,8 @@ export default function ChallengesScreen() {
   const [bonusXP, setBonusXP] = useState<number>(0);
   const [hasPlan, setHasPlan] = useState(false);
   const [hasBudgets, setHasBudgets] = useState(false);
+  const [totalTreeSavings, setTotalTreeSavings] = useState<number>(0);
+  const [recentHarvestLogs, setRecentHarvestLogs] = useState<TreeHarvestLog[]>([]);
 
   // Tree & Garden State
   const [treeCareState, setTreeCareState] = useState<TreeCareState>({
@@ -124,13 +130,15 @@ export default function ChallengesScreen() {
 
   // Load gamification data
   const loadGamificationData = useCallback(async () => {
-    const [cChallenges, claimed, bXP, treeState, chestOpened, quizAnswered] = await Promise.all([
+    const [cChallenges, claimed, bXP, treeState, chestOpened, quizAnswered, tSavings, hLogs] = await Promise.all([
       getCustomChallenges(),
       getClaimedDailyQuests(todayKey),
       getBonusXP(),
       getTreeCareState(todayKey),
       getDailyMysteryChest(todayKey),
       getDailyQuizAnswered(todayKey),
+      getTotalTreeHarvestedSavings(),
+      getTreeHarvestLogs(),
     ]);
 
     setCustomChallenges(cChallenges);
@@ -139,6 +147,8 @@ export default function ChallengesScreen() {
     setTreeCareState(treeState);
     setMysteryChestOpened(chestOpened);
     setDailyQuizAnswered(quizAnswered);
+    setTotalTreeSavings(tSavings);
+    setRecentHarvestLogs(hLogs);
 
     if (selectedWallet) {
       const plan = await getFinancialPlan(selectedWallet.id);
@@ -349,7 +359,39 @@ export default function ChallengesScreen() {
     loadGamificationData();
   };
 
-  const handleHarvestSingleFruit = async (fruitId: number) => {
+  const todayExpenses = useMemo(() => {
+    const now = new Date();
+    return activeWalletTransactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return (
+          t.type === 'expense' &&
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        );
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [activeWalletTransactions]);
+
+  const dailySafeLimit = useMemo(() => {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysRemaining = Math.max(1, daysInMonth - now.getDate() + 1);
+    const curBal = activeWalletIncome - activeWalletExpense;
+    if (curBal <= 0) return 0;
+    return Math.round(curBal / daysRemaining);
+  }, [activeWalletIncome, activeWalletExpense]);
+
+  const todaySurplus = useMemo(() => {
+    if (dailySafeLimit <= 0) {
+      return savingsRate > 0 ? Math.round(savingsRate * 2.5) : 30;
+    }
+    const rem = dailySafeLimit - todayExpenses;
+    return rem > 0 ? Math.round(rem) : 30;
+  }, [dailySafeLimit, todayExpenses, savingsRate]);
+
+  const handleHarvestSingleFruit = async (fruitId: number, amount: number) => {
     const currentHarvested = treeCareState.harvestedFruitIds || [];
     if (currentHarvested.includes(fruitId)) return;
     const nextIds = [...currentHarvested, fruitId];
@@ -359,11 +401,20 @@ export default function ChallengesScreen() {
     });
     await addBonusXP(15);
     setTreeCareState(updated);
+    if (amount > 0) {
+      const newTotal = await addTreeHarvestedSavings(amount, {
+        date: todayKey,
+        amount,
+        walletName: selectedWallet?.name || (isAr ? 'محفظتي' : 'Wallet'),
+        note: isAr ? 'قطف ثمرة ادخار يومية' : 'Daily tree fruit harvest',
+      });
+      setTotalTreeSavings(newTotal);
+    }
     triggerConfetti();
     loadGamificationData();
   };
 
-  const handleHarvestAllFruits = async () => {
+  const handleHarvestAllFruits = async (totalAmount: number) => {
     const currentHarvested = treeCareState.harvestedFruitIds || [];
     const remaining = [0, 1, 2].filter(id => !currentHarvested.includes(id));
     if (remaining.length === 0) return;
@@ -373,6 +424,15 @@ export default function ChallengesScreen() {
     });
     await addBonusXP(remaining.length * 15);
     setTreeCareState(updated);
+    if (totalAmount > 0) {
+      const newTotal = await addTreeHarvestedSavings(totalAmount, {
+        date: todayKey,
+        amount: totalAmount,
+        walletName: selectedWallet?.name || (isAr ? 'محفظتي' : 'Wallet'),
+        note: isAr ? 'جني ثمار الشجرة وفائض اليوم' : 'Full tree harvest & surplus',
+      });
+      setTotalTreeSavings(newTotal);
+    }
     triggerConfetti();
     loadGamificationData();
   };
@@ -479,9 +539,9 @@ export default function ChallengesScreen() {
     title: isAr ? 'التحديات وشجرة الثروة' : 'Challenges & Wealth Tree',
     allWallets: isAr ? 'جميع المحافظ' : 'All Wallets',
     healthTitle: isAr ? 'مؤشر صحة المحفظة' : 'Wallet Health Score',
-    tabChallenges: isAr ? 'تحديات الادخار' : 'Challenges',
-    tabQuests: isAr ? 'المهام اليومية' : 'Daily Quests',
-    tabBadges: isAr ? 'خزانة الأوسمة' : 'Badges',
+    tabTree: isAr ? 'شجرة التوفير 🌳' : 'Wealth Tree 🌳',
+    tabChallenges: isAr ? 'التحديات والمهام 🎯' : 'Challenges & Quests 🎯',
+    tabBadges: isAr ? 'الأوسمة والصحة 🏅' : 'Badges & Health 🏅',
     streakDays: isAr ? `${streakDays} أيام 🔥` : `${streakDays} Days 🔥`,
     levelLabel: isAr ? `المستوى ${levelInfo.current.level}` : `Level ${levelInfo.current.level}`,
     xpToNext: levelInfo.next
@@ -618,9 +678,19 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
-            <View style={styles.heroStreakBadge}>
-              <Ionicons name="flame" size={20} color="#F97316" />
-              <Text style={styles.heroStreakText}>{t.streakDays}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {totalTreeSavings > 0 && (
+                <View style={styles.heroRealSavingsBadge}>
+                  <Ionicons name="leaf" size={13} color="#10B981" />
+                  <Text style={styles.heroRealSavingsNumber}>
+                    {totalTreeSavings.toLocaleString()} {currencySymbol}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.heroStreakBadge}>
+                <Ionicons name="flame" size={18} color="#F97316" />
+                <Text style={styles.heroStreakText}>{t.streakDays}</Text>
+              </View>
             </View>
           </View>
 
@@ -636,91 +706,23 @@ export default function ChallengesScreen() {
           </View>
         </LinearGradient>
 
-        {/* 2. THE LIVING MONEY TREE GARDEN */}
-        <MoneyTreeGarden
-          userLevel={levelInfo.current.level}
-          healthScore={walletHealth.score}
-          isAr={isAr}
-          watered={treeCareState.watered}
-          waterLevel={treeCareState.waterLevel}
-          harvested={treeCareState.harvested}
-          harvestedFruitIds={treeCareState.harvestedFruitIds}
-          onWaterTree={handleWaterTree}
-          onHarvestSingleFruit={handleHarvestSingleFruit}
-          onHarvestAllFruits={handleHarvestAllFruits}
-          savingsRate={savingsRate}
-        />
-
-        {/* 3. DAILY MYSTERY CHEST */}
-        <MysteryChestSection
-          isAr={isAr}
-          openedToday={mysteryChestOpened}
-          canUnlock={canUnlockMysteryChest}
-          onOpenChest={handleOpenMysteryChest}
-        />
-
-        {/* 4. DAILY FLASH QUIZ */}
-        <DailyQuizSection
-          isAr={isAr}
-          answeredToday={dailyQuizAnswered}
-          onAnswerCorrect={handleAnswerQuiz}
-        />
-
-        {/* 5. WALLET SELECTOR & HEALTH SCORE */}
-        <View style={styles.walletFilterSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
-            <Pressable
-              onPress={() => {
-                Haptics.selectionAsync();
-                setFilterWalletId('all');
-              }}
-              style={[styles.walletChip, filterWalletId === 'all' && styles.walletChipActive]}
-            >
-              <Ionicons name="globe-outline" size={16} color={filterWalletId === 'all' ? '#fff' : colors.textSecondary} />
-              <Text style={[styles.walletChipText, filterWalletId === 'all' && styles.walletChipTextActive]}>
-                {t.allWallets}
-              </Text>
-            </Pressable>
-
-            {wallets.map(w => {
-              const isSelected = filterWalletId === w.id;
-              return (
-                <Pressable
-                  key={w.id}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setFilterWalletId(w.id);
-                  }}
-                  style={[styles.walletChip, isSelected && { backgroundColor: w.color, borderColor: w.color }]}
-                >
-                  <View style={[styles.walletDot, { backgroundColor: isSelected ? '#fff' : w.color }]} />
-                  <Text style={[styles.walletChipText, isSelected && styles.walletChipTextActive]}>{w.name}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Wallet Health Bar */}
-          <View style={styles.healthScoreCard}>
-            <View style={styles.healthScoreHeader}>
-              <View style={styles.healthLeft}>
-                <View style={[styles.healthBadge, { backgroundColor: walletHealth.color + '22' }]}>
-                  <Text style={[styles.healthGradeText, { color: walletHealth.color }]}>{walletHealth.grade}</Text>
-                </View>
-                <View>
-                  <Text style={styles.healthTitle}>{t.healthTitle}</Text>
-                  <Text style={[styles.healthSubtitle, { color: walletHealth.color }]}>
-                    {isAr ? walletHealth.labelAr : walletHealth.labelEn}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.healthScoreNumber, { color: walletHealth.color }]}>{walletHealth.score}%</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 6. TABS SELECTOR */}
+        {/* 2. MAIN 3 TABS SELECTOR */}
         <View style={styles.tabsRow}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setActiveTab('tree');
+            }}
+            style={[styles.tabBtn, activeTab === 'tree' && styles.tabBtnActive]}
+          >
+            <Ionicons
+              name="leaf"
+              size={17}
+              color={activeTab === 'tree' ? '#10B981' : colors.textSecondary}
+            />
+            <Text style={[styles.tabText, activeTab === 'tree' && styles.tabTextActive]}>{t.tabTree}</Text>
+          </Pressable>
+
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
@@ -729,26 +731,11 @@ export default function ChallengesScreen() {
             style={[styles.tabBtn, activeTab === 'challenges' && styles.tabBtnActive]}
           >
             <Ionicons
-              name="trophy-outline"
-              size={18}
+              name="trophy"
+              size={17}
               color={activeTab === 'challenges' ? colors.primary : colors.textSecondary}
             />
             <Text style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>{t.tabChallenges}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              Haptics.selectionAsync();
-              setActiveTab('quests');
-            }}
-            style={[styles.tabBtn, activeTab === 'quests' && styles.tabBtnActive]}
-          >
-            <Ionicons
-              name="flash-outline"
-              size={18}
-              color={activeTab === 'quests' ? colors.primary : colors.textSecondary}
-            />
-            <Text style={[styles.tabText, activeTab === 'quests' && styles.tabTextActive]}>{t.tabQuests}</Text>
           </Pressable>
 
           <Pressable
@@ -759,17 +746,178 @@ export default function ChallengesScreen() {
             style={[styles.tabBtn, activeTab === 'badges' && styles.tabBtnActive]}
           >
             <Ionicons
-              name="ribbon-outline"
-              size={18}
-              color={activeTab === 'badges' ? colors.primary : colors.textSecondary}
+              name="ribbon"
+              size={17}
+              color={activeTab === 'badges' ? '#F59E0B' : colors.textSecondary}
             />
             <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>{t.tabBadges}</Text>
           </Pressable>
         </View>
 
-        {/* TAB 1: SAVINGS CHALLENGES */}
+        {/* TAB 1: LIVING MONEY TREE & REAL SAVINGS */}
+        {activeTab === 'tree' && (
+          <View style={styles.tabContentContainer}>
+            {/* Real Savings Vault Card */}
+            <LinearGradient
+              colors={['#064E3B', '#065F46', '#042F2E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.realSavingsVaultCard}
+            >
+              <View style={styles.realSavingsVaultTop}>
+                <View style={{ flex: 1, paddingRight: isAr ? 0 : 8, paddingLeft: isAr ? 8 : 0 }}>
+                  <Text style={styles.realSavingsVaultTitle}>
+                    {isAr ? '💰 خزينة حصاد الشجرة الفعلي' : '💰 Real Tree Savings Vault'}
+                  </Text>
+                  <Text style={styles.realSavingsVaultSubtitle}>
+                    {isAr
+                      ? 'أموال حقيقية وفرتها من انضباطك وترشيد حدك اليومي'
+                      : 'Real money saved from staying under your daily safe spend'}
+                  </Text>
+                </View>
+                <View style={styles.realSavingsVaultAmountBadge}>
+                  <Text style={styles.realSavingsVaultAmountText}>
+                    {totalTreeSavings.toLocaleString()}
+                  </Text>
+                  <Text style={styles.realSavingsVaultCurrencyText}>
+                    {currencySymbol}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.realSavingsSurplusRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="sparkles" size={15} color="#FDE047" />
+                  <Text style={styles.realSavingsSurplusLabel}>
+                    {isAr ? 'فائض اليوم الآمن المتاح للحصاد:' : 'Today’s Safe Surplus to Harvest:'}
+                  </Text>
+                </View>
+                <Text style={styles.realSavingsSurplusValue}>
+                  {todaySurplus > 0 ? `+${todaySurplus.toLocaleString()} ${currencySymbol}` : `0 ${currencySymbol}`}
+                </Text>
+              </View>
+            </LinearGradient>
+
+            {/* The Living Money Tree Garden */}
+            <MoneyTreeGarden
+              userLevel={levelInfo.current.level}
+              healthScore={walletHealth.score}
+              isAr={isAr}
+              watered={treeCareState.watered}
+              waterLevel={treeCareState.waterLevel}
+              harvested={treeCareState.harvested}
+              harvestedFruitIds={treeCareState.harvestedFruitIds}
+              onWaterTree={handleWaterTree}
+              onHarvestSingleFruit={handleHarvestSingleFruit}
+              onHarvestAllFruits={handleHarvestAllFruits}
+              savingsRate={savingsRate}
+              surplusAmount={todaySurplus}
+              currencySymbol={currencySymbol}
+              totalHarvestedSavings={totalTreeSavings}
+            />
+
+            {/* Daily Bonus & Quick IQ Section */}
+            <View style={{ gap: 12, marginTop: 4 }}>
+              <MysteryChestSection
+                isAr={isAr}
+                openedToday={mysteryChestOpened}
+                canUnlock={canUnlockMysteryChest}
+                onOpenChest={handleOpenMysteryChest}
+              />
+              <DailyQuizSection
+                isAr={isAr}
+                answeredToday={dailyQuizAnswered}
+                onAnswerCorrect={handleAnswerQuiz}
+              />
+            </View>
+
+            {/* Recent Harvest History */}
+            {recentHarvestLogs.length > 0 && (
+              <View style={styles.harvestLogsSection}>
+                <View style={styles.harvestLogsHeader}>
+                  <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+                  <Text style={styles.harvestLogsTitle}>
+                    {isAr ? 'سجل جني ثمار التوفير' : 'Recent Harvests Log'}
+                  </Text>
+                </View>
+                {recentHarvestLogs.slice(0, 4).map(log => (
+                  <View key={log.id} style={styles.harvestLogRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={styles.harvestLogIcon}>
+                        <Text style={{ fontSize: 13 }}>🪙</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.harvestLogNote}>
+                          {log.note || (isAr ? 'جني ثمار الشجرة' : 'Harvested')}
+                        </Text>
+                        <Text style={styles.harvestLogDate}>{log.date}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.harvestLogAmount}>
+                      +{log.amount.toLocaleString()} {currencySymbol}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* TAB 2: SAVINGS CHALLENGES */}
         {activeTab === 'challenges' && (
           <View style={styles.tabContentContainer}>
+            {/* Wallet Selector & Health Score */}
+            <View style={styles.walletFilterSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
+                <Pressable
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setFilterWalletId('all');
+                  }}
+                  style={[styles.walletChip, filterWalletId === 'all' && styles.walletChipActive]}
+                >
+                  <Ionicons name="globe-outline" size={16} color={filterWalletId === 'all' ? '#fff' : colors.textSecondary} />
+                  <Text style={[styles.walletChipText, filterWalletId === 'all' && styles.walletChipTextActive]}>
+                    {t.allWallets}
+                  </Text>
+                </Pressable>
+
+                {wallets.map(w => {
+                  const isSelected = filterWalletId === w.id;
+                  return (
+                    <Pressable
+                      key={w.id}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setFilterWalletId(w.id);
+                      }}
+                      style={[styles.walletChip, isSelected && { backgroundColor: w.color, borderColor: w.color }]}
+                    >
+                      <View style={[styles.walletDot, { backgroundColor: isSelected ? '#fff' : w.color }]} />
+                      <Text style={[styles.walletChipText, isSelected && styles.walletChipTextActive]}>{w.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Wallet Health Bar */}
+              <View style={styles.healthScoreCard}>
+                <View style={styles.healthScoreHeader}>
+                  <View style={styles.healthLeft}>
+                    <View style={[styles.healthBadge, { backgroundColor: walletHealth.color + '22' }]}>
+                      <Text style={[styles.healthGradeText, { color: walletHealth.color }]}>{walletHealth.grade}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.healthTitle}>{t.healthTitle}</Text>
+                      <Text style={[styles.healthSubtitle, { color: walletHealth.color }]}>
+                        {isAr ? walletHealth.labelAr : walletHealth.labelEn}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.healthScoreNumber, { color: walletHealth.color }]}>{walletHealth.score}%</Text>
+                </View>
+              </View>
+            </View>
             {/* Built-in Dynamic Challenge 1 */}
             <View style={styles.challengeCard}>
               <View style={styles.challengeHeader}>
@@ -963,60 +1111,63 @@ export default function ChallengesScreen() {
                 );
               })
             )}
-          </View>
-        )}
+            {/* Daily Quests Subsection */}
+            <View style={{ marginTop: 14 }}>
+              <View style={styles.customSectionHeaderRow}>
+                <Text style={styles.customSectionTitle}>
+                  {isAr ? 'المهام المالية السريعة اليوم ⚡' : 'Daily Quick Quests ⚡'}
+                </Text>
+              </View>
 
-        {/* TAB 2: DAILY QUESTS */}
-        {activeTab === 'quests' && (
-          <View style={styles.tabContentContainer}>
-            <View style={styles.questsNoticeBox}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-              <Text style={styles.questsNoticeText}>
-                {isAr
-                  ? 'تتجدد هذه المهام يومياً لكسب نقاط XP وتغذية شجرة الثروة ورفع مستواك المالي.'
-                  : 'Daily quests reset every day to nourish your Money Tree and earn XP.'}
-              </Text>
+              <View style={styles.questsNoticeBox}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.questsNoticeText}>
+                  {isAr
+                    ? 'تتجدد هذه المهام يومياً لكسب نقاط XP وتغذية شجرة الثروة ورفع مستواك المالي.'
+                    : 'Daily quests reset every day to nourish your Money Tree and earn XP.'}
+                </Text>
+              </View>
+
+              {dailyQuests.map(q => {
+                return (
+                  <View key={q.id} style={styles.questCard}>
+                    <View style={styles.questLeft}>
+                      <View style={[styles.questIconBox, q.completed && styles.questIconBoxCompleted]}>
+                        <Ionicons
+                          name={q.icon as any}
+                          size={22}
+                          color={q.completed ? '#10B981' : colors.textSecondary}
+                        />
+                      </View>
+                      <View style={styles.questInfo}>
+                        <Text style={styles.questTitle}>{isAr ? q.titleAr : q.titleEn}</Text>
+                        <Text style={styles.questDesc}>{isAr ? q.descAr : q.descEn}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.questRight}>
+                      <Text style={styles.questXPText}>+{q.xp} XP</Text>
+                      {q.claimed ? (
+                        <View style={styles.claimedQuestBadge}>
+                          <Text style={styles.claimedQuestBadgeText}>{t.claimed}</Text>
+                        </View>
+                      ) : q.completed ? (
+                        <Pressable
+                          onPress={() => handleClaimQuest(q.id, q.xp)}
+                          style={styles.claimQuestBtn}
+                        >
+                          <Text style={styles.claimQuestBtnText}>{t.claim}</Text>
+                        </Pressable>
+                      ) : (
+                        <View style={styles.lockedQuestBadge}>
+                          <Ionicons name="lock-closed" size={14} color={colors.textTertiary} />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-
-            {dailyQuests.map(q => {
-              return (
-                <View key={q.id} style={styles.questCard}>
-                  <View style={styles.questLeft}>
-                    <View style={[styles.questIconBox, q.completed && styles.questIconBoxCompleted]}>
-                      <Ionicons
-                        name={q.icon as any}
-                        size={22}
-                        color={q.completed ? '#10B981' : colors.textSecondary}
-                      />
-                    </View>
-                    <View style={styles.questInfo}>
-                      <Text style={styles.questTitle}>{isAr ? q.titleAr : q.titleEn}</Text>
-                      <Text style={styles.questDesc}>{isAr ? q.descAr : q.descEn}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.questRight}>
-                    <Text style={styles.questXPText}>+{q.xp} XP</Text>
-                    {q.claimed ? (
-                      <View style={styles.claimedQuestBadge}>
-                        <Text style={styles.claimedQuestBadgeText}>{t.claimed}</Text>
-                      </View>
-                    ) : q.completed ? (
-                      <Pressable
-                        onPress={() => handleClaimQuest(q.id, q.xp)}
-                        style={styles.claimQuestBtn}
-                      >
-                        <Text style={styles.claimQuestBtnText}>{t.claim}</Text>
-                      </Pressable>
-                    ) : (
-                      <View style={styles.lockedQuestBadge}>
-                        <Ionicons name="lock-closed" size={14} color={colors.textTertiary} />
-                      </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
           </View>
         )}
 
@@ -1312,6 +1463,22 @@ const getStyles = (colors: any, theme: string) =>
       fontSize: 13,
       color: '#FFFFFF',
     },
+    heroRealSavingsBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: 'rgba(16, 185, 129, 0.25)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(16, 185, 129, 0.45)',
+    },
+    heroRealSavingsNumber: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+      color: '#A7F3D0',
+    },
     xpProgressContainer: {
       gap: 6,
     },
@@ -1454,6 +1621,129 @@ const getStyles = (colors: any, theme: string) =>
     },
     tabContentContainer: {
       gap: 12,
+    },
+    // REAL SAVINGS VAULT CARD
+    realSavingsVaultCard: {
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 6,
+      borderWidth: 1,
+      borderColor: 'rgba(52, 211, 153, 0.35)',
+      shadowColor: '#059669',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    realSavingsVaultTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+    realSavingsVaultTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 15,
+      color: '#FFFFFF',
+    },
+    realSavingsVaultSubtitle: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 11,
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginTop: 2,
+    },
+    realSavingsVaultAmountBadge: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 3,
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(52, 211, 153, 0.5)',
+    },
+    realSavingsVaultAmountText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 19,
+      color: '#34D399',
+    },
+    realSavingsVaultCurrencyText: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 11,
+      color: '#A7F3D0',
+    },
+    realSavingsSurplusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    realSavingsSurplusLabel: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      color: '#FFFFFF',
+    },
+    realSavingsSurplusValue: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#FDE047',
+    },
+    // HARVEST LOGS SECTION
+    harvestLogsSection: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      padding: 16,
+      marginTop: 8,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      gap: 10,
+    },
+    harvestLogsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 2,
+    },
+    harvestLogsTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 14,
+      color: colors.text,
+    },
+    harvestLogRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.borderLight,
+    },
+    harvestLogIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surfaceAlt,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    harvestLogNote: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 12,
+      color: colors.text,
+    },
+    harvestLogDate: {
+      fontFamily: 'Cairo_400Regular',
+      fontSize: 10,
+      color: colors.textSecondary,
+    },
+    harvestLogAmount: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: '#10B981',
     },
     // CHALLENGE CARD
     challengeCard: {

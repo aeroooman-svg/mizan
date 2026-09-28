@@ -32,9 +32,12 @@ interface MoneyTreeGardenProps {
   harvested: boolean;
   harvestedFruitIds?: number[];
   onWaterTree: () => void;
-  onHarvestSingleFruit: (fruitId: number) => void;
-  onHarvestAllFruits: () => void;
+  onHarvestSingleFruit: (fruitId: number, amount: number) => void;
+  onHarvestAllFruits: (amount: number) => void;
   savingsRate: number; // percentage (0 - 100)
+  surplusAmount?: number;
+  currencySymbol?: string;
+  totalHarvestedSavings?: number;
 }
 
 const isWeb = Platform.OS === 'web';
@@ -51,7 +54,11 @@ export default function MoneyTreeGarden({
   onHarvestSingleFruit,
   onHarvestAllFruits,
   savingsRate,
+  surplusAmount = 0,
+  currencySymbol = '',
+  totalHarvestedSavings = 0,
 }: MoneyTreeGardenProps) {
+  const fruitAmount = Math.max(1, Math.round((surplusAmount || 0) / 3));
   // Determine growth stage
   const growthStage: TreeGrowthStage = useMemo(() => {
     if (userLevel <= 1) return 'seed';
@@ -270,8 +277,13 @@ export default function MoneyTreeGarden({
     if (harvestedFruitIds.includes(fruitId)) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    showToast(isAr ? '🪙 قطفت ثمرة ادخار! +15 XP' : '🪙 Harvested Fruit! +15 XP', '#FDE047');
-    onHarvestSingleFruit(fruitId);
+    showToast(
+      isAr
+        ? `🪙 قطفت ثمرة توفير (+${fruitAmount} ${currencySymbol})! +15 XP`
+        : `🪙 Harvested fruit (+${fruitAmount} ${currencySymbol})! +15 XP`,
+      '#FDE047'
+    );
+    onHarvestSingleFruit(fruitId, fruitAmount);
   };
 
   // Harvest all remaining
@@ -279,11 +291,14 @@ export default function MoneyTreeGarden({
     if (unharvestedCount === 0) return;
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const totalHarvest = unharvestedCount * fruitAmount;
     showToast(
-      isAr ? `🎉 جنيت جميع الثمار! +${unharvestedCount * 15} XP` : `🎉 Harvested all! +${unharvestedCount * 15} XP`,
+      isAr
+        ? `🎉 جنيت جميع الثمار (+${totalHarvest} ${currencySymbol})! +${unharvestedCount * 15} XP`
+        : `🎉 Harvested all (+${totalHarvest} ${currencySymbol})! +${unharvestedCount * 15} XP`,
       '#FBBF24'
     );
-    onHarvestAllFruits();
+    onHarvestAllFruits(totalHarvest);
   };
 
   const currentWaterLevel = watered ? 100 : waterLevel;
@@ -303,10 +318,21 @@ export default function MoneyTreeGarden({
             <Text style={styles.stageTagText}>{stageName}</Text>
           </View>
 
-          <View style={[styles.vitalityTag, { backgroundColor: vitality.statusBg }]}>
-            <Text style={[styles.vitalityText, { color: vitality.tagColor }]}>
-              {vitality.labelAr}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {totalHarvestedSavings > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3.5, backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(16,185,129,0.4)' }}>
+                <Ionicons name="wallet-outline" size={12} color="#10B981" />
+                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10.5, color: '#A7F3D0' }}>
+                  {totalHarvestedSavings} {currencySymbol}
+                </Text>
+              </View>
+            )}
+
+            <View style={[styles.vitalityTag, { backgroundColor: vitality.statusBg }]}>
+              <Text style={[styles.vitalityText, { color: vitality.tagColor }]}>
+                {vitality.labelAr}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -553,6 +579,13 @@ export default function MoneyTreeGarden({
                             <Text style={styles.fruitCoinText}>$</Text>
                           </LinearGradient>
                         </Animated.View>
+                        {surplusAmount > 0 && (
+                          <View style={styles.fruitPriceBadge}>
+                            <Text style={styles.fruitPriceText}>
+                              +{fruitAmount}
+                            </Text>
+                          </View>
+                        )}
                       </Pressable>
                     ) : (
                       <View style={styles.harvestedFlowerBud}>
@@ -663,8 +696,14 @@ export default function MoneyTreeGarden({
               ]}
             >
               {unharvestedCount === 0
-                ? (isAr ? 'تم جني الثمار ✓' : 'All Harvested ✓')
-                : (isAr ? `اقطف الباقي (${unharvestedCount}) 🪙` : `Harvest All (${unharvestedCount}) 🪙`)}
+                ? (isAr ? 'تم جني ثمار اليوم ✓' : 'All Harvested ✓')
+                : (isAr
+                    ? (surplusAmount > 0
+                        ? `اجنِ الثمار (+${unharvestedCount * fruitAmount} ${currencySymbol}) 🪙`
+                        : `اقطف الباقي (${unharvestedCount}) 🪙`)
+                    : (surplusAmount > 0
+                        ? `Harvest (+${unharvestedCount * fruitAmount} ${currencySymbol}) 🪙`
+                        : `Harvest All (${unharvestedCount}) 🪙`))}
             </Text>
           </Pressable>
         </View>
@@ -835,6 +874,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#713F12',
     lineHeight: 20,
+  },
+  fruitPriceBadge: {
+    position: 'absolute',
+    bottom: -11,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    borderWidth: 0.8,
+    borderColor: '#FDE047',
+  },
+  fruitPriceText: {
+    fontFamily: 'Cairo_700Bold',
+    fontSize: 9,
+    color: '#FEF08A',
   },
   harvestedFlowerBud: {
     width: 24,

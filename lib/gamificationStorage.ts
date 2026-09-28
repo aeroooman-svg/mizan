@@ -277,3 +277,54 @@ export function calculateWalletHealth(
   }
   return { score, labelAr: 'تحتاج ترشيد 🚨', labelEn: 'Needs Care 🚨', grade: 'D', color: '#EF4444' };
 }
+
+const TREE_HARVESTED_SAVINGS_TOTAL_KEY = 'mizan_tree_harvested_savings_total_v1';
+const TREE_HARVEST_LOGS_KEY = 'mizan_tree_harvest_logs_v1';
+
+export interface TreeHarvestLog {
+  id: string;
+  date: string;
+  amount: number;
+  walletName?: string;
+  note?: string;
+}
+
+export async function getTotalTreeHarvestedSavings(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(TREE_HARVESTED_SAVINGS_TOTAL_KEY);
+    return raw ? parseFloat(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function addTreeHarvestedSavings(amount: number, log?: Omit<TreeHarvestLog, 'id'>): Promise<number> {
+  try {
+    const current = await getTotalTreeHarvestedSavings();
+    const next = Math.round((current + Math.max(0, amount)) * 100) / 100;
+    await AsyncStorage.setItem(TREE_HARVESTED_SAVINGS_TOTAL_KEY, next.toString());
+
+    if (log && amount > 0) {
+      const logsRaw = await AsyncStorage.getItem(TREE_HARVEST_LOGS_KEY);
+      const logs: TreeHarvestLog[] = logsRaw ? JSON.parse(logsRaw) : [];
+      const newEntry: TreeHarvestLog = {
+        id: `harvest_${Date.now()}`,
+        ...log,
+      };
+      logs.unshift(newEntry);
+      await AsyncStorage.setItem(TREE_HARVEST_LOGS_KEY, JSON.stringify(logs.slice(0, 30)));
+    }
+    return next;
+  } catch {
+    return 0;
+  }
+}
+
+export async function getTreeHarvestLogs(): Promise<TreeHarvestLog[]> {
+  try {
+    const raw = await AsyncStorage.getItem(TREE_HARVEST_LOGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
