@@ -531,7 +531,15 @@ export default function ChallengesScreen() {
 
   const handleBack = () => {
     Haptics.selectionAsync();
-    router.back();
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+    } catch {
+      router.replace('/');
+    }
   };
 
   // Translations
@@ -539,9 +547,9 @@ export default function ChallengesScreen() {
     title: isAr ? 'التحديات وشجرة الثروة' : 'Challenges & Wealth Tree',
     allWallets: isAr ? 'جميع المحافظ' : 'All Wallets',
     healthTitle: isAr ? 'مؤشر صحة المحفظة' : 'Wallet Health Score',
-    tabTree: isAr ? 'شجرة التوفير 🌳' : 'Wealth Tree 🌳',
-    tabChallenges: isAr ? 'التحديات والمهام 🎯' : 'Challenges & Quests 🎯',
-    tabBadges: isAr ? 'الأوسمة والصحة 🏅' : 'Badges & Health 🏅',
+    tabTree: isAr ? 'شجرة الثروة' : 'Wealth Tree',
+    tabChallenges: isAr ? 'التحديات' : 'Challenges',
+    tabBadges: isAr ? 'الأوسمة' : 'Badges',
     streakDays: isAr ? `${streakDays} أيام 🔥` : `${streakDays} Days 🔥`,
     levelLabel: isAr ? `المستوى ${levelInfo.current.level}` : `Level ${levelInfo.current.level}`,
     xpToNext: levelInfo.next
@@ -644,7 +652,16 @@ export default function ChallengesScreen() {
 
       {/* HEADER ROW */}
       <View style={[styles.headerRow, { paddingTop: (insets.top || (Platform.OS === 'web' ? 10 : 0)) + 12 }]}>
-        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
+        <Pressable
+          onPress={handleBack}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={isAr ? 'رجوع' : 'Back'}
+        >
           <Ionicons name={isAr ? 'arrow-forward' : 'arrow-back'} size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>{t.title}</Text>
@@ -653,9 +670,15 @@ export default function ChallengesScreen() {
             Haptics.selectionAsync();
             setShowCreateModal(true);
           }}
-          style={styles.headerActionBtn}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          style={({ pressed }) => [
+            styles.headerActionBtn,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={isAr ? 'إضافة تحدٍ' : 'Add Challenge'}
         >
-          <Ionicons name="add-circle" size={28} color={colors.primary} />
+          <Ionicons name="add-circle" size={26} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -713,14 +736,30 @@ export default function ChallengesScreen() {
               Haptics.selectionAsync();
               setActiveTab('tree');
             }}
-            style={[styles.tabBtn, activeTab === 'tree' && styles.tabBtnActive]}
+            style={({ pressed }) => [
+              styles.tabBtn,
+              activeTab === 'tree' && styles.tabBtnActiveTree,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             <Ionicons
               name="leaf"
               size={17}
-              color={activeTab === 'tree' ? '#10B981' : colors.textSecondary}
+              color={
+                activeTab === 'tree'
+                  ? theme === 'dark' || theme === 'midnight'
+                    ? '#34D399'
+                    : '#059669'
+                  : colors.textSecondary
+              }
             />
-            <Text style={[styles.tabText, activeTab === 'tree' && styles.tabTextActive]}>{t.tabTree}</Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.tabText, activeTab === 'tree' && styles.tabTextActiveTree]}
+            >
+              {t.tabTree}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -728,14 +767,30 @@ export default function ChallengesScreen() {
               Haptics.selectionAsync();
               setActiveTab('challenges');
             }}
-            style={[styles.tabBtn, activeTab === 'challenges' && styles.tabBtnActive]}
+            style={({ pressed }) => [
+              styles.tabBtn,
+              activeTab === 'challenges' && styles.tabBtnActiveChallenges,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             <Ionicons
               name="trophy"
               size={17}
-              color={activeTab === 'challenges' ? colors.primary : colors.textSecondary}
+              color={
+                activeTab === 'challenges'
+                  ? theme === 'dark' || theme === 'midnight'
+                    ? '#A5B4FC'
+                    : colors.primary
+                  : colors.textSecondary
+              }
             />
-            <Text style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>{t.tabChallenges}</Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActiveChallenges]}
+            >
+              {t.tabChallenges}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -743,14 +798,30 @@ export default function ChallengesScreen() {
               Haptics.selectionAsync();
               setActiveTab('badges');
             }}
-            style={[styles.tabBtn, activeTab === 'badges' && styles.tabBtnActive]}
+            style={({ pressed }) => [
+              styles.tabBtn,
+              activeTab === 'badges' && styles.tabBtnActiveBadges,
+              pressed && { opacity: 0.8 },
+            ]}
           >
             <Ionicons
               name="ribbon"
               size={17}
-              color={activeTab === 'badges' ? '#F59E0B' : colors.textSecondary}
+              color={
+                activeTab === 'badges'
+                  ? theme === 'dark' || theme === 'midnight'
+                    ? '#FDE047'
+                    : '#D97706'
+                  : colors.textSecondary
+              }
             />
-            <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>{t.tabBadges}</Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.tabText, activeTab === 'badges' && styles.tabTextActiveBadges]}
+            >
+              {t.tabBadges}
+            </Text>
           </Pressable>
         </View>
 
@@ -1388,12 +1459,15 @@ const getStyles = (colors: any, theme: string) =>
       zIndex: 10,
     },
     backBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      ...(Platform.OS === 'web' ? ({ cursor: 'pointer', userSelect: 'none' } as any) : {}),
     },
     headerTitle: {
       fontFamily: 'Cairo_700Bold',
@@ -1401,11 +1475,15 @@ const getStyles = (colors: any, theme: string) =>
       color: colors.text,
     },
     headerActionBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.surfaceAlt,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      ...(Platform.OS === 'web' ? ({ cursor: 'pointer', userSelect: 'none' } as any) : {}),
     },
     scrollContent: {
       padding: 16,
@@ -1591,12 +1669,13 @@ const getStyles = (colors: any, theme: string) =>
     // TABS ROW
     tabsRow: {
       flexDirection: 'row',
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 4,
+      backgroundColor: theme === 'dark' || theme === 'midnight' ? 'rgba(30, 41, 59, 0.75)' : colors.surface,
+      borderRadius: 18,
+      padding: 5,
       marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.borderLight,
+      gap: 6,
     },
     tabBtn: {
       flex: 1,
@@ -1605,10 +1684,41 @@ const getStyles = (colors: any, theme: string) =>
       justifyContent: 'center',
       gap: 6,
       paddingVertical: 10,
-      borderRadius: 12,
+      paddingHorizontal: 4,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      ...(Platform.OS === 'web' ? ({ cursor: 'pointer', userSelect: 'none' } as any) : {}),
     },
     tabBtnActive: {
       backgroundColor: colors.surfaceAlt,
+    },
+    tabBtnActiveTree: {
+      backgroundColor: theme === 'dark' || theme === 'midnight' ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5',
+      borderColor: 'rgba(16, 185, 129, 0.45)',
+      shadowColor: '#10B981',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    tabBtnActiveChallenges: {
+      backgroundColor: theme === 'dark' || theme === 'midnight' ? 'rgba(99, 102, 241, 0.18)' : '#EEF2FF',
+      borderColor: 'rgba(99, 102, 241, 0.45)',
+      shadowColor: '#6366F1',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    tabBtnActiveBadges: {
+      backgroundColor: theme === 'dark' || theme === 'midnight' ? 'rgba(245, 158, 11, 0.18)' : '#FFFBEB',
+      borderColor: 'rgba(245, 158, 11, 0.45)',
+      shadowColor: '#F59E0B',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
     },
     tabText: {
       fontFamily: 'Cairo_600SemiBold',
@@ -1618,6 +1728,18 @@ const getStyles = (colors: any, theme: string) =>
     tabTextActive: {
       fontFamily: 'Cairo_700Bold',
       color: colors.primary,
+    },
+    tabTextActiveTree: {
+      fontFamily: 'Cairo_700Bold',
+      color: theme === 'dark' || theme === 'midnight' ? '#34D399' : '#059669',
+    },
+    tabTextActiveChallenges: {
+      fontFamily: 'Cairo_700Bold',
+      color: theme === 'dark' || theme === 'midnight' ? '#A5B4FC' : colors.primary,
+    },
+    tabTextActiveBadges: {
+      fontFamily: 'Cairo_700Bold',
+      color: theme === 'dark' || theme === 'midnight' ? '#FDE047' : '#D97706',
     },
     tabContentContainer: {
       gap: 12,
