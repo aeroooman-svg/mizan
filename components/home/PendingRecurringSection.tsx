@@ -9,12 +9,12 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { RecurringTransaction } from '@/lib/recurringStorage';
 import { Wallet } from '@/lib/storage';
-import { formatCurrency } from '@/lib/categories';
+import { formatCurrency, getCategoryById } from '@/lib/categories';
 import { getCategoryName } from '@/lib/i18n';
 
 interface PendingRecurringSectionProps {
@@ -87,20 +87,38 @@ export default function PendingRecurringSection({
         {walletPending.map((item) => {
           const isTransfer = item.type === 'transfer' || !!item.toWalletId;
           const targetWallet = isTransfer && item.toWalletId ? wallets?.find(w => w.id === item.toWalletId) : null;
-          const itemName = isTransfer
+          const cat = getCategoryById(item.category);
+          const hasSpecificCategory = item.category && item.category !== 'transfer' && item.category !== 'transfers_out';
+          const catName = hasSpecificCategory ? getCategoryName(item.category, language) : null;
+          const itemColor = item.color || cat?.color || (isTransfer ? '#3b82f6' : (item.type === 'income' ? colors.income : colors.primary));
+          const itemIcon = item.icon || cat?.icon || (isTransfer ? 'swap-horiz' : 'receipt');
+
+          const transferLabel = isTransfer
             ? (targetWallet
                 ? loc(`تحويل إلى ${targetWallet.name}`, `Transfer to ${targetWallet.name}`, `${targetWallet.name} को स्थानांतरण`)
                 : loc('تحويل محفظة', 'Wallet Transfer', 'वॉलेट स्थानांतरण'))
-            : getCategoryName(item.category, language);
+            : null;
+
+          const itemName = catName || transferLabel || loc('معاملة دورية', 'Recurring Item', 'ആവർത്തിച്ചുള്ള ഇടപാട്');
 
           return (
             <View key={item.id} style={styles.pendingItemCard}>
-              <View style={styles.pendingItemInfo}>
-                <Text style={styles.pendingItemName} numberOfLines={1}>
-                  {itemName}
-                </Text>
-                <Text style={styles.pendingItemAmount}>
-                  {formatCurrency(item.amount, language)} {currencySymbol}
+              <View style={styles.pendingItemTopRow}>
+                <View style={[styles.pendingItemIconBadge, { backgroundColor: itemColor + '18' }]}>
+                  <MaterialIcons name={itemIcon as any} size={22} color={itemColor} />
+                </View>
+                <View style={styles.pendingItemTextCol}>
+                  <Text style={styles.pendingItemName} numberOfLines={1}>
+                    {itemName}
+                  </Text>
+                  {transferLabel && catName ? (
+                    <Text style={styles.pendingItemSub} numberOfLines={1}>
+                      {transferLabel}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={[styles.pendingItemAmount, { color: item.type === 'income' ? colors.income : colors.expense }]}>
+                  {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, language)} {currencySymbol}
                 </Text>
               </View>
             <Text style={styles.pendingItemDate}>
@@ -223,33 +241,51 @@ const getStyles = (colors: any) =>
       paddingVertical: 4,
     },
     pendingItemCard: {
-      width: 240,
+      width: 275,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.borderLight,
-      borderRadius: 16,
+      borderRadius: 18,
       padding: 14,
-      gap: 6,
+      gap: 8,
       elevation: 3,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
       shadowRadius: 4,
     },
-    pendingItemInfo: {
+    pendingItemTopRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: 10,
+    },
+    pendingItemIconBadge: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pendingItemTextCol: {
+      flex: 1,
+      justifyContent: 'center',
     },
     pendingItemName: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 15,
+      fontSize: 14,
       color: colors.text,
+      textAlign: 'left',
+    },
+    pendingItemSub: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 10.5,
+      color: colors.textSecondary,
+      textAlign: 'left',
+      marginTop: -2,
     },
     pendingItemAmount: {
       fontFamily: 'Cairo_700Bold',
-      fontSize: 15,
-      color: colors.expense,
+      fontSize: 14,
     },
     pendingItemDate: {
       fontFamily: 'Cairo_400Regular',

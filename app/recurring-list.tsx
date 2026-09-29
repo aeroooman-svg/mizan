@@ -394,13 +394,18 @@ export default function RecurringListScreen() {
     const targetWalletObj = isTransfer && item.toWalletId ? wallets.find(w => w.id === item.toWalletId) : null;
     const cat = getCategoryById(item.category);
     const itemColor = item.color || cat?.color || (item.type === 'income' ? colors.income : colors.primary);
-    const itemIcon = item.icon || (isTransfer ? 'swap-horiz' : cat?.icon || 'receipt');
+    const itemIcon = item.icon || cat?.icon || (isTransfer ? 'swap-horiz' : 'receipt');
 
-    const displayName = isTransfer
+    const hasSpecificCategory = item.category && item.category !== 'transfer' && item.category !== 'transfers_out';
+    const catName = hasSpecificCategory ? getCategoryName(item.category, language) : null;
+
+    const transferLabel = isTransfer
       ? (targetWalletObj 
           ? (isAr ? `تحويل إلى ${targetWalletObj.name}` : `Transfer to ${targetWalletObj.name}`)
           : (isAr ? 'تحويل محفظة' : 'Wallet Transfer'))
-      : getCategoryName(item.category, language);
+      : null;
+
+    const displayName = catName || transferLabel || (isAr ? 'معاملة متكررة' : 'Recurring Transaction');
 
     return (
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -410,6 +415,11 @@ export default function RecurringListScreen() {
           </View>
           <View style={styles.info}>
             <Text style={[styles.catName, { color: colors.text }]}>{displayName}</Text>
+            {catName && transferLabel ? (
+              <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 11, color: colors.textSecondary, textAlign: 'left' }} numberOfLines={1}>
+                {transferLabel}
+              </Text>
+            ) : null}
             {item.description ? <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={1}>{item.description}</Text> : null}
             <View style={styles.badgeRow}>
               <View style={[styles.frequencyBadge, { backgroundColor: itemColor + '15' }]}>

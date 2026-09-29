@@ -318,21 +318,10 @@ export default function MoneyTreeGarden({
             <Text style={styles.stageTagText}>{stageName}</Text>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {totalHarvestedSavings > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3.5, backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, borderWidth: 0.5, borderColor: 'rgba(16,185,129,0.4)' }}>
-                <Ionicons name="wallet-outline" size={12} color="#10B981" />
-                <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10.5, color: '#A7F3D0' }}>
-                  {totalHarvestedSavings} {currencySymbol}
-                </Text>
-              </View>
-            )}
-
-            <View style={[styles.vitalityTag, { backgroundColor: vitality.statusBg }]}>
-              <Text style={[styles.vitalityText, { color: vitality.tagColor }]}>
-                {vitality.labelAr}
-              </Text>
-            </View>
+          <View style={[styles.vitalityTag, { backgroundColor: vitality.statusBg }]}>
+            <Text style={[styles.vitalityText, { color: vitality.tagColor }]} numberOfLines={1}>
+              {isAr ? vitality.labelAr : vitality.labelEn}
+            </Text>
           </View>
         </View>
 

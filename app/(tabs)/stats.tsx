@@ -291,6 +291,15 @@ export default function StatsScreen() {
       }
     });
 
+    const categorizedTransfersOut = isExpense
+      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && t.category && t.category !== 'transfer' && t.category !== 'transfers_out')
+      : [];
+
+    const uncategorizedTransfersOut = isExpense
+      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && (!t.category || t.category === 'transfer' || t.category === 'transfers_out'))
+      : [];
+
+    const uncategorizedTransferOutTotal = uncategorizedTransfersOut.reduce((sum, t) => sum + t.amount, 0);
     const transferOutTotal = activeTransactions
       .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
       .reduce((sum, t) => sum + t.amount, 0);
@@ -300,6 +309,10 @@ export default function StatsScreen() {
     const catMap = new Map<string, number>();
 
     filtered.forEach(t => {
+      catMap.set(t.category, (catMap.get(t.category) || 0) + t.amount);
+    });
+
+    categorizedTransfersOut.forEach(t => {
       catMap.set(t.category, (catMap.get(t.category) || 0) + t.amount);
     });
 
@@ -320,7 +333,7 @@ export default function StatsScreen() {
       }
     });
 
-    if (isExpense && transferOutTotal > 0) {
+    if (isExpense && uncategorizedTransferOutTotal > 0) {
       stats.push({
         category: {
           id: 'transfers_out',
@@ -332,8 +345,8 @@ export default function StatsScreen() {
           iconFamily: 'MaterialIcons',
           color: '#6366F1',
         },
-        total: transferOutTotal,
-        percentage: total > 0 ? (transferOutTotal / total) * 100 : 0,
+        total: uncategorizedTransferOutTotal,
+        percentage: total > 0 ? (uncategorizedTransferOutTotal / total) * 100 : 0,
       });
     }
 

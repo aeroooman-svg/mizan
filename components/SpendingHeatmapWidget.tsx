@@ -735,20 +735,24 @@ export default function SpendingHeatmapWidget({
                     const isSavings = isSavingsTx(tx);
                     const isTransfer = tx.type === 'transfer';
                     const itemColor = isSavings ? '#8B5CF6' : isTransfer ? '#6366F1' : tx.type === 'expense' ? colors.expense : colors.income;
+                    const hasSpecificCat = tx.category && tx.category !== 'transfer' && tx.category !== 'transfers_out';
+                    const catName = hasSpecificCat ? getCategoryName(tx.category, language) : null;
+                    const displayColor = (hasSpecificCat && cat?.color) ? cat.color : (isTransfer ? '#6366F1' : (cat?.color || viewThemeColor));
+                    const displayIcon = (hasSpecificCat && cat?.icon) ? cat.icon : (isTransfer ? 'swap-horiz' : ((cat?.icon || 'account-balance-wallet') as any));
                     return (
                       <View key={tx.id} style={styles.txRow}>
-                        <View style={[styles.txIcon, { backgroundColor: (isTransfer ? '#6366F1' : (cat?.color || viewThemeColor)) + '20' }]}>
+                        <View style={[styles.txIcon, { backgroundColor: displayColor + '20' }]}>
                           <MaterialIcons
-                            name={isTransfer ? 'swap-horiz' : ((cat?.icon || 'account-balance-wallet') as any)}
+                            name={displayIcon as any}
                             size={18}
-                            color={isTransfer ? '#6366F1' : (cat?.color || viewThemeColor)}
+                            color={displayColor}
                           />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.txCatName}>
-                            {isTransfer
-                              ? loc('تحويل مالي', 'Transfer', 'പണം കൈമാറ്റം')
-                              : getCategoryName(tx.category, language)}
+                            {catName
+                              ? (isTransfer ? `${catName} (${loc('تحويل', 'Transfer', 'കൈമാറ്റം')})` : catName)
+                              : (isTransfer ? loc('تحويل مالي', 'Transfer', 'പണം കൈമാറ്റം') : getCategoryName(tx.category, language))}
                           </Text>
                           {tx.description ? <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text> : null}
                         </View>

@@ -352,11 +352,16 @@ export default function TransactionsScreen() {
     const isAtm = item.isAtmWithdrawal || item.category === 'atm_withdrawal';
     const isTransfer = item.type === 'transfer' && !isAtm;
     const isIncomingTransfer = isTransfer && item.toWalletId === selectedWallet?.id;
+    const userCat = getCategoryById(item.category);
+    const hasSpecificCategory = item.category && item.category !== 'transfer' && item.category !== 'transfers_out';
+
     const cat = isAtm
       ? { icon: 'local-atm', color: '#0284C7' }
+      : (hasSpecificCategory && userCat)
+      ? userCat
       : isTransfer 
       ? { icon: 'swap-horiz', color: isIncomingTransfer ? '#3b82f6' : '#94a3b8' } 
-      : getCategoryById(item.category);
+      : userCat;
 
     const fromWallet = isIncomingTransfer ? wallets.find(w => w.id === item.walletId) : null;
     const fromCurrency = fromWallet ? fromWallet.currency : null;
@@ -365,16 +370,19 @@ export default function TransactionsScreen() {
       ? convertAmount(item.amount, fromCurrency, selectedWallet?.currency || 'USD', rates)
       : item.amount;
 
-    let categoryName = getCategoryName(item.category, language);
+    const catName = hasSpecificCategory ? getCategoryName(item.category, language) : null;
+    let categoryName = catName || getCategoryName(item.category, language);
     if (isAtm) {
       categoryName = language === 'ar' ? 'سحب نقدي من الصراف (ATM)' : 'ATM Cash Withdrawal';
     } else if (isTransfer) {
       if (isIncomingTransfer) {
         const fromWalletName = fromWallet?.name || '';
-        categoryName = language === 'ar' ? `تحويل من ${fromWalletName}` : `Transfer from ${fromWalletName}`;
+        const transLabel = language === 'ar' ? `تحويل من ${fromWalletName}` : `Transfer from ${fromWalletName}`;
+        categoryName = catName ? `${catName} (${transLabel})` : transLabel;
       } else {
         const toWalletName = wallets.find(w => w.id === item.toWalletId)?.name || '';
-        categoryName = language === 'ar' ? `تحويل إلى ${toWalletName}` : `Transfer to ${toWalletName}`;
+        const transLabel = language === 'ar' ? `تحويل إلى ${toWalletName}` : `Transfer to ${toWalletName}`;
+        categoryName = catName ? `${catName} (${transLabel})` : transLabel;
       }
     }
 

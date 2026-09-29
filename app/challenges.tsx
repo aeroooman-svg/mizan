@@ -48,10 +48,12 @@ import {
   TreeHarvestLog,
 } from '@/lib/gamificationStorage';
 
+import { getCurrencyInfo } from '@/lib/storage';
 import MoneyTreeGarden from '@/components/gamification/MoneyTreeGarden';
 import MysteryChestSection from '@/components/gamification/MysteryChestSection';
 import DailyQuizSection from '@/components/gamification/DailyQuizSection';
 import CelebrationConfetti from '@/components/gamification/CelebrationConfetti';
+import LeaderboardSection from '@/components/gamification/LeaderboardSection';
 
 type ActiveTab = 'tree' | 'challenges' | 'badges';
 
@@ -66,6 +68,23 @@ export default function ChallengesScreen() {
   // Selected filter wallet ('all' or wallet id)
   const [filterWalletId, setFilterWalletId] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<ActiveTab>('tree');
+
+  const activeWalletObj = useMemo(() => {
+    if (filterWalletId === 'all') return selectedWallet || null;
+    return wallets.find(w => w.id === filterWalletId) || null;
+  }, [filterWalletId, selectedWallet, wallets]);
+
+  const currentWalletName = useMemo(() => {
+    if (filterWalletId === 'all') return isAr ? 'جميع المحافظ' : 'All Wallets';
+    return activeWalletObj?.name || (isAr ? 'المحفظة' : 'Wallet');
+  }, [filterWalletId, activeWalletObj, isAr]);
+
+  const currentWalletSymbol = useMemo(() => {
+    if (activeWalletObj?.currency) {
+      return getCurrencyInfo(activeWalletObj.currency).symbol;
+    }
+    return currencySymbol;
+  }, [activeWalletObj, currencySymbol]);
 
   // Gamification state
   const [customChallenges, setCustomChallenges] = useState<CustomChallenge[]>([]);
@@ -690,10 +709,11 @@ export default function ChallengesScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
         >
+          {/* Top Row: Level on left, Wallet on right */}
           <View style={styles.heroTopRow}>
             <View style={styles.levelBadgeContainer}>
               <View style={[styles.levelIconCircle, { backgroundColor: levelInfo.current.color + '33' }]}>
-                <Ionicons name={levelInfo.current.icon as any} size={26} color="#FDE047" />
+                <Ionicons name={levelInfo.current.icon as any} size={24} color="#FDE047" />
               </View>
               <View>
                 <Text style={styles.heroLevelTag}>{t.levelLabel}</Text>
@@ -701,26 +721,43 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {totalTreeSavings > 0 && (
-                <View style={styles.heroRealSavingsBadge}>
-                  <Ionicons name="leaf" size={13} color="#10B981" />
-                  <Text style={styles.heroRealSavingsNumber}>
-                    {totalTreeSavings.toLocaleString()} {currencySymbol}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.heroStreakBadge}>
-                <Ionicons name="flame" size={18} color="#F97316" />
-                <Text style={styles.heroStreakText}>{t.streakDays}</Text>
+            {/* Active Wallet Badge */}
+            <View style={styles.heroWalletBadge}>
+              <Ionicons name={activeWalletObj ? (activeWalletObj.icon as any || 'wallet-outline') : 'globe-outline'} size={14} color="#FDE047" />
+              <Text style={styles.heroWalletText} numberOfLines={1}>
+                {currentWalletName}
+              </Text>
+            </View>
+          </View>
+
+          {/* Middle Row: Balanced metrics chips */}
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatChip}>
+              <Ionicons name="flame" size={15} color="#F97316" />
+              <Text style={styles.heroStatChipText}>{t.streakDays}</Text>
+            </View>
+
+            {totalTreeSavings > 0 && (
+              <View style={[styles.heroStatChip, styles.heroStatChipGreen]}>
+                <Ionicons name="leaf" size={13} color="#10B981" />
+                <Text style={[styles.heroStatChipText, { color: '#A7F3D0' }]}>
+                  {totalTreeSavings.toLocaleString()} {currentWalletSymbol}
+                </Text>
               </View>
+            )}
+
+            <View style={[styles.heroStatChip, styles.heroStatChipGold]}>
+              <Text style={{ fontSize: 12 }}>💎</Text>
+              <Text style={[styles.heroStatChipText, { color: '#FDE047' }]}>
+                {isAr ? 'دوري النخبة' : 'Diamond League'}
+              </Text>
             </View>
           </View>
 
           {/* XP Progress Bar */}
           <View style={styles.xpProgressContainer}>
             <View style={styles.xpTextRow}>
-              <Text style={styles.xpTotalText}>{totalXP} XP</Text>
+              <Text style={styles.xpTotalText}>{totalXP.toLocaleString()} XP</Text>
               <Text style={styles.xpNextText}>{t.xpToNext}</Text>
             </View>
             <View style={styles.xpProgressBarBg}>
@@ -728,6 +765,46 @@ export default function ChallengesScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        {/* GLOBAL WALLET FILTER SELECTOR (Available on All Tabs!) */}
+        <View style={styles.globalWalletFilterWrap}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setFilterWalletId('all');
+              }}
+              style={[styles.walletChip, filterWalletId === 'all' && styles.walletChipActive]}
+            >
+              <Ionicons name="globe-outline" size={15} color={filterWalletId === 'all' ? '#fff' : colors.textSecondary} />
+              <Text style={[styles.walletChipText, filterWalletId === 'all' && styles.walletChipTextActive]}>
+                {t.allWallets}
+              </Text>
+            </Pressable>
+
+            {wallets.map(w => {
+              const isActive = filterWalletId === w.id;
+              return (
+                <Pressable
+                  key={w.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setFilterWalletId(w.id);
+                  }}
+                  style={[
+                    styles.walletChip,
+                    isActive && { backgroundColor: w.color, borderColor: w.color },
+                  ]}
+                >
+                  <View style={[styles.walletDot, { backgroundColor: isActive ? '#fff' : w.color }]} />
+                  <Text style={[styles.walletChipText, isActive && styles.walletChipTextActive]}>
+                    {w.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* 2. MAIN 3 TABS SELECTOR */}
         <View style={styles.tabsRow}>
@@ -828,6 +905,21 @@ export default function ChallengesScreen() {
         {/* TAB 1: LIVING MONEY TREE & REAL SAVINGS */}
         {activeTab === 'tree' && (
           <View style={styles.tabContentContainer}>
+            {/* Wallet Context & Realistic Status Banner */}
+            <View style={styles.walletContextBanner}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={[styles.walletDotLarge, { backgroundColor: activeWalletObj?.color || colors.primary }]} />
+                <Text style={styles.walletContextTitle}>
+                  {isAr ? `حديقة محفظة: ${currentWalletName}` : `Garden of: ${currentWalletName}`}
+                </Text>
+              </View>
+              <Text style={styles.walletContextSub}>
+                {isAr
+                  ? `نسبة التوفير: %${Math.round(savingsRate)} • صرف اليوم: ${todayExpenses.toLocaleString()} ${currentWalletSymbol}`
+                  : `Savings: ${Math.round(savingsRate)}% • Today: ${todayExpenses.toLocaleString()} ${currentWalletSymbol}`}
+              </Text>
+            </View>
+
             {/* Real Savings Vault Card */}
             <LinearGradient
               colors={['#064E3B', '#065F46', '#042F2E']}
@@ -937,58 +1029,34 @@ export default function ChallengesScreen() {
         {/* TAB 2: SAVINGS CHALLENGES */}
         {activeTab === 'challenges' && (
           <View style={styles.tabContentContainer}>
-            {/* Wallet Selector & Health Score */}
-            <View style={styles.walletFilterSection}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.walletFilterScroll}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setFilterWalletId('all');
-                  }}
-                  style={[styles.walletChip, filterWalletId === 'all' && styles.walletChipActive]}
-                >
-                  <Ionicons name="globe-outline" size={16} color={filterWalletId === 'all' ? '#fff' : colors.textSecondary} />
-                  <Text style={[styles.walletChipText, filterWalletId === 'all' && styles.walletChipTextActive]}>
-                    {t.allWallets}
-                  </Text>
-                </Pressable>
-
-                {wallets.map(w => {
-                  const isSelected = filterWalletId === w.id;
-                  return (
-                    <Pressable
-                      key={w.id}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        setFilterWalletId(w.id);
-                      }}
-                      style={[styles.walletChip, isSelected && { backgroundColor: w.color, borderColor: w.color }]}
-                    >
-                      <View style={[styles.walletDot, { backgroundColor: isSelected ? '#fff' : w.color }]} />
-                      <Text style={[styles.walletChipText, isSelected && styles.walletChipTextActive]}>{w.name}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Wallet Health Bar */}
-              <View style={styles.healthScoreCard}>
-                <View style={styles.healthScoreHeader}>
-                  <View style={styles.healthLeft}>
-                    <View style={[styles.healthBadge, { backgroundColor: walletHealth.color + '22' }]}>
-                      <Text style={[styles.healthGradeText, { color: walletHealth.color }]}>{walletHealth.grade}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.healthTitle}>{t.healthTitle}</Text>
-                      <Text style={[styles.healthSubtitle, { color: walletHealth.color }]}>
-                        {isAr ? walletHealth.labelAr : walletHealth.labelEn}
-                      </Text>
-                    </View>
+            {/* Wallet Health Bar */}
+            <View style={styles.healthScoreCard}>
+              <View style={styles.healthScoreHeader}>
+                <View style={styles.healthLeft}>
+                  <View style={[styles.healthBadge, { backgroundColor: walletHealth.color + '22' }]}>
+                    <Text style={[styles.healthGradeText, { color: walletHealth.color }]}>{walletHealth.grade}</Text>
                   </View>
-                  <Text style={[styles.healthScoreNumber, { color: walletHealth.color }]}>{walletHealth.score}%</Text>
+                  <View>
+                    <Text style={styles.healthTitle}>{t.healthTitle}</Text>
+                    <Text style={[styles.healthSubtitle, { color: walletHealth.color }]}>
+                      {isAr ? walletHealth.labelAr : walletHealth.labelEn}
+                    </Text>
+                  </View>
                 </View>
+                <Text style={[styles.healthScoreNumber, { color: walletHealth.color }]}>{walletHealth.score}%</Text>
               </View>
             </View>
+
+            {/* Competitive Savers Arena Leaderboard */}
+            <LeaderboardSection
+              isAr={isAr}
+              userXP={totalXP}
+              userLevel={levelInfo.current.level}
+              streakDays={streakDays}
+              currencySymbol={currentWalletSymbol}
+              walletName={currentWalletName}
+              theme={theme}
+            />
             {/* Built-in Dynamic Challenge 1 */}
             <View style={styles.challengeCard}>
               <View style={styles.challengeHeader}>
@@ -1526,6 +1594,85 @@ const getStyles = (colors: any, theme: string) =>
       fontFamily: 'Cairo_700Bold',
       fontSize: 17,
       color: '#FFFFFF',
+    },
+    heroWalletBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(253, 224, 71, 0.4)',
+      maxWidth: 150,
+    },
+    heroWalletText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 12,
+      color: '#FDE047',
+    },
+    heroStatsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 14,
+    },
+    heroStatChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: 'rgba(255, 255, 255, 0.16)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+    },
+    heroStatChipGreen: {
+      backgroundColor: 'rgba(16, 185, 129, 0.25)',
+      borderWidth: 1,
+      borderColor: 'rgba(16, 185, 129, 0.45)',
+    },
+    heroStatChipGold: {
+      backgroundColor: 'rgba(251, 191, 36, 0.2)',
+      borderWidth: 1,
+      borderColor: 'rgba(251, 191, 36, 0.4)',
+    },
+    heroStatChipText: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 11.5,
+      color: '#FFFFFF',
+    },
+    globalWalletFilterWrap: {
+      marginTop: 2,
+      marginBottom: 12,
+    },
+    walletContextBanner: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      marginBottom: 10,
+    },
+    walletDotLarge: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    walletContextTitle: {
+      fontFamily: 'Cairo_700Bold',
+      fontSize: 13,
+      color: colors.text,
+    },
+    walletContextSub: {
+      fontFamily: 'Cairo_600SemiBold',
+      fontSize: 11,
+      color: colors.textSecondary,
     },
     heroStreakBadge: {
       flexDirection: 'row',

@@ -324,19 +324,27 @@ export const MonthlyBreakdownModal: React.FC<MonthlyBreakdownModalProps> = ({
                     const isTransfer = tx.type === 'transfer';
                     const toW = isTransfer && tx.toWalletId ? wallets.find(w => w.id === tx.toWalletId) : null;
                     const fromW = isTransfer && tx.walletId ? wallets.find(w => w.id === tx.walletId) : null;
+                    const catObj = getCategoryById(tx.category);
+                    const hasSpecificCategory = tx.category && tx.category !== 'transfer' && tx.category !== 'transfers_out';
+                    const catName = hasSpecificCategory ? getCategoryName(tx.category, language) : null;
 
-                    let title = getCategoryName(tx.category, language);
+                    let title = catName || getCategoryName(tx.category, language);
                     if (isTransfer) {
-                      if (tx.walletId === selectedWallet?.id) {
-                        title = loc(`تحويل إلى "${toW?.name || 'محفظة أخرى'}"`, `Transfer to "${toW?.name || 'Wallet'}"`, `"${toW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ലേക്ക് കൈമാറ്റം`);
+                      const transferSub = tx.walletId === selectedWallet?.id
+                        ? loc(`تحويل إلى "${toW?.name || 'محفظة أخرى'}"`, `Transfer to "${toW?.name || 'Wallet'}"`, `"${toW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ലേക്ക് കൈമാറ്റം`)
+                        : loc(`تحويل من "${fromW?.name || 'محفظة أخرى'}"`, `Transfer from "${fromW?.name || 'Wallet'}"`, `"${fromW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ൽ നിന്നുള്ള കൈമാറ്റം`);
+                      if (catName) {
+                        title = `${catName} (${transferSub})`;
                       } else {
-                        title = loc(`تحويل من "${fromW?.name || 'محفظة أخرى'}"`, `Transfer from "${fromW?.name || 'Wallet'}"`, `"${fromW?.name || 'മറ്റൊരു വാലറ്റ്'}"-ൽ നിന്നുള്ള കൈമാറ്റം`);
+                        title = transferSub;
                       }
                     }
 
                     const d = new Date(tx.date);
                     const dateStr = `${d.getDate()} ${t.months[d.getMonth()]}`;
-                    const catObj = getCategoryById(tx.category);
+
+                    const txColor = (hasSpecificCategory && catObj?.color) ? catObj.color : (isTransfer ? '#8B5CF6' : (catObj?.color || (isExp ? colors.expense : colors.income)));
+                    const txIcon = (hasSpecificCategory && catObj?.icon) ? catObj.icon : (isTransfer ? 'swap-horiz' : (catObj?.icon as any || 'receipt'));
 
                     return (
                       <View
@@ -357,14 +365,14 @@ export const MonthlyBreakdownModal: React.FC<MonthlyBreakdownModalProps> = ({
                             width: 36,
                             height: 36,
                             borderRadius: 10,
-                            backgroundColor: isTransfer ? '#8B5CF620' : (catObj?.color ? catObj.color + '20' : (isExp ? '#EF444415' : '#10B98115')),
+                            backgroundColor: txColor + '20',
                             alignItems: 'center',
                             justifyContent: 'center',
                           }}>
                             <MaterialIcons
-                              name={isTransfer ? 'swap-horiz' : (catObj?.icon as any || 'receipt')}
+                              name={txIcon as any}
                               size={20}
-                              color={isTransfer ? '#8B5CF6' : (catObj?.color || (isExp ? colors.expense : colors.income))}
+                              color={txColor}
                             />
                           </View>
                           <View style={{ flex: 1, alignItems: 'flex-start' }}>
