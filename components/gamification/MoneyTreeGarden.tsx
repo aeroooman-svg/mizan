@@ -58,7 +58,7 @@ export default function MoneyTreeGarden({
   currencySymbol = '',
   totalHarvestedSavings = 0,
 }: MoneyTreeGardenProps) {
-  const fruitAmount = Math.max(1, Math.round((surplusAmount || 0) / 3));
+  const fruitAmount = (surplusAmount && surplusAmount > 0) ? Math.max(1, Math.round(surplusAmount / 3)) : 0;
   // Determine growth stage
   const growthStage: TreeGrowthStage = useMemo(() => {
     if (userLevel <= 1) return 'seed';
@@ -206,6 +206,12 @@ export default function MoneyTreeGarden({
           ? '🎉 رائع! جنيت كل ثمار اليوم بنجاح، استمر في التوفير لتنضج ثمار جديدة غداً!'
           : '🎉 All fruits harvested today! Keep saving to grow new ones tomorrow!'
       );
+    } else if (surplusAmount <= 0) {
+      setSpeech(
+        isAr
+          ? '⚠️ لقد استنفدت حد الصرف الآمن اليوم! لا يوجد فائض متاح للحصاد حالياً، اضبط مصاريفك غداً لتنضج وتزدهر الثمار من جديد 🌿'
+          : '⚠️ You have used your daily safe limit today! No surplus available to harvest currently. Stay disciplined tomorrow to grow new fruits 🌿'
+      );
     } else if (watered) {
       setSpeech(
         isAr
@@ -221,11 +227,11 @@ export default function MoneyTreeGarden({
     } else {
       setSpeech(
         isAr
-          ? `🌳 مرحباً بك! لديك ${unharvestedCount} ثمار ناضجة جاهزة للقطف، اضغط عليها مباشرة!`
-          : `🌳 Welcome! You have ${unharvestedCount} golden fruits ready to harvest!`
+          ? `🌳 مرحباً بك! لديك ${unharvestedCount} ثمار ناضجة بقيمة ${unharvestedCount * fruitAmount} ${currencySymbol}، اضغط عليها للحصاد!`
+          : `🌳 Welcome! You have ${unharvestedCount} golden fruits worth ${unharvestedCount * fruitAmount} ${currencySymbol} ready to harvest!`
       );
     }
-  }, [unharvestedCount, watered, healthScore, isAr]);
+  }, [unharvestedCount, watered, healthScore, isAr, surplusAmount, fruitAmount, currencySymbol]);
 
   // Show floating reward toast
   const showToast = (text: string, color: string = '#FDE047') => {
@@ -276,6 +282,17 @@ export default function MoneyTreeGarden({
   const handleTapFruit = (fruitId: number) => {
     if (harvestedFruitIds.includes(fruitId)) return;
 
+    if (surplusAmount <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showToast(
+        isAr
+          ? '⚠️ لا يوجد فائض متاح للحصاد اليوم'
+          : '⚠️ No surplus available to harvest today',
+        '#EF4444'
+      );
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     showToast(
       isAr
@@ -289,6 +306,17 @@ export default function MoneyTreeGarden({
   // Harvest all remaining
   const handleHarvestAll = () => {
     if (unharvestedCount === 0) return;
+
+    if (surplusAmount <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showToast(
+        isAr
+          ? '⚠️ لا يوجد فائض مالي متاح للحصاد اليوم'
+          : '⚠️ No surplus funds to harvest today',
+        '#EF4444'
+      );
+      return;
+    }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const totalHarvest = unharvestedCount * fruitAmount;
@@ -561,18 +589,28 @@ export default function MoneyTreeGarden({
                         ]}
                       >
                         <Animated.View style={{ transform: [{ scale: fruitPulse }] }}>
-                          <LinearGradient
-                            colors={['#FEF08A', '#FACC15', '#CA8A04']}
-                            style={styles.fruitCoinCircle}
-                          >
-                            <Text style={styles.fruitCoinText}>$</Text>
-                          </LinearGradient>
+                          {surplusAmount > 0 ? (
+                            <LinearGradient
+                              colors={['#FEF08A', '#FACC15', '#CA8A04']}
+                              style={styles.fruitCoinCircle}
+                            >
+                              <Text style={styles.fruitCoinText}>$</Text>
+                            </LinearGradient>
+                          ) : (
+                            <View style={[styles.fruitCoinCircle, { backgroundColor: '#334155', borderWidth: 1, borderColor: '#64748B' }]}>
+                              <Text style={{ fontSize: 13 }}>🌱</Text>
+                            </View>
+                          )}
                         </Animated.View>
-                        {surplusAmount > 0 && (
+                        {surplusAmount > 0 ? (
                           <View style={styles.fruitPriceBadge}>
                             <Text style={styles.fruitPriceText}>
                               +{fruitAmount}
                             </Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.fruitPriceBadge, { backgroundColor: '#475569' }]}>
+                            <Text style={styles.fruitPriceText}>0</Text>
                           </View>
                         )}
                       </Pressable>
@@ -666,33 +704,31 @@ export default function MoneyTreeGarden({
           {/* HARVEST ALL ACTION */}
           <Pressable
             onPress={handleHarvestAll}
-            disabled={unharvestedCount === 0}
+            disabled={unharvestedCount === 0 || surplusAmount <= 0}
             style={({ pressed }) => [
               styles.actionBtn,
-              unharvestedCount === 0 ? styles.actionBtnDone : styles.actionBtnHarvest,
-              pressed && unharvestedCount > 0 && { opacity: 0.8 },
+              (unharvestedCount === 0 || surplusAmount <= 0) ? styles.actionBtnDone : styles.actionBtnHarvest,
+              pressed && unharvestedCount > 0 && surplusAmount > 0 && { opacity: 0.8 },
             ]}
           >
             <Ionicons
-              name={unharvestedCount === 0 ? 'checkmark-done' : 'gift'}
+              name={unharvestedCount === 0 ? 'checkmark-done' : (surplusAmount <= 0 ? 'alert-circle-outline' : 'gift')}
               size={18}
-              color={unharvestedCount === 0 ? '#10B981' : '#FBBF24'}
+              color={unharvestedCount === 0 ? '#10B981' : (surplusAmount <= 0 ? '#94A3B8' : '#FBBF24')}
             />
             <Text
               style={[
                 styles.actionBtnText,
-                unharvestedCount === 0 ? styles.actionBtnTextDone : { color: '#FEF9C3' },
+                (unharvestedCount === 0 || surplusAmount <= 0) ? styles.actionBtnTextDone : { color: '#FEF9C3' },
               ]}
             >
               {unharvestedCount === 0
                 ? (isAr ? 'تم جني ثمار اليوم ✓' : 'All Harvested ✓')
-                : (isAr
-                    ? (surplusAmount > 0
+                : (surplusAmount <= 0
+                    ? (isAr ? 'لا يوجد فائض متاح اليوم ⚠️' : 'No Surplus Available Today ⚠️')
+                    : (isAr
                         ? `اجنِ الثمار (+${unharvestedCount * fruitAmount} ${currencySymbol}) 🪙`
-                        : `اقطف الباقي (${unharvestedCount}) 🪙`)
-                    : (surplusAmount > 0
-                        ? `Harvest (+${unharvestedCount * fruitAmount} ${currencySymbol}) 🪙`
-                        : `Harvest All (${unharvestedCount}) 🪙`))}
+                        : `Harvest (+${unharvestedCount * fruitAmount} ${currencySymbol}) 🪙`))}
             </Text>
           </Pressable>
         </View>

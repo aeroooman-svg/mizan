@@ -20,8 +20,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTransactions } from '@/lib/TransactionContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useTheme } from '@/lib/ThemeContext';
-import { getFinancialPlan } from '@/lib/planStorage';
+import { getFinancialPlan, getAllPlans, FinancialPlan } from '@/lib/planStorage';
 import { getBudgetsForWallet } from '@/lib/budgetStorage';
+import { getJameyas, Jameya } from '@/lib/jameyaStorage';
 import { expenseCategories } from '@/lib/categories';
 import {
   CustomChallenge,
@@ -61,7 +62,7 @@ export default function ChallengesScreen() {
   const { colors, theme } = useTheme();
   const styles = useMemo(() => getStyles(colors, theme), [colors, theme]);
   const insets = useSafeAreaInsets();
-  const { transactions, wallets, selectedWallet, currencySymbol, currencyCode } = useTransactions();
+  const { transactions, wallets, selectedWallet, currencySymbol, currencyCode, getWalletTotalBalance } = useTransactions();
   const { language } = useLanguage();
   const isAr = language === 'ar';
 
@@ -92,6 +93,8 @@ export default function ChallengesScreen() {
   const [bonusXP, setBonusXP] = useState<number>(0);
   const [hasPlan, setHasPlan] = useState(false);
   const [hasBudgets, setHasBudgets] = useState(false);
+  const [plans, setPlans] = useState<Record<string, FinancialPlan>>({});
+  const [jameyas, setJameyas] = useState<Jameya[]>([]);
   const [totalTreeSavings, setTotalTreeSavings] = useState<number>(0);
   const [recentHarvestLogs, setRecentHarvestLogs] = useState<TreeHarvestLog[]>([]);
 
@@ -149,7 +152,7 @@ export default function ChallengesScreen() {
 
   // Load gamification data
   const loadGamificationData = useCallback(async () => {
-    const [cChallenges, claimed, bXP, treeState, chestOpened, quizAnswered, tSavings, hLogs] = await Promise.all([
+    const [cChallenges, claimed, bXP, treeState, chestOpened, quizAnswered, tSavings, hLogs, allPlans, allJameyas] = await Promise.all([
       getCustomChallenges(),
       getClaimedDailyQuests(todayKey),
       getBonusXP(),
@@ -158,6 +161,8 @@ export default function ChallengesScreen() {
       getDailyQuizAnswered(todayKey),
       getTotalTreeHarvestedSavings(),
       getTreeHarvestLogs(),
+      getAllPlans().catch(() => ({})),
+      getJameyas().catch(() => []),
     ]);
 
     setCustomChallenges(cChallenges);
@@ -168,6 +173,8 @@ export default function ChallengesScreen() {
     setDailyQuizAnswered(quizAnswered);
     setTotalTreeSavings(tSavings);
     setRecentHarvestLogs(hLogs);
+    setPlans(allPlans || {});
+    setJameyas(allJameyas || []);
 
     if (selectedWallet) {
       const plan = await getFinancialPlan(selectedWallet.id);
@@ -380,35 +387,108 @@ export default function ChallengesScreen() {
 
   const todayExpenses = useMemo(() => {
     const now = new Date();
+    const todayDate = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
     return activeWalletTransactions
       .filter(t => {
+        if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
+        if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
         const d = new Date(t.date);
-        return (
-          t.type === 'expense' &&
-          d.getFullYear() === now.getFullYear() &&
-          d.getMonth() === now.getMonth() &&
-          d.getDate() === now.getDate()
+        const isToday = (
+          d.getFullYear() === currentYear &&
+          d.getMonth() === currentMonth &&
+          d.getDate() === todayDate
         );
+        if (!isToday) return false;
+        if (t.type === 'expense') return true;
+        if (t.type === 'transfer' && (!activeWalletObj || t.walletId === activeWalletObj.id)) return true;
+        return false;
       })
       .reduce((sum, t) => sum + t.amount, 0);
-  }, [activeWalletTransactions]);
+  }, [activeWalletTransactions, activeWalletObj]);
 
   const dailySafeLimit = useMemo(() => {
     const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysRemaining = Math.max(1, daysInMonth - now.getDate() + 1);
-    const curBal = activeWalletIncome - activeWalletExpense;
-    if (curBal <= 0) return 0;
-    return Math.round(curBal / daysRemaining);
-  }, [activeWalletIncome, activeWalletExpense]);
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const todayDate = now.getDate();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const daysRemaining = Math.max(1, daysInMonth - todayDate + 1);
+    const currentMonthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+
+    if (filterWalletId === 'all') {
+      const activeWallets = (wallets || []).filter(w => !w.excludeFromTotal);
+      let totalEffectiveAvailable = 0;
+
+      activeWallets.forEach(w => {
+        const wBal = getWalletTotalBalance ? getWalletTotalBalance(w.id) : 0;
+        const wJameyas = jameyas.filter(j => j.walletId === w.id && (j.paidMonthsCount || 0) < (j.totalMonths || 0));
+        const pendingJam = wJameyas
+          .filter(j => j.lastPaidMonth !== currentMonthKey)
+          .reduce((sum, j) => sum + (j.monthlyAmount || 0), 0);
+        const spendable = Math.max(0, wBal - pendingJam);
+
+        const wPlan = plans[w.id];
+        const customOverride = wPlan?.customMonthlyOverrides?.[currentMonthKey];
+        const activeMonthlyExpense = customOverride?.expense ?? wPlan?.monthlyExpense;
+
+        let effective = spendable;
+        if (wPlan && Number(activeMonthlyExpense) > 0) {
+          const wMonthExpenses = transactions
+            .filter(t => {
+              if (t.walletId !== w.id || t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
+              if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+              const d = new Date(t.date);
+              return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+          const remBudget = Math.max(0, Number(activeMonthlyExpense) - wMonthExpenses);
+          effective = Math.min(spendable, remBudget);
+        }
+        totalEffectiveAvailable += effective;
+      });
+
+      return totalEffectiveAvailable > 0 ? Math.round(totalEffectiveAvailable / daysRemaining) : 0;
+    } else {
+      const targetW = activeWalletObj || wallets.find(w => w.id === filterWalletId);
+      if (!targetW) return 0;
+
+      const wBal = getWalletTotalBalance ? getWalletTotalBalance(targetW.id) : 0;
+      const wJameyas = jameyas.filter(j => j.walletId === targetW.id && (j.paidMonthsCount || 0) < (j.totalMonths || 0));
+      const pendingJam = wJameyas
+        .filter(j => j.lastPaidMonth !== currentMonthKey)
+        .reduce((sum, j) => sum + (j.monthlyAmount || 0), 0);
+      const spendable = Math.max(0, wBal - pendingJam);
+
+      const wPlan = plans[targetW.id];
+      const customOverride = wPlan?.customMonthlyOverrides?.[currentMonthKey];
+      const activeMonthlyExpense = customOverride?.expense ?? wPlan?.monthlyExpense;
+
+      let effective = spendable;
+      if (wPlan && Number(activeMonthlyExpense) > 0) {
+        const wMonthExpenses = transactions
+          .filter(t => {
+            if (t.walletId !== targetW.id || t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
+            if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+            const d = new Date(t.date);
+            return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+        const remBudget = Math.max(0, Number(activeMonthlyExpense) - wMonthExpenses);
+        effective = Math.min(spendable, remBudget);
+      }
+
+      return effective > 0 ? Math.round(effective / daysRemaining) : 0;
+    }
+  }, [filterWalletId, wallets, activeWalletObj, getWalletTotalBalance, jameyas, plans, transactions]);
 
   const todaySurplus = useMemo(() => {
-    if (dailySafeLimit <= 0) {
-      return savingsRate > 0 ? Math.round(savingsRate * 2.5) : 30;
-    }
+    if (dailySafeLimit <= 0) return 0;
     const rem = dailySafeLimit - todayExpenses;
-    return rem > 0 ? Math.round(rem) : 30;
-  }, [dailySafeLimit, todayExpenses, savingsRate]);
+    return rem > 0 ? Math.round(rem) : 0;
+  }, [dailySafeLimit, todayExpenses]);
 
   const handleHarvestSingleFruit = async (fruitId: number, amount: number) => {
     const currentHarvested = treeCareState.harvestedFruitIds || [];
@@ -424,8 +504,10 @@ export default function ChallengesScreen() {
       const newTotal = await addTreeHarvestedSavings(amount, {
         date: todayKey,
         amount,
-        walletName: selectedWallet?.name || (isAr ? 'محفظتي' : 'Wallet'),
-        note: isAr ? 'قطف ثمرة ادخار يومية' : 'Daily tree fruit harvest',
+        walletName: currentWalletName,
+        note: isAr
+          ? `توفير حقيقي (الحد: ${dailySafeLimit} | الصرف: ${todayExpenses})`
+          : `Real savings (Limit: ${dailySafeLimit} | Spent: ${todayExpenses})`,
       });
       setTotalTreeSavings(newTotal);
     }
@@ -447,8 +529,10 @@ export default function ChallengesScreen() {
       const newTotal = await addTreeHarvestedSavings(totalAmount, {
         date: todayKey,
         amount: totalAmount,
-        walletName: selectedWallet?.name || (isAr ? 'محفظتي' : 'Wallet'),
-        note: isAr ? 'جني ثمار الشجرة وفائض اليوم' : 'Full tree harvest & surplus',
+        walletName: currentWalletName,
+        note: isAr
+          ? `جني ثمار الشجرة وفائض اليوم (الحد: ${dailySafeLimit} | الصرف: ${todayExpenses})`
+          : `Full tree harvest & surplus (Limit: ${dailySafeLimit} | Spent: ${todayExpenses})`,
       });
       setTotalTreeSavings(newTotal);
     }
@@ -955,8 +1039,19 @@ export default function ChallengesScreen() {
                     {isAr ? 'فائض اليوم الآمن المتاح للحصاد:' : 'Today’s Safe Surplus to Harvest:'}
                   </Text>
                 </View>
-                <Text style={styles.realSavingsSurplusValue}>
-                  {todaySurplus > 0 ? `+${todaySurplus.toLocaleString()} ${currencySymbol}` : `0 ${currencySymbol}`}
+                <Text style={[styles.realSavingsSurplusValue, todaySurplus <= 0 && { color: '#F87171' }]}>
+                  {todaySurplus > 0
+                    ? `+${todaySurplus.toLocaleString()} ${currencySymbol}`
+                    : (isAr ? `0 ${currencySymbol} (مستنفد)` : `0 ${currencySymbol} (Exhausted)`)}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.15)' }}>
+                <Text style={{ fontSize: 11, color: '#A7F3D0', fontFamily: 'Cairo_600SemiBold' }}>
+                  {isAr ? `الحد اليومي: ${dailySafeLimit} ${currencySymbol}` : `Daily Limit: ${dailySafeLimit} ${currencySymbol}`}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#A7F3D0', fontFamily: 'Cairo_600SemiBold' }}>
+                  {isAr ? `صرف اليوم: ${todayExpenses} ${currencySymbol}` : `Spent Today: ${todayExpenses} ${currencySymbol}`}
                 </Text>
               </View>
             </LinearGradient>
