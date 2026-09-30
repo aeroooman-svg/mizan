@@ -82,6 +82,7 @@ export default function HomeScreen() {
     pendingRecurring,
     approveRecurringTransaction,
     addTransaction,
+    getWalletTotalBalance,
   } = useTransactions();
   const { t, language } = useLanguage();
   const isAr = language === 'ar';
@@ -223,12 +224,14 @@ export default function HomeScreen() {
   }, [refresh, wallets]);
 
   const getWalletBalance = (walletId: string) => {
+    if (getWalletTotalBalance) return getWalletTotalBalance(walletId);
     const targetW = wallets.find(w => w.id === walletId);
     if (!targetW) return 0;
 
     const walletTxns = transactions.filter(t =>
-      t.walletId === walletId ||
-      (t.type === 'transfer' && t.toWalletId === walletId)
+      (t.walletId === walletId ||
+      (t.type === 'transfer' && t.toWalletId === walletId)) &&
+      !t.isAtmWithdrawal && t.category !== 'atm_withdrawal'
     );
     const income = walletTxns
       .filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === walletId))
@@ -389,8 +392,11 @@ export default function HomeScreen() {
   }, [walletTransactions, totalIncome, totalExpense]);
 
   const selectedWalletBalance = useMemo(() => {
-    return allTimeIncome - allTimeExpense;
-  }, [allTimeIncome, allTimeExpense]);
+    if (!selectedWallet) return 0;
+    return getWalletTotalBalance
+      ? getWalletTotalBalance(selectedWallet.id)
+      : ((selectedWallet?.initialBalance || 0) + allTimeIncome - allTimeExpense);
+  }, [selectedWallet, getWalletTotalBalance, allTimeIncome, allTimeExpense]);
 
   const totalConsolidatedBalance = useMemo(() => {
     if (!selectedWallet) return 0;

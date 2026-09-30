@@ -66,11 +66,11 @@ export function generateMonthlyReport(
     .reduce((s, t) => s + t.amount, 0);
 
   const pureExpense = currentMonthTx
-    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
     .reduce((s, t) => s + t.amount, 0);
 
   const transfersOut = currentMonthTx
-    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id)
+    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
     .reduce((s, t) => s + t.amount, 0);
 
   const totalExpense = pureExpense + transfersOut;
@@ -83,10 +83,10 @@ export function generateMonthlyReport(
   const savingsRatePercent = totalIncome > 0 ? Math.max(0, Math.round((netSavings / totalIncome) * 100)) : 0;
 
   const prevPureExpense = prevMonthTx
-    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+    .filter((t) => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
     .reduce((s, t) => s + t.amount, 0);
   const prevTransfersOut = prevMonthTx
-    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id)
+    .filter((t) => t.type === 'transfer' && wallet && t.walletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
     .reduce((s, t) => s + t.amount, 0);
   const prevExpense = prevPureExpense + prevTransfersOut;
 

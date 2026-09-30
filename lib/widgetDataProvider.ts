@@ -146,8 +146,8 @@ export function getWidgetData(
   const daysRemaining = Math.max(1, daysInMonthCount - currentDay + 1);
 
   const fullWalletBalance = wallet ? ((wallet.initialBalance || 0) +
-    walletTxns.filter(t => t.type === 'income' || (t.type === 'transfer' && t.toWalletId === wallet.id)).reduce((s, t) => s + t.amount, 0) -
-    walletTxns.filter(t => t.type === 'expense' || (t.type === 'transfer' && t.walletId === wallet.id)).reduce((s, t) => s + t.amount, 0)
+    walletTxns.filter(t => (t.type === 'income' || (t.type === 'transfer' && t.toWalletId === wallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((s, t) => s + t.amount, 0) -
+    walletTxns.filter(t => (t.type === 'expense' || (t.type === 'transfer' && t.walletId === wallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((s, t) => s + t.amount, 0)
   ) : balance;
 
   const dailySafeSpend = fullWalletBalance > 0 ? Math.floor(fullWalletBalance / daysRemaining) : 0;

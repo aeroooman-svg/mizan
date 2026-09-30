@@ -72,6 +72,7 @@ interface TransactionContextValue {
   cashBalance: number;
   getWalletCashBalance: (walletId: string) => number;
   getWalletBankBalance: (walletId: string) => number;
+  getWalletTotalBalance: (walletId: string) => number;
   recordAtmWithdrawal: (walletId: string, amount: number, note?: string) => Promise<void>;
   reconcileCashBalance: (walletId: string, actualCash: number) => Promise<number>;
   // Pending recurring transactions (variable)
@@ -357,27 +358,35 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     return (targetWallet.initialCashBalance || 0) + atmSum + cashIncome - cashExpenses;
   }, [wallets, transactions]);
 
-  const getWalletBankBalance = useCallback((walletId: string): number => {
+  const getWalletTotalBalance = useCallback((walletId: string): number => {
     const targetWallet = wallets.find(w => w.id === walletId);
     if (!targetWallet) return 0;
 
     const inc = transactions
-      .filter(t => t.type === 'income' && t.walletId === walletId)
+      .filter(t => t.type === 'income' && t.walletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((sum, t) => sum + t.amount, 0);
     const exp = transactions
       .filter(t => t.type === 'expense' && t.walletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((sum, t) => sum + t.amount, 0);
     const trIn = transactions
       .filter(t => t.type === 'transfer' && t.toWalletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => {
+        const fromW = wallets.find(w => w.id === t.walletId);
+        const fromCurrency = fromW ? fromW.currency : targetWallet.currency;
+        return sum + convertAmount(t.amount, fromCurrency, targetWallet.currency, rates);
+      }, 0);
     const trOut = transactions
       .filter(t => t.type === 'transfer' && t.walletId === walletId && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalBal = (targetWallet.initialBalance || 0) + inc + trIn - exp - trOut;
+    return (targetWallet.initialBalance || 0) + inc + trIn - exp - trOut;
+  }, [wallets, transactions, rates]);
+
+  const getWalletBankBalance = useCallback((walletId: string): number => {
+    const totalBal = getWalletTotalBalance(walletId);
     const cashBal = getWalletCashBalance(walletId);
     return totalBal - cashBal;
-  }, [wallets, transactions, getWalletCashBalance]);
+  }, [getWalletTotalBalance, getWalletCashBalance]);
 
   const cashBalance = useMemo(() => {
     if (!selectedWallet) return 0;
@@ -385,8 +394,9 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   }, [selectedWallet, getWalletCashBalance]);
 
   const bankBalance = useMemo(() => {
-    return balance - cashBalance;
-  }, [balance, cashBalance]);
+    if (!selectedWallet) return 0;
+    return getWalletBankBalance(selectedWallet.id);
+  }, [selectedWallet, getWalletBankBalance]);
 
   const currencySymbol = useMemo(() => {
     if (!selectedWallet) return globalAppLanguage === 'ar' ? 'ج.م' : 'EGP';
@@ -867,6 +877,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     cashBalance,
     getWalletCashBalance,
     getWalletBankBalance,
+    getWalletTotalBalance,
     recordAtmWithdrawal,
     reconcileCashBalance,
   }), [
@@ -902,6 +913,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     cashBalance,
     getWalletCashBalance,
     getWalletBankBalance,
+    getWalletTotalBalance,
     recordAtmWithdrawal,
     reconcileCashBalance,
   ]);

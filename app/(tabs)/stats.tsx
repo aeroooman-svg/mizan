@@ -248,7 +248,7 @@ export default function StatsScreen() {
         .reduce((s, t) => s + t.amount, 0);
 
       const expense = txns
-        .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+        .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
         .reduce((s, t) => s + t.amount, 0);
 
       const savings = income - expense;
@@ -292,16 +292,16 @@ export default function StatsScreen() {
     });
 
     const categorizedTransfersOut = isExpense
-      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && t.category && t.category !== 'transfer' && t.category !== 'transfers_out')
+      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && t.category && t.category !== 'transfer' && t.category !== 'transfers_out' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       : [];
 
     const uncategorizedTransfersOut = isExpense
-      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && (!t.category || t.category === 'transfer' || t.category === 'transfers_out'))
+      ? activeTransactions.filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && (!t.category || t.category === 'transfer' || t.category === 'transfers_out') && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       : [];
 
     const uncategorizedTransferOutTotal = uncategorizedTransfersOut.reduce((sum, t) => sum + t.amount, 0);
     const transferOutTotal = activeTransactions
-      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
+      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const baseTotal = filtered.reduce((sum, t) => sum + t.amount, 0);
@@ -457,6 +457,7 @@ export default function StatsScreen() {
   const consolidatedAllTimeExpense = useMemo(() => {
     const includedIds = new Set(includedWallets.map(w => w.id));
     return (transactions || []).filter(t => {
+      if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
       if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
       if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
       return false;
@@ -511,6 +512,7 @@ export default function StatsScreen() {
 
       const priorExpense = priorTxns
         .filter(t => {
+          if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
           if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
           if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
           return false;
@@ -544,6 +546,7 @@ export default function StatsScreen() {
 
         const exp = dayTxns
           .filter(t => {
+            if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
             if (t.type === 'expense' && includedIds.has(t.walletId)) return true;
             if (t.type === 'transfer' && includedIds.has(t.walletId) && (!t.toWalletId || !includedIds.has(t.toWalletId))) return true;
             return false;
@@ -575,7 +578,7 @@ export default function StatsScreen() {
         }, 0);
 
       const priorExpense = priorTxns
-        .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+        .filter(t => (t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
         .reduce((s, t) => s + t.amount, 0);
 
       let running = (selectedWallet?.initialBalance || 0) + priorIncome - priorExpense + totalExtraNetAssets;
@@ -594,7 +597,7 @@ export default function StatsScreen() {
           }, 0);
 
         const exp = dayTxns
-          .filter(t => t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+          .filter(t => (t.type === 'expense' || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
           .reduce((s, t) => s + t.amount, 0);
 
         running += (inc - exp);
@@ -624,7 +627,7 @@ export default function StatsScreen() {
       data.push({
         day: d,
         income: dayTxns.filter(t => (t.type === 'income' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.toWalletId === selectedWallet.id)).reduce((s, t) => s + t.amount, 0),
-        expense: dayTxns.filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)).reduce((s, t) => s + t.amount, 0),
+        expense: dayTxns.filter(t => ((t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((s, t) => s + t.amount, 0),
       });
     }
     return data;
@@ -640,11 +643,11 @@ export default function StatsScreen() {
     });
 
     const currentMonthExpense = monthlyTransactions
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .filter(t => ((t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
 
     const prevMonthExpense = prevMonthTxns
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .filter(t => ((t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
 
     const currentMonthIncome = monthlyTransactions
@@ -706,7 +709,7 @@ export default function StatsScreen() {
   }, [monthlyTransactions]);
 
   const monthlyExpense = useMemo(() => {
-    return monthlyTransactions.filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan').reduce((s, t) => s + t.amount, 0);
+    return monthlyTransactions.filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((s, t) => s + t.amount, 0);
   }, [monthlyTransactions]);
 
   const monthlyJameyaSavings = useMemo(() => {
@@ -715,7 +718,7 @@ export default function StatsScreen() {
 
   const monthlyTransfersOut = useMemo(() => {
     return monthlyTransactions
-      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
+      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
   }, [monthlyTransactions, selectedWallet]);
 
@@ -738,13 +741,13 @@ export default function StatsScreen() {
 
   const yearlyExpense = useMemo(() => {
     return yearlyTransactions
-      .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan')
+      .filter(t => t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan' && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
   }, [yearlyTransactions]);
 
   const yearlyTransfersOut = useMemo(() => {
     return yearlyTransactions
-      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id))
+      .filter(t => t.type === 'transfer' && (!selectedWallet || t.walletId === selectedWallet.id) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
   }, [yearlyTransactions, selectedWallet]);
 
@@ -771,7 +774,7 @@ export default function StatsScreen() {
 
   const prevYearExpense = useMemo(() => {
     return prevYearTransactions
-      .filter(t => (t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id))
+      .filter(t => ((t.type === 'expense' && t.category !== 'jameya_savings' && t.category !== 'debt_loan') || (t.type === 'transfer' && selectedWallet && t.walletId === selectedWallet.id)) && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
       .reduce((s, t) => s + t.amount, 0);
   }, [prevYearTransactions, selectedWallet]);
 

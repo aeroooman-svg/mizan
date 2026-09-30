@@ -69,7 +69,7 @@ export default function WalletCarousel({
   const [adjustWallet, setAdjustWallet] = useState<Wallet | null>(null);
   const [confirmStopShareWallet, setConfirmStopShareWallet] = useState<Wallet | null>(null);
   const [targetBalanceInput, setTargetBalanceInput] = useState('');
-  const { updateWallet, refresh, getWalletBankBalance, getWalletCashBalance, recordAtmWithdrawal, reconcileCashBalance } = useTransactions();
+  const { updateWallet, refresh, getWalletBankBalance, getWalletCashBalance, getWalletTotalBalance, recordAtmWithdrawal, reconcileCashBalance } = useTransactions();
   const [cashModalWallet, setCashModalWallet] = useState<Wallet | null>(null);
   const [atmModalWallet, setAtmModalWallet] = useState<Wallet | null>(null);
   const [reconcileModalWallet, setReconcileModalWallet] = useState<Wallet | null>(null);
@@ -147,14 +147,14 @@ export default function WalletCarousel({
     const targetAmount = parseFloat(normalizeAmountInput(targetBalanceInput)) || 0;
     
     // Calculate net transactions for this wallet
-    const income = transactions.filter((t) => t.type === 'income' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
-    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
-    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === adjustWallet.id).reduce((sum, t) => {
+    const income = transactions.filter((t) => t.type === 'income' && t.walletId === adjustWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
+    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === adjustWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
+    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === adjustWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => {
       const fromW = wallets.find((w) => w.id === t.walletId);
       const fromCurrency = fromW ? fromW.currency : adjustWallet.currency;
       return sum + convertAmount(t.amount, fromCurrency, adjustWallet.currency, rates);
     }, 0);
-    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === adjustWallet.id).reduce((sum, t) => sum + t.amount, 0);
+    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === adjustWallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
 
     const netTxns = income + transferIn - expense - transferOut;
     const newInitialBalance = targetAmount - netTxns;
@@ -239,22 +239,24 @@ export default function WalletCarousel({
           const cardNumSuffix = wallet.id.slice(-4).toUpperCase();
 
           const income = transactions
-            .filter((t) => t.type === 'income' && t.walletId === wallet.id)
+            .filter((t) => t.type === 'income' && t.walletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
             .reduce((sum, t) => sum + t.amount, 0);
           const expense = transactions
-            .filter((t) => t.type === 'expense' && t.walletId === wallet.id)
+            .filter((t) => t.type === 'expense' && t.walletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
             .reduce((sum, t) => sum + t.amount, 0);
           const transferIn = transactions
-            .filter((t) => t.type === 'transfer' && t.toWalletId === wallet.id)
+            .filter((t) => t.type === 'transfer' && t.toWalletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
             .reduce((sum, t) => {
               const fromW = wallets.find((w) => w.id === t.walletId);
               const fromCurrency = fromW ? fromW.currency : wallet.currency;
               return sum + convertAmount(t.amount, fromCurrency, wallet.currency, rates);
             }, 0);
           const transferOut = transactions
-            .filter((t) => t.type === 'transfer' && t.walletId === wallet.id)
+            .filter((t) => t.type === 'transfer' && t.walletId === wallet.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal')
             .reduce((sum, t) => sum + t.amount, 0);
-          const walletBalance = (wallet.initialBalance || 0) + income + transferIn - expense - transferOut;
+          const walletBalance = getWalletTotalBalance
+            ? getWalletTotalBalance(wallet.id)
+            : ((wallet.initialBalance || 0) + income + transferIn - expense - transferOut);
 
           const now = new Date();
           const currentMonth = now.getMonth();
@@ -265,6 +267,7 @@ export default function WalletCarousel({
             .filter((t) => {
               if (t.type !== 'expense' || t.walletId !== wallet.id) return false;
               if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+              if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
               const d = new Date(t.date);
               return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             })
@@ -273,6 +276,7 @@ export default function WalletCarousel({
           const monthTransfers = transactions
             .filter((t) => {
               if (t.type !== 'transfer' || t.walletId !== wallet.id) return false;
+              if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
               const d = new Date(t.date);
               return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             })
@@ -282,6 +286,7 @@ export default function WalletCarousel({
             .filter((t) => {
               if (t.type !== 'expense' || t.walletId !== wallet.id) return false;
               if (t.category === 'jameya_savings' || t.category === 'debt_loan') return false;
+              if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
               const d = new Date(t.date);
               return d.getDate() === todayDate && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             })
@@ -290,6 +295,7 @@ export default function WalletCarousel({
           const todayTransfers = transactions
             .filter((t) => {
               if (t.type !== 'transfer' || t.walletId !== wallet.id) return false;
+              if (t.isAtmWithdrawal || t.category === 'atm_withdrawal') return false;
               const d = new Date(t.date);
               return d.getDate() === todayDate && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
             })
@@ -401,8 +407,8 @@ export default function WalletCarousel({
             return undefined;
           })() : undefined;
 
-          const wBankBal = getWalletBankBalance ? getWalletBankBalance(wallet.id) : walletBalance;
           const wCashBal = getWalletCashBalance ? getWalletCashBalance(wallet.id) : 0;
+          const wBankBal = getWalletBankBalance ? getWalletBankBalance(wallet.id) : (walletBalance - wCashBal);
 
           return (
             <Pressable
@@ -665,15 +671,15 @@ export default function WalletCarousel({
                     const w = actionWallet;
                     setActionWallet(null);
                     // Calculate current balance for actionWallet
-                    const income = transactions.filter((t) => t.type === 'income' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
-                    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
-                    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === w.id).reduce((sum, t) => {
+                    const income = transactions.filter((t) => t.type === 'income' && t.walletId === w.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
+                    const expense = transactions.filter((t) => t.type === 'expense' && t.walletId === w.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
+                    const transferIn = transactions.filter((t) => t.type === 'transfer' && t.toWalletId === w.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => {
                       const fromW = wallets.find((wObj) => wObj.id === t.walletId);
                       const fromCurrency = fromW ? fromW.currency : w.currency;
                       return sum + convertAmount(t.amount, fromCurrency, w.currency, rates);
                     }, 0);
-                    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === w.id).reduce((sum, t) => sum + t.amount, 0);
-                    const curBal = (w.initialBalance || 0) + income + transferIn - expense - transferOut;
+                    const transferOut = transactions.filter((t) => t.type === 'transfer' && t.walletId === w.id && !t.isAtmWithdrawal && t.category !== 'atm_withdrawal').reduce((sum, t) => sum + t.amount, 0);
+                    const curBal = getWalletTotalBalance ? getWalletTotalBalance(w.id) : ((w.initialBalance || 0) + income + transferIn - expense - transferOut);
 
                     handleOpenAdjustModal(w, curBal);
                   }}
