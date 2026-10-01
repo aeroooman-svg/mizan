@@ -328,3 +328,38 @@ export async function getTreeHarvestLogs(): Promise<TreeHarvestLog[]> {
     return [];
   }
 }
+
+export async function resetTreeHarvestedSavings(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(TREE_HARVESTED_SAVINGS_TOTAL_KEY);
+    await AsyncStorage.removeItem(TREE_HARVEST_LOGS_KEY);
+  } catch (e) {
+    console.error('Failed to reset tree harvested savings', e);
+  }
+}
+
+export async function setTreeHarvestedSavings(amount: number): Promise<number> {
+  try {
+    const next = Math.max(0, Math.round(amount * 100) / 100);
+    await AsyncStorage.setItem(TREE_HARVESTED_SAVINGS_TOTAL_KEY, next.toString());
+    return next;
+  } catch {
+    return 0;
+  }
+}
+
+export async function resetTodayHarvest(dateKey: string): Promise<TreeCareState> {
+  try {
+    const current = await getTreeCareState(dateKey);
+    const updated: TreeCareState = {
+      ...current,
+      harvested: false,
+      harvestedFruitIds: [],
+    };
+    await AsyncStorage.setItem(`${TREE_CARE_KEY}_${dateKey}`, JSON.stringify(updated));
+    return updated;
+  } catch {
+    return { watered: false, waterLevel: 0, harvested: false, harvestedFruitIds: [] };
+  }
+}
+

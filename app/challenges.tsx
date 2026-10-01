@@ -45,6 +45,9 @@ import {
   saveDailyQuizAnswered,
   getTotalTreeHarvestedSavings,
   addTreeHarvestedSavings,
+  resetTreeHarvestedSavings,
+  resetTodayHarvest,
+  setTreeHarvestedSavings,
   getTreeHarvestLogs,
   TreeHarvestLog,
 } from '@/lib/gamificationStorage';
@@ -540,6 +543,71 @@ export default function ChallengesScreen() {
     loadGamificationData();
   };
 
+  const handleResetVault = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const executeFullReset = async () => {
+      await resetTreeHarvestedSavings();
+      await resetTodayHarvest(todayKey);
+      setTotalTreeSavings(0);
+      setRecentHarvestLogs([]);
+      setTreeCareState(prev => ({
+        ...prev,
+        harvested: false,
+        harvestedFruitIds: [],
+      }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      triggerConfetti();
+      await loadGamificationData();
+    };
+
+    const executeReopenFruitsOnly = async () => {
+      await resetTodayHarvest(todayKey);
+      setTreeCareState(prev => ({
+        ...prev,
+        harvested: false,
+        harvestedFruitIds: [],
+      }));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      triggerConfetti();
+      await loadGamificationData();
+    };
+
+    if (Platform.OS === 'web') {
+      const choice = window.confirm(
+        isAr
+          ? 'هل تريد تصفير رصيد الخزينة بالكامل والبدء من 0 ج.م وإعادة فتح ثمار اليوم للتجربة الحقيقية؟\n\n(اضغط موافق OK للتصفير الشامل، أو Cancel للإلغاء)'
+          : 'Do you want to completely reset the Vault to 0 and reopen today’s fruits to start fresh with real calculations?'
+      );
+      if (choice) {
+        executeFullReset();
+      }
+      return;
+    }
+
+    Alert.alert(
+      isAr ? '🔄 إدارة وضبط خزينة التوفير' : '🔄 Manage Vault Savings',
+      isAr
+        ? `رصيد الخزينة الحالي: ${totalTreeSavings} ${currencySymbol}\nيمكنك تصفير الرصيد للبدء من 0 ج.م أو إعادة فتح ثمار اليوم لجني الفائض الحقيقي (${todaySurplus} ${currencySymbol}).`
+        : `Current Vault: ${totalTreeSavings} ${currencySymbol}\nYou can reset to 0 or reopen today’s fruits to harvest real surplus (${todaySurplus} ${currencySymbol}).`,
+      [
+        {
+          text: isAr ? 'إلغاء' : 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: isAr ? 'إعادة فتح ثمار اليوم فقط' : 'Reopen Today’s Fruits Only',
+          onPress: executeReopenFruitsOnly,
+        },
+        {
+          text: isAr ? 'تصفير شامل (0 ج.م)' : 'Full Reset (0)',
+          style: 'destructive',
+          onPress: executeFullReset,
+        },
+      ]
+    );
+  };
+
   const handleOpenMysteryChest = async (rewardXP: number) => {
     await claimDailyMysteryChest(todayKey);
     await addBonusXP(rewardXP);
@@ -1022,13 +1090,39 @@ export default function ChallengesScreen() {
                       : 'Real money saved from staying under your daily safe spend'}
                   </Text>
                 </View>
-                <View style={styles.realSavingsVaultAmountBadge}>
-                  <Text style={styles.realSavingsVaultAmountText}>
-                    {totalTreeSavings.toLocaleString()}
-                  </Text>
-                  <Text style={styles.realSavingsVaultCurrencyText}>
-                    {currencySymbol}
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Pressable
+                    onPress={handleResetVault}
+                    hitSlop={8}
+                    accessibilityLabel={isAr ? 'إعادة ضبط الخزينة' : 'Reset Vault'}
+                    style={({ pressed }) => [
+                      {
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 10,
+                        backgroundColor: 'rgba(255,255,255,0.12)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.18)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="refresh-outline" size={14} color="#A7F3D0" />
+                    <Text style={{ fontSize: 11, color: '#A7F3D0', fontFamily: 'Cairo_600SemiBold' }}>
+                      {isAr ? 'تصفير' : 'Reset'}
+                    </Text>
+                  </Pressable>
+                  <View style={styles.realSavingsVaultAmountBadge}>
+                    <Text style={styles.realSavingsVaultAmountText}>
+                      {totalTreeSavings.toLocaleString()}
+                    </Text>
+                    <Text style={styles.realSavingsVaultCurrencyText}>
+                      {currencySymbol}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
