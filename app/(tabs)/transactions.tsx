@@ -28,6 +28,8 @@ import ConfirmModal from '@/components/ConfirmModal';
 import SpendingHeatmapWidget from '@/components/SpendingHeatmapWidget';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { exportTransactionsToPDF } from '@/lib/pdfExporter';
+import { exportTransactionsToCSV } from '@/lib/csvExporter';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { getExchangeRates, convertAmount } from '@/lib/currencyApi';

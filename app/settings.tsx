@@ -79,7 +79,7 @@ export default function SettingsScreen() {
 
   const [user, setUser] = useState<{ username: string; id: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exportingType, setExportingType] = useState<'pdf' | 'csv' | null>(null);
 
   // Custom PIN Modal States
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -345,29 +345,31 @@ export default function SettingsScreen() {
   // Export handlers
   const handleExportPDF = async () => {
     const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: loc('المحفظة', 'Wallet', 'വാലറ്റ്'), currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
-    setExporting(true);
+    setExportingType('pdf');
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await exportTransactionsToPDF(transactions, targetWallet, language);
+      await exportTransactionsToPDF(transactions, targetWallet, language, wallets);
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
+      console.error(e);
       Alert.alert(loc('خطأ', 'Error', 'പിശക്'), loc('فشل تصدير ملف PDF', 'Failed to export PDF', 'PDF എക്സ്പോർട്ട് പരാജയപ്പെട്ടു'));
     } finally {
-      setExporting(false);
+      setExportingType(null);
     }
   };
 
   const handleExportCSV = async () => {
     const targetWallet = selectedWallet || wallets[0] || ({ id: 'default', name: loc('المحفظة', 'Wallet', 'വാലറ്റ്'), currency: 'KWD', icon: 'wallet', color: '#10B981', createdAt: new Date().toISOString() });
-    setExporting(true);
+    setExportingType('csv');
     safeHaptic.impact(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      await exportTransactionsToCSV(transactions, targetWallet, language);
+      await exportTransactionsToCSV(transactions, targetWallet, language, wallets);
       safeHaptic.notification(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
+      console.error(e);
       Alert.alert(loc('خطأ', 'Error', 'പിശക്'), loc('فشل تصدير ملف CSV', 'Failed to export CSV', 'CSV എക്സ്പോർട്ട് പരാജയപ്പെട്ടു'));
     } finally {
-      setExporting(false);
+      setExportingType(null);
     }
   };
 
@@ -807,10 +809,10 @@ export default function SettingsScreen() {
             <View style={styles.compactExportGrid}>
               <Pressable
                 onPress={handleExportPDF}
-                disabled={exporting}
+                disabled={exportingType !== null}
                 style={({ pressed }) => [styles.compactExportBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.85 }]}
               >
-                {exporting ? (
+                {exportingType === 'pdf' ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <>
@@ -822,10 +824,10 @@ export default function SettingsScreen() {
 
               <Pressable
                 onPress={handleExportCSV}
-                disabled={exporting}
+                disabled={exportingType !== null}
                 style={({ pressed }) => [styles.compactExportBtn, { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderLight }, pressed && { opacity: 0.85 }]}
               >
-                {exporting ? (
+                {exportingType === 'csv' ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <>
