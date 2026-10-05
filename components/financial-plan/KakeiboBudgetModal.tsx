@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, Pressable, Modal, Keyboard } from 'react-native';
+import { View, Text, TextInput, Pressable, Modal, Keyboard, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { formatCurrency } from '@/lib/categories';
 
 interface KakeiboBudgetModalProps {
@@ -40,11 +41,54 @@ export const KakeiboBudgetModal: React.FC<KakeiboBudgetModalProps> = ({
   isAr,
   loc,
 }) => {
-  const totalVal =
-    (parseFloat(survivalInput) || 0) +
-    (parseFloat(wantsInput) || 0) +
-    (parseFloat(cultureInput) || 0) +
-    (parseFloat(extraInput) || 0);
+  const sVal = parseFloat(survivalInput) || 0;
+  const wVal = parseFloat(wantsInput) || 0;
+  const cVal = parseFloat(cultureInput) || 0;
+  const eVal = parseFloat(extraInput) || 0;
+  const totalVal = sVal + wVal + cVal + eVal;
+
+  const envelopes = [
+    {
+      id: 'survival',
+      kanji: '生活',
+      title: loc('نبض الحياة (الأساسيات 50%)', 'Survival / Needs (50%)', 'അടിസ്ഥാനം (50%)'),
+      desc: loc('الطعام، الفواتير، الإيجار، الصحة', 'Food, utilities, rent, healthcare', 'ഭക്ഷണം, വീട്ടുചെലവ്'),
+      val: survivalInput,
+      setVal: setSurvivalInput,
+      color: '#10B981',
+      pct: totalVal > 0 ? Math.round((sVal / totalVal) * 100) : 50,
+    },
+    {
+      id: 'wants',
+      kanji: '希望',
+      title: loc('بهجة النفس (الرغبات 25%)', 'Wants / Joys (25%)', 'ആഗ്രഹങ്ങൾ (25%)'),
+      desc: loc('المقاهي، الترفيه، التسوق المبهج', 'Dining out, hobbies, shopping', 'വിനോദം, ഷോപ്പിംഗ്'),
+      val: wantsInput,
+      setVal: setWantsInput,
+      color: '#F43F5E',
+      pct: totalVal > 0 ? Math.round((wVal / totalVal) * 100) : 25,
+    },
+    {
+      id: 'culture',
+      kanji: '教養',
+      title: loc('غذاء العقل (الثقافة 15%)', 'Culture & Mind (15%)', 'സംസ്കാരം (15%)'),
+      desc: loc('الكتب، الدورات وتطوير الذات', 'Books, learning, workshops', 'വിദ്യാഭ്യാസം, പുസ്തകങ്ങൾ'),
+      val: cultureInput,
+      setVal: setCultureInput,
+      color: '#6366F1',
+      pct: totalVal > 0 ? Math.round((cVal / totalVal) * 100) : 15,
+    },
+    {
+      id: 'extra',
+      kanji: '特別',
+      title: loc('أمان الطوارئ (المفاجآت 10%)', 'Extra & Buffer (10%)', 'അപ്രതീക്ഷിതം (10%)'),
+      desc: loc('المناسبات، الهدايا والإصلاحات', 'Repairs, unexpected gifts, cushion', 'അടിയന്തര ഫണ്ട്'),
+      val: extraInput,
+      setVal: setExtraInput,
+      color: '#F59E0B',
+      pct: totalVal > 0 ? Math.round((eVal / totalVal) * 100) : 10,
+    },
+  ];
 
   return (
     <Modal
@@ -53,135 +97,232 @@ export const KakeiboBudgetModal: React.FC<KakeiboBudgetModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable 
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}
         onPress={Keyboard.dismiss}
       >
-        <Pressable 
-          style={{ width: '100%', maxWidth: 400, backgroundColor: colors.surface, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: colors.border, gap: 16 }}
+        <Pressable
+          style={{
+            width: '100%',
+            maxWidth: 420,
+            maxHeight: '90%',
+            backgroundColor: colors.surface,
+            borderRadius: 26,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: colors.border,
+            gap: 14,
+          }}
           onPress={(e) => e.stopPropagation()}
         >
-          <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: '#FFF', textAlign: 'center' }}>
-            {loc('ضبط ميزانية الأعمدة الأربعة (Kakeibo)', 'Adjust Kakeibo Pillar Budgets', 'കാകെയ്ബോ സ്തംഭ ബജറ്റ് ക്രമീകരിക്കുക')}
-          </Text>
-          
-          <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 11, color: colors.textSecondary, textAlign: 'center', lineHeight: 16 }}>
-            {loc(
-              'قسّم مصروفك الشهري المستهدف على التصنيفات الأربعة لتتبع التزامك بكفاءة.',
-              'Divide your total target expenses among the 4 pillars to track your mindfulness.',
-              'നിങ്ങളുടെ പ്രതിമാസ ചെലവ് 4 സ്തംഭങ്ങളിലായി വിഭജിക്കുക.'
-            )}
-          </Text>
+          {/* Header with Zen Motif */}
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: '#8B5CF620',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 2,
+              }}
+            >
+              <Text style={{ fontSize: 22 }}>🎎</Text>
+            </View>
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 16, color: colors.text, textAlign: 'center' }}>
+              {loc('توزيع أظرف الكاكيبو الأربعة (家計簿)', 'Kakeibo Envelope Allocation', 'കാകെയ്ബോ കവർ ബജറ്റ്')}
+            </Text>
+            <Text
+              style={{
+                fontFamily: 'Cairo_400Regular',
+                fontSize: 11,
+                color: colors.textSecondary,
+                textAlign: 'center',
+                lineHeight: 16,
+              }}
+            >
+              {loc(
+                'قسّم مصاريفك الشهرية وفق التناغم الياباني الحكيم (50% حياة / 25% بهجة / 15% فكر / 10% طوارئ)',
+                'Distribute your monthly expenses based on the mindful Japanese harmony ratio.',
+                'നിങ്ങളുടെ പ്രതിമാസ ചെലവ് 4 സ്തംഭങ്ങളിലായി വിഭജിക്കുക.'
+              )}
+            </Text>
+          </View>
 
-          {/* Auto 50/25/15/10 Smart Allocation Button */}
+          {/* Auto Smart Distribution Button */}
           <Pressable
-            onPress={onAutoDistribute}
-            style={({ pressed }) => [{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              backgroundColor: colors.primary + '18',
-              borderWidth: 1,
-              borderColor: colors.primary + '40',
-              paddingVertical: 10,
-              borderRadius: 12,
-              opacity: pressed ? 0.8 : 1,
-            }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onAutoDistribute();
+            }}
+            style={({ pressed }) => [
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: '#8B5CF618',
+                borderWidth: 1.5,
+                borderColor: '#8B5CF640',
+                paddingVertical: 10,
+                borderRadius: 14,
+              },
+              pressed && { opacity: 0.8 },
+            ]}
           >
-            <Ionicons name="sparkles" size={16} color={colors.primary} />
-            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
-              {loc('توزيع ياباني تلقائي (50/25/15/10)', 'Auto Japanese Allocation (50/25/15/10)', 'ഓട്ടോ ജാപ്പനീസ് വിഭജനം (50/25/15/10)')}
+            <Ionicons name="sparkles" size={16} color="#A78BFA" />
+            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: '#A78BFA' }}>
+              {loc('توزيع التناغم الذهبي التلقائي (50/25/15/10) ✨', 'Apply Golden Harmony Ratio ✨', 'ഓട്ടോ ജാപ്പനീസ് വിഭജനം ✨')}
             </Text>
           </Pressable>
 
-          {/* Survival Input */}
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-              {loc('الاحتياجات الأساسية (Survival)', 'Survival / Needs', 'അടിസ്ഥാന ആവശ്യങ്ങൾ (Survival)')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
-              <TextInput
-                style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
-                keyboardType="decimal-pad"
-                value={survivalInput}
-                onChangeText={setSurvivalInput}
-              />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary, marginLeft: 8 }}>{currency}</Text>
-            </View>
-          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {envelopes.map((env) => (
+              <View
+                key={env.id}
+                style={{
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 16,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: colors.borderLight,
+                  gap: 8,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View
+                      style={{
+                        backgroundColor: env.color + '22',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 10, color: env.color }}>
+                        {env.kanji}
+                      </Text>
+                    </View>
+                    <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
+                      {env.title}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: env.color }}>
+                    {env.pct}%
+                  </Text>
+                </View>
 
-          {/* Wants Input */}
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-              {loc('الرغبات الترفيهية (Wants)', 'Wants / Optional', 'വിനോദവും ആഗ്രഹങ്ങളും (Wants)')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
-              <TextInput
-                style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
-                keyboardType="decimal-pad"
-                value={wantsInput}
-                onChangeText={setWantsInput}
-              />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary, marginLeft: 8 }}>{currency}</Text>
-            </View>
-          </View>
+                <Text style={{ fontFamily: 'Cairo_400Regular', fontSize: 9, color: colors.textSecondary, textAlign: isAr ? 'right' : 'left' }}>
+                  {env.desc}
+                </Text>
 
-          {/* Culture Input */}
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-              {loc('الثقافة والتعليم (Culture)', 'Culture & Self-dev', 'സംസ്കാരവും വിദ്യാഭ്യാസവും (Culture)')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
-              <TextInput
-                style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
-                keyboardType="decimal-pad"
-                value={cultureInput}
-                onChangeText={setCultureInput}
-              />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary, marginLeft: 8 }}>{currency}</Text>
-            </View>
-          </View>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.surface,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    paddingHorizontal: 12,
+                    height: 42,
+                  }}
+                >
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      color: colors.text,
+                      fontFamily: 'Cairo_700Bold',
+                      fontSize: 15,
+                      textAlign: isAr ? 'right' : 'left',
+                    }}
+                    keyboardType="decimal-pad"
+                    value={env.val}
+                    onChangeText={env.setVal}
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: colors.textSecondary, marginLeft: 8 }}>
+                    {currency}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
 
-          {/* Extra Input */}
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: 'Cairo_600SemiBold', fontSize: 12, color: colors.textSecondary, textAlign: 'left' }}>
-              {loc('مصاريف إضافية وطارئة (Extra)', 'Extra / Unplanned', 'അപ്രതീക്ഷിത ചെലവുകൾ (Extra)')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceAlt, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12 }}>
-              <TextInput
-                style={{ flex: 1, height: 44, color: '#FFF', fontFamily: 'Cairo_700Bold', fontSize: 16, textAlign: isAr ? 'right' : 'left' }}
-                keyboardType="decimal-pad"
-                value={extraInput}
-                onChangeText={setExtraInput}
-              />
-              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary, marginLeft: 8 }}>{currency}</Text>
+          {/* Total Sum Footprint */}
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceAlt,
+              padding: 12,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="pie-chart-outline" size={16} color={colors.primary} />
+              <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.textSecondary }}>
+                {loc('إجمالي أظرف الميزانية:', 'Total Envelopes Sum:', 'ആകെ പുതിയ ചെലവ്:')}
+              </Text>
             </View>
-          </View>
-
-          {/* Total Check */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surfaceAlt, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
-            <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.textSecondary }}>
-              {loc('إجمالي الميزانية الجديدة', 'New Total Expenses', 'ആകെ പുതിയ ചെലവ്')}
-            </Text>
             <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 14, color: colors.primary }}>
               {formatCurrency(totalVal)} {currency}
             </Text>
           </View>
 
-          {/* Action Buttons */}
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+          {/* Modal Actions */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
             <Pressable
-              onPress={onSave}
-              style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                onSave();
+              }}
+              style={({ pressed }) => [
+                {
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 14,
+                  backgroundColor: '#8B5CF6',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  gap: 6,
+                },
+                pressed && { opacity: 0.9 },
+              ]}
             >
+              <Ionicons name="checkmark-done" size={16} color="#FFF" />
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: '#FFF' }}>
-                {loc('تحديث الميزانية', 'Save Budgets', 'ബജറ്റ് സേവ് ചെയ്യുക')}
+                {loc('اعتماد ميزانية الأظرف', 'Seal Envelopes', 'ബജറ്റ് സേവ് ചെയ്യുക')}
               </Text>
             </Pressable>
+
             <Pressable
               onPress={onClose}
-              style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}
+              style={({ pressed }) => [
+                {
+                  width: 80,
+                  height: 44,
+                  borderRadius: 14,
+                  backgroundColor: colors.surfaceAlt,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                },
+                pressed && { opacity: 0.8 },
+              ]}
             >
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 13, color: colors.textSecondary }}>
                 {loc('إلغاء', 'Cancel', 'റദ്ദാക്കുക')}

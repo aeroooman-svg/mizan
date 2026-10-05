@@ -222,8 +222,8 @@ export default function FinancialPlanScreen() {
     setIsKakeiboBudgetModalOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      loc('نجاح', 'Success', 'വിജയം'),
-      loc('تم تحديث ميزانية كاميهيبو بنجاح!', 'Kakeibo budgets updated!', 'കാകെയ്ബോ ബജറ്റ് അപ്ഡേറ്റ് ചെയ്തു!')
+      loc('نجاح ⛩️', 'Success ⛩️', 'വിജയം ⛩️'),
+      loc('تم تحديث أظرف ميزانية الكاكيبو بنجاح!', 'Kakeibo envelopes updated successfully!', 'കാകെയ്ബോ ബജറ്റ് അപ്ഡേറ്റ് ചെയ്തു!')
     );
   };
 
@@ -255,14 +255,15 @@ export default function FinancialPlanScreen() {
     let updatedBudgets = plan.kakeiboBudgets ? { ...plan.kakeiboBudgets } : undefined;
     let appliedNote = '';
 
-    if (updatedBudgets && (selectedQuickActions.includes('reduce_delivery') || selectedQuickActions.includes('cut_subs') || selectedQuickActions.includes('delay_wants'))) {
+    const wantsCuttingActions = ['reduce_delivery', 'cut_subs', 'delay_wants', 'coffee_pause', 'rule_24h', 'cook_home'];
+    if (updatedBudgets && selectedQuickActions.some(act => wantsCuttingActions.includes(act))) {
       const currentWants = updatedBudgets.wants || 0;
       const reduction = Math.round(currentWants * 0.05);
       if (reduction > 0) {
         updatedBudgets.wants = currentWants - reduction;
         appliedNote = loc(
-          `\n\n💡 تم تطبيق قرارك بتخفيض ${formatCurrency(reduction)} ${currencySymbol} من ركيزة الرغبات تلقائياً للشهر القادم!`,
-          `\n\n💡 Reduced ${formatCurrency(reduction)} ${currencySymbol} from Wants pillar for next month!`,
+          `\n\n💡 تم تطبيق قرارك بتخفيض ${formatCurrency(reduction)} ${currencySymbol} من ظرف الرغبات (Wants) تلقائياً للشهر القادم!`,
+          `\n\n💡 Reduced ${formatCurrency(reduction)} ${currencySymbol} from Wants envelope for next month!`,
           `\n\n💡 അടുത്ത മാസത്തെ ആഗ്രഹങ്ങളിൽ നിന്ന് ${formatCurrency(reduction)} ${currencySymbol} സ്വയമേവ കുറച്ചു!`
         );
       }
@@ -279,10 +280,10 @@ export default function FinancialPlanScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     Alert.alert(
-      loc('تم حفظ التأمل المالي 🟢', 'Reflection Saved 🟢', 'സാമ്പത്തിക ചിന്തകൾ സേവ് ചെയ്തു 🟢'),
+      loc('تم اعتماد طقس التأمل المالي ⛩️', 'Zen Reflection Sealed ⛩️', 'സാമ്പത്തിക ചിന്തകൾ സേവ് ചെയ്തു ⛩️'),
       loc(
-        'تم تدوين وحفظ قراراتك وتأملك المالي بنجاح في السجل!',
-        'Your financial reflection and decisions have been logged successfully!',
+        'تم حفظ قرارات كايزن وتأملك المالي بنجاح في أرشيف السكينة المالية!',
+        'Your Kaizen decisions and financial reflection have been sealed in the archive!',
         'നിങ്ങളുടെ സാമ്പത്തിക തീരുമാനങ്ങളും ചിന്തകളും വിജയകരമായി രേഖപ്പെടുത്തി!'
       ) + appliedNote
     );
@@ -1431,7 +1432,7 @@ export default function FinancialPlanScreen() {
             >
               <Ionicons name="sparkles-outline" size={14} color={isKakeiboMode ? '#FFF' : colors.textSecondary} />
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 11, color: isKakeiboMode ? '#FFF' : colors.textSecondary }}>
-                {loc('طريقة Kakeibo اليابانية', 'Japanese Kakeibo', 'കാകെയ്ബോ')}
+                {loc('خطة الكاكيبو اليابانية ⛩️', 'Japanese Kakeibo ⛩️', 'കാകെയ്ബോ ⛩️')}
               </Text>
             </Pressable>
           </View>
