@@ -1086,6 +1086,47 @@ export default function FinancialPlanScreen() {
       : plan.monthlySaving;
     const baseMonthlySaving = plan.monthlySaving || Math.max(0, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0));
 
+    const getProjectedCumulative = (targetMonths: number) => {
+      let cumulative = selectedWallet?.initialBalance || 0;
+      for (let k = 0; k < targetMonths; k++) {
+        const monthDateK = new Date(created);
+        monthDateK.setMonth(created.getMonth() + k);
+        const mK = monthDateK.getMonth();
+        const yK = monthDateK.getFullYear();
+        const monthKeyK = `${yK}-${(mK + 1).toString().padStart(2, '0')}`;
+
+        const customOverrideK = plan.customMonthlyOverrides?.[monthKeyK];
+        const plannedIncK = customOverrideK?.income ?? plan.monthlyIncome;
+        const plannedExpK = customOverrideK?.expense ?? plan.monthlyExpense;
+        const plannedSavingK = (customOverrideK?.income !== undefined && customOverrideK?.expense !== undefined)
+          ? (plannedIncK - plannedExpK)
+          : baseMonthlySaving;
+
+        const monthTxK = walletTransactions.filter(tx => {
+          const d = new Date(tx.date);
+          return d.getMonth() === mK && d.getFullYear() === yK;
+        });
+        const hasActualK = monthTxK.length > 0;
+
+        if (k <= monthsElapsed) {
+          if (hasActualK) {
+            const actualIncK = monthTxK
+              .filter(tx => (tx.type === 'income' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.toWalletId === selectedWallet.id))
+              .reduce((s, tx) => s + tx.amount, 0);
+            const actualExpK = monthTxK
+              .filter(tx => (tx.type === 'expense' && tx.category !== 'jameya_savings' && tx.category !== 'debt_loan') || (tx.type === 'transfer' && selectedWallet && tx.walletId === selectedWallet.id))
+              .reduce((s, tx) => s + tx.amount, 0);
+            cumulative += (actualIncK - actualExpK);
+          } else {
+            cumulative += plannedSavingK;
+          }
+        } else {
+          cumulative += plannedSavingK;
+        }
+      }
+      return cumulative;
+    };
+
     // Realistic capped monthly saving rate:
     const maxPossibleSaving = currentPlannedInc > 0 ? currentPlannedInc : (avgIncome > 0 ? avgIncome : 999999);
     const avgSaving = (!hasCompletedMonths || rawAvgSaving > maxPossibleSaving || rawAvgSaving <= 0)
@@ -1625,7 +1666,7 @@ export default function FinancialPlanScreen() {
                 {loc('1 سنة', '1 Year', '1 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
-                {formatCurrency(baseMonthlySaving * 12)}
+                {formatCurrency(getProjectedCumulative(12))}
               </Text>
             </View>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.primary + '40' }}>
@@ -1633,7 +1674,7 @@ export default function FinancialPlanScreen() {
                 {loc('3 سنوات', '3 Years', '3 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
-                {formatCurrency(baseMonthlySaving * 36)}
+                {formatCurrency(getProjectedCumulative(36))}
               </Text>
             </View>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.accent + '40' }}>
@@ -1641,7 +1682,7 @@ export default function FinancialPlanScreen() {
                 {loc('5 سنوات', '5 Years', '5 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.accent }}>
-                {formatCurrency(baseMonthlySaving * 60)}
+                {formatCurrency(getProjectedCumulative(60))}
               </Text>
             </View>
           </View>
