@@ -1084,11 +1084,12 @@ export default function FinancialPlanScreen() {
     const currentPlannedSaving = (thisMonthOverride?.income !== undefined && thisMonthOverride?.expense !== undefined)
       ? (thisMonthOverride.income - thisMonthOverride.expense)
       : plan.monthlySaving;
+    const baseMonthlySaving = plan.monthlySaving || Math.max(0, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0));
 
     // Realistic capped monthly saving rate:
     const maxPossibleSaving = currentPlannedInc > 0 ? currentPlannedInc : (avgIncome > 0 ? avgIncome : 999999);
     const avgSaving = (!hasCompletedMonths || rawAvgSaving > maxPossibleSaving || rawAvgSaving <= 0)
-      ? (currentPlannedSaving > 0 ? currentPlannedSaving : Math.max(1, (plan.monthlyIncome || 0) - (plan.monthlyExpense || 0)))
+      ? (currentPlannedSaving > 0 ? currentPlannedSaving : Math.max(1, baseMonthlySaving))
       : Math.min(maxPossibleSaving, rawAvgSaving);
 
     const getInsights = () => {
@@ -1122,6 +1123,7 @@ export default function FinancialPlanScreen() {
 
       // 3. Savings check (average monthly saving vs planned)
       const target = plan.savingsGoal > 0 ? plan.savingsGoal : expectedTotalSavings;
+      const benchmarkSaving = currentPlannedSaving > 0 ? currentPlannedSaving : baseMonthlySaving;
       if (actualSavings < target) {
         if (avgSaving <= 0) {
           insights.push({
@@ -1132,7 +1134,7 @@ export default function FinancialPlanScreen() {
               `⚠️ ഇപ്പോഴത്തെ യഥാർത്ഥ സമ്പാദ്യ നിരക്കിൽ (${formatCurrency(avgSaving)} ${sym}), നിങ്ങൾക്ക് സാമ്പത്തിക ലക്ഷ്യം നേടാനാകില്ല. ചെലവുകൾ കുറയ്ക്കാൻ ശുപാർശ ചെയ്യുന്നു.`
             ),
           });
-        } else if (avgSaving < currentPlannedSaving) {
+        } else if (avgSaving < benchmarkSaving) {
           const remainingToTarget = target - actualSavings;
           const monthsNeeded = Math.ceil(remainingToTarget / avgSaving);
           const additionalMonths = monthsNeeded - monthsRemaining;
@@ -1146,7 +1148,7 @@ export default function FinancialPlanScreen() {
             });
           }
         } else {
-          const diff = avgSaving - currentPlannedSaving;
+          const diff = avgSaving - benchmarkSaving;
           if (diff > 0) {
             insights.push({
               type: 'success',
@@ -1623,7 +1625,7 @@ export default function FinancialPlanScreen() {
                 {loc('1 سنة', '1 Year', '1 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.text }}>
-                {formatCurrency(currentPlannedSaving * 12)}
+                {formatCurrency(baseMonthlySaving * 12)}
               </Text>
             </View>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.primary + '40' }}>
@@ -1631,7 +1633,7 @@ export default function FinancialPlanScreen() {
                 {loc('3 سنوات', '3 Years', '3 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.primary }}>
-                {formatCurrency(currentPlannedSaving * 36)}
+                {formatCurrency(baseMonthlySaving * 36)}
               </Text>
             </View>
             <View style={{ flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 8, alignItems: 'center', gap: 2, borderWidth: 1, borderColor: colors.accent + '40' }}>
@@ -1639,7 +1641,7 @@ export default function FinancialPlanScreen() {
                 {loc('5 سنوات', '5 Years', '5 വർഷം')}
               </Text>
               <Text style={{ fontFamily: 'Cairo_700Bold', fontSize: 12, color: colors.accent }}>
-                {formatCurrency(currentPlannedSaving * 60)}
+                {formatCurrency(baseMonthlySaving * 60)}
               </Text>
             </View>
           </View>

@@ -397,6 +397,229 @@
       color: #FFF;
     }
 
+    .btn-record {
+      background: linear-gradient(135deg, #EF4444, #B91C1C);
+      color: #FFF;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+      animation: recordGlow 2s infinite ease-in-out;
+    }
+    .btn-record:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(239, 68, 68, 0.7);
+    }
+    @keyframes recordGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+      50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+    }
+
+    /* Focus Reel Mode */
+    body.focus-mode {
+      overflow: hidden;
+    }
+    body.focus-mode .controls-deck {
+      display: none !important;
+    }
+    body.focus-mode .app-wrapper {
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0;
+    }
+    body.focus-mode .phone-container {
+      transform: scale(1.1);
+      box-shadow: 0 0 80px rgba(16, 185, 129, 0.35), 0 30px 90px rgba(0,0,0,0.9);
+      transition: transform 0.4s ease;
+    }
+    .exit-focus-btn {
+      display: none;
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      color: #FFF;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 9999;
+      transition: all 0.2s;
+    }
+    body.focus-mode .exit-focus-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .exit-focus-btn:hover {
+      background: #EF4444;
+      border-color: #EF4444;
+    }
+
+    /* Interactive Motion & Elements for Reels */
+    .tap-indicator {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+      border: 2.5px solid #FFF;
+      box-shadow: 0 0 20px rgba(255,255,255,0.9);
+      pointer-events: none;
+      z-index: 120;
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    .tap-indicator.animate {
+      animation: tapPulseAnim 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes tapPulseAnim {
+      0% { transform: scale(0.3); opacity: 0; }
+      30% { transform: scale(1.1); opacity: 0.95; }
+      70% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    /* Live Counter Pill */
+    .live-counter-pill {
+      position: absolute;
+      top: 6px;
+      right: 12px;
+      background: rgba(16, 185, 129, 0.25);
+      border: 1px solid #10B981;
+      backdrop-filter: blur(12px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      color: #FFF;
+      font-size: 11px;
+      font-weight: 800;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 50;
+      animation: floatSubtle 3s ease-in-out infinite;
+    }
+    @keyframes floatSubtle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* Simulated SMS Notification Card (Scene 2) */
+    .sms-push-card {
+      position: absolute;
+      top: 15px;
+      left: 12px;
+      right: 12px;
+      background: rgba(18, 26, 43, 0.95);
+      border: 1.5px solid #10B981;
+      backdrop-filter: blur(16px);
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.85), 0 0 25px rgba(16, 185, 129, 0.35);
+      z-index: 85;
+      text-align: right;
+      direction: rtl;
+      opacity: 0;
+      transform: translateY(-50px);
+    }
+    .scene-view.active .sms-push-card {
+      animation: smsDropAnim 0.7s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes smsDropAnim {
+      0% { transform: translateY(-50px) scale(0.92); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* Heatmap Scanning Radar Beam (Scene 3) */
+    .scan-beam {
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #F59E0B, #10B981, transparent);
+      box-shadow: 0 0 15px #10B981, 0 0 25px #F59E0B;
+      opacity: 0;
+      z-index: 40;
+    }
+    .scene-view.active .scan-beam {
+      animation: scanSweepAnim 3.5s ease-in-out infinite;
+    }
+    @keyframes scanSweepAnim {
+      0% { top: 15%; opacity: 0; }
+      20% { opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { top: 80%; opacity: 0; }
+    }
+
+    /* Gold Live Ticker (Scene 4) */
+    .gold-live-ticker {
+      position: absolute;
+      top: 15px;
+      left: 12px;
+      right: 12px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1.5px solid #F59E0B;
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 8px 12px;
+      color: #FCD34D;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35);
+      animation: popIn 0.5s 0.2s both;
+    }
+
+    /* Streak & Rewards Badge (Scene 5) */
+    .streak-level-badge {
+      position: absolute;
+      top: 15px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.45), rgba(245, 158, 11, 0.45));
+      border: 1.5px solid #A78BFA;
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #FFF;
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+      animation: badgeBounce 1.2s infinite alternate ease-in-out;
+      z-index: 50;
+    }
+    @keyframes badgeBounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-5px); }
+    }
+
+    /* Dynamic Subtitles / Captions Bar (TikTok / Reels Style) */
+    .reel-subtitles-bar {
+      position: absolute;
+      bottom: 74px;
+      left: 16px;
+      right: 16px;
+      background: rgba(4, 7, 13, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #FFE600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+      text-align: center;
+      line-height: 1.5;
+      z-index: 95;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      transition: all 0.3s ease;
+      letter-spacing: 0.3px;
+    }
+
     /* Voiceover Box */
     .script-box {
       background: rgba(0, 0, 0, 0.35);
@@ -466,6 +689,8 @@
 </head>
 <body>
 
+  <button class="exit-focus-btn" id="exitFocusBtn" onclick="toggleFocusMode()">✕ خروج من وضع التركيز (ESC)</button>
+
   <div class="app-wrapper">
 
     <!-- Phone Reel View -->
@@ -501,10 +726,15 @@
             </div>
 
             <div class="scene-artwork">
+              <div class="live-counter-pill">💰 رصيد المحافظ: <span id="s1-counter">45,280</span> ج.م</div>
               <img src="assets/store-assets/1_Home_and_Wallets.jpg" class="scene-img" alt="Home & Wallets">
-              <div class="floating-pill" style="top: 15%; left: 5%;">
+              <div class="floating-pill" style="top: 22%; left: 5%;">
                 <span>💳</span>
                 <span id="s1-pill">محافظ وبطاقات ذكية</span>
+              </div>
+              <div class="floating-pill" style="bottom: 14%; right: 5%; border-color: #EF4444;">
+                <span>🛒</span>
+                <span>كارفور: -420 ج.م</span>
               </div>
             </div>
 
@@ -525,8 +755,18 @@
             </div>
 
             <div class="scene-artwork">
+              <!-- Animated Drop-down SMS Card -->
+              <div class="sms-push-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <span style="font-size:11px; font-weight:800; color:#10B981; display:flex; align-items:center; gap:5px;">⚡ InstaPay / Bank SMS</span>
+                  <span style="font-size:9px; color:#94A3B8;">الآن</span>
+                </div>
+                <div style="font-size:11px; color:#F8FAFC; font-weight:700; line-height:1.4;">تم تحويل مبلغ 1,250 ج.م لحسابك</div>
+                <div style="font-size:10px; color:#34D399; margin-top:4px; font-weight:700;">✅ تم الرصد والتسجيل التلقائي في ميزان</div>
+              </div>
+
               <img src="assets/store-assets/2_Smart_Bank_SMS.jpg" class="scene-img" alt="Smart Bank SMS">
-              <div class="floating-pill" style="bottom: 20%; right: 5%; border-color: #10B981;">
+              <div class="floating-pill" style="bottom: 14%; right: 5%; border-color: #10B981;">
                 <span>⚡</span>
                 <span id="s2-pill">تسجيل تلقائي بدون كتابة</span>
               </div>
@@ -549,10 +789,15 @@
             </div>
 
             <div class="scene-artwork">
+              <div class="scan-beam"></div>
               <img src="assets/store-assets/3_Analytics_and_Heatmap.jpg" class="scene-img" alt="Analytics & Heatmap">
               <div class="floating-pill" style="top: 25%; right: 5%; border-color: #F59E0B;">
                 <span>🔥</span>
                 <span id="s3-pill">تقويم حراري ذكي</span>
+              </div>
+              <div class="floating-pill" style="bottom: 14%; left: 5%; border-color: #10B981;">
+                <span>💡</span>
+                <span>وفّرت 25% هذا الأسبوع!</span>
               </div>
             </div>
 
@@ -573,8 +818,12 @@
             </div>
 
             <div class="scene-artwork">
+              <div class="gold-live-ticker">
+                <span style="display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; background:#10B981; border-radius:50%; box-shadow:0 0 8px #10B981; display:inline-block;"></span> عيار 21: 3,580 ج.م ⬆</span>
+                <span style="color:#FFF; font-size:10px;">ربط لحظي بالبورصة 🌐</span>
+              </div>
               <img src="assets/store-assets/4_Zakat_Calculator.jpg" class="scene-img" alt="Zakat Calculator">
-              <div class="floating-pill" style="bottom: 18%; left: 5%; border-color: #F59E0B;">
+              <div class="floating-pill" style="bottom: 14%; left: 5%; border-color: #F59E0B;">
                 <span>🥇</span>
                 <span id="s4-pill">نصاب الذهب والفضة لحظياً</span>
               </div>
@@ -597,8 +846,9 @@
             </div>
 
             <div class="scene-artwork">
+              <div class="streak-level-badge">⭐ المستوى 7: موفّر محترف (+500 XP)</div>
               <img src="assets/store-assets/5_Gamification_and_Goals.jpg" class="scene-img" alt="Gamification & Goals">
-              <div class="floating-pill" style="top: 20%; left: 8%; border-color: #8B5CF6;">
+              <div class="floating-pill" style="top: 25%; left: 8%; border-color: #8B5CF6;">
                 <span>🏆</span>
                 <span id="s5-pill">Streak 24 Days 🔥</span>
               </div>
@@ -610,6 +860,14 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Animated Touch Pointer -->
+        <div class="tap-indicator" id="tapIndicator"></div>
+
+        <!-- TikTok / Reels Style High-Contrast Subtitles Bar -->
+        <div class="reel-subtitles-bar" id="subtitlesBar">
+          جاري تجهيز الشرح الصوتي...
         </div>
 
       </div>
@@ -638,7 +896,22 @@
           <button class="btn btn-secondary" onclick="restartVideo()">🔄 إعادة من البداية</button>
         </div>
 
-        <div class="scene-selector">
+        <div class="btn-row" style="margin-top: 12px;">
+          <button class="btn btn-record" id="recordBtn" onclick="startAutomaticRecording()">
+            <span>🔴</span> <span id="recordBtnText">تسجيل وتنزيل فيديو Reels (WebM/MP4)</span>
+          </button>
+          <button class="btn btn-secondary" onclick="toggleFocusMode()">
+            <span>📱</span> <span>وضع التركيز ملء الشاشة</span>
+          </button>
+        </div>
+
+        <div class="btn-row" style="margin-top: 10px;">
+          <button class="btn btn-secondary" id="voiceToggleBtn" onclick="toggleVoiceover()" style="width: 100%;">
+            <span id="voiceIcon">🎙️</span> <span id="voiceText">المعلق الصوتي الذكي (Voiceover): مفعّل</span>
+          </button>
+        </div>
+
+        <div class="scene-selector" style="margin-top: 14px;">
           <div class="scene-dot active" id="dot-0" onclick="jumpToScene(0)">1. المقدمة</div>
           <div class="scene-dot" id="dot-1" onclick="jumpToScene(1)">2. رسائل البنوك</div>
           <div class="scene-dot" id="dot-2" onclick="jumpToScene(2)">3. التحليلات</div>
@@ -682,6 +955,13 @@
           { badge: "🕌 دقة شرعية", title: "حاسبة الزكاة اللحظية", sub: "ربط مباشر بأسعار الذهب والفضة عالمياً لحساب النصاب", pill: "نصاب الذهب والفضة لحظياً", cta: "حساب الزكاة الشرعية بدقة" },
           { badge: "🎯 تحديات ادخار", title: "ضاعف مدخراتك بحماس", sub: "تحديات يومية، نقاط خبرة XP، ومكافآت ذكية لتوفير أموالك", pill: "Streak 24 Days 🔥", cta: "⭐ متاح مجاناً على Google Play" }
         ],
+        narration: [
+          "فلوسك بتطير كل شهر ومش عارف راحت فين؟ تطبيق ميزان بيتحكم في كل مصاريفك ومحفظتك الذكية في مكان واحد.",
+          "الميزة الحصرية! يقرأ رسائل البنوك و إنستاباي ويسجل المصاريف تلقائياً وبأمان تام.",
+          "خريطة حرارية لمصاريفك ورسوم بيانية ذكية تكشفلك عادات إنفاقك وتساعدك توفر.",
+          "حاسبة زكاة شرعية دقيقة مربوطة لحظياً بأسعار الذهب والفضة لحساب النصاب.",
+          "تحديات ادخار تضاعف مدخراتك. حمّل ميزان مجاناً الآن على جوجل بلاي!"
+        ],
         dots: ["1. المقدمة", "2. رسائل البنوك", "3. التحليلات", "4. حاسبة الزكاة", "5. التحميل"],
         playText: "تشغيل العرض التلقائي",
         pauseText: "إيقاف مؤقت"
@@ -697,6 +977,13 @@
           { badge: "🕌 Islamic Finance", title: "Real-Time Zakat Calculator", sub: "Live global gold & silver rates to calculate exact Nisab instantly", pill: "Live Gold Nisab Rates", cta: "Accurate Sharia Zakat" },
           { badge: "🎯 Gamification", title: "Boost Your Savings Faster", sub: "Daily quests, XP streaks, and fun budget envelopes to save more", pill: "Streak 24 Days 🔥", cta: "⭐ Get it Free on Google Play" }
         ],
+        narration: [
+          "Where does your money go each month? MIZAN gives you total control over your expenses in one smart dashboard.",
+          "Exclusive feature! Automatically reads bank and digital payment SMS and logs expenses with 100% local privacy.",
+          "Smart spending heatmaps and deep financial insights to discover your spending patterns.",
+          "Real-time Islamic Zakat calculator linked directly with global gold and silver prices.",
+          "Gamified savings challenges to boost your wealth. Download MIZAN free now on Google Play!"
+        ],
         dots: ["1. Intro", "2. Bank SMS", "3. Analytics", "4. Zakat Calc", "5. Download"],
         playText: "Play Auto Showcase",
         pauseText: "Pause Showcase"
@@ -711,6 +998,13 @@
           { badge: "📊 കൃത്യമായ കണക്കുകൾ", title: "ചിലവുകളുടെ ഹീറ്റ്മാപ്പ് ചാർട്ട്", sub: "ദിവസേനയുള്ള ചിലവുകൾ എളുപ്പത്തിൽ മനസിലാക്കാൻ സ്മാർട്ട് കലണ്ടർ", pill: "സ്മാർട്ട് ചിലവ് കലണ്ടർ", cta: "വിശദമായ സാമ്പത്തിക വിശകലനം" },
           { badge: "🕌 ശരിയായ സകാത്ത്", title: "തത്സമയ സകാത്ത് കാൽക്കുലേറ്റർ", sub: "ലൈവ് സ്വർണ്ണ-വെള്ളി വിലകളിലൂടെ സകാത്ത് നിസ്വാബ് തൽക്ഷണം കണക്കാക്കാം", pill: "ലൈവ് സ്വർണ്ണ നിരക്ക്", cta: "കൃത്യമായ ശരിഅത്ത് സകാത്ത്" },
           { badge: "🎯 സേവിംഗ്സ് ലക്ഷ്യങ്ങൾ", title: "നിങ്ങളുടെ സമ്പാദ്യം വർദ്ധിപ്പിക്കൂ", sub: "ദിവസേനയുള്ള ടാസ്കുകളും XP പോയിന്റുകളും വഴി പണം ലാഭിക്കാം", pill: "Streak 24 Days 🔥", cta: "⭐ ഗൂഗിൾ പ്ലേയിൽ സൗജന്യമായി ലഭ്യമാണ്" }
+        ],
+        narration: [
+          "എല്ലാ മാസവും നിങ്ങളുടെ പണം എങ്ങോട്ടാണ് പോകുന്നത്? മീസാൻ ആപ്പ് നിങ്ങളുടെ വരവുചിലവുകൾ കൃത്യമായി നിയന്ത്രിക്കുന്നു.",
+          "ബാങ്ക് SMS സന്ദേശങ്ങൾ സ്വയം വായിച്ച് ചിലവുകൾ തൽക്ഷണം രേഖപ്പെടുത്താം — 100% സുരക്ഷിതമായി.",
+          "ചിലവുകളുടെ ഹീറ്റ്മാപ്പ് ചാർട്ടും കൃത്യമായ സാമ്പത്തിക വിശകലനങ്ങളും.",
+          "തത്സമയ സ്വർണ്ണവിലയിലുള്ള സകാത്ത് കാൽക്കുലേറ്റർ.",
+          "സമ്പാദ്യം വർദ്ധിപ്പിക്കാൻ മികച്ച വെല്ലുവിളികൾ. ഇപ്പോൾ തന്നെ ഗൂഗിൾ പ്ലേയിൽ നിന്നും ഡൗൺലോഡ് ചെയ്യൂ!"
         ],
         dots: ["1. ആമുഖം", "2. ബാങ്ക് SMS", "3. ചാർട്ടുകൾ", "4. സകാത്ത്", "5. ഡൗൺലോഡ്"],
         playText: "ഓട്ടോ പ്ലേ ചെയ്യുക",
@@ -813,9 +1107,100 @@
         document.getElementById(`dot-${i}`).innerText = data.dots[i];
       }
 
+      // Update Subtitles
+      const subEl = document.getElementById('subtitlesBar');
+      if (subEl && data.narration) subEl.innerText = data.narration[currentScene];
+
       // Update Button Text
       const playTextEl = document.getElementById('playText');
       playTextEl.innerText = isPlaying ? data.pauseText : data.playText;
+    }
+
+    // --- Speech Synthesis & Voiceover Engine ---
+    let voiceEnabled = true;
+
+    function toggleVoiceover() {
+      voiceEnabled = !voiceEnabled;
+      const icon = document.getElementById('voiceIcon');
+      const text = document.getElementById('voiceText');
+      if (voiceEnabled) {
+        if (icon) icon.innerText = '🎙️';
+        if (text) text.innerText = 'المعلق الصوتي الذكي (Voiceover): مفعّل';
+        const curNarr = CONTENT[currentLang].narration[currentScene];
+        speakText(curNarr, currentLang);
+      } else {
+        if (icon) icon.innerText = '🔇';
+        if (text) text.innerText = 'المعلق الصوتي الذكي (Voiceover): معطّل';
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakText(text, lang) {
+      if (!window.speechSynthesis) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        
+        let matchVoice = null;
+        if (lang === 'ar') {
+          matchVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('AR'));
+          utterance.lang = 'ar-SA';
+          utterance.rate = 1.05;
+          utterance.pitch = 1.0;
+        } else if (lang === 'en') {
+          matchVoice = voices.find(v => v.lang.startsWith('en'));
+          utterance.lang = 'en-US';
+          utterance.rate = 1.05;
+        } else if (lang === 'ml') {
+          matchVoice = voices.find(v => v.lang.startsWith('ml'));
+          utterance.lang = 'ml-IN';
+        }
+        if (matchVoice) utterance.voice = matchVoice;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.warn("Speech error:", e);
+      }
+    }
+
+    function animateBalanceCounter() {
+      const counterEl = document.getElementById('s1-counter');
+      if (!counterEl) return;
+      let start = 38400;
+      const target = 45280;
+      const duration = 1200;
+      const startTime = performance.now();
+
+      function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - (1 - progress) * (1 - progress);
+        const current = Math.floor(start + (target - start) * ease);
+        counterEl.innerText = current.toLocaleString('ar-EG');
+        if (progress < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    function triggerTapForScene(idx) {
+      const tapEl = document.getElementById('tapIndicator');
+      if (!tapEl) return;
+      tapEl.classList.remove('animate');
+      void tapEl.offsetWidth;
+
+      const positions = [
+        { top: '48%', left: '50%' },
+        { top: '24%', left: '50%' },
+        { top: '42%', left: '55%' },
+        { top: '38%', left: '46%' },
+        { top: '88%', left: '50%' }
+      ];
+      const p = positions[idx] || { top: '50%', left: '50%' };
+      tapEl.style.top = p.top;
+      tapEl.style.left = p.left;
+      setTimeout(() => {
+        tapEl.classList.add('animate');
+      }, 300);
     }
 
     // --- Scene Navigation ---
@@ -840,6 +1225,26 @@
           dotEl.classList.remove('active');
           fillEl.style.width = '0%';
         }
+      }
+
+      // Update Subtitles & Audio Voiceover
+      const data = CONTENT[currentLang];
+      const currentNarr = (data.narration && data.narration[idx]) ? data.narration[idx] : data.scenes[idx].title;
+      const subEl = document.getElementById('subtitlesBar');
+      if (subEl) subEl.innerText = currentNarr;
+
+      if (voiceEnabled) {
+        speakText(currentNarr, currentLang);
+      }
+
+      // Trigger Touch Tap Animation
+      triggerTapForScene(idx);
+
+      // Trigger Specific Scene Actions
+      if (idx === 0) {
+        animateBalanceCounter();
+      } else if (idx === 1) {
+        setTimeout(() => playSound('chime'), 400);
       }
 
       if (idx === 4) {
@@ -925,6 +1330,106 @@
       navigator.clipboard.writeText(script).then(() => {
         alert(currentLang === 'ar' ? 'تم نسخ الاسكربت بنجاح إلى الحافظة! 📋' : 'Voiceover script copied to clipboard! 📋');
       });
+    }
+
+    // --- Focus Mode & Automatic Screen Recording ---
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    function toggleFocusMode() {
+      document.body.classList.toggle('focus-mode');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
+        toggleFocusMode();
+      }
+    });
+
+    async function startAutomaticRecording() {
+      if (isRecording) return;
+
+      try {
+        // Request screen / window / tab capture
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: "browser",
+            frameRate: { ideal: 60, max: 60 }
+          },
+          audio: true
+        });
+
+        isRecording = true;
+        recordedChunks = [];
+        const recordBtnText = document.getElementById('recordBtnText');
+        if (recordBtnText) recordBtnText.innerText = "جاري التسجيل... ⏳";
+
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4');
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          isRecording = false;
+          if (recordBtnText) recordBtnText.innerText = "تسجيل وتنزيل فيديو Reels (WebM/MP4)";
+          stream.getTracks().forEach(track => track.stop());
+
+          const blob = new Blob(recordedChunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+          a.download = `MIZAN_Reel_Promo_${Date.now()}.${ext}`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+
+          alert("🎉 تم تسجيل الفيديو بنجاح وحفظه في مجلد التنزيلات (Downloads)! يمكنك رفعه مباشرة على TikTok أو Instagram Reels.");
+        };
+
+        // Handle user stopping share via browser native banner
+        stream.getVideoTracks()[0].onended = () => {
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+          }
+        };
+
+        // Restart video from scene 0 and play
+        restartVideo();
+        if (!isPlaying) togglePlay();
+
+        mediaRecorder.start();
+
+        // 5 scenes * 5.5s = 27.5s + buffer
+        const totalRecordDuration = (5 * sceneDuration) + 500;
+        setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            if (isPlaying) togglePlay();
+          }
+        }, totalRecordDuration);
+
+      } catch (err) {
+        console.warn("Recording cancelled or failed:", err);
+        isRecording = false;
+        const recordBtnText = document.getElementById('recordBtnText');
+        if (recordBtnText) recordBtnText.innerText = "تسجيل وتنزيل فيديو Reels (WebM/MP4)";
+        if (err.name !== 'NotAllowedError') {
+          alert("تنبيه: يمكنك أيضاً استخدام مسجل الشاشة في جهازك (مثل زر Win+Alt+R في ويندوز) بعد الضغط على 'وضع التركيز ملء الشاشة'!");
+        }
+      }
     }
 
     // Initialize with Arabic
